@@ -14,3 +14,4 @@ venv.bak/
 config/credentials/gmail_credentials.json
 config/credentials/gmail_credentials1.json
 config/credentials/token.json
+token.json
