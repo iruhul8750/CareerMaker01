@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block extra_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-login.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-login-container">
+  <div class="admin-login-card">
+    <h1 class="admin-login-title">Admin Login</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} flashed-message">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form id="adminLoginForm" class="admin-login-form" method="POST" action="{{ url_for('admin_login') }}">
+      <div id="formMessages"></div>
+
+      <div class="form-group">
+        <input type="text" id="username" name="username" required placeholder="Admin username">
+      </div>
+
+      <div class="form-group">
+        <div class="password-input-container">
+          <input type="password" id="password" name="password" required placeholder="Admin Password">
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="admin-login-btn">Sign In</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/admin-login.js') }}"></script>
+{% endblock %}

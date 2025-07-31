@@ -1,0 +1,465 @@
+/* User Dashboard Styles */
+:root {
+  --primary-color: #4361ee;
+  --primary-light: #e6e9ff;
+  --primary-dark: #2a4bd7;
+  --secondary-color: #3a0ca3;
+  --secondary-light: #f0e6ff;
+  --secondary-dark: #2a0a7a;
+  --success-color: #4cc9f0;
+  --success-light: #e6f7ff;
+  --success-dark: #38a8c9;
+  --danger-color: #f72585;
+  --danger-light: #ffebf3;
+  --danger-dark: #d61a6f;
+  --warning-color: #f8961e;
+  --warning-light: #fff4e6;
+  --warning-dark: #e07e0c;
+  --info-color: #4895ef;
+  --info-light: #e6f0ff;
+  --info-dark: #3a7bc8;
+  --dark-color: #2b2d42;
+  --light-color: #f8f9fa;
+  --gray-color: #6c757d;
+  --border-color: #e9ecef;
+
+  /* Dark mode variables */
+  --dark-mode-bg: #121212;
+  --dark-mode-card: #1e1e1e;
+  --dark-mode-text: #e0e0e0;
+  --dark-mode-border: #333;
+}
+
+/* Base Styles */
+.dashboard {
+  padding: 3rem 0;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.dark-mode .dashboard {
+  background-color: var(--dark-mode-bg);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary-color);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
+}
+
+.dark-mode .user-avatar {
+  border-color: var(--secondary-color);
+}
+
+.user-info h2 {
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+  font-size: 1.5rem;
+}
+
+.dark-mode .user-info h2 {
+  color: var(--dark-mode-text);
+}
+
+.user-info p {
+  color: var(--gray-color);
+  margin-bottom: 0;
+}
+
+.dark-mode .user-info p {
+  color: #adb5bd;
+}
+
+/* Dashboard Tabs */
+.dashboard-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.dark-mode .dashboard-tabs {
+  border-bottom-color: var(--dark-mode-border);
+}
+
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--gray-color);
+  position: relative;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .tab-btn {
+  color: #adb5bd;
+}
+
+.tab-btn:hover {
+  color: var(--primary-color);
+}
+
+.dark-mode .tab-btn:hover {
+  color: var(--secondary-color);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+}
+
+.dark-mode .tab-btn.active {
+  color: var(--secondary-color);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: var(--primary-color);
+  border-radius: 3px 3px 0 0;
+}
+
+.dark-mode .tab-btn.active::after {
+  background-color: var(--secondary-color);
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+  background-color: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode .dashboard-card {
+  background-color: var(--dark-mode-card);
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-card h3 {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--dark-color);
+}
+
+.dark-mode .dashboard-card h3 {
+  border-bottom-color: var(--dark-mode-border);
+  color: var(--dark-mode-text);
+}
+
+/* Bookmark Items */
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.bookmark-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.dark-mode .bookmark-item {
+  border-bottom-color: var(--dark-mode-border);
+}
+
+.dark-mode .bookmark-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.bookmark-item:last-child {
+  border-bottom: none;
+}
+
+.bookmark-img {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-right: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.bookmark-img:hover {
+  transform: scale(1.03);
+}
+
+.bookmark-info {
+  flex: 1;
+}
+
+.bookmark-info h4 {
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+}
+
+.dark-mode .bookmark-info h4 {
+  color: var(--dark-mode-text);
+}
+
+.bookmark-info p {
+  color: var(--gray-color);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.dark-mode .bookmark-info p {
+  color: #adb5bd;
+}
+
+.bookmark-meta {
+  display: flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bookmark-meta span {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--gray-color);
+}
+
+.dark-mode .bookmark-meta span {
+  color: #adb5bd;
+}
+
+.bookmark-meta i {
+  margin-right: 0.5rem;
+  color: var(--primary-color);
+}
+
+.dark-mode .bookmark-meta i {
+  color: var(--secondary-color);
+}
+
+.bookmark-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 1rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.empty-state i {
+  font-size: 3.5rem;
+  color: var(--gray-color);
+  margin-bottom: 1.5rem;
+  opacity: 0.7;
+}
+
+.dark-mode .empty-state i {
+  color: #adb5bd;
+}
+
+.empty-state h4 {
+  margin-bottom: 1rem;
+  color: var(--dark-color);
+}
+
+.dark-mode .empty-state h4 {
+  color: var(--dark-mode-text);
+}
+
+.empty-state p {
+  color: var(--gray-color);
+  margin-bottom: 1.5rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dark-mode .empty-state p {
+  color: #adb5bd;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  gap: 0.5rem;
+}
+
+.btn i {
+  font-size: 0.9em;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn-outline:hover {
+  background-color: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+.dark-mode .btn-outline {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.dark-mode .btn-outline:hover {
+  background-color: rgba(58, 12, 163, 0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .user-profile {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .bookmark-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+  }
+
+  .bookmark-img {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    margin-right: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .bookmark-actions {
+    margin-left: 0;
+    margin-top: 1.5rem;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .dashboard-tabs {
+    gap: 0.5rem;
+  }
+
+  .tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard {
+    padding: 2rem 0;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  .bookmark-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .bookmark-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

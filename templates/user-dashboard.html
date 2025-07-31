@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/user-dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+  <div class="container">
+    <div class="dashboard-header">
+      <div class="user-profile">
+        <img src="{{ url_for('static', filename='images/testimonials/' + user.profile_pic) if user.profile_pic else url_for('static', filename='images/home.jpg') }}" alt="User" class="user-avatar">
+        <div class="user-info">
+          <h2>{{ user.username }}</h2>
+          <p>{{ user.email }}</p>
+        </div>
+      </div>
+      <a href="/" class="btn btn-outline">Back to Home</a>
+    </div>
+
+    <div class="dashboard-tabs">
+      <button class="tab-btn active" data-tab="courses">Courses</button>
+      <button class="tab-btn" data-tab="jobs">Jobs</button>
+      <button class="tab-btn" data-tab="internships">Internships</button>
+    </div>
+
+    <!-- Courses Tab -->
+    <div class="tab-content active" id="courses">
+      {% if courses %}
+        {% for course in courses %}
+        <div class="dashboard-card">
+          <h3>Saved Courses</h3>
+          <div class="bookmark-item">
+            <img src="{{ url_for('static', filename='images/courses/' + course.image) if course.image else url_for('static', filename='images/home.jpg') }}" alt="{{ course.title }}" class="bookmark-img">
+            <div class="bookmark-info">
+              <h4>{{ course.title }}</h4>
+              <p>{{ course.description[:100] }}...</p>
+              <div class="bookmark-meta">
+                <span><i class="fas fa-dollar-sign"></i> {{ course.price }}</span>
+                <span><i class="fas fa-tag"></i> {{ course.category }}</span>
+              </div>
+            </div>
+            <div class="bookmark-actions">
+              <a href="/courses" class="btn btn-outline">View</a>
+              <button class="btn btn-outline remove-bookmark" data-id="{{ course.id }}" data-type="course">
+                <i class="fas fa-trash-alt"></i> Remove
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dashboard-card">
+          <div class="empty-state">
+            <i class="far fa-bookmark"></i>
+            <h4>No courses saved yet</h4>
+            <p>Save courses from the courses page to view them here</p>
+            <a href="/courses" class="btn btn-primary">Browse Courses</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Jobs Tab -->
+    <div class="tab-content" id="jobs">
+      {% if jobs %}
+        {% for job in jobs %}
+        <div class="dashboard-card">
+          <h3>Saved Jobs</h3>
+          <div class="bookmark-item">
+            <img src="{{ url_for('static', filename='images/jobs/' + job.image) if job.image else url_for('static', filename='images/home.jpg') }}" alt="{{ job.title }}" class="bookmark-img">
+            <div class="bookmark-info">
+              <h4>{{ job.title }}</h4>
+              <p>{{ job.company }} • {{ job.location }}</p>
+              <p>{{ job.description[:100] }}...</p>
+              <div class="bookmark-meta">
+                <span><i class="fas fa-dollar-sign"></i> {{ job.salary }}</span>
+                <span><i class="fas fa-tag"></i> {{ job.category }}</span>
+              </div>
+            </div>
+            <div class="bookmark-actions">
+              <a href="/jobs" class="btn btn-outline">View</a>
+              <button class="btn btn-outline remove-bookmark" data-id="{{ job.id }}" data-type="job">
+                <i class="fas fa-trash-alt"></i> Remove
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dashboard-card">
+          <div class="empty-state">
+            <i class="far fa-bookmark"></i>
+            <h4>No jobs saved yet</h4>
+            <p>Save jobs from the jobs page to view them here</p>
+            <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Internships Tab -->
+    <div class="tab-content" id="internships">
+      {% if internships %}
+        {% for internship in internships %}
+        <div class="dashboard-card">
+          <h3>Saved Internships</h3>
+          <div class="bookmark-item">
+            <img src="{{ url_for('static', filename='images/internships/' + internship.image) if internship.image else url_for('static', filename='images/home.jpg') }}" alt="{{ internship.title }}" class="bookmark-img">
+            <div class="bookmark-info">
+              <h4>{{ internship.title }}</h4>
+              <p>{{ internship.company }} • {{ internship.location }}</p>
+              <p>{{ internship.description[:100] }}...</p>
+              <div class="bookmark-meta">
+                <span><i class="fas fa-dollar-sign"></i> {{ internship.stipend }}</span>
+                <span><i class="fas fa-tag"></i> {{ internship.category }}</span>
+              </div>
+            </div>
+            <div class="bookmark-actions">
+              <a href="/internships" class="btn btn-outline">View</a>
+              <button class="btn btn-outline remove-bookmark" data-id="{{ internship.id }}" data-type="internship">
+                <i class="fas fa-trash-alt"></i> Remove
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dashboard-card">
+          <div class="empty-state">
+            <i class="far fa-bookmark"></i>
+            <h4>No internships saved yet</h4>
+            <p>Save internships from the internships page to view them here</p>
+            <a href="/internships" class="btn btn-primary">Browse Internships</a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/user-dashboard.js') }}"></script>
+{% endblock %}
+{% endblock %}

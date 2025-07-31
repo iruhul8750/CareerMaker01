@@ -1,0 +1,906 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+  {{ super() }}
+  <style>
+    footer {
+      display: none !important;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+  {{ super() }}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>CareerMaker Admin</h2>
+      <button class="sidebar-toggle"><i class="fas fa-bars"></i></button>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+      <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
+      <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
+      <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+      <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
+      <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
+      <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="admin-header">
+      <div class="admin-title"><h1 id="pageTitle">Admin Dashboard</h1></div>
+      <div class="admin-user">
+        <img src="{{ url_for('static', filename='images/admin.png') }}" alt="Admin" class="admin-avatar">
+        <span class="admin-name">{{ admin_name }}</span>
+      </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div class="admin-section active" id="dashboard">
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <h3>Total Users</h3>
+          <p>{{ stats.users }}</p>
+          <a href="#users">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="stat-card success">
+          <h3>Total Courses</h3>
+          <p>{{ stats.courses }}</p>
+          <a href="#courses">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="stat-card warning">
+          <h3>Total Jobs</h3>
+          <p>{{ stats.jobs }}</p>
+          <a href="#jobs">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="stat-card danger">
+          <h3>Total Internships</h3>
+          <p>{{ stats.internships }}</p>
+          <a href="#internships">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <div class="recent-activity">
+        <h3>Recent Activities</h3>
+        <div class="activity-list">
+          {% if recent_activities %}
+            {% for activity in recent_activities %}
+              <div class="activity-item">
+                <div class="activity-icon"><i class="fas fa-{{ activity.icon }}"></i></div>
+                <div class="activity-content">
+                  <p>{{ activity.message }}</p>
+                  <small>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') if activity.timestamp else 'Just now' }}</small>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="activity-item">
+              <div class="activity-icon"><i class="fas fa-info-circle"></i></div>
+              <div class="activity-content"><p>No recent activities</p></div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Courses Section -->
+    <div class="admin-section" id="courses">
+      <div class="section-header">
+        <h2>Course Management</h2>
+        <button class="btn btn-primary" id="addCourseBtn"><i class="fas fa-plus"></i> Add Course</button>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search courses..." id="courseSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="courseCategoryFilter">
+            <option value="">All Categories</option>
+            {% for category in course_categories %}
+            <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+          </select>
+          <select id="courseStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th width="50px"><input type="checkbox" id="selectAllCourses"></th>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="coursesTableBody">
+            {% for course in courses %}
+            <tr data-id="{{ course.id }}">
+              <td><input type="checkbox" class="course-checkbox" value="{{ course.id }}"></td>
+              <td>{{ course.title }}</td>
+              <td>{{ course.category }}</td>
+              <td>${{ course.price }}</td>
+              <td>
+                <span class="status-badge {{ 'published' if course.published else 'draft' }}">
+                  {{ 'Published' if course.published else 'Draft' }}
+                </span>
+              </td>
+              <td>{{ course.created_at.strftime('%Y-%m-%d %H:%M') if course.created_at else 'N/A' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn preview-btn" data-id="{{ course.id }}"><i class="fas fa-eye"></i></button>
+                  <button class="action-btn edit-btn" data-id="{{ course.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn status-btn" data-id="{{ course.id }}" data-status="{{ course.published }}">
+                    <i class="fas {{ 'fa-eye-slash' if course.published else 'fa-eye' }}"></i>
+                  </button>
+                  <button class="action-btn delete-btn" data-id="{{ course.id }}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="courseBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="publish">Publish</option>
+            <option value="unpublish">Unpublish</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyCourseBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevCoursePage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info">Page 1 of {{ total_course_pages }}</span>
+          <button class="btn btn-outline" id="nextCoursePage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs Section -->
+    <div class="admin-section" id="jobs">
+      <div class="section-header">
+        <h2>Job Management</h2>
+        <button class="btn btn-primary" id="addJobBtn"><i class="fas fa-plus"></i> Add Job</button>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search jobs..." id="jobSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="jobTypeFilter">
+            <option value="">All Types</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="remote">Remote</option>
+          </select>
+          <select id="jobStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th width="50px"><input type="checkbox" id="selectAllJobs"></th>
+              <th>Title</th>
+              <th>Company</th>
+              <th>Location</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Posted</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobsTableBody">
+            {% for job in jobs %}
+            <tr data-id="{{ job.id }}">
+              <td><input type="checkbox" class="job-checkbox" value="{{ job.id }}"></td>
+              <td>{{ job.title }}</td>
+              <td>{{ job.company }}</td>
+              <td>{{ job.location }}</td>
+              <td>{{ job.type }}</td>
+              <td>
+                <span class="status-badge {{ 'active' if job.active else 'expired' }}">
+                  {{ 'Active' if job.active else 'Expired' }}
+                </span>
+              </td>
+              <td>{{ job.posted_at.strftime('%Y-%m-%d %H:%M') if job.posted_at else 'N/A' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn preview-btn" data-id="{{ job.id }}"><i class="fas fa-eye"></i></button>
+                  <button class="action-btn edit-btn" data-id="{{ job.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn status-btn" data-id="{{ job.id }}" data-status="{{ job.active }}">
+                    <i class="fas {{ 'fa-toggle-on' if job.active else 'fa-toggle-off' }}"></i>
+                  </button>
+                  <button class="action-btn delete-btn" data-id="{{ job.id }}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="jobBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyJobBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevJobPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info">Page 1 of {{ total_job_pages }}</span>
+          <button class="btn btn-outline" id="nextJobPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Internships Section -->
+    <div class="admin-section" id="internships">
+      <div class="section-header">
+        <h2>Internship Management</h2>
+        <button class="btn btn-primary" id="addInternshipBtn"><i class="fas fa-plus"></i> Add Internship</button>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search internships..." id="internshipSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="internshipTypeFilter">
+            <option value="">All Types</option>
+            <option value="summer">Summer</option>
+            <option value="winter">Winter</option>
+            <option value="remote">Remote</option>
+            <option value="paid">Paid</option>
+            <option value="unpaid">Unpaid</option>
+          </select>
+          <select id="internshipStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th width="50px"><input type="checkbox" id="selectAllInternships"></th>
+              <th>Title</th>
+              <th>Company</th>
+              <th>Duration</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Posted</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="internshipsTableBody">
+            {% for internship in internships %}
+            <tr data-id="{{ internship.id }}">
+              <td><input type="checkbox" class="internship-checkbox" value="{{ internship.id }}"></td>
+              <td>{{ internship.title }}</td>
+              <td>{{ internship.company }}</td>
+              <td>{{ internship.duration }}</td>
+              <td>
+                {% if internship.paid %}<span class="badge paid">Paid</span>{% endif %}
+                {% if internship.remote %}<span class="badge remote">Remote</span>{% endif %}
+              </td>
+              <td>
+                <span class="status-badge {{ 'active' if internship.active else 'expired' }}">
+                  {{ 'Active' if internship.active else 'Expired' }}
+                </span>
+              </td>
+              <td>{{ internship.posted_at.strftime('%Y-%m-%d %H:%M') if internship.posted_at else 'N/A' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn preview-btn" data-id="{{ internship.id }}"><i class="fas fa-eye"></i></button>
+                  <button class="action-btn edit-btn" data-id="{{ internship.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn status-btn" data-id="{{ internship.id }}" data-status="{{ internship.active }}">
+                    <i class="fas {{ 'fa-toggle-on' if internship.active else 'fa-toggle-off' }}"></i>
+                  </button>
+                  <button class="action-btn delete-btn" data-id="{{ internship.id }}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="internshipBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyInternshipBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevInternshipPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info">Page 1 of {{ total_internship_pages }}</span>
+          <button class="btn btn-outline" id="nextInternshipPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blog Section -->
+    <div class="admin-section" id="blog">
+      <div class="section-header">
+        <h2>Blog Management</h2>
+        <button class="btn btn-primary" id="addBlogBtn"><i class="fas fa-plus"></i> Add Post</button>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search posts..." id="blogSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="blogCategoryFilter">
+            <option value="">All Categories</option>
+            {% for category in blog_categories %}
+            <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+          </select>
+          <select id="blogStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th width="50px"><input type="checkbox" id="selectAllBlogPosts"></th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Categories</th>
+              <th>Status</th>
+              <th>Published</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="blogTableBody">
+            {% for post in blog_posts %}
+            <tr data-id="{{ post.id }}">
+              <td><input type="checkbox" class="blog-checkbox" value="{{ post.id }}"></td>
+              <td>{{ post.title }}</td>
+              <td>{{ post.author }}</td>
+              <td>
+                {% for category in post.categories %}
+                <span class="badge">{{ category }}</span>
+                {% endfor %}
+              </td>
+              <td>
+                <span class="status-badge {{ 'published' if post.published else 'draft' }}">
+                  {{ 'Published' if post.published else 'Draft' }}
+                </span>
+              </td>
+              <td>{{ post.published_at.strftime('%Y-%m-%d %H:%M') if post.published_at else 'Not published' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn preview-btn" data-id="{{ post.id }}"><i class="fas fa-eye"></i></button>
+                  <button class="action-btn edit-btn" data-id="{{ post.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn status-btn" data-id="{{ post.id }}" data-status="{{ post.published }}">
+                    <i class="fas {{ 'fa-eye-slash' if post.published else 'fa-eye' }}"></i>
+                  </button>
+                  <button class="action-btn delete-btn" data-id="{{ post.id }}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="blogBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="publish">Publish</option>
+            <option value="unpublish">Unpublish</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyBlogBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevBlogPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info">Page 1 of {{ total_blog_pages }}</span>
+          <button class="btn btn-outline" id="nextBlogPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Section -->
+    <div class="admin-section" id="users">
+      <div class="section-header">
+        <h2>User Management</h2>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search users..." id="userSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="userRoleFilter">
+            <option value="">All Roles</option>
+            <option value="student">Student</option>
+            <option value="employer">Employer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select id="userStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th width="50px"><input type="checkbox" id="selectAllUsers"></th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            {% for user in users %}
+            <tr data-id="{{ user.id }}">
+              <td><input type="checkbox" class="user-checkbox" value="{{ user.id }}"></td>
+              <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.role }}</td>
+              <td>
+                <span class="status-badge {{ 'active' if user.active else 'suspended' }}">
+                  {{ 'Active' if user.active else 'Suspended' }}
+                </span>
+              </td>
+              <td>{{ user.joined_at.strftime('%Y-%m-%d %H:%M') if user.joined_at else 'N/A' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn view-btn" data-id="{{ user.id }}"><i class="fas fa-user"></i></button>
+                  <button class="action-btn edit-btn" data-id="{{ user.id }}"><i class="fas fa-edit"></i></button>
+                  <button class="action-btn status-btn" data-id="{{ user.id }}" data-status="{{ user.active }}">
+                    <i class="fas {{ 'fa-toggle-on' if user.active else 'fa-toggle-off' }}"></i>
+                  </button>
+                  <button class="action-btn message-btn" data-id="{{ user.id }}"><i class="fas fa-envelope"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="userBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="suspend">Suspend</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyUserBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevUserPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info">Page 1 of {{ total_user_pages }}</span>
+          <button class="btn btn-outline" id="nextUserPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Course Modal -->
+<div class="modal" id="courseModal">
+  <div class="modal-content large">
+    <span class="close-modal">&times;</span>
+    <h2 id="courseModalTitle">Add New Course</h2>
+    <form id="courseForm" class="admin-form" enctype="multipart/form-data" action="/admin/courses/save">
+      <input type="hidden" id="courseId" name="id" value="">
+
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="courseTitle" name="title" required placeholder=" ">
+          <label for="courseTitle">Title*</label>
+        </div>
+        <div class="form-group">
+          <input type="text" id="courseSlug" name="slug" required placeholder=" ">
+          <label for="courseSlug">URL Slug*</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="courseCategory" name="category" required>
+            <option value="" disabled selected>Select Category</option>
+            <option value="technology">Technology</option>
+            <option value="business">Marketing</option>
+            <option value="business">Business</option>
+          </select>
+          <label for="courseCategory">Category*</label>
+        </div>
+        <div class="form-group">
+          <input type="number" id="coursePrice" name="price" min="0" step="0.01" required placeholder=" ">
+          <label for="coursePrice">Price*</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <textarea id="courseDescription" name="description" required placeholder=" "></textarea>
+        <label for="courseDescription">Description*</label>
+      </div>
+
+      <div class="form-group">
+        <div class="file-upload">
+          <input type="file" id="courseImage" name="image" accept="image/*">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Drag & drop your file here or click to browse</p>
+          <div class="preview-container">
+            <img id="courseImagePreview" src="" alt="Course Preview">
+            <button type="button" class="btn-remove-image"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="coursePublished" name="published">
+            <option value="true">Published</option>
+            <option value="false">Draft</option>
+          </select>
+          <label for="coursePublished">Status</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelCourse">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveCourse"><i class="fas fa-save"></i> Save Course</button>
+        <button type="button" class="btn btn-success" id="saveAndNewCourse"><i class="fas fa-save"></i> Save & New</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Job Modal -->
+<div class="modal" id="jobModal">
+  <div class="modal-content large">
+    <span class="close-modal">&times;</span>
+    <h2 id="jobModalTitle">Add New Job</h2>
+    <form id="jobForm" class="admin-form" enctype="multipart/form-data" action="/admin/jobs/save">
+      <input type="hidden" id="jobId" name="id" value="">
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="jobSalary" name="salary" placeholder=" ">
+          <label for="jobSalary">Salary</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="jobTitle" name="title" required placeholder=" ">
+          <label for="jobTitle">Title*</label>
+        </div>
+        <div class="form-group">
+          <input type="text" id="jobCompany" name="company" required placeholder=" ">
+          <label for="jobCompany">Company*</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="jobLocation" name="location" required placeholder=" ">
+          <label for="jobLocation">Location*</label>
+        </div>
+        <div class="form-group">
+          <select id="jobType" name="type" required>
+            <option value="" disabled selected>Select Type</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+          </select>
+          <label for="jobType">Job Type*</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <textarea id="jobDescription" name="description" required placeholder=" "></textarea>
+        <label for="jobDescription">Description*</label>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="jobActive" name="active">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+          <label for="jobActive">Status</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="url" id="jobUrl" name="url" required placeholder=" ">
+          <label for="jobUrl">Application URL*</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelJob">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveJob"><i class="fas fa-save"></i> Save Job</button>
+        <button type="button" class="btn btn-success" id="saveAndNewJob"><i class="fas fa-save"></i> Save & New</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Internship Modal -->
+<div class="modal" id="internshipModal">
+  <div class="modal-content large">
+    <span class="close-modal">&times;</span>
+    <h2 id="internshipModalTitle">Add New Internship</h2>
+    <form id="internshipForm" class="admin-form" enctype="multipart/form-data" action="/admin/internships/save">
+      <input type="hidden" id="internshipId" name="id" value="">
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="internshipStipend" name="stipend" placeholder=" ">
+          <label for="internshipStipend">Stipend</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="internshipTitle" name="title" required placeholder=" ">
+          <label for="internshipTitle">Title*</label>
+        </div>
+        <div class="form-group">
+          <input type="text" id="internshipCompany" name="company" required placeholder=" ">
+          <label for="internshipCompany">Company*</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="internshipDuration" name="duration" required placeholder=" ">
+          <label for="internshipDuration">Duration*</label>
+        </div>
+        <div class="form-group">
+          <select id="internshipType" name="type">
+            <option value="" disabled selected>Select Type</option>
+            <option value="summer">Summer</option>
+            <option value="winter">Winter</option>
+          </select>
+          <label for="internshipType">Internship Type</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="internshipPaid" name="paid">
+          <label for="internshipPaid">Paid Internship</label>
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="internshipRemote" name="remote">
+          <label for="internshipRemote">Remote Position</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <textarea id="internshipDescription" name="description" required placeholder=" "></textarea>
+        <label for="internshipDescription">Description*</label>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="internshipActive" name="active">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+          <label for="internshipActive">Status</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="url" id="internshipUrl" name="url" required placeholder=" ">
+          <label for="internshipUrl">Application URL*</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelInternship">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveInternship"><i class="fas fa-save"></i> Save Internship</button>
+        <button type="button" class="btn btn-success" id="saveAndNewInternship"><i class="fas fa-save"></i> Save & New</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Blog Modal -->
+<div class="modal" id="blogModal">
+  <div class="modal-content large">
+    <span class="close-modal">&times;</span>
+    <h2 id="blogModalTitle">Add New Blog Post</h2>
+    <form id="blogForm" class="admin-form" enctype="multipart/form-data" action="/admin/blog/save">
+      <input type="hidden" id="blogId" name="id" value="">
+
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <input type="text" id="blogTitle" name="title" required placeholder=" ">
+          <label for="blogTitle">Title*</label>
+        </div>
+        <div class="form-group">
+          <input type="text" id="blogSlug" name="slug" placeholder=" ">
+          <label for="blogSlug">URL Slug</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <select id="blogCategories" name="categories" multiple required>
+          <option value="career-advice">Career Advice</option>
+          <option value="job-search">Job Search</option>
+          <option value="resume-tips">Resume Tips</option>
+        </select>
+        <label for="blogCategories">Categories*</label>
+      </div>
+
+      <div class="form-group">
+        <textarea id="blogContent" name="content" required placeholder=" "></textarea>
+        <label for="blogContent">Content*</label>
+      </div>
+
+      <div class="form-group">
+        <div class="file-upload">
+          <input type="file" id="blogImage" name="image" accept="image/*">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Drag & drop your file here or click to browse</p>
+          <div class="preview-container">
+            <img id="blogImagePreview" src="" alt="Blog Preview">
+            <button type="button" class="btn-remove-image"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="blogPublished" name="published">
+            <option value="true">Published</option>
+            <option value="false">Draft</option>
+          </select>
+          <label for="blogPublished">Status</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelBlog">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveBlog"><i class="fas fa-save"></i> Save Post</button>
+        <button type="button" class="btn btn-success" id="saveAndNewBlog"><i class="fas fa-save"></i> Save & New</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal" id="userModal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h2 id="userModalTitle">Edit User</h2>
+    <form id="userForm" class="admin-form" action="/admin/users/save">
+      <input type="hidden" id="userId" name="id" value="">
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="userName" name="name" required placeholder=" ">
+          <label for="userName">Name*</label>
+        </div>
+        <div class="form-group">
+          <input type="email" id="userEmail" name="email" required placeholder=" ">
+          <label for="userEmail">Email*</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <select id="userRole" name="role" required>
+            <option value="" disabled selected>Select Role</option>
+            <option value="student">Student</option>
+            <option value="employer">Employer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <label for="userRole">Role*</label>
+        </div>
+        <div class="form-group">
+          <select id="userActive" name="active">
+            <option value="true">Active</option>
+            <option value="false">Suspended</option>
+          </select>
+          <label for="userActive">Status</label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelUser">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveUser"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal" id="confirmModal">
+  <div class="modal-content small">
+    <h3 id="confirmModalTitle">Confirm Action</h3>
+    <p id="confirmModalMessage">Are you sure you want to perform this action?</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="cancelConfirm">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmAction">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay">
+  <div class="loading-spinner">
+    <i class="fas fa-spinner fa-spin"></i>
+    <span>Loading...</span>
+  </div>
+</div>
+
+{% block footer %}{% endblock %}
+
+{% endblock %}

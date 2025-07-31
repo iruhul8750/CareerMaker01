@@ -1,0 +1,22 @@
+<section class="blog-section">
+  <div class="container">
+    <h2>Latest Blogs</h2>
+
+    {% for post in posts %}
+    <div class="blog-card">
+      <h3>{{ post.title }}</h3>
+      <p><strong>Author:</strong> {{ post.author }}</p>
+      <p><strong>Published on:</strong> {{ post.published_at }}</p>
+      <p><strong>Categories:</strong>
+        {% for cat in post.categories %}
+          <span class="badge">{{ cat }}</span>
+        {% endfor %}
+      </p>
+      <p>{{ post.content[:250] }}...</p>
+      <a href="/blog/{{ post.id }}" class="read-more">Read More</a>
+    </div>
+    {% else %}
+    <p>No blog posts available right now.</p>
+    {% endfor %}
+  </div>
+</section>

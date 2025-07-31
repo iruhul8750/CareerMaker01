@@ -1,0 +1,159 @@
+2025-07-29 12:48:22,638 - __main__ - INFO - Starting production server...
+2025-07-29 12:48:22,655 - waitress - INFO - Serving on http://0.0.0.0:5000
+2025-07-29 12:49:28,934 - __main__ - INFO - Starting production server...
+2025-07-29 12:49:28,934 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 12:53:39,020 - waitress - WARNING - 1 thread(s) still running
+2025-07-29 13:05:55,904 - __main__ - INFO - Starting production server...
+2025-07-29 13:05:55,904 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:05:58,572 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:05:59,420 - __main__ - ERROR - Error loading index: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-29 13:05:59,562 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:05:59,563 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:05:59,564 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:06:00,514 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:06:00,517 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:06:00,522 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:06:00,528 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:06:01,086 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:16,204 - __main__ - INFO - Starting production server...
+2025-07-29 13:08:16,205 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:08:20,034 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:22,028 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:08:22,236 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:08:22,419 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:08:22,552 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:08:22,652 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:08:22,735 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:22,783 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:22,783 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:22,968 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:23,118 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:23,135 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:08:23,135 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:27,397 - __main__ - INFO - Starting production server...
+2025-07-29 13:09:27,397 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:09:29,081 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:30,298 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:09:30,398 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:09:30,648 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:09:30,746 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:09:30,862 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:09:30,956 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:30,959 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:30,959 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:31,189 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:31,196 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:31,233 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:09:31,233 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:38,870 - __main__ - INFO - Starting production server...
+2025-07-29 13:11:38,870 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:11:41,089 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:42,502 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:11:42,618 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:11:42,725 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:11:42,818 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:11:42,952 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:11:43,051 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,056 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,056 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,303 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,318 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,345 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,345 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:11:43,951 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:13,948 - __main__ - INFO - Starting production server...
+2025-07-29 13:13:13,948 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:13:16,254 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:17,265 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:13:17,363 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:13:17,546 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:13:17,679 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:13:17,764 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:13:17,862 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:17,862 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:17,881 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:18,123 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:18,131 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:18,133 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:18,172 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:38,478 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:38,606 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:38,608 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:38,608 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:38,609 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:39,886 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:13:47,185 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:13:49,731 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:13:50,562 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:13:51,243 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:14:06,921 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:14:08,217 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:14:18,747 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 13:20:48,215 - __main__ - INFO - Starting production server...
+2025-07-29 13:20:48,215 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:20:51,402 - __main__ - ERROR - Initialization error: 'NoneType' object has no attribute 'gmail'
+2025-07-29 13:44:49,385 - waitress - WARNING - 1 thread(s) still running
+2025-07-29 13:47:52,744 - __main__ - INFO - Starting production server...
+2025-07-29 13:47:52,744 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:47:58,850 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:47:59,008 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:47:59,158 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 13:47:59,292 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:47:59,403 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 13:48:07,131 - __main__ - ERROR - Email service not available
+2025-07-29 13:59:03,584 - __main__ - INFO - Starting production server...
+2025-07-29 13:59:03,601 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 13:59:06,183 - __main__ - ERROR - Gmail service not initialized
+2025-07-29 13:59:17,396 - __main__ - ERROR - Gmail service not initialized
+2025-07-29 14:37:14,202 - __main__ - INFO - Starting production server...
+2025-07-29 14:37:14,206 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 14:38:46,192 - __main__ - ERROR - Error loading index: [WinError 10054] An existing connection was forcibly closed by the remote host
+2025-07-29 14:39:02,923 - waitress - WARNING - 1 thread(s) still running
+2025-07-29 14:39:12,064 - __main__ - INFO - Starting production server...
+2025-07-29 14:39:12,069 - waitress - INFO - Serving on http://0.0.0.0:5000
+2025-07-29 14:39:58,404 - __main__ - INFO - Starting production server...
+2025-07-29 14:39:58,414 - waitress - INFO - Serving on http://[::1]:5000
+2025-07-29 14:39:58,415 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 14:40:09,780 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:40:09,973 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:40:10,163 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:40:10,302 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:40:10,493 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:41:43,444 - __main__ - ERROR - Unexpected error in send_email: 'NoneType' object has no attribute 'gmail'
+2025-07-29 14:43:28,980 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:43:29,111 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:43:29,216 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:43:29,341 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:43:29,444 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:52:49,828 - __main__ - INFO - Starting production server...
+2025-07-29 14:52:49,839 - waitress - INFO - Serving on http://[::1]:5000
+2025-07-29 14:52:49,839 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 14:53:36,172 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:53:36,324 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:53:36,577 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 14:53:36,761 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:53:36,907 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 14:56:42,447 - waitress - WARNING - 1 thread(s) still running
+2025-07-29 14:57:36,169 - __main__ - INFO - Starting production server...
+2025-07-29 14:57:36,180 - waitress - INFO - Serving on http://[::1]:5000
+2025-07-29 14:57:36,181 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 15:09:02,320 - __main__ - INFO - Starting production server...
+2025-07-29 15:09:02,330 - waitress - INFO - Serving on http://[::1]:5000
+2025-07-29 15:09:02,330 - waitress - INFO - Serving on http://127.0.0.1:5000
+2025-07-29 15:12:24,967 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:12:25,084 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:12:25,212 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:12:25,343 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:12:25,446 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:13:04,169 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:04,391 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:04,519 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:04,648 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:13:04,761 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:13:15,676 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/courses?select=id%2Ctitle%2Cdescription%2Cprice%2Cduration%2Cimage%2Clevel&is_featured=eq.True&is_published=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:15,784 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/jobs?select=id%2Ctitle%2Ccompany%2Cdescription%2Clocation%2Csalary%2Cimage%2Ctype%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:15,946 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/internships?select=id%2Ctitle%2Ccompany%2Cdescription%2Cduration%2Cstipend%2Cimage%2Clocation%2Curl&is_featured=eq.True&is_active=eq.True&limit=4 "HTTP/1.1 200 OK"
+2025-07-29 15:13:16,043 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/blog_posts?select=id%2Ctitle%2Cdescription%2Cauthor%2Cpublished_at%2Cimage%2Curl&is_featured=eq.True&is_published=eq.True&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:13:16,166 - httpx - INFO - HTTP Request: GET https://oabwqoulnpwwyggfgvji.supabase.co/rest/v1/testimonials?select=%2A&limit=3 "HTTP/1.1 200 OK"
+2025-07-29 15:15:10,924 - flask_wtf.csrf - INFO - The CSRF token is missing.
+2025-07-29 15:20:32,944 - flask_wtf.csrf - INFO - The CSRF token is missing.

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Internship Programs</h1>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="summer">Summer</button>
+    <button class="filter-btn" data-filter="remote">Remote</button>
+    <button class="filter-btn" data-filter="paid">Paid</button>
+  </div>
+
+  <div class="internships-grid">
+    {% if internships.length > 0 %}
+      {% for internship in internships %}
+      <div class="card listing-item" data-category="{{ internship.category }}">
+        <div class="card-body">
+          <h3>{{ internship.title }}</h3>
+          <p class="company">{{ internship.company }}</p>
+          <p class="duration">{{ internship.duration }}</p>
+          <p class="stipend">{{ internship.stipend }}</p>
+          <a href="{{ internship.application_link }}" target="_blank" class="btn btn-primary apply-btn">Apply Now</a>
+          <button class="bookmark-btn" data-id="{{ internship.id }}" data-type="internship">☆</button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-user-graduate"></i>
+        <h4>No internships found</h4>
+        <p>Check back later for new opportunities</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

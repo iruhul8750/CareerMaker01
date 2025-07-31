@@ -1,0 +1,347 @@
+/* admin-login.css - Complete Admin Login Styles */
+:root {
+  /* Color Variables - Consistent with main styles */
+  --primary-color: #10b981;
+  --secondary-color: #059669;
+  --accent-color: #34d399;
+  --dark-color: #1f2937;
+  --light-color: #f9fafb;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --success-color: #10b981;
+  --border-color: #e0e3e8;
+  --text-color: #2b2d42;
+  --text-light: #6c757d;
+
+  /* Dark Mode Variables */
+  --dark-mode-bg: #111827;
+  --dark-mode-card: #1f2937;
+  --dark-mode-text: #e5e7eb;
+  --dark-mode-border: #374151;
+
+  /* Transitions */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Styles */
+.admin-login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--light-color);
+  padding: 2rem;
+  font-family: 'Nunito', sans-serif;
+  transition: var(--transition);
+}
+
+.dark-mode .admin-login-container {
+  background-color: var(--dark-mode-bg);
+}
+
+/* Login Card */
+.admin-login-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 450px;
+  padding: 2.5rem;
+  transition: var(--transition);
+}
+
+.dark-mode .admin-login-card {
+  background-color: var(--dark-mode-card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Header */
+.admin-login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.admin-login-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+  transition: var(--transition);
+}
+
+.dark-mode .admin-login-title {
+  color: var(--accent-color);
+}
+
+.admin-login-subtitle {
+  color: var(--text-light);
+  font-size: 0.95rem;
+}
+
+.dark-mode .admin-login-subtitle {
+  color: #adb5bd;
+}
+
+/* Form Elements */
+.admin-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.dark-mode .form-group label {
+  color: var(--dark-mode-text);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: white;
+  transition: var(--transition);
+}
+
+.dark-mode .form-group input {
+  background-color: var(--dark-mode-card);
+  border-color: var(--dark-mode-border);
+  color: var(--dark-mode-text);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.dark-mode .form-group input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+}
+
+/* Password Wrapper */
+.password-wrapper {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: var(--transition);
+}
+
+.password-toggle:hover {
+  color: var(--primary-color);
+}
+
+.dark-mode .password-toggle:hover {
+  color: var(--accent-color);
+}
+
+/* Submit Button */
+.admin-login-btn {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.admin-login-btn:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.admin-login-btn:active {
+  transform: translateY(0);
+}
+
+.dark-mode .admin-login-btn {
+  background-color: var(--accent-color);
+}
+
+.dark-mode .admin-login-btn:hover {
+  background-color: var(--primary-color);
+}
+
+.admin-login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Messages */
+.admin-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-message-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.admin-message-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-message i {
+  font-size: 1.1rem;
+}
+
+/* Back Link */
+.admin-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  margin-top: 1.5rem;
+  transition: var(--transition);
+}
+
+.dark-mode .admin-back-link {
+  color: var(--accent-color);
+}
+
+.admin-back-link:hover {
+  color: var(--secondary-color);
+  transform: translateX(-3px);
+}
+
+.dark-mode .admin-back-link:hover {
+  color: var(--primary-color);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 576px) {
+  .admin-login-container {
+    padding: 1rem;
+  }
+
+  .admin-login-card {
+    padding: 1.5rem;
+  }
+
+  .admin-login-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Accessibility Focus Styles */
+.admin-login-form input:focus-visible,
+.admin-login-btn:focus-visible,
+.password-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.dark-mode .admin-login-form input:focus-visible,
+.dark-mode .admin-login-btn:focus-visible,
+.dark-mode .password-toggle:focus-visible {
+  outline-color: var(--accent-color);
+}
+
+/* Loading Spinner */
+.btn-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Password toggle styles */
+.password-input-container {
+  position: relative;
+}
+
+.password-input-container input {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 5px;
+}
+
+.password-toggle:hover {
+  color: #495057;
+}
+
+/* Login error styles */
+.login-error {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
+  transition: opacity 0.3s ease;
+}
+
+/* Loading state */
+button[disabled] .fa-spinner {
+  display: inline-block;
+}
+
+button:not([disabled]) .fa-spinner {
+  display: none;
+}

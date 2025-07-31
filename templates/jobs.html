@@ -1,0 +1,18 @@
+<div class="jobs-list">
+  {% if jobs.length > 0 %}
+    {% for job in jobs %}
+    <div class="card listing-item">
+      <div class="card-body">
+        <h3>{{ job.title }}</h3>
+        <p class="company">{{ job.company }}</p>
+        <p class="location">{{ job.location }}</p>
+        <p class="salary">{{ job.salary }}</p>
+        <p class="type">{{ job.type }}</p>
+        <a href="{{ job.url }}" target="_blank" class="btn btn-primary apply-btn">Apply Now</a>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <!-- ... -->
+  {% endif %}
+</div>
