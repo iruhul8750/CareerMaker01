@@ -85,12 +85,200 @@
 
   function initializeDataTables() {
     document.querySelectorAll('.content-table table').forEach(table => {
-      if (table.querySelector('tbody').children.length === 0) {
+      const tbody = table.querySelector('tbody');
+      if (tbody.children.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `<td colspan="100" class="no-data">No records found</td>`;
-        table.querySelector('tbody').appendChild(row);
+        tbody.appendChild(row);
       }
     });
+
+    // Fetch data for each section
+    fetchSectionData('courses');
+    fetchSectionData('jobs');
+    fetchSectionData('internships');
+    fetchSectionData('blog');
+    fetchSectionData('users');
+  }
+
+  async function fetchSectionData(section) {
+    try {
+      showLoading(true);
+      const response = await fetch(`/admin/${section}`);
+      if (!response.ok) throw new Error('Failed to fetch data');
+
+      const data = await response.json();
+      if (!data || !Array.isArray(data)) return;
+
+      const tableBody = document.querySelector(`#${section}TableBody`);
+      if (!tableBody) return;
+
+      tableBody.innerHTML = '';
+
+      if (data.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="100" class="no-data">No records found</td>`;
+        tableBody.appendChild(row);
+        return;
+      }
+
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        row.dataset.id = item.id;
+        row.innerHTML = generateTableRow(section, item);
+        tableBody.appendChild(row);
+      });
+
+      // Reinitialize any event listeners
+      setupStatusToggleButtons();
+      setupEditButtons();
+      setupDeleteButtons();
+      setupPreviewButtons();
+    } catch (error) {
+      console.error(`Error loading ${section}:`, error);
+      showToast(`Failed to load ${section}`, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function generateTableRow(section, item) {
+    switch(section) {
+      case 'courses':
+        return `
+          <td><input type="checkbox" class="course-checkbox" value="${item.id}"></td>
+          <td>${item.title || 'N/A'}</td>
+          <td>${item.category || 'N/A'}</td>
+          <td>${item.price ? '$' + item.price : 'N/A'}</td>
+          <td>
+            <span class="status-badge ${item.published ? 'published' : 'draft'}">
+              ${item.published ? 'Published' : 'Draft'}
+            </span>
+          </td>
+          <td>${formatDate(item.created_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn preview-btn" data-id="${item.id}"><i class="fas fa-eye"></i></button>
+              <button class="action-btn edit-btn" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+              <button class="action-btn status-btn" data-id="${item.id}" data-status="${item.published}">
+                <i class="fas ${item.published ? 'fa-eye-slash' : 'fa-eye'}"></i>
+              </button>
+              <button class="action-btn delete-btn" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </td>
+        `;
+      case 'jobs':
+        return `
+          <td><input type="checkbox" class="job-checkbox" value="${item.id}"></td>
+          <td>${item.title || 'N/A'}</td>
+          <td>${item.company || 'N/A'}</td>
+          <td>${item.location || 'N/A'}</td>
+          <td>${item.type || 'N/A'}</td>
+          <td>
+            <span class="status-badge ${item.active ? 'active' : 'expired'}">
+              ${item.active ? 'Active' : 'Expired'}
+            </span>
+          </td>
+          <td>${formatDate(item.posted_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn preview-btn" data-id="${item.id}"><i class="fas fa-eye"></i></button>
+              <button class="action-btn edit-btn" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+              <button class="action-btn status-btn" data-id="${item.id}" data-status="${item.active}">
+                <i class="fas ${item.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+              </button>
+              <button class="action-btn delete-btn" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </td>
+        `;
+      case 'internships':
+        return `
+          <td><input type="checkbox" class="internship-checkbox" value="${item.id}"></td>
+          <td>${item.title || 'N/A'}</td>
+          <td>${item.company || 'N/A'}</td>
+          <td>${item.duration || 'N/A'}</td>
+          <td>
+            ${item.paid ? '<span class="badge paid">Paid</span>' : ''}
+            ${item.remote ? '<span class="badge remote">Remote</span>' : ''}
+          </td>
+          <td>
+            <span class="status-badge ${item.active ? 'active' : 'expired'}">
+              ${item.active ? 'Active' : 'Expired'}
+            </span>
+          </td>
+          <td>${formatDate(item.posted_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn preview-btn" data-id="${item.id}"><i class="fas fa-eye"></i></button>
+              <button class="action-btn edit-btn" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+              <button class="action-btn status-btn" data-id="${item.id}" data-status="${item.active}">
+                <i class="fas ${item.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+              </button>
+              <button class="action-btn delete-btn" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </td>
+        `;
+      case 'blog':
+        return `
+          <td><input type="checkbox" class="blog-checkbox" value="${item.id}"></td>
+          <td>${item.title || 'N/A'}</td>
+          <td>${item.author || 'N/A'}</td>
+          <td>
+            ${item.categories ? item.categories.map(cat => `<span class="badge">${cat}</span>`).join('') : 'N/A'}
+          </td>
+          <td>
+            <span class="status-badge ${item.published ? 'published' : 'draft'}">
+              ${item.published ? 'Published' : 'Draft'}
+            </span>
+          </td>
+          <td>${formatDate(item.published_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn preview-btn" data-id="${item.id}"><i class="fas fa-eye"></i></button>
+              <button class="action-btn edit-btn" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+              <button class="action-btn status-btn" data-id="${item.id}" data-status="${item.published}">
+                <i class="fas ${item.published ? 'fa-eye-slash' : 'fa-eye'}"></i>
+              </button>
+              <button class="action-btn delete-btn" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </td>
+        `;
+      case 'users':
+        return `
+          <td><input type="checkbox" class="user-checkbox" value="${item.id}"></td>
+          <td>${item.username || item.email || 'N/A'}</td>
+          <td>${item.email || 'N/A'}</td>
+          <td>${item.role || 'user'}</td>
+          <td>
+            <span class="status-badge ${item.is_active ? 'active' : 'suspended'}">
+              ${item.is_active ? 'Active' : 'Suspended'}
+            </span>
+          </td>
+          <td>${formatDate(item.created_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn view-btn" data-id="${item.id}"><i class="fas fa-user"></i></button>
+              <button class="action-btn edit-btn" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+              <button class="action-btn status-btn" data-id="${item.id}" data-status="${item.is_active}">
+                <i class="fas ${item.is_active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+              </button>
+              <button class="action-btn message-btn" data-id="${item.id}"><i class="fas fa-envelope"></i></button>
+            </div>
+          </td>
+        `;
+      default:
+        return '';
+    }
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    } catch {
+      return dateString;
+    }
   }
 
   function setupFormValidation(form) {
@@ -216,7 +404,7 @@
       const data = await response.json();
       if (data?.success) {
         showToast(data.message, 'success');
-        window.location.reload();
+        fetchSectionData(type); // Refresh the data
       } else {
         showToast(data?.error || 'Action failed', 'error');
       }
@@ -321,14 +509,20 @@
 
           if (data?.success) {
             showToast(data.message || 'Operation successful', 'success');
+
+            // Refresh the section data
+            const section = this.action.split('/')[2]; // Extract section from URL
+            fetchSectionData(section);
+
             if (isNew) {
               this.reset();
+              // Clear image previews
+              this.querySelectorAll('.preview-container').forEach(container => {
+                container.style.display = 'none';
+              });
             } else {
               this.closest('.modal').style.display = 'none';
               document.body.style.overflow = 'auto';
-              if (data.refresh) {
-                window.location.reload();
-              }
             }
           } else {
             showToast(data?.error || 'Action failed', 'error');
@@ -397,6 +591,31 @@
         }
       });
     });
+
+    // Handle view-all buttons in stat cards
+    document.querySelectorAll('.stat-card a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+
+        // Update active states
+        menuItems.forEach(i => i.classList.remove('active'));
+        document.querySelector(`.sidebar-menu a[href="#${targetId}"]`).classList.add('active');
+
+        adminSections.forEach(section => {
+          section.classList.remove('active');
+          if (section.id === targetId) {
+            section.classList.add('active');
+            // Update page title
+            const pageTitle = document.getElementById('pageTitle');
+            if (pageTitle) {
+              const linkText = document.querySelector(`.sidebar-menu a[href="#${targetId}"] span`).textContent;
+              pageTitle.textContent = linkText + (targetId === 'dashboard' ? '' : ' Management');
+            }
+          }
+        });
+      });
+    });
   }
 
   function setupLogoutButton() {
@@ -431,7 +650,8 @@
         const sectionId = this.closest('.admin-section').id;
         const searchTerm = this.value.toLowerCase();
         document.querySelectorAll(`#${sectionId} tbody tr`).forEach(row => {
-          row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+          const rowText = row.textContent.toLowerCase();
+          row.style.display = rowText.includes(searchTerm) ? '' : 'none';
         });
       });
     });
@@ -469,7 +689,7 @@
       const data = await response.json();
       if (data?.success) {
         showToast(data.message || 'Status updated', 'success');
-        window.location.reload();
+        fetchSectionData(type + 's'); // Refresh the data
       } else {
         showToast(data?.error || 'Failed to update status', 'error');
       }
@@ -568,7 +788,7 @@
       const data = await response.json();
       if (data?.success) {
         showToast(data.message || 'Item deleted', 'success');
-        window.location.reload();
+        fetchSectionData(type + 's'); // Refresh the data
       } else {
         showToast(data?.error || 'Failed to delete', 'error');
       }

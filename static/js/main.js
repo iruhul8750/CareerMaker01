@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
     });
 
-    // Close mobile menu when clicking on a link
     document.querySelectorAll('.nav-links a').forEach(link => {
       link.addEventListener('click', function() {
         if (navContainer.classList.contains('active')) {
@@ -75,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const registerModal = document.getElementById('registerModal');
   const detailModal = document.getElementById('detailModal');
 
-  // Show login modal
   document.querySelectorAll('.login-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -84,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Show register modal
   document.querySelectorAll('.register-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -93,7 +90,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Toggle between login and register modals
   document.getElementById('showRegister')?.addEventListener('click', function(e) {
     e.preventDefault();
     loginModal.style.display = 'none';
@@ -106,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loginModal.style.display = 'flex';
   });
 
-  // Close modal handlers
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() {
       loginModal.style.display = 'none';
@@ -123,56 +118,282 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // View Details Button Handler
-  if (detailModal) {
-    const modalContent = document.getElementById('modalContent');
+  // ======================
+  // Form Field Enhancements
+  // ======================
+  function enhanceFormFields() {
+    document.querySelectorAll('.form-group').forEach(group => {
+      const input = group.querySelector('input, textarea, select');
+      const label = group.querySelector('label');
 
-    document.addEventListener('click', function(e) {
-      const viewDetailsBtn = e.target.closest('.view-details-btn');
-      if (viewDetailsBtn) {
-        const type = viewDetailsBtn.dataset.type;
-        const id = viewDetailsBtn.dataset.id;
+      if (input && label) {
+        group.classList.add('floating-label-group');
 
-        showLoading();
-        fetch(`/api/content/${type}/${id}`)
-          .then(handleResponse)
-          .then(data => {
-            hideLoading();
-            renderModalContent(type, data);
-            detailModal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-          })
-          .catch(handleError);
+        if (input.value) {
+          group.classList.add('has-value');
+        }
+
+        input.addEventListener('focus', () => {
+          group.classList.add('focused');
+        });
+
+        input.addEventListener('blur', () => {
+          group.classList.remove('focused');
+          if (!input.value) {
+            group.classList.remove('has-value');
+          }
+        });
+
+        input.addEventListener('input', () => {
+          if (input.value) {
+            group.classList.add('has-value');
+          } else {
+            group.classList.remove('has-value');
+          }
+        });
+      }
+    });
+  }
+
+  enhanceFormFields();
+
+  // ======================
+  // Registration Form
+  // ======================
+  const registerForm = document.getElementById('registerForm');
+  if (registerForm) {
+    registerForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      const formResponse = document.getElementById('registerResponse');
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      formResponse.style.display = 'none';
+
+      try {
+        const formData = new FormData(this);
+        const response = await fetch('/register', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Registration failed');
+        }
+
+        if (data.requires_verification) {
+          // Show OTP verification modal
+          showOTPVerificationModal(
+            data.email,
+            formData.get('username'),
+            formData.get('password')
+          );
+          registerModal.style.display = 'none';
+        } else {
+          // Handle direct registration success
+          window.location.href = data.redirect || '/dashboard';
+        }
+      } catch (error) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = error.message || 'Registration failed. Please try again.';
+        formResponse.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
       }
     });
   }
 
   // ======================
-  // Bookmark Functionality
+  // OTP Verification Modal
   // ======================
-  document.addEventListener('click', function(e) {
-    const bookmarkBtn = e.target.closest('.bookmark-btn');
-    if (bookmarkBtn) {
-      e.preventDefault();
-      const itemId = bookmarkBtn.dataset.id;
-      const itemType = bookmarkBtn.dataset.type;
-      const isBookmarked = bookmarkBtn.classList.contains('bookmarked');
+  function showOTPVerificationModal(email, username, password) {
+    document.querySelectorAll('.modal').forEach(m => m.remove());
 
-      if (isBookmarked) {
-        removeBookmark(itemId, itemType, bookmarkBtn);
-      } else {
-        addBookmark(itemId, itemType, bookmarkBtn);
-      }
+    const modalHTML = `
+    <div class="modal" style="display: flex;">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <h2>Verify Your Email</h2>
+        <p>Enter the 6-digit code sent to ${email}</p>
+        <form id="otpForm">
+          <input type="hidden" name="email" value="${email}">
+          <input type="hidden" name="username" value="${username}">
+          <input type="hidden" name="password" value="${password}">
+          <div class="form-group floating-label-group">
+            <input type="text" id="otpCode" name="otp" maxlength="6" pattern="\\d{6}" required placeholder=" ">
+            <label for="otpCode">OTP Code</label>
+          </div>
+          <button type="submit" class="btn btn-primary" id="verifyOtpBtn">
+            <span class="btn-text">Verify</span>
+            <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+          </button>
+          <p class="resend-link">Didn't receive code? <a href="#" id="resendOtp">Resend</a></p>
+        </form>
+        <div id="otpResponse" class="form-response" style="display: none;"></div>
+      </div>
+    </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    enhanceFormFields();
+
+    const otpForm = document.getElementById('otpForm');
+    const verifyBtn = document.getElementById('verifyOtpBtn');
+    const otpResponse = document.getElementById('otpResponse');
+
+    if (otpForm) {
+      otpForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btnText = verifyBtn.querySelector('.btn-text');
+        const loadingIcon = verifyBtn.querySelector('.loading-icon');
+
+        otpResponse.style.display = 'none';
+        otpResponse.textContent = '';
+
+        btnText.textContent = 'Verifying...';
+        loadingIcon.style.display = 'inline-block';
+        verifyBtn.disabled = true;
+
+        try {
+          const formData = new FormData(otpForm);
+          const email = formData.get('email');
+          const otp = formData.get('otp');
+          const username = formData.get('username');
+          const password = formData.get('password');
+
+          const response = await fetch('/api/verify-otp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email,
+              otp,
+              username,
+              password
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Verification failed');
+          }
+
+          otpResponse.className = 'form-response success';
+          otpResponse.textContent = data.message || 'Email verified successfully!';
+          otpResponse.style.display = 'block';
+
+          if (data.redirect) {
+            setTimeout(() => {
+              window.location.href = data.redirect;
+            }, 1500);
+          }
+        } catch (error) {
+          otpResponse.className = 'form-response error';
+          otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
+          otpResponse.style.display = 'block';
+        } finally {
+          btnText.textContent = 'Verify';
+          loadingIcon.style.display = 'none';
+          verifyBtn.disabled = false;
+        }
+      });
     }
-  });
 
-  // Check bookmarks on page load if user is logged in
-  if (document.querySelector('.auth-buttons').textContent.includes('My Profile')) {
-    checkBookmarks();
+    document.getElementById('resendOtp')?.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const resendLink = this;
+      const email = document.querySelector('input[name="email"]').value;
+      resendLink.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to resend OTP');
+        }
+
+        showToast('New OTP sent successfully!', 'success');
+      } catch (error) {
+        showToast(error.message || 'Failed to resend OTP', 'error');
+      } finally {
+        resendLink.innerHTML = 'Resend';
+      }
+    });
+
+    document.querySelector('.close-modal')?.addEventListener('click', function() {
+      document.querySelector('.modal').remove();
+    });
   }
 
   // ======================
-  // Form Handling
+  // Login Form
+  // ======================
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      const formResponse = document.createElement('div');
+      formResponse.className = 'form-response';
+      this.appendChild(formResponse);
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+
+      try {
+        const formData = new FormData(this);
+        const response = await fetch('/login', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.redirect) {
+          window.location.href = data.redirect;
+        } else if (data.requires_verification) {
+          formResponse.className = 'form-response error';
+          formResponse.textContent = data.error || 'Please verify your email first';
+          showOTPVerificationModal(data.email);
+        } else {
+          throw new Error(data.error || 'Login failed');
+        }
+      } catch (error) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = error.message || 'An error occurred. Please try again.';
+        formResponse.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  // ======================
+  // Contact Form
   // ======================
   const contactForm = document.getElementById('contactForm');
   if (contactForm) {
@@ -204,13 +425,12 @@ document.addEventListener('DOMContentLoaded', function() {
           formResponse.textContent = data.message;
           contactForm.reset();
         } else {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = data.error || 'Failed to send message. Please try again.';
+          throw new Error(data.error || 'Failed to send message');
         }
       })
       .catch(error => {
         formResponse.className = 'form-response error';
-        formResponse.textContent = error.error || 'An error occurred. Please try again.';
+        formResponse.textContent = error.message || 'An error occurred. Please try again.';
       })
       .finally(() => {
         formResponse.style.display = 'block';
@@ -220,229 +440,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Login Form Handling
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const submitBtn = loginForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-
-      const formData = new FormData(loginForm);
-
-      fetch('/login', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json'
-        }
-      })
-      .then(response => {
-        if (response.redirected) {
-          window.location.href = response.url;
-        } else {
-          return response.json().then(data => {
-            if (data.error) throw new Error(data.error);
-            return data;
-          });
-        }
-      })
-      .catch(error => {
-        showToast(error.message || 'Login failed. Please try again.', 'error');
-      })
-      .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-      });
-    });
-  }
-
-  // Register Form Handling
-  const registerForm = document.getElementById('registerForm');
-  if (registerForm) {
-    registerForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const submitBtn = registerForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
-
-      const formData = new FormData(registerForm);
-
-      fetch('/register', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json'
-        }
-      })
-      .then(response => {
-        if (response.redirected) {
-          window.location.href = response.url;
-        } else {
-          return response.json().then(data => {
-            if (data.error) throw new Error(data.error);
-            return data;
-          });
-        }
-      })
-      .catch(error => {
-        showToast(error.message || 'Registration failed. Please try again.', 'error');
-      })
-      .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-      });
-    });
-  }
-
   // ======================
-  // Helper Functions
+  // Bookmark Functionality
   // ======================
-  function handleResponse(response) {
-    if (!response.ok) {
-      return response.json().then(err => { throw err; });
+  document.addEventListener('click', function(e) {
+    const bookmarkBtn = e.target.closest('.bookmark-btn');
+    if (bookmarkBtn) {
+      e.preventDefault();
+      const itemId = bookmarkBtn.dataset.id;
+      const itemType = bookmarkBtn.dataset.type;
+      const isBookmarked = bookmarkBtn.classList.contains('bookmarked');
+
+      if (isBookmarked) {
+        removeBookmark(itemId, itemType, bookmarkBtn);
+      } else {
+        addBookmark(itemId, itemType, bookmarkBtn);
+      }
     }
-    return response.json();
-  }
+  });
 
-  function handleError(error) {
-    console.error('Error:', error);
-    showToast(error.message || 'An error occurred. Please try again.', 'error');
-    hideLoading();
-  }
-
-  function renderModalContent(type, data) {
-    let html = '';
-    const modalContent = document.getElementById('modalContent');
-
-    switch(type) {
-      case 'course':
-        html = `
-          <h2>${data.title}</h2>
-          <div class="modal-meta">
-            <span class="price">$${data.price}</span>
-            <span class="duration">${data.duration} hours</span>
-            <span class="level">${data.level}</span>
-          </div>
-          <div class="modal-description">
-            <h3>Description</h3>
-            <p>${data.description}</p>
-          </div>
-          ${data.modules ? `
-          <div class="modal-modules">
-            <h3>Course Modules</h3>
-            ${data.modules.map(module => `
-              <div class="module">
-                <h4>${module.title}</h4>
-                <ul>
-                  ${module.lessons.map(lesson => `
-                    <li>${lesson.title} (${lesson.duration} min)</li>
-                  `).join('')}
-                </ul>
-              </div>
-            `).join('')}
-          </div>` : ''}
-          <div class="modal-actions">
-            <button class="btn btn-primary">Enroll Now</button>
-          </div>
-        `;
-        break;
-
-      case 'job':
-        html = `
-          <h2>${data.title}</h2>
-          <h3>${data.company}</h3>
-          <div class="modal-meta">
-            <span class="location">${data.location}</span>
-            <span class="salary">${data.salary}</span>
-            <span class="type">${data.type}</span>
-          </div>
-          <div class="modal-description">
-            <h3>Job Description</h3>
-            <p>${data.description}</p>
-          </div>
-          <div class="modal-requirements">
-            <h3>Requirements</h3>
-            <ul>
-              ${data.requirements.map(req => `<li>${req}</li>`).join('')}
-            </ul>
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-primary">Apply Now</button>
-          </div>
-        `;
-        break;
-
-      case 'internship':
-        html = `
-          <h2>${data.title}</h2>
-          <h3>${data.company}</h3>
-          <div class="modal-meta">
-            <span class="location">${data.location}</span>
-            <span class="stipend">${data.stipend}</span>
-            <span class="duration">${data.duration}</span>
-          </div>
-          <div class="modal-description">
-            <h3>Internship Description</h3>
-            <p>${data.description}</p>
-          </div>
-          <div class="modal-requirements">
-            <h3>Requirements</h3>
-            <ul>
-              ${data.requirements.map(req => `<li>${req}</li>`).join('')}
-            </ul>
-          </div>
-          <div class="modal-actions">
-            <button class="btn btn-primary">Apply Now</button>
-          </div>
-        `;
-        break;
-
-      case 'blog':
-        html = `
-          <h2>${data.title}</h2>
-          <div class="modal-meta">
-            <span class="author">By ${data.author}</span>
-            <span class="date">${new Date(data.published_at).toLocaleDateString()}</span>
-          </div>
-          <div class="modal-image">
-            <img src="${data.image ? '/static/images/blogs/' + data.image : '/static/images/default-blog.jpg'}" alt="${data.title}">
-          </div>
-          <div class="modal-content">
-            <p>${data.description}</p>
-          </div>
-          <div class="modal-actions">
-            <a href="/blog/${data.id}" class="btn btn-primary">Read Full Article</a>
-          </div>
-        `;
-        break;
-    }
-
-    if (modalContent) {
-      modalContent.innerHTML = html;
-    }
-  }
-
-  function showLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-      loadingOverlay.style.display = 'flex';
-    }
-  }
-
-  function hideLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-      loadingOverlay.style.display = 'none';
-    }
-  }
-
-  // Bookmark Functions
   function addBookmark(itemId, itemType, element) {
     showLoading();
     fetch('/api/bookmark', {
@@ -462,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
         element.classList.add('bookmarked');
         const icon = element.querySelector('i') || document.createElement('i');
         icon.className = 'fas fa-bookmark';
-        element.innerHTML = icon.outerHTML + ' Saved';
+        element.innerHTML = icon.outerHTML + ' <span class="btn-text">Saved</span>';
         showToast('Item bookmarked', 'success');
       } else {
         showToast('Failed to bookmark', 'error');
@@ -490,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
         element.classList.remove('bookmarked');
         const icon = element.querySelector('i') || document.createElement('i');
         icon.className = 'far fa-bookmark';
-        element.innerHTML = icon.outerHTML + ' Save';
+        element.innerHTML = icon.outerHTML + ' <span class="btn-text">Save</span>';
         showToast('Bookmark removed', 'success');
       } else {
         showToast('Failed to remove bookmark', 'error');
@@ -499,32 +515,35 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(handleError);
   }
 
-  function checkBookmarks() {
-    fetch('/dashboard')
-      .then(response => response.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const bookmarkedItems = doc.querySelectorAll('.bookmarked-item');
+  // ======================
+  // Share Functionality
+  // ======================
+  document.addEventListener('click', function(e) {
+    const shareBtn = e.target.closest('.share-btn');
+    if (shareBtn) {
+      e.preventDefault();
+      const type = shareBtn.dataset.type;
+      const id = shareBtn.dataset.id;
+      window.location.href = `/share/${type}/${id}`;
+    }
+  });
 
-        bookmarkedItems.forEach(item => {
-          const itemId = item.dataset.id;
-          const itemType = item.dataset.type;
-          const btn = document.querySelector(`.bookmark-btn[data-id="${itemId}"][data-type="${itemType}"]`);
-          if (btn) {
-            btn.classList.add('bookmarked');
-            const icon = btn.querySelector('i') || document.createElement('i');
-            icon.className = 'fas fa-bookmark';
-            btn.innerHTML = icon.outerHTML + ' Saved';
-          }
-        });
-      })
-      .catch(error => {
-        console.error('Error checking bookmarks:', error);
-      });
+  // ======================
+  // Helper Functions
+  // ======================
+  function handleResponse(response) {
+    if (!response.ok) {
+      return response.json().then(err => { throw err; });
+    }
+    return response.json();
   }
 
-  // Toast Notifications
+  function handleError(error) {
+    console.error('Error:', error);
+    showToast(error.message || 'An error occurred. Please try again.', 'error');
+    hideLoading();
+  }
+
   function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -543,7 +562,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
+  function showLoading() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'flex';
+    }
+  }
+
+  function hideLoading() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'none';
+    }
+  }
+
+  // ======================
   // Scroll to Top Button
+  // ======================
   const scrollToTopBtn = document.createElement('div');
   scrollToTopBtn.className = 'scroll-to-top';
   scrollToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
@@ -564,7 +599,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ======================
   // Active Navigation on Scroll
+  // ======================
   const sections = document.querySelectorAll('section');
   const navLinks = document.querySelectorAll('.nav-links a');
 
@@ -589,7 +626,9 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('scroll', updateActiveNav);
   updateActiveNav();
 
+  // ======================
   // Smooth Scrolling for anchor links
+  // ======================
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
       e.preventDefault();
@@ -607,13 +646,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // ======================
   // Set current year in footer
+  // ======================
   const currentYear = document.getElementById('currentYear');
   if (currentYear) {
     currentYear.textContent = new Date().getFullYear();
   }
 
+  // ======================
   // Close flash messages
+  // ======================
   document.querySelectorAll('.flash-close').forEach(btn => {
     btn.addEventListener('click', function() {
       this.parentElement.remove();

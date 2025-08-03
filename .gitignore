@@ -1,4 +1,4 @@
-.env
+
 __pycache__/
 *.pyc
 *.pyo
@@ -11,7 +11,7 @@ env.bak/
 venv.bak/
 *.sqlite3
 .DS_Store
-config/credentials/gmail_credentials.json
-config/credentials/gmail_credentials1.json
+config/credentials/credentials.json
 config/credentials/token.json
 admin.py
+app.log

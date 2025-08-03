@@ -1,18 +1,63 @@
-<div class="jobs-list">
-  {% if jobs.length > 0 %}
-    {% for job in jobs %}
-    <div class="card listing-item">
-      <div class="card-body">
-        <h3>{{ job.title }}</h3>
-        <p class="company">{{ job.company }}</p>
-        <p class="location">{{ job.location }}</p>
-        <p class="salary">{{ job.salary }}</p>
-        <p class="type">{{ job.type }}</p>
-        <a href="{{ job.url }}" target="_blank" class="btn btn-primary apply-btn">Apply Now</a>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Job Opportunities</h1>
+
+  <div class="filters">
+    <form action="/jobs" method="GET" class="search-form">
+      <input type="search" name="search" placeholder="Search jobs..." value="{{ search if search else '' }}">
+      <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
+      <select name="type">
+        <option value="">All Types</option>
+        <option value="Full-time" {% if job_type == 'Full-time' %}selected{% endif %}>Full-time</option>
+        <option value="Part-time" {% if job_type == 'Part-time' %}selected{% endif %}>Part-time</option>
+        <option value="Remote" {% if job_type == 'Remote' %}selected{% endif %}>Remote</option>
+      </select>
+      <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+  </div>
+
+  <div class="preview-grid">
+    {% if jobs|length > 0 %}
+      {% for job in jobs %}
+      <div class="preview-card" data-tags="{{ job.type|lower }} {% if job.remote %}remote{% endif %}">
+        {% if job.image %}
+        <img src="{{ job.image }}" alt="{{ job.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-job.jpg'">
+        {% else %}
+        <img src="/static/images/default-job.jpg" alt="{{ job.title }}" class="preview-img">
+        {% endif %}
+        <div class="preview-content">
+          <h3>{{ job.title }}</h3>
+          <p class="company">{{ job.company }}</p>
+          <p class="location">{{ job.location }}</p>
+          <p class="description">{{ job.description|truncate(100) }}</p>
+
+          <div class="preview-meta">
+            <span class="salary">{{ job.salary }}</span>
+            <span class="type">{{ job.type }}</span>
+          </div>
+
+            <div class="action-buttons">
+              <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job">
+                <i class="far fa-bookmark"></i>
+              </button>
+              <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}">
+                <i class="fas fa-share-alt"></i>
+              </button>
+              <button class="btn btn-primary apply-btn" data-type="job" {% if not job.application_link %}disabled{% endif %}>
+                Apply Now
+              </button>
+            </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-briefcase"></i>
+        <h4>No jobs found</h4>
+        <p>Try adjusting your search criteria</p>
       </div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <!-- ... -->
-  {% endif %}
+    {% endif %}
+  </div>
 </div>
+{% endblock %}

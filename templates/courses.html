@@ -6,11 +6,11 @@
   
   <div class="filters">
     <form action="/courses" method="GET" class="search-form">
-      <input type="search" name="search" placeholder="Search courses..." value="{{ searchQuery }}">
+      <input type="search" name="search" placeholder="Search courses..." value="{{ search if search else '' }}">
       <select name="category">
         <option value="">All Categories</option>
-        {% for category in course_categories %}
-        <option value="{{ category }}" {% if selectedCategory == category %}selected{% endif %}>{{ category }}</option>
+        {% for category in ['Programming', 'Design', 'Business', 'Marketing'] %}
+        <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-primary">Filter</button>
@@ -18,23 +18,36 @@
   </div>
 
   <div class="preview-grid">
-    {% if courses.length > 0 %}
+    {% if courses|length > 0 %}
       {% for course in courses %}
-      <div class="preview-card">
-        <img src="{{ course.image ? course.image : '/static/images/default-course.jpg' }}" alt="{{ course.title }}" class="preview-img">
+      <div class="preview-card" data-tags="{{ course.category|lower }}">
+        {% if course.image %}
+        <img src="{{ course.image }}" alt="{{ course.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-course.jpg'">
+        {% else %}
+        <img src="/static/images/default-course.jpg" alt="{{ course.title }}" class="preview-img">
+        {% endif %}
         <div class="preview-content">
           <h3>{{ course.title }}</h3>
           <p class="category">{{ course.category }}</p>
-          <p>{{ course.description.substring(0, 150) }}...</p>
+          <p class="description">{{ course.description|truncate(100) }}</p>
+
           <div class="preview-meta">
             <span class="price">${{ course.price }}</span>
-            <span class="status-badge {{ 'published' if course.published else 'draft' }}">
-              {{ 'Published' if course.published else 'Draft' }}
-            </span>
+            <span class="level">{{ course.level }}</span>
           </div>
-          <a href="/courses/{{ course.id }}" class="btn btn-primary">Enroll Now</a>
+
+            <div class="action-buttons">
+              <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course">
+                <i class="far fa-bookmark"></i>
+              </button>
+              <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
+                <i class="fas fa-share-alt"></i>
+              </button>
+              <button class="btn btn-primary apply-btn" data-type="course">
+                Enroll Now
+              </button>
+            </div>
         </div>
-      </div>
       {% endfor %}
     {% else %}
       <div class="empty-state">

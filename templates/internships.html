@@ -11,19 +11,37 @@
     <button class="filter-btn" data-filter="paid">Paid</button>
   </div>
 
-  <div class="internships-grid">
-    {% if internships.length > 0 %}
+  <div class="preview-grid">
+    {% if internships|length > 0 %}
       {% for internship in internships %}
-      <div class="card listing-item" data-category="{{ internship.category }}">
-        <div class="card-body">
+      <div class="preview-card" data-tags="{{ internship.tags|join(' ') }}">
+        {% if internship.image %}
+        <img src="{{ internship.image }}" alt="{{ internship.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-internship.jpg'">
+        {% else %}
+        <img src="/static/images/default-internship.jpg" alt="{{ internship.title }}" class="preview-img">
+        {% endif %}
+        <div class="preview-content">
           <h3>{{ internship.title }}</h3>
           <p class="company">{{ internship.company }}</p>
           <p class="duration">{{ internship.duration }}</p>
-          <p class="stipend">{{ internship.stipend }}</p>
-          <a href="{{ internship.application_link }}" target="_blank" class="btn btn-primary apply-btn">Apply Now</a>
-          <button class="bookmark-btn" data-id="{{ internship.id }}" data-type="internship">☆</button>
+          <p class="description">{{ internship.description|truncate(100) }}</p>
+
+          <div class="preview-meta">
+            <span class="stipend">{% if internship.paid %}Stipend: {{ internship.stipend }}{% else %}Unpaid{% endif %}</span>
+          </div>
+
+           <div class="action-buttons">
+             <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship">
+               <i class="far fa-bookmark"></i>
+             </button>
+             <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}">
+               <i class="fas fa-share-alt"></i>
+             </button>
+             <button class="btn btn-primary apply-btn" data-type="internship" {% if not internship.application_link %}disabled{% endif %}>
+               Apply Now
+             </button>
+           </div>
         </div>
-      </div>
       {% endfor %}
     {% else %}
       <div class="empty-state">
@@ -34,4 +52,32 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+
+      // Update active state
+      filterButtons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+
+      // Filter items
+      document.querySelectorAll('.preview-card').forEach(card => {
+        if (filter === 'all') {
+          card.style.display = '';
+        } else {
+          const tags = card.dataset.tags.split(' ');
+          const matchesFilter = tags.includes(filter);
+          card.style.display = matchesFilter ? '' : 'none';
+        }
+      });
+    });
+  });
+});
+</script>
 {% endblock %}

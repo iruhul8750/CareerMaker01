@@ -15,6 +15,7 @@ careermaker/
 │       └── testimonials/                  # images will auto fetch from the user profile pic whoever is writing post, not manual update
 ├── templates/
 │   ├── base.html
+│   ├── share.html
 │   ├── index.html
 │   ├── courses.html                        # this is for website rendering the courses and for admin also to post data
 │   ├── internships.html                    # this is for website rendering the internships and for admin also to post data
