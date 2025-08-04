@@ -36,18 +36,17 @@
               <i class="fas fa-moon toggle-icon"></i>
               <span class="toggle-text">Dark Mode</span>
             </div>
-
             <div class="auth-buttons">
-              {% if 'user_id' in session %}
+                {% if logged_in %}
                 <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
                 <a href="/logout" class="btn btn-outline">Logout</a>
-              {% else %}
+                {% else %}
                 <button class="btn btn-outline login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
                 <button class="btn btn-primary register-btn"><i class="fas fa-user-plus"></i> Register</button>
-              {% endif %}
+                {% endif %}
+            </div>
             </div>
           </div>
-        </div>
       </nav>
     </div>
   </header>
@@ -259,36 +258,48 @@
   </div>
 </section>
 
-  <!-- Testimonials -->
-  <section class="testimonials" id="testimonials">
-    <div class="container">
-      <div class="section-title">
-        <h2>What Our Students Say</h2>
-        <p>Hear from our community of learners and professionals</p>
-      </div>
-      <div class="testimonial-grid">
-        {% for testimonial in testimonials %}
-        <div class="testimonial-card">
-          <div class="testimonial-content">
-            <p>"{{ testimonial.content }}"</p>
-          </div>
-          <div class="testimonial-author">
-            <img src="{{ testimonial.image if testimonial.image else '/static/images/default-avatar.jpg' }}" alt="{{ testimonial.name }}" class="author-img">
-            <div class="author-info">
-              <h4>{{ testimonial.name }}</h4>
-              <p>{{ testimonial.position }}, {{ testimonial.company }}</p>
-              <div class="rating">
-                {% for i in range(testimonial.rating) %}
-                <i class="fas fa-star"></i>
-                {% endfor %}
-              </div>
+  <!-- Testimonials Section -->
+<section class="testimonials" id="testimonials">
+  <div class="container">
+    <div class="section-title">
+      <h2>What Our Students Say</h2>
+      <p>Hear from our community of learners and professionals</p>
+    </div>
+
+    {% if testimonials %}
+    <div class="testimonial-grid">
+      {% for testimonial in testimonials %}
+      <div class="testimonial-card">
+        <div class="testimonial-content">
+          <p>"{{ testimonial.content }}"</p>
+        </div>
+        <div class="testimonial-author">
+          <img src="{{ testimonial.image if testimonial.image else '/static/images/default-avatar.jpg' }}"
+               alt="{{ testimonial.name }}"
+               class="author-img"
+               onerror="this.onerror=null;this.src='/static/images/default-avatar.jpg'">
+          <div class="author-info">
+            <h4>{{ testimonial.name }}</h4>
+            <p>{{ testimonial.position }}, {{ testimonial.company }}</p>
+            <div class="rating">
+              {% for i in range(testimonial.rating) %}
+              <i class="fas fa-star"></i>
+              {% endfor %}
             </div>
           </div>
         </div>
-        {% endfor %}
       </div>
+      {% endfor %}
     </div>
-  </section>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-comment-alt"></i>
+      <h4>No testimonials available</h4>
+      <p>Check back later for testimonials from our community</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
 
   <!-- Blog Preview -->
   <section class="blog-section" id="blog">

@@ -196,9 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.get('password')
           );
           registerModal.style.display = 'none';
-        } else {
-          // Handle direct registration success
-          window.location.href = data.redirect || '/dashboard';
         }
       } catch (error) {
         formResponse.className = 'form-response error';
@@ -290,13 +287,13 @@ document.addEventListener('DOMContentLoaded', function() {
           }
 
           otpResponse.className = 'form-response success';
-          otpResponse.textContent = data.message || 'Email verified successfully!';
+          otpResponse.textContent = data.message || 'Registration successful! Please login to access your dashboard.';
           otpResponse.style.display = 'block';
 
           if (data.redirect) {
             setTimeout(() => {
               window.location.href = data.redirect;
-            }, 1500);
+            }, 2000);
           }
         } catch (error) {
           otpResponse.className = 'form-response error';
@@ -361,25 +358,35 @@ document.addEventListener('DOMContentLoaded', function() {
       submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
 
       try {
-        const formData = new FormData(this);
+        const formData = {
+          email: this.querySelector('#loginEmail').value,
+          password: this.querySelector('#loginPassword').value
+        };
+
         const response = await fetch('/login', {
           method: 'POST',
-          body: formData,
           headers: {
-            'Accept': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
         });
 
         const data = await response.json();
 
-        if (data.redirect) {
-          window.location.href = data.redirect;
-        } else if (data.requires_verification) {
+        if (!response.ok) {
+          throw new Error(data.error || 'Login failed');
+        }
+
+        if (data.requires_verification) {
           formResponse.className = 'form-response error';
           formResponse.textContent = data.error || 'Please verify your email first';
           showOTPVerificationModal(data.email);
-        } else {
-          throw new Error(data.error || 'Login failed');
+        } else if (data.redirect) {
+          showToast('Login successful!', 'success');
+          // Force full page reload to ensure session is properly set
+          setTimeout(() => {
+            window.location.href = data.redirect;
+          }, 1000);
         }
       } catch (error) {
         formResponse.className = 'form-response error';
@@ -391,6 +398,40 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // ======================
+// Dashboard Link Handling
+// ======================
+document.addEventListener('click', function(e) {
+    const dashboardLink = e.target.closest('a[href="/dashboard"]');
+    if (dashboardLink) {
+        e.preventDefault();
+        showLoading();
+
+        // First check if user is logged in
+        fetch('/api/check-session', {
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.logged_in) {
+                // If logged in, proceed to dashboard
+                window.location.href = '/dashboard';
+            } else {
+                // If not logged in, show login modal
+                showToast('Please login to access your dashboard', 'warning');
+                document.getElementById('loginModal').style.display = 'flex';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to check session status', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+});
 
   // ======================
   // Contact Form
@@ -461,15 +502,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function addBookmark(itemId, itemType, element) {
     showLoading();
-    fetch('/api/bookmark', {
+    fetch('/bookmark/' + itemType + '/' + itemId, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        item_id: itemId,
-        item_type: itemType
-      }),
       credentials: 'same-origin'
     })
     .then(handleResponse)
@@ -489,15 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function removeBookmark(itemId, itemType, element) {
     showLoading();
-    fetch('/api/bookmark', {
+    fetch('/bookmark/' + itemType + '/' + itemId, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        item_id: itemId,
-        item_type: itemType
-      }),
       credentials: 'same-origin'
     })
     .then(handleResponse)

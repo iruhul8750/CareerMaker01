@@ -9,10 +9,17 @@
   <div class="container">
     <div class="dashboard-header">
       <div class="user-profile">
-        <img src="{{ url_for('static', filename='images/testimonials/' + user.profile_pic) if user.profile_pic else url_for('static', filename='images/home.jpg') }}" alt="User" class="user-avatar">
+        <div class="avatar-upload">
+          <img src="{{ avatar_url if avatar_url else url_for('static', filename='images/default-avatar.jpg') }}"
+               alt="User"
+               class="user-avatar"
+               id="userAvatar">
+          <i class="fas fa-camera edit-icon"></i>
+          <input type="file" id="profilePicUpload" accept="image/*">
+        </div>
         <div class="user-info">
-          <h2>{{ user.username }}</h2>
-          <p>{{ user.email }}</p>
+          <h2 id="username">{{ username }}</h2>
+          <p id="userEmail">{{ email }}</p>
         </div>
       </div>
       <a href="/" class="btn btn-outline">Back to Home</a>
@@ -27,28 +34,31 @@
     <!-- Courses Tab -->
     <div class="tab-content active" id="courses">
       {% if courses %}
-        {% for course in courses %}
         <div class="dashboard-card">
           <h3>Saved Courses</h3>
-          <div class="bookmark-item">
-            <img src="{{ url_for('static', filename='images/courses/' + course.image) if course.image else url_for('static', filename='images/home.jpg') }}" alt="{{ course.title }}" class="bookmark-img">
+          {% for course in courses %}
+          <div class="bookmark-item" data-id="{{ course.id }}" data-type="course">
+            <img src="{{ course.image if course.image else url_for('static', filename='images/default-course.jpg') }}"
+                 alt="{{ course.title }}"
+                 class="bookmark-img"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-course.jpg') }}'">
             <div class="bookmark-info">
               <h4>{{ course.title }}</h4>
               <p>{{ course.description[:100] }}...</p>
               <div class="bookmark-meta">
                 <span><i class="fas fa-dollar-sign"></i> {{ course.price }}</span>
-                <span><i class="fas fa-tag"></i> {{ course.category }}</span>
+                <span><i class="fas fa-tag"></i> {{ course.level }}</span>
               </div>
             </div>
             <div class="bookmark-actions">
-              <a href="/courses" class="btn btn-outline">View</a>
+              <a href="/courses/{{ course.id }}" class="btn btn-outline">View</a>
               <button class="btn btn-outline remove-bookmark" data-id="{{ course.id }}" data-type="course">
                 <i class="fas fa-trash-alt"></i> Remove
               </button>
             </div>
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       {% else %}
         <div class="dashboard-card">
           <div class="empty-state">
@@ -64,29 +74,32 @@
     <!-- Jobs Tab -->
     <div class="tab-content" id="jobs">
       {% if jobs %}
-        {% for job in jobs %}
         <div class="dashboard-card">
           <h3>Saved Jobs</h3>
-          <div class="bookmark-item">
-            <img src="{{ url_for('static', filename='images/jobs/' + job.image) if job.image else url_for('static', filename='images/home.jpg') }}" alt="{{ job.title }}" class="bookmark-img">
+          {% for job in jobs %}
+          <div class="bookmark-item" data-id="{{ job.id }}" data-type="job">
+            <img src="{{ job.image if job.image else url_for('static', filename='images/default-job.jpg') }}"
+                 alt="{{ job.title }}"
+                 class="bookmark-img"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-job.jpg') }}'">
             <div class="bookmark-info">
               <h4>{{ job.title }}</h4>
               <p>{{ job.company }} • {{ job.location }}</p>
               <p>{{ job.description[:100] }}...</p>
               <div class="bookmark-meta">
                 <span><i class="fas fa-dollar-sign"></i> {{ job.salary }}</span>
-                <span><i class="fas fa-tag"></i> {{ job.category }}</span>
+                <span><i class="fas fa-tag"></i> {{ job.type }}</span>
               </div>
             </div>
             <div class="bookmark-actions">
-              <a href="/jobs" class="btn btn-outline">View</a>
+              <a href="/jobs/{{ job.id }}" class="btn btn-outline">View</a>
               <button class="btn btn-outline remove-bookmark" data-id="{{ job.id }}" data-type="job">
                 <i class="fas fa-trash-alt"></i> Remove
               </button>
             </div>
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       {% else %}
         <div class="dashboard-card">
           <div class="empty-state">
@@ -102,29 +115,32 @@
     <!-- Internships Tab -->
     <div class="tab-content" id="internships">
       {% if internships %}
-        {% for internship in internships %}
         <div class="dashboard-card">
           <h3>Saved Internships</h3>
-          <div class="bookmark-item">
-            <img src="{{ url_for('static', filename='images/internships/' + internship.image) if internship.image else url_for('static', filename='images/home.jpg') }}" alt="{{ internship.title }}" class="bookmark-img">
+          {% for internship in internships %}
+          <div class="bookmark-item" data-id="{{ internship.id }}" data-type="internship">
+            <img src="{{ internship.image if internship.image else url_for('static', filename='images/default-internship.jpg') }}"
+                 alt="{{ internship.title }}"
+                 class="bookmark-img"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-internship.jpg') }}'">
             <div class="bookmark-info">
               <h4>{{ internship.title }}</h4>
               <p>{{ internship.company }} • {{ internship.location }}</p>
               <p>{{ internship.description[:100] }}...</p>
               <div class="bookmark-meta">
                 <span><i class="fas fa-dollar-sign"></i> {{ internship.stipend }}</span>
-                <span><i class="fas fa-tag"></i> {{ internship.category }}</span>
+                <span><i class="fas fa-tag"></i> {{ internship.duration }}</span>
               </div>
             </div>
             <div class="bookmark-actions">
-              <a href="/internships" class="btn btn-outline">View</a>
+              <a href="/internships/{{ internship.id }}" class="btn btn-outline">View</a>
               <button class="btn btn-outline remove-bookmark" data-id="{{ internship.id }}" data-type="internship">
                 <i class="fas fa-trash-alt"></i> Remove
               </button>
             </div>
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       {% else %}
         <div class="dashboard-card">
           <div class="empty-state">
@@ -138,8 +154,8 @@
     </div>
   </div>
 </section>
+{% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/user-dashboard.js') }}"></script>
-{% endblock %}
 {% endblock %}

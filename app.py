@@ -1,8 +1,10 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from fileinput import filename
 from urllib.parse import urlparse
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, make_response
+from flask_wtf import file
 from google.auth.transport import requests
 from google_auth_oauthlib.flow import InstalledAppFlow
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -24,6 +26,8 @@ import secrets
 import smtplib
 from email.message import EmailMessage
 import logging
+from io import BytesIO
+from PIL import Image
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -212,13 +216,27 @@ def get_company_logo(application_link, content_type=None, content_id=None):
         logger.error(f"Error getting company logo: {str(e)}")
     return None
 
+
+def get_profile_pic_url(filename):
+    if not filename:
+        return None
+    try:
+        # Get signed URL that's valid for 1 hour
+        res = supabase.storage.from_('profile-pics').create_signed_url(filename, 3600)
+        return res.signed_url
+    except Exception as e:
+        logger.error(f"Error getting profile pic URL: {str(e)}")
+        return None
+
 # ======================
 # Authentication Routes
 # ======================
-
 @app.route('/')
 def index():
     try:
+        logged_in = 'user_id' in session
+        username = session.get('username') if logged_in else None
+
         # Fetch featured content from database
         courses = supabase.table('courses').select(
             'id, title, description, price, duration, image, level, application_link'
@@ -236,7 +254,10 @@ def index():
             'id, title, description, author, published_at, image'
         ).eq('is_featured', True).eq('is_published', True).limit(3).execute().data or []
 
-        testimonials = []  # Add your testimonials query if needed
+        # Fetch testimonials or use empty list if not implemented yet
+        testimonials = supabase.table('testimonials').select(
+            'id, name, position, company, content, rating, image'
+        ).eq('is_featured', True).limit(3).execute().data or []
 
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
@@ -247,7 +268,10 @@ def index():
                          jobs=jobs,
                          internships=internships,
                          blogs=blogs,
-                         testimonials=testimonials)
+                         testimonials=testimonials,
+                         logged_in=logged_in,
+                         username=username)
+
 
 @app.route('/api/send-otp', methods=['POST'])
 def send_otp_verification():
@@ -282,7 +306,6 @@ def send_otp_verification():
 
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
-    """Verify OTP for account creation"""
     try:
         data = request.get_json()
         email = data.get('email')
@@ -310,7 +333,7 @@ def verify_otp():
         current_time = get_current_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
-            # Create user account after successful OTP verification
+            # Create user account
             user_data = {
                 'username': username,
                 'email': email,
@@ -330,20 +353,23 @@ def verify_otp():
 
             return jsonify({
                 'status': 'success',
-                'message': 'Account created successfully',
-                'redirect': url_for('user_dashboard')
+                'message': 'Registration successful! Please login to access your dashboard.',
+                'redirect': url_for('index')
             })
         else:
             return jsonify({'status': 'error', 'message': 'Invalid or expired OTP'}), 400
-
     except Exception as e:
         logger.error(f"OTP verification error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'OTP verification failed'}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.json.get('email')
-    password = request.json.get('password')
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request format'}), 400
+
+    email = data.get('email')
+    password = data.get('password')
 
     try:
         user = supabase.table('users').select('*').eq('email', email).single().execute().data
@@ -356,9 +382,17 @@ def login():
                     'email': email
                 }), 401
 
+            # Set session variables
             session['user_id'] = user['id']
             session['user_email'] = user['email']
-            return jsonify({'redirect': url_for('user_dashboard')})
+            session['username'] = user['username']
+            session.permanent = True  # Make session persistent
+
+            return jsonify({
+                'status': 'success',
+                'message': 'Login successful!',
+                'redirect': url_for('index')
+            })
 
         return jsonify({'error': 'Invalid email or password'}), 401
 
@@ -425,7 +459,12 @@ def register():
 def logout():
     session.clear()
     flash('Logged out successfully', 'success')
-    return redirect(url_for('index'))
+    # Force client-side cache clear
+    response = make_response(redirect(url_for('index')))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
@@ -502,22 +541,114 @@ def reset_password_otp():
         logger.error(f"Error resetting password: {str(e)}")
         return jsonify({'error': 'Failed to reset password'}), 500
 
+@app.route('/api/check-session')
+def check_session():
+    return jsonify({
+        'logged_in': 'user_id' in session,
+        'username': session.get('username')
+    })
+
+
+@app.route('/upload-profile-pic', methods=['POST'])
+@login_required
+def upload_profile_pic():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    user_id = session['user_id']
+
+    try:
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{user_id}_{uuid.uuid4().hex}.{ext}"
+
+        # Read file content
+        file_bytes = file.read()
+
+        # Verify file is an image
+        try:
+            Image.open(BytesIO(file_bytes)).verify()
+        except Exception as e:
+            return jsonify({'error': 'Invalid image file'}), 400
+
+        # Upload to Supabase Storage
+        res = supabase.storage.from_('profile-pics').upload(
+            path=filename,
+            file=file_bytes,
+            file_options={
+                "content-type": file.content_type,
+                "upsert": True  # Overwrite if exists
+            }
+        )
+
+        # Get public URL
+        url = supabase.storage.from_('profile-pics').get_public_url(filename)
+
+        # Update user record with the filename using the auth.uid()
+        response = supabase.table('users').update({'profile_pic': filename}).eq('id', user_id).execute()
+
+        if not response.data:
+            raise Exception('Failed to update user profile')
+
+        return jsonify({
+            'success': True,
+            'image_url': f"{url}?{int(datetime.now().timestamp())}"  # Cache busting
+        })
+
+    except Exception as e:
+        logger.error(f"Profile pic upload error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # ======================
 # User Dashboard
 # ======================
-
 @app.route('/dashboard')
 @login_required
 def user_dashboard():
     try:
         user_id = session.get('user_id')
         if not user_id:
-            return jsonify({'error': 'Invalid or missing user ID'}), 400
+            flash('Please log in to access your dashboard', 'warning')
+            return redirect(url_for('login'))
 
+        # Get user data including profile picture
+        user = supabase.table('users').select('*').eq('id', user_id).single().execute()
+
+        if not user.data:
+            session.clear()
+            flash('User not found', 'danger')
+            return redirect(url_for('login'))
+
+        # Handle avatar URL
+        avatar_url = None
+        if user.data.get('profile_pic'):
+            avatar_url = get_profile_pic_url(user.data['profile_pic'])
+        else:
+            # Generate default avatar with initials
+            initials = user.data.get('username', 'U')[0].upper()
+            avatar_url = f"https://ui-avatars.com/api/?name={initials}&background=random&size=150"
+
+        # Get user bookmarks
         bookmarks = get_user_bookmarks(user_id)
 
-        # Separate by type for the template
-        content_map = {'courses': [], 'jobs': [], 'internships': [], 'blogs': []}
+        # Organize content by type
+        content_map = {
+            'courses': [],
+            'jobs': [],
+            'internships': [],
+            'blogs': [],
+            'username': user.data['username'],
+            'email': user.data['email'],
+            'avatar_url': avatar_url
+        }
+
         for item in bookmarks:
             if item['content_type'] == 'course':
                 content_map['courses'].append(item)
@@ -529,10 +660,12 @@ def user_dashboard():
                 content_map['blogs'].append(item)
 
         return render_template('user-dashboard.html', **content_map)
+
     except Exception as e:
-        logger.error(f"Error loading dashboard: {str(e)}")
+        logger.error(f"Dashboard error: {str(e)}")
         flash('Error loading your dashboard', 'danger')
         return redirect(url_for('index'))
+
 
 def get_user_bookmarks(user_id):
     """Get all bookmarks for a user with content details"""
