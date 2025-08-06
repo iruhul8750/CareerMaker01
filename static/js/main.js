@@ -128,66 +128,153 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ======================
-  // Logout Modal Handling - UPDATED
+  // Logout Modal Handling
   // ======================
   const logoutBtn = document.getElementById('logoutBtn');
-  const cancelLogoutBtn = document.querySelector('.cancel-logout-btn');
-  const closeLogoutModalBtn = document.querySelector('.close-logout-modal');
+  const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+  const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
   const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function(e) {
       e.preventDefault();
+      e.stopPropagation();
       logoutModal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
     });
   }
 
-  // Close modal handlers
   function closeLogoutModal() {
     logoutModal.style.display = 'none';
     document.body.style.overflow = 'auto';
   }
 
   if (cancelLogoutBtn) {
-    cancelLogoutBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      closeLogoutModal();
-    });
+    cancelLogoutBtn.addEventListener('click', closeLogoutModal);
   }
 
   if (closeLogoutModalBtn) {
     closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
   }
 
-  // Handle clicking outside modal
-  window.addEventListener('click', function(e) {
-    if (e.target === logoutModal) {
-      closeLogoutModal();
-    }
-  });
-
-  // Intercept form submission
- if (confirmLogoutBtn) {
-  confirmLogoutBtn.addEventListener('click', function(e) {
-    e.preventDefault();
-    showLoading();
-    fetch('/logout', {
-      method: 'POST',
-      credentials: 'same-origin'
-    })
-    .then(response => {
-      if (response.redirected) {
-        // Force a full page reload to ensure flash messages are displayed
-        window.location.href = response.url;
-      }
-    })
-    .catch(error => {
-      console.error('Logout error:', error);
-      hideLoading();
+  if (confirmLogoutBtn) {
+    confirmLogoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      showLoading();
+      fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      })
+      .then(response => {
+        if (response.redirected) {
+          window.location.href = response.url;
+        }
+      })
+      .catch(error => {
+        console.error('Logout error:', error);
+        hideLoading();
+      });
     });
-  });
-}
+  }
+
+  // ======================
+  // Password Reset OTP Handling
+  // ======================
+  const resetPasswordForm = document.getElementById('resetPasswordForm');
+  if (resetPasswordForm) {
+    resetPasswordForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      const formResponse = document.getElementById('resetPasswordResponse');
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      formResponse.style.display = 'none';
+
+      try {
+        const formData = {
+          email: this.querySelector('[name="email"]').value,
+          otp: this.querySelector('[name="otp"]').value,
+          new_password: this.querySelector('[name="new_password"]').value,
+          confirm_password: this.querySelector('[name="confirm_password"]').value
+        };
+
+        const response = await fetch('/reset-password-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Password reset failed');
+        }
+
+        formResponse.className = 'form-response success';
+        formResponse.textContent = data.message || 'Password reset successfully!';
+        formResponse.style.display = 'block';
+
+        if (data.redirect) {
+          setTimeout(() => {
+            window.location.href = data.redirect;
+          }, 1500);
+        }
+      } catch (error) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = error.message || 'Failed to reset password. Please try again.';
+        formResponse.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  // ======================
+  // Resend OTP for Password Reset
+  // ======================
+  const resendResetOtpBtn = document.getElementById('resendResetOtp');
+  if (resendResetOtpBtn) {
+    resendResetOtpBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const email = document.querySelector('[name="email"]').value;
+      if (!email) {
+        showToast('Please enter your email first', 'error');
+        return;
+      }
+
+      const originalText = resendResetOtpBtn.innerHTML;
+      resendResetOtpBtn.disabled = true;
+      resendResetOtpBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to send OTP');
+        }
+
+        showToast('New OTP sent successfully!', 'success');
+      } catch (error) {
+        showToast(error.message || 'Failed to send OTP', 'error');
+      } finally {
+        resendResetOtpBtn.disabled = false;
+        resendResetOtpBtn.innerHTML = originalText;
+      }
+    });
+  }
 
   // ======================
   // Form Field Enhancements
@@ -260,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (data.requires_verification) {
-          // Show OTP verification modal
           showOTPVerificationModal(
             data.email,
             formData.get('username'),
@@ -454,7 +540,6 @@ document.addEventListener('DOMContentLoaded', function() {
           showOTPVerificationModal(data.email);
         } else if (data.redirect) {
           showToast('Login successful!', 'success');
-          // Force full page reload to ensure session is properly set
           setTimeout(() => {
             window.location.href = data.redirect;
           }, 1000);
@@ -479,17 +564,14 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       showLoading();
 
-      // First check if user is logged in
       fetch('/api/check-session', {
         credentials: 'same-origin'
       })
       .then(response => response.json())
       .then(data => {
         if (data.logged_in) {
-          // If logged in, proceed to dashboard
           window.location.href = '/dashboard';
         } else {
-          // If not logged in, show login modal
           showToast('Please login to access your dashboard', 'warning');
           document.getElementById('loginModal').style.display = 'flex';
         }
@@ -633,13 +715,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // ======================
-  // Flash Message Handling - NEW
+  // Flash Message Handling
   // ======================
   function initFlashMessages() {
     const flashMessages = document.querySelectorAll('.alert');
 
     flashMessages.forEach(message => {
-      // Auto-dismiss after 5 seconds
       setTimeout(() => {
         message.style.opacity = '0';
         setTimeout(() => {
@@ -647,7 +728,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
       }, 5000);
 
-      // Close button functionality
       const closeBtn = message.querySelector('.close');
       if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -660,7 +740,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Initialize flash messages
   initFlashMessages();
 
   // ======================

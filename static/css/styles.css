@@ -2588,3 +2588,103 @@ footer::before {
   margin-left: 15px;
   color: inherit;
 }
+
+/* Reset Password OTP Page Styles */
+.password-reset {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background-color: #f8f9fa;
+}
+
+.reset-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.reset-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.reset-header h1 {
+  font-size: 1.8rem;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.reset-header p {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.reset-form {
+  margin-bottom: 1.5rem;
+}
+
+.reset-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.reset-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.reset-footer a {
+  color: #4361ee;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.reset-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Password Requirements Styling */
+.password-requirements {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
+
+.requirements-title {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.requirements-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.requirement {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.requirement:before {
+  content: "✗";
+  color: #ef4444;
+  margin-right: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.requirement.valid:before {
+  content: "✓";
+  color: #10b981;
+}

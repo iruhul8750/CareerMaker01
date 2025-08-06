@@ -472,49 +472,61 @@ def register():
             'message': str(e) if app.debug else 'Registration failed. Please try again.'
         }), 500
 
+
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
         email = request.form.get('email')
         try:
-            user = supabase.table('users').select('*').eq('email', email).single().execute().data
-            if user:
+            user = supabase.table('users').select('*').eq('email', email).maybe_single().execute()
+
+            # Always return success to prevent email enumeration
+            if user.data:
                 # Generate and send OTP for password reset
                 otp, expires_at = generate_otp()
-
                 supabase.table('password_reset_otp').insert({
                     'email': email,
                     'otp': otp,
                     'expires_at': expires_at
                 }).execute()
+                send_otp_email(email, user.data.get('username', 'User'), otp)
 
-                send_otp_email(email, user['username'], otp)
-
-                flash('If an account exists with this email, an OTP has been sent', 'info')
-            else:
-                flash('If an account exists with this email, an OTP has been sent', 'info')
-            return redirect(url_for('login'))
+            return jsonify({
+                'status': 'success',
+                'message': 'If an account exists with this email, an OTP has been sent'
+            })
         except Exception as e:
             logger.error(f"Password reset error: {str(e)}")
-            flash('Error processing your request. Please try again.', 'danger')
+            return jsonify({
+                'status': 'error',
+                'message': 'Error processing your request. Please try again.'
+            }), 500
 
     return render_template('reset-password.html')
 
-@app.route('/reset-password-otp', methods=['POST'])
+@app.route('/reset-password-otp', methods=['GET', 'POST'])
 def reset_password_otp():
-    """Verify OTP for password reset"""
-    email = request.form.get('email')
-    otp = request.form.get('otp')
-    new_password = request.form.get('new_password')
-    confirm_password = request.form.get('confirm_password')
+    if request.method == 'GET':
+        email = request.args.get('email')
+        if not email:
+            flash('Email is required', 'danger')
+            return redirect(url_for('reset_password'))
+        return render_template('reset-password-otp.html', email=email)
 
-    if not all([email, otp, new_password, confirm_password]):
-        return jsonify({'error': 'All fields are required'}), 400
-
-    if new_password != confirm_password:
-        return jsonify({'error': 'Passwords do not match'}), 400
-
+    # POST request: handle form submission
     try:
+        data = request.get_json() or request.form
+        email = data.get('email')
+        otp = data.get('otp')
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if not all([email, otp, new_password, confirm_password]):
+            return jsonify({'error': 'All fields are required'}), 400
+
+        if new_password != confirm_password:
+            return jsonify({'error': 'Passwords do not match'}), 400
+
         # Verify OTP
         otp_record = supabase.table('password_reset_otp').select('*') \
             .eq('email', email) \
@@ -526,20 +538,24 @@ def reset_password_otp():
         if not otp_record.data:
             return jsonify({'error': 'No OTP found for this email'}), 404
 
-        # Timezone-aware comparison
+        # Timezone-aware expiration check
         expires_at = parse_db_timestamp(otp_record.data['expires_at'])
         current_time = get_current_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
-            # Update password
+            # Update password in user table
             supabase.table('users').update({
                 'password_hash': hash_password(new_password)
             }).eq('email', email).execute()
 
-            # Delete the used OTP
+            # Delete used OTP
             supabase.table('password_reset_otp').delete().eq('id', otp_record.data['id']).execute()
 
-            return jsonify({'status': 'success', 'message': 'Password updated successfully'})
+            return jsonify({
+                'status': 'success',
+                'message': 'Password updated successfully',
+                'redirect': url_for('login')
+            })
         else:
             return jsonify({'error': 'Invalid or expired OTP'}), 400
 
@@ -553,7 +569,6 @@ def check_session():
         'logged_in': 'user_id' in session,
         'username': session.get('username')
     })
-
 
 # Profile Picture Routes
 @app.route('/upload-profile-pic', methods=['POST'])
