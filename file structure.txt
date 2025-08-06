@@ -23,6 +23,7 @@ careermaker/
 │   ├── blogs.html                          # this is for website rendering the blogs and for admin also to post data
 │   ├── reset-password.html                 # reset password mail send with link to reset password
 │   ├── user-dashboard.html                 # for user bookmark to save the courses, jobs, internships for later apply when click my profile after login
+│   ├── reset-password-otp.html
 │   └── admin/
 │         ├── admin-login.html               # hide the button in the frontend but implement route to access directly by route address in the domain manually
 │         └── admin-dashboard.html          # admin redirect to this page after login to upload courses, jobs, internships, blogs
