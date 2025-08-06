@@ -10,103 +10,105 @@
   <meta name="theme-color" content="#4361ee">
 </head>
 <body>
-  <!-- Header & Navbar -->
-  <header>
-    <div class="container">
-      <nav class="navbar">
-        <a href="/" class="logo"><i class="fas fa-graduation-cap"></i> CareerMaker</a>
-        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
-          <span class="hamburger"></span>
-        </button>
+<!-- Header & Navbar -->
+<header>
+  <div class="container">
+    <nav class="navbar">
+      <a href="/" class="logo"><i class="fas fa-graduation-cap"></i> CareerMaker</a>
 
-        <div class="nav-container" id="navContainer">
-          <ul class="nav-links">
-            <li><a href="/" class="active"><i class="fas fa-home"></i> Home</a></li>
-            <li><a href="#features"><i class="fas fa-star"></i> Features</a></li>
-            <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
-            <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
-            <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
-            <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
-            <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
-            <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
-          </ul>
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger"></span>
+      </button>
 
-          <div class="nav-right">
-            <div class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-              <i class="fas fa-moon toggle-icon"></i>
-              <span class="toggle-text">Dark Mode</span>
-            </div>
-            <div class="auth-buttons">
-                {% if logged_in %}
-                <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
-                <a href="/logout" class="btn btn-outline">Logout</a>
-                {% else %}
-                <button class="btn btn-outline login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <button class="btn btn-primary register-btn"><i class="fas fa-user-plus"></i> Register</button>
-                {% endif %}
-            </div>
-            </div>
+      <div class="nav-container" id="navContainer">
+        <ul class="nav-links">
+          <li><a href="/" class="active"><i class="fas fa-home"></i> Home</a></li>
+          <li><a href="#features"><i class="fas fa-star"></i> Features</a></li>
+          <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
+          <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
+          <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
+          <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
+          <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
+          <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
+        </ul>
+
+        <div class="nav-right">
+          <div class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+            <i class="fas fa-moon toggle-icon"></i>
+            <span class="toggle-text">Dark Mode</span>
           </div>
-      </nav>
-    </div>
-  </header>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="hero-content">
-      <div class="hero-text">
-        <h1>Empower Your Career Journey</h1>
-        <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and professionals who have transformed their careers with CareerMaker.</p>
-        <div class="hero-buttons">
-          <a href="#courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
-          <a href="#jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
+          <div class="auth-buttons">
+            {% if logged_in %}
+              <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
+              <button class="btn btn-outline" id="logoutBtn">Logout</button>
+            {% else %}
+              <button class="btn btn-outline login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
+              <button class="btn btn-primary register-btn"><i class="fas fa-user-plus"></i> Register</button>
+            {% endif %}
+          </div>
         </div>
       </div>
-      <div class="hero-image">
-        <img src="/static/images/hero-image.jpg" alt="Career growth illustration">
+    </nav>
+  </div>
+</header>
+
+<!-- Hero Section -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-text">
+      <h1>Empower Your Career Journey</h1>
+      <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and professionals who have transformed their careers with CareerMaker.</p>
+      <div class="hero-buttons">
+        <a href="#courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
+        <a href="#jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
       </div>
     </div>
-  </section>
+    <div class="hero-image">
+      <img src="/static/images/hero-image.jpg" alt="Career growth illustration">
+    </div>
+  </div>
+</section>
 
-  <!-- Features Section -->
-  <section class="features" id="features">
-    <div class="container">
-      <div class="section-title">
-        <h2>Why Choose CareerMaker</h2>
-        <p>We provide high-quality content and career opportunities to help you succeed</p>
+<!-- Features Section -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-title">
+      <h2>Why Choose CareerMaker</h2>
+      <p>We provide high-quality content and career opportunities to help you succeed</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h3>Verified Content</h3>
+        <p>All our courses and opportunities are thoroughly vetted to ensure quality and relevance.</p>
       </div>
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <h3>Verified Content</h3>
-          <p>All our courses and opportunities are thoroughly vetted to ensure quality and relevance.</p>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-chart-line"></i>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-chart-line"></i>
-          </div>
-          <h3>Career Growth</h3>
-          <p>Our programs are designed to help you advance in your current career or switch to a new one.</p>
+        <h3>Career Growth</h3>
+        <p>Our programs are designed to help you advance in your current career or switch to a new one.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-briefcase"></i>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-briefcase"></i>
-          </div>
-          <h3>Job Opportunities</h3>
-          <p>Get access to exclusive job listings from top companies in various industries.</p>
+        <h3>Job Opportunities</h3>
+        <p>Get access to exclusive job listings from top companies in various industries.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-headset"></i>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <i class="fas fa-headset"></i>
-          </div>
-          <h3>24/7 Support</h3>
-          <p>Our dedicated support team is always ready to assist you with any questions or issues.</p>
-        </div>
+        <h3>24/7 Support</h3>
+        <p>Our dedicated support team is always ready to assist you with any questions or issues.</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
 <!-- Courses Preview Section -->
 <section class="preview-section" id="courses">
@@ -207,7 +209,7 @@
   </div>
 </section>
 
- <!-- Internships Preview -->
+<!-- Internships Preview -->
 <section class="preview-section" id="internships">
   <div class="container">
     <div class="section-title">
@@ -258,7 +260,7 @@
   </div>
 </section>
 
-  <!-- Testimonials Section -->
+<!-- Testimonials Section -->
 <section class="testimonials" id="testimonials">
   <div class="container">
     <div class="section-title">
@@ -301,36 +303,36 @@
   </div>
 </section>
 
-  <!-- Blog Preview -->
-  <section class="blog-section" id="blog">
-    <div class="container">
-      <div class="section-title">
-        <h2>Latest Career Tips</h2>
-        <p>Read our expert advice on career development and job searching</p>
-      </div>
-      <div class="preview-grid">
-        {% for post in blogs[0:3] %}
-        <div class="blog-card">
-          <img src="{{ post.image if post.image else '/static/images/default-blog.jpg' }}" alt="{{ post.title }}" class="blog-img">
-          <div class="blog-content">
-            <h3>{{ post.title }}</h3>
-            <p>{{ post.description[0:100] }}...</p>
-            <div class="blog-meta">
-              <span><i class="fas fa-user"></i> {{ post.author }}</span>
-              <span><i class="fas fa-calendar-alt"></i> {{ post.published_at.strftime('%b %d, %Y') if post.published_at else 'N/A' }}</span>
-            </div>
-            <a href="/blog/{{ post.id }}" class="btn btn-primary">Read More</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <div class="view-all">
-        <a href="/blog" class="btn btn-outline">View All Articles</a>
-      </div>
+<!-- Blog Preview -->
+<section class="blog-section" id="blog">
+  <div class="container">
+    <div class="section-title">
+      <h2>Latest Career Tips</h2>
+      <p>Read our expert advice on career development and job searching</p>
     </div>
-  </section>
+    <div class="preview-grid">
+      {% for post in blogs[0:3] %}
+      <div class="blog-card">
+        <img src="{{ post.image if post.image else '/static/images/default-blog.jpg' }}" alt="{{ post.title }}" class="blog-img">
+        <div class="blog-content">
+          <h3>{{ post.title }}</h3>
+          <p>{{ post.description[0:100] }}...</p>
+          <div class="blog-meta">
+            <span><i class="fas fa-user"></i> {{ post.author }}</span>
+            <span><i class="fas fa-calendar-alt"></i> {{ post.published_at.strftime('%b %d, %Y') if post.published_at else 'N/A' }}</span>
+          </div>
+          <a href="/blog/{{ post.id }}" class="btn btn-primary">Read More</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="view-all">
+      <a href="/blog" class="btn btn-outline">View All Articles</a>
+    </div>
+  </div>
+</section>
 
- <!-- Login Modal -->
+<!-- Login Modal -->
 <div class="modal" id="loginModal">
   <div class="modal-overlay"></div>
   <div class="modal-content medium">
@@ -410,130 +412,130 @@
   </div>
 </div>
 
-  <!-- Contact Section -->
-  <section class="contact-section" id="contact">
-    <div class="container">
-      <div class="section-title">
-        <h2>Get In Touch</h2>
-        <p>Have questions? We're here to help you with your career journey</p>
-      </div>
-      <div class="contact-container">
-        <div class="contact-info">
-          <h2 class="box-heading">Contact Info</h2>
-          <div class="info-card">
-            <div class="info-icon">
-              <i class="fas fa-map-marker-alt"></i>
-            </div>
-            <div class="info-content">
-              <h3>Our Location</h3>
-              <p>123 Career Street, Tech City, TC 12345</p>
-            </div>
-          </div>
-          <div class="info-card">
-            <div class="info-icon">
-              <i class="fas fa-envelope"></i>
-            </div>
-            <div class="info-content">
-              <h3>Email Us</h3>
-              <p>info@careermaker.com<br>support@careermaker.com</p>
-            </div>
-          </div>
-          <div class="info-card">
-            <div class="info-icon">
-              <i class="fas fa-phone-alt"></i>
-            </div>
-            <div class="info-content">
-              <h3>Call Us</h3>
-              <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="contact-form">
-          <h2 class="box-heading">Send a Message</h2>
-          <form id="contactForm" method="POST" action="/api/contact">
-            <div class="form-group">
-              <input type="text" id="name" name="name" required placeholder="Your Name">
-            </div>
-            <div class="form-group">
-              <input type="email" id="email" name="email" required placeholder="Your Email">
-            </div>
-            <div class="form-group">
-              <input type="text" id="subject" name="subject" required placeholder="Subject">
-            </div>
-            <div class="form-group">
-              <textarea id="message" name="message" rows="4" required placeholder="Your Message"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Send Message</button>
-            <div id="formResponse" class="form-response"></div>
-          </form>
-        </div>
-      </div>
+<!-- Contact Section -->
+<section class="contact-section" id="contact">
+  <div class="container">
+    <div class="section-title">
+      <h2>Get In Touch</h2>
+      <p>Have questions? We're here to help you with your career journey</p>
     </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <h3>CareerMaker</h3>
-          <p>Empowering your career journey with quality education and job opportunities.</p>
-          <div class="social-links">
-            <a href="#"><i class="fab fa-facebook-f"></i></a>
-            <a href="#"><i class="fab fa-twitter"></i></a>
-            <a href="#"><i class="fab fa-linkedin-in"></i></a>
-            <a href="#"><i class="fab fa-instagram"></i></a>
-            <a href="#"><i class="fab fa-youtube"></i></a>
+    <div class="contact-container">
+      <div class="contact-info">
+        <h2 class="box-heading">Contact Info</h2>
+        <div class="info-card">
+          <div class="info-icon">
+            <i class="fas fa-map-marker-alt"></i>
+          </div>
+          <div class="info-content">
+            <h3>Our Location</h3>
+            <p>123 Career Street, Tech City, TC 12345</p>
           </div>
         </div>
-        <div class="footer-col">
-          <h3>Quick Links</h3>
-          <ul class="footer-links">
-            <li><a href="/"><i class="fas fa-chevron-right"></i> Home</a></li>
-            <li><a href="#courses"><i class="fas fa-chevron-right"></i> Courses</a></li>
-            <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
-            <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
-            <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
-          </ul>
+        <div class="info-card">
+          <div class="info-icon">
+            <i class="fas fa-envelope"></i>
+          </div>
+          <div class="info-content">
+            <h3>Email Us</h3>
+            <p>info@careermaker.com<br>support@careermaker.com</p>
+          </div>
         </div>
-        <div class="footer-col">
-          <h3>Support</h3>
-          <ul class="footer-links">
-            <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
-            <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
-            <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
-            <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h3>Newsletter</h3>
-          <p>Subscribe to our newsletter for the latest updates and career tips.</p>
-          <form id="newsletterForm" class="newsletter-form">
-            <input type="email" placeholder="Your email address" required>
-            <button type="submit" class="btn btn-success">Subscribe</button>
-          </form>
+        <div class="info-card">
+          <div class="info-icon">
+            <i class="fas fa-phone-alt"></i>
+          </div>
+          <div class="info-content">
+            <h3>Call Us</h3>
+            <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
+          </div>
         </div>
       </div>
-      <div class="footer-bottom">
-        <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
-        <div class="footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-          <a href="/sitemap">Sitemap</a>
-        </div>
-      </div>
-    </div>
-  </footer>
 
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p>Loading...</p>
+      <div class="contact-form">
+        <h2 class="box-heading">Send a Message</h2>
+        <form id="contactForm" method="POST" action="/api/contact">
+          <div class="form-group">
+            <input type="text" id="name" name="name" required placeholder="Your Name">
+          </div>
+          <div class="form-group">
+            <input type="email" id="email" name="email" required placeholder="Your Email">
+          </div>
+          <div class="form-group">
+            <input type="text" id="subject" name="subject" required placeholder="Subject">
+          </div>
+          <div class="form-group">
+            <textarea id="message" name="message" rows="4" required placeholder="Your Message"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+          <div id="formResponse" class="form-response"></div>
+        </form>
+      </div>
     </div>
   </div>
+</section>
 
-  <script src="/static/js/main.js"></script>
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h3>CareerMaker</h3>
+        <p>Empowering your career journey with quality education and job opportunities.</p>
+        <div class="social-links">
+          <a href="#"><i class="fab fa-facebook-f"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h3>Quick Links</h3>
+        <ul class="footer-links">
+          <li><a href="/"><i class="fas fa-chevron-right"></i> Home</a></li>
+          <li><a href="#courses"><i class="fas fa-chevron-right"></i> Courses</a></li>
+          <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
+          <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
+          <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Support</h3>
+        <ul class="footer-links">
+          <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
+          <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
+          <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
+          <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Newsletter</h3>
+        <p>Subscribe to our newsletter for the latest updates and career tips.</p>
+        <form id="newsletterForm" class="newsletter-form">
+          <input type="email" placeholder="Your email address" required>
+          <button type="submit" class="btn btn-success">Subscribe</button>
+        </form>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+        <a href="/sitemap">Sitemap</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+</div>
+
+<script src="/static/js/main.js"></script>
 </body>
 </html>

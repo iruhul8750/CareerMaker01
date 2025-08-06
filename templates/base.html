@@ -54,8 +54,8 @@
 
             <div class="auth-buttons">
               {% if 'user_id' in session %}
-                <a href="/dashboard" class="btn btn-primary">My Profile</a>
-                <a href="/logout" class="btn btn-outline">Logout</a>
+                <a href="/dashboard" class="btn btn-primary" id="profileLink">My Profile</a>
+                <button class="btn btn-outline" id="logoutBtn">Logout</button>
               {% else %}
                 <a href="/login" class="btn btn-outline login-btn">Login</a>
                 <a href="/register" class="btn btn-primary register-btn">Register</a>
@@ -69,18 +69,19 @@
 
   <!-- Main Content -->
   <main>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-messages">
+    <!-- Flash Messages Container -->
+    <div class="flash-messages" id="flashMessages">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
           {% for category, message in messages %}
             <div class="flash flash-{{ category }}" role="alert">
               {{ message }}
               <button class="flash-close" aria-label="Close message">&times;</button>
             </div>
           {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+        {% endif %}
+      {% endwith %}
+    </div>
 
     {% block content %}{% endblock %}
     {% block error_content %}{% endblock %}
@@ -133,6 +134,25 @@
       </div>
     </div>
   </footer>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal" id="logoutModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="logoutModalTitle">
+  <div class="modal-overlay"></div>
+  <div class="modal-content medium">
+    <button class="close-modal" id="closeLogoutModal" aria-label="Close modal">&times;</button>
+    <div class="modal-header">
+      <h2 id="logoutModalTitle">Confirm Logout</h2>
+      <p>Are you sure you want to logout from your account?</p>
+    </div>
+    <div class="modal-body">
+      <p>You'll need to log in again to access your saved items and profile.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmLogoutBtn">Logout</button>
+    </div>
+  </div>
+</div>
 
   <!-- Detail Modal -->
   <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
@@ -191,13 +211,102 @@
         });
       }
 
+      // Auto-dismiss flash messages after 5 seconds
+      const flashMessages = document.querySelectorAll('.flash');
+      flashMessages.forEach(message => {
+        setTimeout(() => {
+          message.style.opacity = '0';
+          setTimeout(() => {
+            message.remove();
+          }, 300);
+        }, 5000);
+      });
+
       // Close flash messages
       document.querySelectorAll('.flash-close').forEach(btn => {
         btn.addEventListener('click', function() {
-          this.parentElement.remove();
+          this.parentElement.style.opacity = '0';
+          setTimeout(() => {
+            this.parentElement.remove();
+          }, 300);
         });
       });
+
+      // Profile link click handler to prevent flash message persistence
+      const profileLink = document.getElementById('profileLink');
+      if (profileLink) {
+        profileLink.addEventListener('click', function(e) {
+          // Clear any existing flash messages before navigating
+          document.getElementById('flashMessages').innerHTML = '';
+        });
+      }
     });
+      document.addEventListener('DOMContentLoaded', function() {
+    // Logout Modal Handling
+    const logoutModal = document.getElementById('logoutModal');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+    const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
+    const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+    // Function to close logout modal
+    function closeLogoutModal() {
+      logoutModal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    // Open logout modal when logout button is clicked
+   if (logoutBtn) {
+         logoutBtn.addEventListener('click', function(e) {
+           e.preventDefault();
+           e.stopPropagation(); // Add this line to prevent event bubbling
+           logoutModal.style.display = 'flex';
+           document.body.style.overflow = 'hidden';
+         });
+   }
+
+    // Close modal when cancel button is clicked
+    if (cancelLogoutBtn) {
+      cancelLogoutBtn.addEventListener('click', closeLogoutModal);
+    }
+
+    // Close modal when X button is clicked
+    if (closeLogoutModalBtn) {
+      closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
+    }
+
+    // Close modal when clicking outside the modal content
+    logoutModal.addEventListener('click', function(e) {
+      if (e.target === logoutModal) {
+        closeLogoutModal();
+      }
+    });
+
+    // Handle logout confirmation
+    if (confirmLogoutBtn) {
+      confirmLogoutBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Show loading indicator
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+        // Perform logout
+        fetch('/logout', {
+          method: 'POST',
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (response.redirected) {
+            window.location.href = response.url;
+          }
+        })
+        .catch(error => {
+          console.error('Logout error:', error);
+          if (loadingOverlay) loadingOverlay.style.display = 'none';
+        });
+      });
+    }
+  });
   </script>
 
   {% block extra_js %}{% endblock %}

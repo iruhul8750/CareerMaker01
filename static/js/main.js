@@ -73,7 +73,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const loginModal = document.getElementById('loginModal');
   const registerModal = document.getElementById('registerModal');
   const detailModal = document.getElementById('detailModal');
+  const logoutModal = document.getElementById('logoutModal');
 
+  // Login Modal
   document.querySelectorAll('.login-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -82,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Register Modal
   document.querySelectorAll('.register-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -90,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Switch between login/register
   document.getElementById('showRegister')?.addEventListener('click', function(e) {
     e.preventDefault();
     loginModal.style.display = 'none';
@@ -102,21 +106,88 @@ document.addEventListener('DOMContentLoaded', function() {
     loginModal.style.display = 'flex';
   });
 
+  // Close modals
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() {
       loginModal.style.display = 'none';
       registerModal.style.display = 'none';
       if (detailModal) detailModal.style.display = 'none';
+      if (logoutModal) logoutModal.style.display = 'none';
       document.body.style.overflow = 'auto';
     });
   });
 
+  // Close modals when clicking outside
   window.addEventListener('click', function(e) {
-    if (e.target === loginModal || e.target === registerModal || (detailModal && e.target === detailModal)) {
+    if (e.target === loginModal || e.target === registerModal ||
+        (detailModal && e.target === detailModal) ||
+        (logoutModal && e.target === logoutModal)) {
       e.target.style.display = 'none';
       document.body.style.overflow = 'auto';
     }
   });
+
+  // ======================
+  // Logout Modal Handling - UPDATED
+  // ======================
+  const logoutBtn = document.getElementById('logoutBtn');
+  const cancelLogoutBtn = document.querySelector('.cancel-logout-btn');
+  const closeLogoutModalBtn = document.querySelector('.close-logout-modal');
+  const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      logoutModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    });
+  }
+
+  // Close modal handlers
+  function closeLogoutModal() {
+    logoutModal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }
+
+  if (cancelLogoutBtn) {
+    cancelLogoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      closeLogoutModal();
+    });
+  }
+
+  if (closeLogoutModalBtn) {
+    closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
+  }
+
+  // Handle clicking outside modal
+  window.addEventListener('click', function(e) {
+    if (e.target === logoutModal) {
+      closeLogoutModal();
+    }
+  });
+
+  // Intercept form submission
+ if (confirmLogoutBtn) {
+  confirmLogoutBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    showLoading();
+    fetch('/logout', {
+      method: 'POST',
+      credentials: 'same-origin'
+    })
+    .then(response => {
+      if (response.redirected) {
+        // Force a full page reload to ensure flash messages are displayed
+        window.location.href = response.url;
+      }
+    })
+    .catch(error => {
+      console.error('Logout error:', error);
+      hideLoading();
+    });
+  });
+}
 
   // ======================
   // Form Field Enhancements
@@ -400,38 +471,38 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ======================
-// Dashboard Link Handling
-// ======================
-document.addEventListener('click', function(e) {
+  // Dashboard Link Handling
+  // ======================
+  document.addEventListener('click', function(e) {
     const dashboardLink = e.target.closest('a[href="/dashboard"]');
     if (dashboardLink) {
-        e.preventDefault();
-        showLoading();
+      e.preventDefault();
+      showLoading();
 
-        // First check if user is logged in
-        fetch('/api/check-session', {
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.logged_in) {
-                // If logged in, proceed to dashboard
-                window.location.href = '/dashboard';
-            } else {
-                // If not logged in, show login modal
-                showToast('Please login to access your dashboard', 'warning');
-                document.getElementById('loginModal').style.display = 'flex';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Failed to check session status', 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
+      // First check if user is logged in
+      fetch('/api/check-session', {
+        credentials: 'same-origin'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.logged_in) {
+          // If logged in, proceed to dashboard
+          window.location.href = '/dashboard';
+        } else {
+          // If not logged in, show login modal
+          showToast('Please login to access your dashboard', 'warning');
+          document.getElementById('loginModal').style.display = 'flex';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to check session status', 'error');
+      })
+      .finally(() => {
+        hideLoading();
+      });
     }
-});
+  });
 
   // ======================
   // Contact Form
@@ -560,6 +631,37 @@ document.addEventListener('click', function(e) {
       window.location.href = `/share/${type}/${id}`;
     }
   });
+
+  // ======================
+  // Flash Message Handling - NEW
+  // ======================
+  function initFlashMessages() {
+    const flashMessages = document.querySelectorAll('.alert');
+
+    flashMessages.forEach(message => {
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        message.style.opacity = '0';
+        setTimeout(() => {
+          message.remove();
+        }, 300);
+      }, 5000);
+
+      // Close button functionality
+      const closeBtn = message.querySelector('.close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          message.style.opacity = '0';
+          setTimeout(() => {
+            message.remove();
+          }, 300);
+        });
+      }
+    });
+  }
+
+  // Initialize flash messages
+  initFlashMessages();
 
   // ======================
   // Helper Functions

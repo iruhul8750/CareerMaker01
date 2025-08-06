@@ -2536,3 +2536,55 @@ footer::before {
     font-size: 20px;
     cursor: pointer;
 }
+/* Add to your styles.css */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modal-header {
+  margin-bottom: 1.5rem;
+}
+
+.modal-body {
+  margin-bottom: 1.5rem;
+}
+
+.flash-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.alert {
+  padding: 15px 20px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: opacity 0.3s ease;
+  min-width: 250px;
+}
+
+.alert-success {
+  background-color: #28a745;
+}
+
+.alert-error {
+  background-color: #dc3545;
+}
+
+.close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 15px;
+  color: inherit;
+}

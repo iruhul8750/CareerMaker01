@@ -228,6 +228,23 @@ def get_profile_pic_url(filename):
         logger.error(f"Error getting profile pic URL: {str(e)}")
         return None
 
+
+# initialization code near your Supabase client setup
+def initialize_storage():
+    try:
+        buckets = supabase.storage.list_buckets()
+        if not any(b.name == 'profile-pics' for b in buckets):
+            supabase.storage.create_bucket(
+                'profile-pics',
+                options={
+                    'public': True,
+                    'allowed_mime_types': ['image/png', 'image/jpeg', 'image/gif'],
+                    'file_size_limit': '2MB'
+                }
+            )
+    except Exception as e:
+        logger.error(f"Storage init error: {str(e)}")
+
 # ======================
 # Authentication Routes
 # ======================
@@ -455,17 +472,6 @@ def register():
             'message': str(e) if app.debug else 'Registration failed. Please try again.'
         }), 500
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('Logged out successfully', 'success')
-    # Force client-side cache clear
-    response = make_response(redirect(url_for('index')))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
-
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
@@ -549,123 +555,128 @@ def check_session():
     })
 
 
+# Profile Picture Routes
 @app.route('/upload-profile-pic', methods=['POST'])
 @login_required
 def upload_profile_pic():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
+        return jsonify({'success': False, 'error': 'No file part'}), 400
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+        return jsonify({'success': False, 'error': 'No selected file'}), 400
 
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type'}), 400
+        return jsonify({'success': False, 'error': 'Only JPG, PNG or GIF allowed'}), 400
 
     user_id = session['user_id']
 
     try:
-        # Generate unique filename
+        # Generate filename and paths
         ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"{user_id}_{uuid.uuid4().hex}.{ext}"
+        filename = f"{user_id}/{uuid.uuid4().hex}.{ext}"
 
         # Read file content
         file_bytes = file.read()
 
-        # Verify file is an image
-        try:
-            Image.open(BytesIO(file_bytes)).verify()
-        except Exception as e:
-            return jsonify({'error': 'Invalid image file'}), 400
+        # Verify it's a valid image
+        Image.open(BytesIO(file_bytes)).verify()
 
-        # Upload to Supabase Storage
+        # Upload to Supabase storage
         res = supabase.storage.from_('profile-pics').upload(
-            path=filename,
             file=file_bytes,
+            path=filename,
             file_options={
-                "content-type": file.content_type,
-                "upsert": True  # Overwrite if exists
+                'content-type': file.content_type,
+                'x-upsert': 'true'
             }
         )
 
-        # Get public URL
-        url = supabase.storage.from_('profile-pics').get_public_url(filename)
+        if hasattr(res, 'error') and res.error:
+            raise Exception(res.error.message)
 
-        # Update user record with the filename using the auth.uid()
-        response = supabase.table('users').update({'profile_pic': filename}).eq('id', user_id).execute()
+        # Update user record with filename
+        supabase.table('users').update({'profile_pic': filename}).eq('id', user_id).execute()
 
-        if not response.data:
-            raise Exception('Failed to update user profile')
+        # Get public URL (no need for signed URL since bucket is public)
+        public_url = supabase.storage.from_('profile-pics').get_public_url(filename)
 
         return jsonify({
             'success': True,
-            'image_url': f"{url}?{int(datetime.now().timestamp())}"  # Cache busting
+            'image_url': public_url
         })
 
     except Exception as e:
-        logger.error(f"Profile pic upload error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Upload error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/get-profile-pic')
+@login_required
+def get_profile_pic():
+    user_id = session['user_id']
+    try:
+        user = supabase.table('users').select('profile_pic').eq('id', user_id).single().execute().data
+        if user and user.get('profile_pic'):
+            # Get public URL
+            public_url = supabase.storage.from_('profile-pics').get_public_url(user['profile_pic'])
+            return jsonify({'success': True, 'image_url': public_url})
+        return jsonify({'success': False, 'error': 'No profile picture'})
+    except Exception as e:
+        logger.error(f"Profile pic fetch error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ======================
 # User Dashboard
 # ======================
+# Dashboard Route
 @app.route('/dashboard')
 @login_required
 def user_dashboard():
     try:
+        if 'logout_message' in session:
+            flash(session.pop('logout_message'), 'success')
+
         user_id = session.get('user_id')
-        if not user_id:
-            flash('Please log in to access your dashboard', 'warning')
-            return redirect(url_for('login'))
+        user = supabase.table('users').select('*').eq('id', user_id).single().execute().data
 
-        # Get user data including profile picture
-        user = supabase.table('users').select('*').eq('id', user_id).single().execute()
-
-        if not user.data:
-            session.clear()
-            flash('User not found', 'danger')
-            return redirect(url_for('login'))
-
-        # Handle avatar URL
+        # Get profile picture URL
         avatar_url = None
-        if user.data.get('profile_pic'):
-            avatar_url = get_profile_pic_url(user.data['profile_pic'])
-        else:
-            # Generate default avatar with initials
-            initials = user.data.get('username', 'U')[0].upper()
-            avatar_url = f"https://ui-avatars.com/api/?name={initials}&background=random&size=150"
+        if user.get('profile_pic'):
+            try:
+                res = supabase.storage.from_('profile-pics').create_signed_url(
+                    user['profile_pic'],
+                    3600  # 1 hour expiration
+                )
+                avatar_url = res.signed_url
+            except Exception as e:
+                logger.error(f"Error generating signed URL: {str(e)}")
+                avatar_url = supabase.storage.from_('profile-pics').get_public_url(user['profile_pic'])
 
         # Get user bookmarks
         bookmarks = get_user_bookmarks(user_id)
 
-        # Organize content by type
-        content_map = {
-            'courses': [],
-            'jobs': [],
-            'internships': [],
-            'blogs': [],
-            'username': user.data['username'],
-            'email': user.data['email'],
-            'avatar_url': avatar_url
-        }
-
-        for item in bookmarks:
-            if item['content_type'] == 'course':
-                content_map['courses'].append(item)
-            elif item['content_type'] == 'job':
-                content_map['jobs'].append(item)
-            elif item['content_type'] == 'internship':
-                content_map['internships'].append(item)
-            elif item['content_type'] == 'blog':
-                content_map['blogs'].append(item)
-
-        return render_template('user-dashboard.html', **content_map)
+        return render_template('user-dashboard.html',
+                               username=user['username'],
+                               email=user['email'],
+                               avatar_url=avatar_url,
+                               courses=[b for b in bookmarks if b['content_type'] == 'course'],
+                               jobs=[b for b in bookmarks if b['content_type'] == 'job'],
+                               internships=[b for b in bookmarks if b['content_type'] == 'internship'])
 
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}")
-        flash('Error loading your dashboard', 'danger')
+        flash('Error loading dashboard', 'danger')
         return redirect(url_for('index'))
 
+
+@app.route('/logout', methods=['GET','POST'])
+def logout():
+    session.clear()
+    response = make_response(redirect(url_for('index')))
+    response.delete_cookie('sb-access-token')
+    flash('You have been successfully logged out', 'success')
+    return response
 
 def get_user_bookmarks(user_id):
     """Get all bookmarks for a user with content details"""
