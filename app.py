@@ -79,18 +79,6 @@ def parse_db_timestamp(timestamp_str):
     dt = datetime.fromisoformat(timestamp_str)
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
-def hash_password(password: str) -> str:
-    """Generate PBKDF2 hash with base64-encoded salt"""
-    salt = secrets.token_bytes(SALT_LENGTH)
-    key = hashlib.pbkdf2_hmac(
-        HASH_NAME,
-        password.encode('utf-8'),
-        salt,
-        PBKDF2_ITERATIONS,
-        dklen=HASH_LENGTH
-    )
-    b64_salt = base64.urlsafe_b64encode(salt).decode('ascii').rstrip('=')
-    return f"pbkdf2:{HASH_NAME}:{PBKDF2_ITERATIONS}${b64_salt}${binascii.hexlify(key).decode()}"
 
 def verify_password(stored_hash: str, password: str) -> bool:
     """Verify password with base64-encoded salt"""
@@ -109,6 +97,31 @@ def verify_password(stored_hash: str, password: str) -> bool:
     except Exception as e:
         logger.error(f"Password verification error: {str(e)}")
         return False
+
+def validate_password(password):
+    """Validate password meets strength requirements"""
+    if len(password) < 8:
+        return False, 'Password must be at least 8 characters long'
+    if not any(c.isupper() for c in password):
+        return False, 'Password must contain at least one uppercase letter'
+    if not any(c.isdigit() for c in password):
+        return False, 'Password must contain at least one number'
+    if not any(c in '!@#$%^&*(),.?":{}|<>' for c in password):
+        return False, 'Password must contain at least one special character'
+    return True, ''
+
+def hash_password(password: str) -> str:
+    """Generate PBKDF2 hash with base64-encoded salt"""
+    salt = secrets.token_bytes(SALT_LENGTH)
+    key = hashlib.pbkdf2_hmac(
+        HASH_NAME,
+        password.encode('utf-8'),
+        salt,
+        PBKDF2_ITERATIONS,
+        dklen=HASH_LENGTH
+    )
+    b64_salt = base64.urlsafe_b64encode(salt).decode('ascii').rstrip('=')
+    return f"pbkdf2:{HASH_NAME}:{PBKDF2_ITERATIONS}${b64_salt}${binascii.hexlify(key).decode()}"
 
 def generate_otp():
     """Generate a 6-digit OTP and return it with expiration time"""
@@ -144,6 +157,7 @@ def send_otp_email(user_email, user_name, otp):
         logger.error(f"SMTP Error: {str(e)}")
         logger.error(f"SMTP Configuration: Server={SMTP_SERVER}, Port={SMTP_PORT}, Username={SMTP_EMAIL}")
         return False
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -290,36 +304,106 @@ def index():
                          username=username)
 
 
-@app.route('/api/send-otp', methods=['POST'])
-def send_otp_verification():
-    """Endpoint to send OTP for verification"""
-    email = request.json.get('email')
-    if not email:
-        return jsonify({'error': 'Email is required'}), 400
-
+@app.route('/register', methods=['POST'])
+def register():
     try:
-        # Check if user exists
-        user = supabase.table('users').select('username, is_verified').eq('email', email).maybe_single().execute()
+        data = request.form
+        required_fields = ['username', 'email', 'password', 'confirm_password']
 
-        if not user.data:
-            return jsonify({'error': 'Email not registered'}), 404
+        if not all(data.get(field) for field in required_fields):
+            return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
+
+        email = data['email']
+        username = data['username']
+        password = data['password']
+        confirm_password = data['confirm_password']
+
+        if password != confirm_password:
+            return jsonify({'status': 'error', 'message': 'Passwords do not match'}), 400
+
+        # Validate password strength
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            return jsonify({'status': 'error', 'message': message}), 400
+
+        # Check if user exists
+        existing = supabase.table('users').select('email').eq('email', email).execute()
+        if existing.data:
+            return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
 
         # Generate and store OTP
         otp, expires_at = generate_otp()
 
-        supabase.table('otp_verification').upsert({
+        otp_response = supabase.table('otp_verification').insert({
+            'email': email,
+            'otp': otp,
+            'expires_at': expires_at
+        }).execute()
+
+        if not otp_response.data:
+            raise Exception('Failed to store OTP in database')
+
+        # Send OTP email
+        if not send_otp_email(email, username, otp):
+            raise Exception('Failed to send OTP email. Please try again later.')
+
+        return jsonify({
+            'status': 'success',
+            'message': 'OTP sent to your email. Please check your inbox.',
+            'requires_verification': True,
+            'email': email
+        })
+
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e) if app.debug else 'Registration failed. Please try again.'
+        }), 500
+
+
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp_verification():
+    """Endpoint to send OTP for verification"""
+    data = request.get_json()
+    email = data.get('email')
+    purpose = data.get('purpose', 'registration')  # Default to registration
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    try:
+        # Check if user exists (for password reset)
+        if purpose == 'password-reset':
+            user = supabase.table('users').select('username').eq('email', email).maybe_single().execute()
+            if not user.data:
+                return jsonify(
+                    {'status': 'success', 'message': 'If an account exists with this email, an OTP has been sent'})
+
+        # Generate and store OTP
+        otp, expires_at = generate_otp()
+
+        # Determine which table to use
+        table = 'password_reset_otp' if purpose == 'password-reset' else 'otp_verification'
+
+        # Upsert the OTP record
+        supabase.table(table).upsert({
             'email': email,
             'otp': otp,
             'expires_at': expires_at
         }).execute()
 
         # Send OTP email
-        send_otp_email(email, user.data['username'], otp)
+        username = user.data.get('username', 'User') if purpose == 'password-reset' else 'User'
+        if send_otp_email(email, username, otp):
+            return jsonify({'status': 'success', 'message': 'OTP sent successfully'})
+        else:
+            raise Exception('Failed to send OTP email')
 
-        return jsonify({'status': 'success', 'message': 'OTP sent successfully'})
     except Exception as e:
         logger.error(f"Error sending OTP: {str(e)}")
         return jsonify({'error': 'Failed to send OTP'}), 500
+
 
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
@@ -379,14 +463,22 @@ def verify_otp():
         logger.error(f"OTP verification error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'OTP verification failed'}), 500
 
+
 @app.route('/login', methods=['POST'])
 def login():
+    # Only accept JSON data for API consistency
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 415
+
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'Invalid request format'}), 400
+        return jsonify({'error': 'Invalid JSON data'}), 400
 
     email = data.get('email')
     password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
 
     try:
         user = supabase.table('users').select('*').eq('email', email).single().execute().data
@@ -394,7 +486,7 @@ def login():
         if user and verify_password(user['password_hash'], password):
             if not user.get('is_verified'):
                 return jsonify({
-                    'error': 'Please verify your email first. Check your inbox for the OTP.',
+                    'error': 'Please verify your email first',
                     'requires_verification': True,
                     'email': email
                 }), 401
@@ -403,7 +495,7 @@ def login():
             session['user_id'] = user['id']
             session['user_email'] = user['email']
             session['username'] = user['username']
-            session.permanent = True  # Make session persistent
+            session.permanent = True
 
             return jsonify({
                 'status': 'success',
@@ -416,61 +508,6 @@ def login():
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed. Please try again.'}), 500
-
-@app.route('/register', methods=['POST'])
-def register():
-    try:
-        data = request.form
-        required_fields = ['username', 'email', 'password', 'confirm_password']
-
-        if not all(data.get(field) for field in required_fields):
-            return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
-
-        email = data['email']
-        username = data['username']
-        password = data['password']
-        confirm_password = data['confirm_password']
-
-        if password != confirm_password:
-            return jsonify({'status': 'error', 'message': 'Passwords do not match'}), 400
-
-        if len(password) < 8:
-            return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters'}), 400
-
-        # Check if user exists
-        existing = supabase.table('users').select('email').eq('email', email).execute()
-        if existing.data:
-            return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
-
-        # Generate and store OTP
-        otp, expires_at = generate_otp()
-
-        otp_response = supabase.table('otp_verification').insert({
-            'email': email,
-            'otp': otp,
-            'expires_at': expires_at
-        }).execute()
-
-        if not otp_response.data:
-            raise Exception('Failed to store OTP in database')
-
-        # Send OTP email
-        if not send_otp_email(email, username, otp):
-            raise Exception('Failed to send OTP email. Please try again later.')
-
-        return jsonify({
-            'status': 'success',
-            'message': 'OTP sent to your email. Please check your inbox.',
-            'requires_verification': True,
-            'email': email
-        })
-
-    except Exception as e:
-        logger.error(f"Registration error: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': str(e) if app.debug else 'Registration failed. Please try again.'
-        }), 500
 
 
 @app.route('/reset-password', methods=['GET', 'POST'])
@@ -526,6 +563,11 @@ def reset_password_otp():
 
         if new_password != confirm_password:
             return jsonify({'error': 'Passwords do not match'}), 400
+
+        # Validate password strength
+        is_valid, message = validate_password(new_password)
+        if not is_valid:
+            return jsonify({'error': message}), 400
 
         # Verify OTP
         otp_record = supabase.table('password_reset_otp').select('*') \

@@ -1,4 +1,27 @@
+
+// Add this at the beginning of your main.js file
 document.addEventListener('DOMContentLoaded', function() {
+  // Check if we need to show login modal
+  if (sessionStorage.getItem('showLoginModal') === 'true') {
+    sessionStorage.removeItem('showLoginModal');
+
+    // Give the page a moment to load
+    setTimeout(() => {
+      const loginModal = document.getElementById('loginModal');
+      if (loginModal) {
+        loginModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Focus on email field
+        const emailInput = loginModal.querySelector('#loginEmail');
+        if (emailInput) {
+          emailInput.focus();
+        }
+      }
+    }, 100);
+  }
+
+});document.addEventListener('DOMContentLoaded', function() {
   // ======================
   // Theme Management
   // ======================
@@ -320,11 +343,96 @@ document.addEventListener('DOMContentLoaded', function() {
   // ======================
   const registerForm = document.getElementById('registerForm');
   if (registerForm) {
+    // Add password validation UI
+    const passwordInput = registerForm.querySelector('#registerPassword');
+    if (passwordInput) {
+      const requirementsContainer = document.createElement('div');
+      requirementsContainer.className = 'password-requirements';
+      requirementsContainer.innerHTML = `
+        <p class="requirements-title">Password must contain:</p>
+        <ul class="requirements-list">
+          <li class="requirement" data-requirement="length">At least 8 characters</li>
+          <li class="requirement" data-requirement="uppercase">At least one uppercase letter</li>
+          <li class="requirement" data-requirement="number">At least one number</li>
+          <li class="requirement" data-requirement="special">At least one special character</li>
+        </ul>
+      `;
+      passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
+
+      const requirements = {
+        length: registerForm.querySelector('[data-requirement="length"]'),
+        uppercase: registerForm.querySelector('[data-requirement="uppercase"]'),
+        number: registerForm.querySelector('[data-requirement="number"]'),
+        special: registerForm.querySelector('[data-requirement="special"]')
+      };
+
+      passwordInput.addEventListener('input', function() {
+        const value = this.value;
+
+        // Check length
+        if (value.length >= 8) {
+          requirements.length.classList.add('valid');
+        } else {
+          requirements.length.classList.remove('valid');
+        }
+
+        // Check for uppercase
+        if (/[A-Z]/.test(value)) {
+          requirements.uppercase.classList.add('valid');
+        } else {
+          requirements.uppercase.classList.remove('valid');
+        }
+
+        // Check for number
+        if (/\d/.test(value)) {
+          requirements.number.classList.add('valid');
+        } else {
+          requirements.number.classList.remove('valid');
+        }
+
+        // Check for special character
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          requirements.special.classList.add('valid');
+        } else {
+          requirements.special.classList.remove('valid');
+        }
+      });
+    }
+
     registerForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const submitBtn = this.querySelector('button[type="submit"]');
       const originalText = submitBtn.innerHTML;
       const formResponse = document.getElementById('registerResponse');
+
+      // Get form values
+      const username = this.querySelector('#registerUsername').value;
+      const email = this.querySelector('#registerEmail').value;
+      const password = this.querySelector('#registerPassword').value;
+      const confirmPassword = this.querySelector('#registerConfirmPassword').value;
+      const termsAgreement = this.querySelector('#termsAgreement').checked;
+
+      // Validate password strength
+      if (!isPasswordStrong(password)) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = 'Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character.';
+        formResponse.style.display = 'block';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = 'Passwords do not match.';
+        formResponse.style.display = 'block';
+        return;
+      }
+
+      if (!termsAgreement) {
+        formResponse.className = 'form-response error';
+        formResponse.textContent = 'You must agree to the Terms of Service and Privacy Policy.';
+        formResponse.style.display = 'block';
+        return;
+      }
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
@@ -365,10 +473,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ======================
-  // OTP Verification Modal
-  // ======================
-  function showOTPVerificationModal(email, username, password) {
+  function isPasswordStrong(password) {
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return password.length >= 8 && hasUpperCase && hasNumber && hasSpecialChar;
+  }
+
+
+// ======================
+// OTP Verification Modal
+// ======================
+function showOTPVerificationModal(email, username, password) {
     document.querySelectorAll('.modal').forEach(m => m.remove());
 
     const modalHTML = `
@@ -390,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="btn-text">Verify</span>
             <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
           </button>
-          <p class="resend-link">Didn't receive code? <a href="#" id="resendOtp">Resend</a></p>
+          <p class="resend-link">Didn't receive code? <a href="#" id="resendOtp">Resend</a> <span id="resendTimer" style="display:none">(Wait <span id="timerCount">60</span>s)</span></p>
         </form>
         <div id="otpResponse" class="form-response" style="display: none;"></div>
       </div>
@@ -403,157 +519,189 @@ document.addEventListener('DOMContentLoaded', function() {
     const otpForm = document.getElementById('otpForm');
     const verifyBtn = document.getElementById('verifyOtpBtn');
     const otpResponse = document.getElementById('otpResponse');
+    const resendOtpBtn = document.getElementById('resendOtp');
+    const resendTimer = document.getElementById('resendTimer');
+    const timerCount = document.getElementById('timerCount');
+
+    // Start the timer when modal loads
+    startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
     if (otpForm) {
-      otpForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const btnText = verifyBtn.querySelector('.btn-text');
-        const loadingIcon = verifyBtn.querySelector('.loading-icon');
+        otpForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btnText = verifyBtn.querySelector('.btn-text');
+            const loadingIcon = verifyBtn.querySelector('.loading-icon');
 
-        otpResponse.style.display = 'none';
-        otpResponse.textContent = '';
+            otpResponse.style.display = 'none';
+            otpResponse.textContent = '';
 
-        btnText.textContent = 'Verifying...';
-        loadingIcon.style.display = 'inline-block';
-        verifyBtn.disabled = true;
+            btnText.textContent = 'Verifying...';
+            loadingIcon.style.display = 'inline-block';
+            verifyBtn.disabled = true;
 
-        try {
-          const formData = new FormData(otpForm);
-          const email = formData.get('email');
-          const otp = formData.get('otp');
-          const username = formData.get('username');
-          const password = formData.get('password');
+            try {
+                const formData = new FormData(otpForm);
+                const email = formData.get('email');
+                const otp = formData.get('otp');
+                const username = formData.get('username');
+                const password = formData.get('password');
 
-          const response = await fetch('/api/verify-otp', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email,
-              otp,
-              username,
-              password
-            })
-          });
+                const response = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email,
+                        otp,
+                        username,
+                        password
+                    })
+                });
 
-          const data = await response.json();
+                const data = await response.json();
 
-          if (!response.ok) {
-            throw new Error(data.message || 'Verification failed');
-          }
+                if (!response.ok) {
+                    throw new Error(data.message || 'Verification failed');
+                }
 
-          otpResponse.className = 'form-response success';
-          otpResponse.textContent = data.message || 'Registration successful! Please login to access your dashboard.';
-          otpResponse.style.display = 'block';
+                otpResponse.className = 'form-response success';
+                otpResponse.textContent = data.message || 'Registration successful! Please login to access your dashboard.';
+                otpResponse.style.display = 'block';
 
-          if (data.redirect) {
-            setTimeout(() => {
-              window.location.href = data.redirect;
-            }, 2000);
-          }
-        } catch (error) {
-          otpResponse.className = 'form-response error';
-          otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
-          otpResponse.style.display = 'block';
-        } finally {
-          btnText.textContent = 'Verify';
-          loadingIcon.style.display = 'none';
-          verifyBtn.disabled = false;
-        }
-      });
+                if (data.redirect) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 2000);
+                }
+            } catch (error) {
+                otpResponse.className = 'form-response error';
+                otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
+                otpResponse.style.display = 'block';
+            } finally {
+                btnText.textContent = 'Verify';
+                loadingIcon.style.display = 'none';
+                verifyBtn.disabled = false;
+            }
+        });
     }
 
-    document.getElementById('resendOtp')?.addEventListener('click', async function(e) {
-      e.preventDefault();
-      const resendLink = this;
-      const email = document.querySelector('input[name="email"]').value;
-      resendLink.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    resendOtpBtn?.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const email = document.querySelector('input[name="email"]').value;
 
-      try {
-        const response = await fetch('/api/send-otp', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email })
-        });
+        // Disable button and start timer
+        resendOtpBtn.style.pointerEvents = 'none';
+        startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
-        const data = await response.json();
+        try {
+            const response = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email })
+            });
 
-        if (!response.ok) {
-          throw new Error(data.message || 'Failed to resend OTP');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to resend OTP');
+            }
+
+            showToast('New OTP sent successfully!', 'success');
+        } catch (error) {
+            showToast(error.message || 'Failed to resend OTP', 'error');
         }
-
-        showToast('New OTP sent successfully!', 'success');
-      } catch (error) {
-        showToast(error.message || 'Failed to resend OTP', 'error');
-      } finally {
-        resendLink.innerHTML = 'Resend';
-      }
     });
 
     document.querySelector('.close-modal')?.addEventListener('click', function() {
-      document.querySelector('.modal').remove();
+        document.querySelector('.modal').remove();
     });
-  }
+}
 
-  // ======================
-  // Login Form
-  // ======================
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const submitBtn = this.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      const formResponse = document.createElement('div');
-      formResponse.className = 'form-response';
-      this.appendChild(formResponse);
+function startResendTimer(button, timerElement, countElement) {
+    let seconds = 60;
+    timerElement.style.display = 'inline';
+    button.style.display = 'none';
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+    const timer = setInterval(() => {
+        seconds--;
+        countElement.textContent = seconds;
 
-      try {
-        const formData = {
-          email: this.querySelector('#loginEmail').value,
-          password: this.querySelector('#loginPassword').value
-        };
+        if (seconds <= 0) {
+            clearInterval(timer);
+            timerElement.style.display = 'none';
+            button.style.display = 'inline';
+            button.style.pointerEvents = 'auto';
+        }
+    }, 1000);
+}
 
-        const response = await fetch('/login', {
-          method: 'POST',
-          headers: {
+// ======================
+// Login Form
+// ======================
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const email = this.querySelector('#loginEmail').value;
+    const password = this.querySelector('#loginPassword').value;
+
+    // Remove previous error messages
+    const existingErrors = this.querySelectorAll('.form-response');
+    existingErrors.forEach(el => el.remove());
+
+    // Create error/success message container
+    const formResponse = document.createElement('div');
+    formResponse.className = 'form-response';
+    this.appendChild(formResponse);
+
+    // Show loading spinner
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+
+    fetch('/login', {
+        method: 'POST',
+        headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData)
-        });
-
-        const data = await response.json();
-
+        },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
         if (!response.ok) {
-          throw new Error(data.error || 'Login failed');
+            return response.json().then(err => { throw err; });
         }
-
+        return response.json();
+    })
+    .then(data => {
         if (data.requires_verification) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = data.error || 'Please verify your email first';
-          showOTPVerificationModal(data.email);
-        } else if (data.redirect) {
-          showToast('Login successful!', 'success');
-          setTimeout(() => {
-            window.location.href = data.redirect;
-          }, 1000);
+            formResponse.className = 'form-response error';
+            formResponse.textContent = data.error || 'Please verify your email first';
+            showOTPVerificationModal(data.email);
+        } else if (data.status === 'success' && data.redirect) {
+            showToast('Login successful!', 'success');
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1000);
         }
-      } catch (error) {
-        formResponse.className = 'form-response error';
-        formResponse.textContent = error.message || 'An error occurred. Please try again.';
-        formResponse.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } finally {
+    })
+    .catch(error => {
+        // Show error with shake animation
+        formResponse.className = 'form-response error shake-animation';
+        formResponse.textContent = error.error || 'Login failed';
+        setTimeout(() => {
+            formResponse.classList.remove('shake-animation');
+        }, 500);
+    })
+    .finally(() => {
+        // Reset button
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
-      }
     });
-  }
+});
+
 
   // ======================
   // Dashboard Link Handling
