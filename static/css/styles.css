@@ -2717,3 +2717,116 @@ footer::before {
     color: #155724;
     border: 1px solid #c3e6cb;
 }
+/* ====================== */
+/* Toast Notifications */
+/* ====================== */
+.toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-width: 350px;
+}
+
+.toast {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideIn 0.3s ease-out forwards;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast.hide {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.toast-success {
+  background-color: var(--success-color);
+}
+
+.toast-error {
+  background-color: var(--danger-color);
+}
+
+.toast-warning {
+  background-color: var(--warning-color);
+}
+
+.toast-info {
+  background-color: var(--info-color);
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  margin-left: 1rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Form Response Messages */
+.form-response {
+  padding: 0.8rem 1rem;
+  margin: 1rem 0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.form-response.error {
+  display: block;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.form-response.success {
+  display: block;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.form-response.warning {
+  display: block;
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}

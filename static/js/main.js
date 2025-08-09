@@ -1,35 +1,66 @@
+// Unified Notification System
+function showToast(message, type = 'success', duration = 3000) {
+  // Remove any existing toasts
+  const existingToasts = document.querySelectorAll('.toast');
+  existingToasts.forEach(toast => toast.remove());
 
-// Add this at the beginning of your main.js file
+  // Create new toast
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  // Force reflow to enable transition
+  void toast.offsetWidth;
+
+  // Show toast
+  toast.classList.add('show');
+
+  // Auto-hide after duration
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// Loading State Management
+function showLoading() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+}
+
+function hideLoading() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   // Check if we need to show login modal
   if (sessionStorage.getItem('showLoginModal') === 'true') {
     sessionStorage.removeItem('showLoginModal');
-
-    // Give the page a moment to load
     setTimeout(() => {
       const loginModal = document.getElementById('loginModal');
       if (loginModal) {
         loginModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-
-        // Focus on email field
-        const emailInput = loginModal.querySelector('#loginEmail');
-        if (emailInput) {
-          emailInput.focus();
-        }
+        loginModal.querySelector('#loginEmail')?.focus();
       }
     }, 100);
   }
 
-});document.addEventListener('DOMContentLoaded', function() {
-  // ======================
+  // Check for logout message
+  if (sessionStorage.getItem('logoutMessage')) {
+    const message = sessionStorage.getItem('logoutMessage');
+    sessionStorage.removeItem('logoutMessage');
+    showToast(message, 'success');
+  }
+
   // Theme Management
-  // ======================
   const themeToggle = document.querySelector('.theme-toggle');
   if (themeToggle) {
     const body = document.body;
     const savedTheme = localStorage.getItem('theme') ||
-                      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark-mode' : '');
+                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark-mode' : '');
 
     if (savedTheme === 'dark-mode') {
       body.classList.add('dark-mode');
@@ -39,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
     themeToggle.addEventListener('click', function() {
       body.classList.toggle('dark-mode');
       const isDarkMode = body.classList.contains('dark-mode');
-
       localStorage.setItem('theme', isDarkMode ? 'dark-mode' : '');
       updateThemeMeta(isDarkMode ? 'dark' : 'light');
       updateDarkModeText(isDarkMode);
@@ -47,15 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateThemeMeta(theme) {
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) {
-        meta.content = theme === 'dark' ? '#111827' : '#10b981';
-      }
+      if (meta) meta.content = theme === 'dark' ? '#111827' : '#10b981';
     }
 
     function updateDarkModeText(isDarkMode) {
       const toggleText = themeToggle.querySelector('.toggle-text');
       const toggleIcon = themeToggle.querySelector('.toggle-icon');
-
       if (toggleText && toggleIcon) {
         toggleText.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
         toggleIcon.className = isDarkMode ? 'fas fa-sun toggle-icon' : 'fas fa-moon toggle-icon';
@@ -63,12 +90,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // ======================
   // Mobile Navigation
-  // ======================
   const mobileMenuToggle = document.getElementById('mobileMenuToggle');
   const navContainer = document.getElementById('navContainer');
-
   if (mobileMenuToggle && navContainer) {
     mobileMenuToggle.addEventListener('click', function() {
       const isExpanded = this.getAttribute('aria-expanded') === 'true';
@@ -90,15 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ======================
   // Modal Handling
-  // ======================
   const loginModal = document.getElementById('loginModal');
   const registerModal = document.getElementById('registerModal');
   const detailModal = document.getElementById('detailModal');
   const logoutModal = document.getElementById('logoutModal');
 
-  // Login Modal
+  // Modal open/close handlers
   document.querySelectorAll('.login-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -107,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Register Modal
   document.querySelectorAll('.register-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -116,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Switch between login/register
   document.getElementById('showRegister')?.addEventListener('click', function(e) {
     e.preventDefault();
     loginModal.style.display = 'none';
@@ -129,7 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loginModal.style.display = 'flex';
   });
 
-  // Close modals
   document.querySelectorAll('.close-modal').forEach(btn => {
     btn.addEventListener('click', function() {
       loginModal.style.display = 'none';
@@ -140,7 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Close modals when clicking outside
   window.addEventListener('click', function(e) {
     if (e.target === loginModal || e.target === registerModal ||
         (detailModal && e.target === detailModal) ||
@@ -150,9 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ======================
   // Logout Modal Handling
-  // ======================
   const logoutBtn = document.getElementById('logoutBtn');
   const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
   const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
@@ -172,37 +188,57 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.style.overflow = 'auto';
   }
 
-  if (cancelLogoutBtn) {
-    cancelLogoutBtn.addEventListener('click', closeLogoutModal);
-  }
-
-  if (closeLogoutModalBtn) {
-    closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
-  }
+  if (cancelLogoutBtn) cancelLogoutBtn.addEventListener('click', closeLogoutModal);
+  if (closeLogoutModalBtn) closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
 
   if (confirmLogoutBtn) {
     confirmLogoutBtn.addEventListener('click', function(e) {
       e.preventDefault();
       showLoading();
+
       fetch('/logout', {
         method: 'POST',
         credentials: 'same-origin'
       })
       .then(response => {
         if (response.redirected) {
+          // Store logout message in sessionStorage
+          sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
           window.location.href = response.url;
         }
       })
       .catch(error => {
         console.error('Logout error:', error);
         hideLoading();
+        showToast('Logout failed. Please try again.', 'error');
       });
     });
   }
 
-  // ======================
+  // Form Field Enhancements
+  function enhanceFormFields() {
+    document.querySelectorAll('.form-group').forEach(group => {
+      const input = group.querySelector('input, textarea, select');
+      const label = group.querySelector('label');
+
+      if (input && label) {
+        group.classList.add('floating-label-group');
+        if (input.value) group.classList.add('has-value');
+
+        input.addEventListener('focus', () => group.classList.add('focused'));
+        input.addEventListener('blur', () => {
+          group.classList.remove('focused');
+          if (!input.value) group.classList.remove('has-value');
+        });
+        input.addEventListener('input', () => {
+          group.classList.toggle('has-value', !!input.value);
+        });
+      }
+    });
+  }
+  enhanceFormFields();
+
   // Password Reset OTP Handling
-  // ======================
   const resetPasswordForm = document.getElementById('resetPasswordForm');
   if (resetPasswordForm) {
     resetPasswordForm.addEventListener('submit', async function(e) {
@@ -225,9 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const response = await fetch('/reset-password-otp', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
 
@@ -257,9 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ======================
   // Resend OTP for Password Reset
-  // ======================
   const resendResetOtpBtn = document.getElementById('resendResetOtp');
   if (resendResetOtpBtn) {
     resendResetOtpBtn.addEventListener('click', async function(e) {
@@ -277,9 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
       try {
         const response = await fetch('/api/send-otp', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
 
@@ -299,51 +329,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ======================
-  // Form Field Enhancements
-  // ======================
-  function enhanceFormFields() {
-    document.querySelectorAll('.form-group').forEach(group => {
-      const input = group.querySelector('input, textarea, select');
-      const label = group.querySelector('label');
-
-      if (input && label) {
-        group.classList.add('floating-label-group');
-
-        if (input.value) {
-          group.classList.add('has-value');
-        }
-
-        input.addEventListener('focus', () => {
-          group.classList.add('focused');
-        });
-
-        input.addEventListener('blur', () => {
-          group.classList.remove('focused');
-          if (!input.value) {
-            group.classList.remove('has-value');
-          }
-        });
-
-        input.addEventListener('input', () => {
-          if (input.value) {
-            group.classList.add('has-value');
-          } else {
-            group.classList.remove('has-value');
-          }
-        });
-      }
-    });
-  }
-
-  enhanceFormFields();
-
-  // ======================
   // Registration Form
-  // ======================
   const registerForm = document.getElementById('registerForm');
   if (registerForm) {
-    // Add password validation UI
+    // Password validation UI
     const passwordInput = registerForm.querySelector('#registerPassword');
     if (passwordInput) {
       const requirementsContainer = document.createElement('div');
@@ -355,8 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <li class="requirement" data-requirement="uppercase">At least one uppercase letter</li>
           <li class="requirement" data-requirement="number">At least one number</li>
           <li class="requirement" data-requirement="special">At least one special character</li>
-        </ul>
-      `;
+        </ul>`;
       passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
 
       const requirements = {
@@ -368,34 +356,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
       passwordInput.addEventListener('input', function() {
         const value = this.value;
-
-        // Check length
-        if (value.length >= 8) {
-          requirements.length.classList.add('valid');
-        } else {
-          requirements.length.classList.remove('valid');
-        }
-
-        // Check for uppercase
-        if (/[A-Z]/.test(value)) {
-          requirements.uppercase.classList.add('valid');
-        } else {
-          requirements.uppercase.classList.remove('valid');
-        }
-
-        // Check for number
-        if (/\d/.test(value)) {
-          requirements.number.classList.add('valid');
-        } else {
-          requirements.number.classList.remove('valid');
-        }
-
-        // Check for special character
-        if (/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
-          requirements.special.classList.add('valid');
-        } else {
-          requirements.special.classList.remove('valid');
-        }
+        requirements.length.classList.toggle('valid', value.length >= 8);
+        requirements.uppercase.classList.toggle('valid', /[A-Z]/.test(value));
+        requirements.number.classList.toggle('valid', /\d/.test(value));
+        requirements.special.classList.toggle('valid', /[!@#$%^&*(),.?":{}|<>]/.test(value));
       });
     }
 
@@ -405,14 +369,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const originalText = submitBtn.innerHTML;
       const formResponse = document.getElementById('registerResponse');
 
-      // Get form values
+      // Validate form
       const username = this.querySelector('#registerUsername').value;
       const email = this.querySelector('#registerEmail').value;
       const password = this.querySelector('#registerPassword').value;
       const confirmPassword = this.querySelector('#registerConfirmPassword').value;
       const termsAgreement = this.querySelector('#termsAgreement').checked;
 
-      // Validate password strength
       if (!isPasswordStrong(password)) {
         formResponse.className = 'form-response error';
         formResponse.textContent = 'Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character.';
@@ -443,16 +406,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const response = await fetch('/register', {
           method: 'POST',
           body: formData,
-          headers: {
-            'Accept': 'application/json'
-          }
+          headers: { 'Accept': 'application/json' }
         });
 
         const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Registration failed');
-        }
+        if (!response.ok) throw new Error(data.message || 'Registration failed');
 
         if (data.requires_verification) {
           showOTPVerificationModal(
@@ -471,20 +429,17 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = originalText;
       }
     });
+
+    function isPasswordStrong(password) {
+      return password.length >= 8 &&
+             /[A-Z]/.test(password) &&
+             /\d/.test(password) &&
+             /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    }
   }
 
-  function isPasswordStrong(password) {
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    return password.length >= 8 && hasUpperCase && hasNumber && hasSpecialChar;
-  }
-
-
-// ======================
-// OTP Verification Modal
-// ======================
-function showOTPVerificationModal(email, username, password) {
+  // OTP Verification Modal
+  function showOTPVerificationModal(email, username, password) {
     document.querySelectorAll('.modal').forEach(m => m.remove());
 
     const modalHTML = `
@@ -510,8 +465,7 @@ function showOTPVerificationModal(email, username, password) {
         </form>
         <div id="otpResponse" class="form-response" style="display: none;"></div>
       </div>
-    </div>
-    `;
+    </div>`;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     enhanceFormFields();
@@ -523,198 +477,149 @@ function showOTPVerificationModal(email, username, password) {
     const resendTimer = document.getElementById('resendTimer');
     const timerCount = document.getElementById('timerCount');
 
-    // Start the timer when modal loads
     startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
     if (otpForm) {
-        otpForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const btnText = verifyBtn.querySelector('.btn-text');
-            const loadingIcon = verifyBtn.querySelector('.loading-icon');
+      otpForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btnText = verifyBtn.querySelector('.btn-text');
+        const loadingIcon = verifyBtn.querySelector('.loading-icon');
 
-            otpResponse.style.display = 'none';
-            otpResponse.textContent = '';
+        otpResponse.style.display = 'none';
+        otpResponse.textContent = '';
 
-            btnText.textContent = 'Verifying...';
-            loadingIcon.style.display = 'inline-block';
-            verifyBtn.disabled = true;
+        btnText.textContent = 'Verifying...';
+        loadingIcon.style.display = 'inline-block';
+        verifyBtn.disabled = true;
 
-            try {
-                const formData = new FormData(otpForm);
-                const email = formData.get('email');
-                const otp = formData.get('otp');
-                const username = formData.get('username');
-                const password = formData.get('password');
+        try {
+          const formData = new FormData(otpForm);
+          const response = await fetch('/api/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.get('email'),
+              otp: formData.get('otp'),
+              username: formData.get('username'),
+              password: formData.get('password')
+            })
+          });
 
-                const response = await fetch('/api/verify-otp', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email,
-                        otp,
-                        username,
-                        password
-                    })
-                });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Verification failed');
 
-                const data = await response.json();
+          otpResponse.className = 'form-response success';
+          otpResponse.textContent = data.message || 'Registration successful! Please login to access your dashboard.';
+          otpResponse.style.display = 'block';
 
-                if (!response.ok) {
-                    throw new Error(data.message || 'Verification failed');
-                }
-
-                otpResponse.className = 'form-response success';
-                otpResponse.textContent = data.message || 'Registration successful! Please login to access your dashboard.';
-                otpResponse.style.display = 'block';
-
-                if (data.redirect) {
-                    setTimeout(() => {
-                        window.location.href = data.redirect;
-                    }, 2000);
-                }
-            } catch (error) {
-                otpResponse.className = 'form-response error';
-                otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
-                otpResponse.style.display = 'block';
-            } finally {
-                btnText.textContent = 'Verify';
-                loadingIcon.style.display = 'none';
-                verifyBtn.disabled = false;
-            }
-        });
+          if (data.redirect) {
+            setTimeout(() => window.location.href = data.redirect, 2000);
+          }
+        } catch (error) {
+          otpResponse.className = 'form-response error';
+          otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
+          otpResponse.style.display = 'block';
+        } finally {
+          btnText.textContent = 'Verify';
+          loadingIcon.style.display = 'none';
+          verifyBtn.disabled = false;
+        }
+      });
     }
 
     resendOtpBtn?.addEventListener('click', async function(e) {
-        e.preventDefault();
-        const email = document.querySelector('input[name="email"]').value;
+      e.preventDefault();
+      const email = document.querySelector('input[name="email"]').value;
+      resendOtpBtn.style.pointerEvents = 'none';
+      startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
-        // Disable button and start timer
-        resendOtpBtn.style.pointerEvents = 'none';
-        startResendTimer(resendOtpBtn, resendTimer, timerCount);
+      try {
+        const response = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
 
-        try {
-            const response = await fetch('/api/send-otp', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to resend OTP');
-            }
-
-            showToast('New OTP sent successfully!', 'success');
-        } catch (error) {
-            showToast(error.message || 'Failed to resend OTP', 'error');
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Failed to resend OTP');
+        showToast('New OTP sent successfully!', 'success');
+      } catch (error) {
+        showToast(error.message || 'Failed to send OTP', 'error');
+      }
     });
 
     document.querySelector('.close-modal')?.addEventListener('click', function() {
-        document.querySelector('.modal').remove();
+      document.querySelector('.modal').remove();
     });
-}
+  }
 
-function startResendTimer(button, timerElement, countElement) {
+  function startResendTimer(button, timerElement, countElement) {
     let seconds = 60;
     timerElement.style.display = 'inline';
     button.style.display = 'none';
 
     const timer = setInterval(() => {
-        seconds--;
-        countElement.textContent = seconds;
+      seconds--;
+      countElement.textContent = seconds;
 
-        if (seconds <= 0) {
-            clearInterval(timer);
-            timerElement.style.display = 'none';
-            button.style.display = 'inline';
-            button.style.pointerEvents = 'auto';
-        }
+      if (seconds <= 0) {
+        clearInterval(timer);
+        timerElement.style.display = 'none';
+        button.style.display = 'inline';
+        button.style.pointerEvents = 'auto';
+      }
     }, 1000);
-}
+  }
 
-// ======================
-// Login Form
-// ======================
-document.getElementById('loginForm').addEventListener('submit', function(e) {
+  // Login Form
+  document.getElementById('loginForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    const email = this.querySelector('#loginEmail').value;
-    const password = this.querySelector('#loginPassword').value;
 
-    // Remove previous error messages
-    const existingErrors = this.querySelectorAll('.form-response');
-    existingErrors.forEach(el => el.remove());
-
-    // Create error/success message container
-    const formResponse = document.createElement('div');
-    formResponse.className = 'form-response';
-    this.appendChild(formResponse);
-
-    // Show loading spinner
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
 
+    const formData = {
+      email: this.querySelector('#loginEmail').value,
+      password: this.querySelector('#loginPassword').value
+    };
+
     fetch('/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
     })
     .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => { throw err; });
-        }
-        return response.json();
+      if (!response.ok) return response.json().then(err => { throw err; });
+      return response.json();
     })
     .then(data => {
-        if (data.requires_verification) {
-            formResponse.className = 'form-response error';
-            formResponse.textContent = data.error || 'Please verify your email first';
-            showOTPVerificationModal(data.email);
-        } else if (data.status === 'success' && data.redirect) {
-            showToast('Login successful!', 'success');
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 1000);
-        }
+      if (data.requires_verification) {
+        showToast('Please verify your email first', 'warning');
+        showOTPVerificationModal(data.email);
+      } else if (data.status === 'success' && data.redirect) {
+        showToast('Login successful!', 'success');
+        setTimeout(() => window.location.href = data.redirect, 1000);
+      }
     })
     .catch(error => {
-        // Show error with shake animation
-        formResponse.className = 'form-response error shake-animation';
-        formResponse.textContent = error.error || 'Login failed';
-        setTimeout(() => {
-            formResponse.classList.remove('shake-animation');
-        }, 500);
+      showToast(error.error || 'Login failed', 'error');
     })
     .finally(() => {
-        // Reset button
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
     });
-});
+  });
 
-
-  // ======================
   // Dashboard Link Handling
-  // ======================
   document.addEventListener('click', function(e) {
     const dashboardLink = e.target.closest('a[href="/dashboard"]');
     if (dashboardLink) {
       e.preventDefault();
       showLoading();
 
-      fetch('/api/check-session', {
-        credentials: 'same-origin'
-      })
+      fetch('/api/check-session', { credentials: 'same-origin' })
       .then(response => response.json())
       .then(data => {
         if (data.logged_in) {
@@ -728,63 +633,47 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         console.error('Error:', error);
         showToast('Failed to check session status', 'error');
       })
-      .finally(() => {
-        hideLoading();
-      });
+      .finally(hideLoading);
     }
   });
 
-  // ======================
   // Contact Form
-  // ======================
   const contactForm = document.getElementById('contactForm');
   if (contactForm) {
     contactForm.addEventListener('submit', function(e) {
       e.preventDefault();
       const submitBtn = contactForm.querySelector('button[type="submit"]');
       const originalText = submitBtn.innerHTML;
-      const formResponse = document.getElementById('formResponse');
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-      formResponse.style.display = 'none';
 
       const formData = new FormData(contactForm);
 
-      fetch('/api/contact', {
-        method: 'POST',
-        body: formData
-      })
+      fetch('/api/contact', { method: 'POST', body: formData })
       .then(response => {
-        if (!response.ok) {
-          return response.json().then(err => { throw err; });
-        }
+        if (!response.ok) return response.json().then(err => { throw err; });
         return response.json();
       })
       .then(data => {
         if (data.status === 'success') {
-          formResponse.className = 'form-response success';
-          formResponse.textContent = data.message;
+          showToast(data.message, 'success');
           contactForm.reset();
         } else {
           throw new Error(data.error || 'Failed to send message');
         }
       })
       .catch(error => {
-        formResponse.className = 'form-response error';
-        formResponse.textContent = error.message || 'An error occurred. Please try again.';
+        showToast(error.message || 'An error occurred. Please try again.', 'error');
       })
       .finally(() => {
-        formResponse.style.display = 'block';
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
       });
     });
   }
 
-  // ======================
   // Bookmark Functionality
-  // ======================
   document.addEventListener('click', function(e) {
     const bookmarkBtn = e.target.closest('.bookmark-btn');
     if (bookmarkBtn) {
@@ -805,12 +694,13 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     showLoading();
     fetch('/bookmark/' + itemType + '/' + itemId, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin'
     })
-    .then(handleResponse)
+    .then(response => {
+      if (!response.ok) return response.json().then(err => { throw err; });
+      return response.json();
+    })
     .then(data => {
       if (data.status === 'added') {
         element.classList.add('bookmarked');
@@ -822,19 +712,24 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         showToast('Failed to bookmark', 'error');
       }
     })
-    .catch(handleError);
+    .catch(error => {
+      console.error('Error:', error);
+      showToast(error.message || 'An error occurred. Please try again.', 'error');
+    })
+    .finally(hideLoading);
   }
 
   function removeBookmark(itemId, itemType, element) {
     showLoading();
     fetch('/bookmark/' + itemType + '/' + itemId, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin'
     })
-    .then(handleResponse)
+    .then(response => {
+      if (!response.ok) return response.json().then(err => { throw err; });
+      return response.json();
+    })
     .then(data => {
       if (data.status === 'removed') {
         element.classList.remove('bookmarked');
@@ -846,12 +741,14 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         showToast('Failed to remove bookmark', 'error');
       }
     })
-    .catch(handleError);
+    .catch(error => {
+      console.error('Error:', error);
+      showToast(error.message || 'An error occurred. Please try again.', 'error');
+    })
+    .finally(hideLoading);
   }
 
-  // ======================
   // Share Functionality
-  // ======================
   document.addEventListener('click', function(e) {
     const shareBtn = e.target.closest('.share-btn');
     if (shareBtn) {
@@ -862,108 +759,41 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     }
   });
 
-  // ======================
   // Flash Message Handling
-  // ======================
   function initFlashMessages() {
     const flashMessages = document.querySelectorAll('.alert');
-
     flashMessages.forEach(message => {
       setTimeout(() => {
         message.style.opacity = '0';
-        setTimeout(() => {
-          message.remove();
-        }, 300);
+        setTimeout(() => message.remove(), 300);
       }, 5000);
 
       const closeBtn = message.querySelector('.close');
       if (closeBtn) {
         closeBtn.addEventListener('click', () => {
           message.style.opacity = '0';
-          setTimeout(() => {
-            message.remove();
-          }, 300);
+          setTimeout(() => message.remove(), 300);
         });
       }
     });
   }
-
   initFlashMessages();
 
-  // ======================
-  // Helper Functions
-  // ======================
-  function handleResponse(response) {
-    if (!response.ok) {
-      return response.json().then(err => { throw err; });
-    }
-    return response.json();
-  }
-
-  function handleError(error) {
-    console.error('Error:', error);
-    showToast(error.message || 'An error occurred. Please try again.', 'error');
-    hideLoading();
-  }
-
-  function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add('show');
-    }, 10);
-
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => {
-        document.body.removeChild(toast);
-      }, 300);
-    }, 3000);
-  }
-
-  function showLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-      loadingOverlay.style.display = 'flex';
-    }
-  }
-
-  function hideLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-      loadingOverlay.style.display = 'none';
-    }
-  }
-
-  // ======================
   // Scroll to Top Button
-  // ======================
   const scrollToTopBtn = document.createElement('div');
   scrollToTopBtn.className = 'scroll-to-top';
   scrollToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
   document.body.appendChild(scrollToTopBtn);
 
   window.addEventListener('scroll', function() {
-    if (window.pageYOffset > 300) {
-      scrollToTopBtn.classList.add('active');
-    } else {
-      scrollToTopBtn.classList.remove('active');
-    }
+    scrollToTopBtn.classList.toggle('active', window.pageYOffset > 300);
   });
 
   scrollToTopBtn.addEventListener('click', function() {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ======================
   // Active Navigation on Scroll
-  // ======================
   const sections = document.querySelectorAll('section');
   const navLinks = document.querySelectorAll('.nav-links a');
 
@@ -988,9 +818,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
   window.addEventListener('scroll', updateActiveNav);
   updateActiveNav();
 
-  // ======================
   // Smooth Scrolling for anchor links
-  // ======================
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
       e.preventDefault();
@@ -1008,17 +836,11 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     });
   });
 
-  // ======================
   // Set current year in footer
-  // ======================
   const currentYear = document.getElementById('currentYear');
-  if (currentYear) {
-    currentYear.textContent = new Date().getFullYear();
-  }
+  if (currentYear) currentYear.textContent = new Date().getFullYear();
 
-  // ======================
   // Close flash messages
-  // ======================
   document.querySelectorAll('.flash-close').forEach(btn => {
     btn.addEventListener('click', function() {
       this.parentElement.remove();
