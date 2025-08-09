@@ -637,41 +637,94 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Contact Form
-  const contactForm = document.getElementById('contactForm');
-  if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const submitBtn = contactForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
+// Contact Form Handling
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+  contactForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const submitBtn = contactForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const formResponse = document.getElementById('formResponse');
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    submitBtn.disabled = true;
+    submitBtn.querySelector('.btn-text').textContent = 'Sending...';
+    submitBtn.querySelector('.loading-icon').style.display = 'inline-block';
+    formResponse.style.display = 'none';
 
+    try {
       const formData = new FormData(contactForm);
-
-      fetch('/api/contact', { method: 'POST', body: formData })
-      .then(response => {
-        if (!response.ok) return response.json().then(err => { throw err; });
-        return response.json();
-      })
-      .then(data => {
-        if (data.status === 'success') {
-          showToast(data.message, 'success');
-          contactForm.reset();
-        } else {
-          throw new Error(data.error || 'Failed to send message');
-        }
-      })
-      .catch(error => {
-        showToast(error.message || 'An error occurred. Please try again.', 'error');
-      })
-      .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        body: formData
       });
-    });
-  }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send message');
+      }
+
+      formResponse.className = 'form-response success';
+      formResponse.textContent = data.message;
+      formResponse.style.display = 'block';
+      contactForm.reset();
+    } catch (error) {
+      formResponse.className = 'form-response error';
+      formResponse.textContent = error.message || 'An error occurred. Please try again.';
+      formResponse.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  });
+}
+
+// Newsletter Form Handling
+const newsletterForm = document.getElementById('newsletterForm');
+if (newsletterForm) {
+  newsletterForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const submitBtn = newsletterForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const formResponse = document.getElementById('newsletterResponse');
+    const emailInput = newsletterForm.querySelector('input[type="email"]');
+
+    submitBtn.disabled = true;
+    submitBtn.querySelector('.btn-text').textContent = 'Subscribing...';
+    submitBtn.querySelector('.loading-icon').style.display = 'inline-block';
+    formResponse.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: emailInput.value
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to subscribe');
+      }
+
+      formResponse.className = 'form-response success';
+      formResponse.textContent = data.message;
+      formResponse.style.display = 'block';
+      newsletterForm.reset();
+    } catch (error) {
+      formResponse.className = 'form-response error';
+      formResponse.textContent = error.message || 'An error occurred. Please try again.';
+      formResponse.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  });
+}
 
   // Bookmark Functionality
   document.addEventListener('click', function(e) {

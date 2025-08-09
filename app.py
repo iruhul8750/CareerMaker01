@@ -28,6 +28,7 @@ from email.message import EmailMessage
 import logging
 from io import BytesIO
 from PIL import Image
+from flask_cors import CORS
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -38,16 +39,12 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.getenv('SECRET_KEY') or secrets.token_hex(32)
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
-
-# Initialize Supabase
-supabase_url = os.getenv('SUPABASE_URL')
-supabase_key = os.getenv('SUPABASE_KEY')
-supabase: Client = create_client(supabase_url, supabase_key)
 
 # Configuration
 UPLOAD_FOLDER = 'static/uploads'
@@ -69,6 +66,16 @@ HASH_LENGTH = 64
 
 # Ensure config directory exists
 os.makedirs('config/credentials', exist_ok=True)
+
+# Initialize Supabase
+supabase_url = os.getenv('SUPABASE_URL')
+supabase_key = os.getenv('SUPABASE_KEY')
+supabase: Client = create_client(supabase_url, supabase_key)
+try:
+    test = supabase.table('users').select('*').limit(1).execute()
+    logger.info("Supabase connection test successful")
+except Exception as e:
+    logger.error(f"Supabase connection failed: {str(e)}")
 
 # Helper Functions
 def get_current_time():
@@ -259,6 +266,33 @@ def initialize_storage():
     except Exception as e:
         logger.error(f"Storage init error: {str(e)}")
 
+def send_newsletter_notification(subject, content):
+    """Send notification to all active subscribers"""
+    try:
+        subscribers = supabase.table('newsletter_subscribers') \
+            .select('email') \
+            .eq('is_active', True) \
+            .execute().data
+
+        if not subscribers:
+            return False
+
+        msg = EmailMessage()
+        msg.set_content(content)
+        msg['Subject'] = subject
+        msg['From'] = SMTP_EMAIL
+
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            for subscriber in subscribers:
+                msg['To'] = subscriber['email']
+                server.send_message(msg)
+                logger.info(f"Newsletter sent to {subscriber['email']}")
+
+        return True
+    except Exception as e:
+        logger.error(f"Newsletter sending error: {str(e)}")
+        return False
 # ======================
 # Authentication Routes
 # ======================
@@ -1622,6 +1656,102 @@ def delete_message(message_id):
     except Exception as e:
         print(f"Error deleting message: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+# contact and newsletter routes:
+@app.route('/api/contact', methods=['POST'])
+def contact():
+    try:
+        # Get form data
+        data = request.form.to_dict()
+        required_fields = ['name', 'email', 'subject', 'message']
+
+        if not all(data.get(field) for field in required_fields):
+            return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
+
+        # Save message to database
+        message_data = {
+            'name': data['name'],
+            'email': data['email'],
+            'subject': data['subject'],
+            'message': data['message'],
+            'created_at': get_current_time().isoformat()
+        }
+
+        response = supabase.table('contact_messages').insert(message_data).execute()
+
+        if not response.data:
+            raise Exception('Failed to save message')
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Your message has been sent successfully!'
+        })
+
+    except Exception as e:
+        logger.error(f"Contact form error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to send message. Please try again.'
+        }), 500
+
+
+@app.route('/api/subscribe', methods=['POST'])
+def subscribe_newsletter():
+    try:
+        # Get email from request
+        email = None
+        if request.is_json:
+            data = request.get_json()
+            email = data.get('email')
+        else:
+            email = request.form.get('email')
+
+        # Validate email format
+        if not email or not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return jsonify({'status': 'error', 'message': 'Please provide a valid email address'}), 400
+
+        # Check if already subscribed
+        try:
+            existing = supabase.table('newsletter_subscribers') \
+                .select('email') \
+                .eq('email', email) \
+                .maybe_single() \
+                .execute()
+
+            if existing and existing.data:
+                return jsonify({'status': 'success', 'message': 'You are already subscribed!'})
+        except Exception as e:
+            logger.error(f"Table access error: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Service temporarily unavailable'
+            }), 503
+
+        # Insert new subscriber
+        insert_response = supabase.table('newsletter_subscribers').insert({
+            'email': email,
+            'subscribed_at': get_current_time().isoformat()
+        }).execute()
+
+        # Check for failure
+        if not insert_response or getattr(insert_response, "data", None) is None:
+            return jsonify({
+                'status': 'success',
+                'message': 'Thank you for subscribing to our newsletter!'
+            })
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Thank you for subscribing to our newsletter!'
+        })
+
+    except Exception as e:
+        logger.error(f"Newsletter subscription error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to subscribe. Please try again.'
+        }), 500
 
 
 # Error Handlers
