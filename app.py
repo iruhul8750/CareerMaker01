@@ -1330,33 +1330,74 @@ def get_course(course_id):
 @admin_required
 def save_course():
     try:
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
         data = request.form.to_dict()
         file = request.files.get('image')
 
-        if 'application_link' in data and data['application_link']:
-            logo_url = get_company_logo(data['application_link'], 'course', data.get('id'))
-            if logo_url:
-                data['logo_url'] = logo_url
-
+        # Process image if uploaded
         if file and allowed_file(file.filename):
             filename = save_file(file)
             if filename:
                 data['image'] = filename
 
-        data['published'] = 'published' in data
+        # Set boolean fields
+        data['is_published'] = data.get('is_published', 'false') == 'true'
+        data['is_featured'] = data.get('is_featured', 'false') == 'true'
 
-        course_id = data.pop('id', None)
-        if course_id and course_id.strip():
-            supabase.table('courses').update(data).eq('id', course_id.strip()).execute()
-            return jsonify({'success': True, 'message': 'Course updated successfully'})
+        # Handle application link logo
+        if data.get('application_link'):
+            logo_url = get_company_logo(data['application_link'])
+            if logo_url:
+                data['image'] = logo_url
+
+        # Prepare clean data - only allow specific fields
+        allowed_fields = {
+            'title', 'description', 'category', 'price', 'duration',
+            'level', 'application_link', 'image', 'is_published', 'is_featured'
+        }
+        clean_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        # Add timestamps
+        if 'id' in data and data['id']:
+            # Update existing course
+            clean_data['updated_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('courses') \
+                .update(clean_data) \
+                .eq('id', data['id']) \
+                .execute()
+
+            if not response.data:
+                raise Exception('Failed to update course')
+
+            return jsonify({
+                'success': True,
+                'message': 'Course updated successfully',
+                'data': response.data[0]
+            })
         else:
-            data['created_at'] = datetime.utcnow().isoformat()
-            supabase.table('courses').insert(data).execute()
-            return jsonify({'success': True, 'message': 'Course created successfully'})
+            # Create new course
+            clean_data['created_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('courses') \
+                .insert(clean_data) \
+                .execute()
+
+            if not response.data:
+                raise Exception('Failed to create course')
+
+            return jsonify({
+                'success': True,
+                'message': 'Course created successfully',
+                'data': response.data[0]
+            })
 
     except Exception as e:
-        print(f"Error saving course: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Course save error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e) if app.debug else 'Operation failed'
+        }), 500
 
 
 @app.route('/admin/courses/<int:course_id>/status', methods=['POST'])
@@ -1375,20 +1416,38 @@ def toggle_course_status(course_id):
 @admin_required
 def bulk_action_courses():
     try:
-        data = request.json
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
+        data = request.get_json()
         action = data.get('action')
         ids = data.get('ids', [])
 
-        if action == 'publish':
-            supabase.table('courses').update({'published': True}).in_('id', ids).execute()
-        elif action == 'unpublish':
-            supabase.table('courses').update({'published': False}).in_('id', ids).execute()
-        elif action == 'delete':
-            supabase.table('courses').delete().in_('id', ids).execute()
+        if not action or not ids:
+            return jsonify({'error': 'Missing parameters'}), 400
 
-        return jsonify({'success': True, 'message': f'Courses {action}ed successfully'})
+        if action == 'publish':
+            supabase_admin.table('courses') \
+                .update({'is_published': True}) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'unpublish':
+            supabase_admin.table('courses') \
+                .update({'is_published': False}) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'delete':
+            supabase_admin.table('courses') \
+                .delete() \
+                .in_('id', ids) \
+                .execute()
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+
+        return jsonify({'success': True, 'message': f'Bulk action completed: {action}'})
+
     except Exception as e:
-        print(f"Error performing bulk action on courses: {str(e)}")
+        logger.error(f"Bulk action error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1419,33 +1478,64 @@ def get_job(job_id):
 @admin_required
 def save_job():
     try:
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
         data = request.form.to_dict()
         file = request.files.get('image')
 
-        if 'application_link' in data and data['application_link']:
-            logo_url = get_company_logo(data['application_link'], 'job', data.get('id'))
-            if logo_url:
-                data['logo_url'] = logo_url
-
+        # Process image if uploaded
         if file and allowed_file(file.filename):
             filename = save_file(file)
             if filename:
                 data['image'] = filename
 
-        data['active'] = 'active' in data
+        # Set boolean fields
+        data['is_active'] = data.get('is_active', 'false') == 'true'
+        data['is_featured'] = data.get('is_featured', 'false') == 'true'
+        data['is_remote'] = data.get('is_remote', 'false') == 'true'
 
-        job_id = data.pop('id', None)
-        if job_id and job_id.strip():
-            supabase.table('jobs').update(data).eq('id', job_id.strip()).execute()
-            return jsonify({'success': True, 'message': 'Job updated successfully'})
+        # Handle application link logo
+        if data.get('application_link'):
+            logo_url = get_company_logo(data['application_link'])
+            if logo_url:
+                data['image'] = logo_url
+
+        # Prepare clean data
+        allowed_fields = {
+            'title', 'company', 'description', 'location', 'salary',
+            'type', 'application_link', 'image', 'is_active', 'is_featured', 'is_remote'
+        }
+        clean_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        # Add timestamps
+        if 'id' in data and data['id']:
+            clean_data['updated_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('jobs') \
+                .update(clean_data) \
+                .eq('id', data['id']) \
+                .execute()
         else:
-            data['created_at'] = datetime.utcnow().isoformat()
-            supabase.table('jobs').insert(data).execute()
-            return jsonify({'success': True, 'message': 'Job created successfully'})
+            clean_data['created_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('jobs') \
+                .insert(clean_data) \
+                .execute()
+
+        if not response.data:
+            raise Exception('Operation failed')
+
+        return jsonify({
+            'success': True,
+            'message': 'Job saved successfully',
+            'data': response.data[0] if response.data else None
+        })
 
     except Exception as e:
-        print(f"Error saving job: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Job save error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e) if app.debug else 'Operation failed'
+        }), 500
 
 
 @app.route('/admin/jobs/<int:job_id>/status', methods=['POST'])
@@ -1458,6 +1548,88 @@ def toggle_job_status(job_id):
     except Exception as e:
         print(f"Error toggling job status: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/jobs/bulk-action', methods=['POST'])
+@admin_required
+def bulk_action_jobs():
+    try:
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+
+        if not action or not ids:
+            return jsonify({'error': 'Missing parameters'}), 400
+
+        # Validate IDs are UUIDs
+        try:
+            [uuid.UUID(str(id)) for id in ids]
+        except ValueError:
+            return jsonify({'error': 'Invalid ID format'}), 400
+
+        if action == 'activate':
+            response = supabase_admin.table('jobs') \
+                .update({
+                'is_active': True,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'deactivate':
+            response = supabase_admin.table('jobs') \
+                .update({
+                'is_active': False,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'feature':
+            response = supabase_admin.table('jobs') \
+                .update({
+                'is_featured': True,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'unfeature':
+            response = supabase_admin.table('jobs') \
+                .update({
+                'is_featured': False,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+        elif action == 'delete':
+            # First delete associated bookmarks
+            supabase_admin.table('bookmarks') \
+                .delete() \
+                .eq('item_type', 'job') \
+                .in_('item_id', ids) \
+                .execute()
+
+            # Then delete jobs
+            response = supabase_admin.table('jobs') \
+                .delete() \
+                .in_('id', ids) \
+                .execute()
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+
+        return jsonify({
+            'success': True,
+            'message': f'Successfully {action}d {len(ids)} jobs',
+            'count': len(response.data) if response.data else 0
+        })
+
+    except Exception as e:
+        logger.error(f"Jobs bulk action error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e) if app.debug else 'Bulk operation failed'
+        }), 500
 
 
 @app.route('/admin/internships')
@@ -1487,35 +1659,137 @@ def get_internship(internship_id):
 @admin_required
 def save_internship():
     try:
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
         data = request.form.to_dict()
         file = request.files.get('image')
 
-        if 'application_link' in data and data['application_link']:
-            logo_url = get_company_logo(data['application_link'], 'internship', data.get('id'))
-            if logo_url:
-                data['logo_url'] = logo_url
-
+        # Process image if uploaded
         if file and allowed_file(file.filename):
             filename = save_file(file)
             if filename:
                 data['image'] = filename
 
-        data['paid'] = 'paid' in data
-        data['remote'] = 'remote' in data
-        data['active'] = 'active' in data
+        # Set boolean fields
+        data['is_active'] = data.get('is_active', 'false') == 'true'
+        data['is_featured'] = data.get('is_featured', 'false') == 'true'
+        data['is_paid'] = data.get('is_paid', 'false') == 'true'
 
-        internship_id = data.pop('id', None)
-        if internship_id and internship_id.strip():
-            supabase.table('internships').update(data).eq('id', internship_id.strip()).execute()
-            return jsonify({'success': True, 'message': 'Internship updated successfully'})
+        # Handle application link logo
+        if data.get('application_link'):
+            logo_url = get_company_logo(data['application_link'])
+            if logo_url:
+                data['image'] = logo_url
+
+        # Prepare clean data
+        allowed_fields = {
+            'title', 'company', 'description', 'location', 'stipend',
+            'duration', 'application_link', 'image', 'is_active', 'is_featured', 'is_paid'
+        }
+        clean_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        # Add timestamps
+        if 'id' in data and data['id']:
+            clean_data['updated_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('internships') \
+                .update(clean_data) \
+                .eq('id', data['id']) \
+                .execute()
         else:
-            data['created_at'] = datetime.utcnow().isoformat()
-            supabase.table('internships').insert(data).execute()
-            return jsonify({'success': True, 'message': 'Internship created successfully'})
+            clean_data['created_at'] = get_current_time().isoformat()
+            response = supabase_admin.table('internships') \
+                .insert(clean_data) \
+                .execute()
+
+        if not response.data:
+            raise Exception('Operation failed')
+
+        return jsonify({
+            'success': True,
+            'message': 'Internship saved successfully',
+            'data': response.data[0] if response.data else None
+        })
 
     except Exception as e:
-        print(f"Error saving internship: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Internship save error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e) if app.debug else 'Operation failed'
+        }), 500
+
+@app.route('/admin/internships/bulk-action', methods=['POST'])
+@admin_required
+def bulk_action_internships():
+    try:
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+
+        if not action or not ids:
+            return jsonify({'error': 'Missing parameters'}), 400
+
+        # Validate action
+        valid_actions = ['activate', 'deactivate', 'feature', 'unfeature', 'delete']
+        if action not in valid_actions:
+            return jsonify({'error': f'Invalid action. Must be one of: {", ".join(valid_actions)}'}), 400
+
+        # Prepare update data
+        update_data = {'updated_at': get_current_time().isoformat()}
+        if action == 'activate':
+            update_data['is_active'] = True
+        elif action == 'deactivate':
+            update_data['is_active'] = False
+        elif action == 'feature':
+            update_data['is_featured'] = True
+        elif action == 'unfeature':
+            update_data['is_featured'] = False
+
+        # Execute action
+        if action == 'delete':
+            # Clean up related data first
+            with ThreadPoolExecutor() as executor:
+                # Delete bookmarks
+                executor.submit(
+                    supabase_admin.table('bookmarks').delete()
+                    .eq('item_type', 'internship')
+                    .in_('item_id', ids)
+                    .execute
+                )
+                # Delete applications
+                executor.submit(
+                    supabase_admin.table('internship_applications').delete()
+                    .in_('internship_id', ids)
+                    .execute
+                )
+                # Finally delete internships
+                response = supabase_admin.table('internships') \
+                    .delete() \
+                    .in_('id', ids) \
+                    .execute()
+        else:
+            response = supabase_admin.table('internships') \
+                .update(update_data) \
+                .in_('id', ids) \
+                .execute()
+
+        return jsonify({
+            'success': True,
+            'message': f'Bulk {action} completed for {len(ids)} internships',
+            'affected_ids': ids,
+            'count': len(response.data) if response.data else 0
+        })
+
+    except Exception as e:
+        logger.error(f"Internships bulk action error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Failed to perform bulk action',
+            'details': str(e) if app.debug else None
+        }), 500
 
 
 @app.route('/admin/blog')
@@ -1587,6 +1861,112 @@ def toggle_blog_post_status(post_id):
     except Exception as e:
         print(f"Error toggling blog post status: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/blog/bulk-action', methods=['POST'])
+@admin_required
+def bulk_action_blog_posts():
+    try:
+        # Verify admin privileges
+        if not session.get('is_superadmin'):
+            return jsonify({'error': 'Insufficient privileges'}), 403
+
+        # Parse and validate request
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+
+        if not action or not ids:
+            return jsonify({'error': 'Missing action or IDs'}), 400
+
+        # Initialize response data
+        response_data = {
+            'success': True,
+            'action': action,
+            'total_ids': len(ids)
+        }
+
+        # Handle different actions
+        if action == 'publish':
+            update_data = {
+                'is_published': True,
+                'published_at': get_current_time().isoformat(),
+                'updated_at': get_current_time().isoformat()
+            }
+            response = supabase_admin.table('blog_posts') \
+                .update(update_data) \
+                .in_('id', ids) \
+                .execute()
+
+            response_data['message'] = f'Published {len(ids)} blog posts'
+
+        elif action == 'unpublish':
+            response = supabase_admin.table('blog_posts') \
+                .update({
+                'is_published': False,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+
+            response_data['message'] = f'Unpublished {len(ids)} blog posts'
+
+        elif action == 'feature':
+            response = supabase_admin.table('blog_posts') \
+                .update({
+                'is_featured': True,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+
+            response_data['message'] = f'Featured {len(ids)} blog posts'
+
+        elif action == 'unfeature':
+            response = supabase_admin.table('blog_posts') \
+                .update({
+                'is_featured': False,
+                'updated_at': get_current_time().isoformat()
+            }) \
+                .in_('id', ids) \
+                .execute()
+
+            response_data['message'] = f'Unfeatured {len(ids)} blog posts'
+
+        elif action == 'delete':
+            # First delete related data
+            supabase_admin.table('bookmarks') \
+                .delete() \
+                .eq('item_type', 'blog') \
+                .in_('item_id', ids) \
+                .execute()
+
+            # Then delete posts
+            response = supabase_admin.table('blog_posts') \
+                .delete() \
+                .in_('id', ids) \
+                .execute()
+
+            response_data['message'] = f'Deleted {len(ids)} blog posts'
+
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+
+        # Add response details
+        response_data.update({
+            'affected_count': len(response.data) if response.data else 0,
+            'timestamp': get_current_time().isoformat()
+        })
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        logger.error(f"Blog posts bulk action error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Bulk operation failed',
+            'details': str(e) if app.debug else None
+        }), 500
 
 
 @app.route('/admin/users')
