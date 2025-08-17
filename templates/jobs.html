@@ -21,7 +21,7 @@
   <div class="preview-grid">
     {% if jobs|length > 0 %}
       {% for job in jobs %}
-      <div class="preview-card" data-tags="{{ job.type|lower }} {% if job.remote %}remote{% endif %}">
+      <div class="preview-card" data-id="{{ job.id }}" data-tags="{{ job.type|lower }} {% if job.remote %}remote{% endif %}">
         {% if job.image %}
         <img src="{{ job.image }}" alt="{{ job.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-job.jpg'">
         {% else %}
@@ -37,19 +37,20 @@
             <span class="salary">{{ job.salary }}</span>
             <span class="type">{{ job.type }}</span>
           </div>
-
-            <div class="action-buttons">
-              <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job">
-                <i class="far fa-bookmark"></i>
-              </button>
-              <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}">
-                <i class="fas fa-share-alt"></i>
-              </button>
-              <button class="btn btn-primary apply-btn" data-type="job" {% if not job.application_link %}disabled{% endif %}>
-                Apply Now
-              </button>
-            </div>
         </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job">
+            <i class="far fa-bookmark"></i>
+          </button>
+          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}">
+            <i class="fas fa-share-alt"></i>
+          </button>
+          <button class="btn btn-primary apply-btn" data-type="job" {% if not job.application_link %}disabled{% endif %}>
+            Apply Now
+          </button>
+        </div>
+      </div>
       {% endfor %}
     {% else %}
       <div class="empty-state">

@@ -2870,3 +2870,22 @@ footer::before {
   outline: none;
   border-color: #4361ee;
 }
+
+.input-error {
+    border-color: #ff3860 !important;
+}
+
+.error-message {
+    color: #ff3860;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.password-requirements .requirement {
+    color: #888;
+}
+
+.password-requirements .requirement.valid {
+    color: #23d160;
+    text-decoration: line-through;
+}

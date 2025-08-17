@@ -111,14 +111,9 @@
         <div class="filter-options">
           <select id="courseCategoryFilter">
             <option value="">All Categories</option>
-            {% for category in course_categories %}
-            <option value="{{ category }}">{{ category }}</option>
-            {% endfor %}
-          </select>
-          <select id="courseStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
+            <option value="technology">Technology</option>
+            <option value="business">Business</option>
+            <option value="marketing">Marketing</option>
           </select>
         </div>
       </div>
@@ -127,41 +122,15 @@
         <table>
           <thead>
             <tr>
-              <th width="50px"><input type="checkbox" id="selectAllCourses"></th>
               <th>Title</th>
               <th>Category</th>
               <th>Price</th>
+              <th>Duration</th>
               <th>Status</th>
-              <th>Created</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="coursesTableBody">
-            {% for course in courses %}
-            <tr data-id="{{ course.id }}">
-              <td><input type="checkbox" class="course-checkbox" value="{{ course.id }}"></td>
-              <td>{{ course.title }}</td>
-              <td>{{ course.category }}</td>
-              <td>${{ course.price }}</td>
-              <td>
-                <span class="status-badge {{ 'published' if course.published else 'draft' }}">
-                  {{ 'Published' if course.published else 'Draft' }}
-                </span>
-              </td>
-              <td>{{ course.created_at.strftime('%Y-%m-%d %H:%M') if course.created_at else 'N/A' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn preview-btn" data-id="{{ course.id }}"><i class="fas fa-eye"></i></button>
-                  <button class="action-btn edit-btn" data-id="{{ course.id }}"><i class="fas fa-edit"></i></button>
-                  <button class="action-btn status-btn" data-id="{{ course.id }}" data-status="{{ course.published }}">
-                    <i class="fas {{ 'fa-eye-slash' if course.published else 'fa-eye' }}"></i>
-                  </button>
-                  <button class="action-btn delete-btn" data-id="{{ course.id }}"><i class="fas fa-trash-alt"></i></button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="coursesTableBody"></tbody>
         </table>
       </div>
 
@@ -169,15 +138,15 @@
         <div class="bulk-actions">
           <select id="courseBulkAction">
             <option value="">Bulk Actions</option>
-            <option value="publish">Publish</option>
-            <option value="unpublish">Unpublish</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
             <option value="delete">Delete</option>
           </select>
           <button class="btn btn-outline" id="applyCourseBulkAction">Apply</button>
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevCoursePage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of {{ total_course_pages }}</span>
+          <span class="page-info">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextCoursePage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -200,13 +169,7 @@
             <option value="">All Types</option>
             <option value="full-time">Full-time</option>
             <option value="part-time">Part-time</option>
-            <option value="contract">Contract</option>
             <option value="remote">Remote</option>
-          </select>
-          <select id="jobStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="expired">Expired</option>
           </select>
         </div>
       </div>
@@ -215,43 +178,15 @@
         <table>
           <thead>
             <tr>
-              <th width="50px"><input type="checkbox" id="selectAllJobs"></th>
               <th>Title</th>
               <th>Company</th>
               <th>Location</th>
               <th>Type</th>
               <th>Status</th>
-              <th>Posted</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="jobsTableBody">
-            {% for job in jobs %}
-            <tr data-id="{{ job.id }}">
-              <td><input type="checkbox" class="job-checkbox" value="{{ job.id }}"></td>
-              <td>{{ job.title }}</td>
-              <td>{{ job.company }}</td>
-              <td>{{ job.location }}</td>
-              <td>{{ job.type }}</td>
-              <td>
-                <span class="status-badge {{ 'active' if job.active else 'expired' }}">
-                  {{ 'Active' if job.active else 'Expired' }}
-                </span>
-              </td>
-              <td>{{ job.posted_at.strftime('%Y-%m-%d %H:%M') if job.posted_at else 'N/A' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn preview-btn" data-id="{{ job.id }}"><i class="fas fa-eye"></i></button>
-                  <button class="action-btn edit-btn" data-id="{{ job.id }}"><i class="fas fa-edit"></i></button>
-                  <button class="action-btn status-btn" data-id="{{ job.id }}" data-status="{{ job.active }}">
-                    <i class="fas {{ 'fa-toggle-on' if job.active else 'fa-toggle-off' }}"></i>
-                  </button>
-                  <button class="action-btn delete-btn" data-id="{{ job.id }}"><i class="fas fa-trash-alt"></i></button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="jobsTableBody"></tbody>
         </table>
       </div>
 
@@ -267,7 +202,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevJobPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of {{ total_job_pages }}</span>
+          <span class="page-info">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextJobPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -290,14 +225,7 @@
             <option value="">All Types</option>
             <option value="summer">Summer</option>
             <option value="winter">Winter</option>
-            <option value="remote">Remote</option>
             <option value="paid">Paid</option>
-            <option value="unpaid">Unpaid</option>
-          </select>
-          <select id="internshipStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="expired">Expired</option>
           </select>
         </div>
       </div>
@@ -306,46 +234,15 @@
         <table>
           <thead>
             <tr>
-              <th width="50px"><input type="checkbox" id="selectAllInternships"></th>
               <th>Title</th>
               <th>Company</th>
               <th>Duration</th>
-              <th>Type</th>
+              <th>Stipend</th>
               <th>Status</th>
-              <th>Posted</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="internshipsTableBody">
-            {% for internship in internships %}
-            <tr data-id="{{ internship.id }}">
-              <td><input type="checkbox" class="internship-checkbox" value="{{ internship.id }}"></td>
-              <td>{{ internship.title }}</td>
-              <td>{{ internship.company }}</td>
-              <td>{{ internship.duration }}</td>
-              <td>
-                {% if internship.paid %}<span class="badge paid">Paid</span>{% endif %}
-                {% if internship.remote %}<span class="badge remote">Remote</span>{% endif %}
-              </td>
-              <td>
-                <span class="status-badge {{ 'active' if internship.active else 'expired' }}">
-                  {{ 'Active' if internship.active else 'Expired' }}
-                </span>
-              </td>
-              <td>{{ internship.posted_at.strftime('%Y-%m-%d %H:%M') if internship.posted_at else 'N/A' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn preview-btn" data-id="{{ internship.id }}"><i class="fas fa-eye"></i></button>
-                  <button class="action-btn edit-btn" data-id="{{ internship.id }}"><i class="fas fa-edit"></i></button>
-                  <button class="action-btn status-btn" data-id="{{ internship.id }}" data-status="{{ internship.active }}">
-                    <i class="fas {{ 'fa-toggle-on' if internship.active else 'fa-toggle-off' }}"></i>
-                  </button>
-                  <button class="action-btn delete-btn" data-id="{{ internship.id }}"><i class="fas fa-trash-alt"></i></button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="internshipsTableBody"></tbody>
         </table>
       </div>
 
@@ -361,7 +258,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevInternshipPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of {{ total_internship_pages }}</span>
+          <span class="page-info">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextInternshipPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -382,14 +279,9 @@
         <div class="filter-options">
           <select id="blogCategoryFilter">
             <option value="">All Categories</option>
-            {% for category in blog_categories %}
-            <option value="{{ category }}">{{ category }}</option>
-            {% endfor %}
-          </select>
-          <select id="blogStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
+            <option value="career-advice">Career Advice</option>
+            <option value="resume-tips">Resume Tips</option>
+            <option value="interviewing">Interviewing</option>
           </select>
         </div>
       </div>
@@ -398,7 +290,6 @@
         <table>
           <thead>
             <tr>
-              <th width="50px"><input type="checkbox" id="selectAllBlogPosts"></th>
               <th>Title</th>
               <th>Author</th>
               <th>Categories</th>
@@ -407,36 +298,7 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="blogTableBody">
-            {% for post in blog_posts %}
-            <tr data-id="{{ post.id }}">
-              <td><input type="checkbox" class="blog-checkbox" value="{{ post.id }}"></td>
-              <td>{{ post.title }}</td>
-              <td>{{ post.author }}</td>
-              <td>
-                {% for category in post.categories %}
-                <span class="badge">{{ category }}</span>
-                {% endfor %}
-              </td>
-              <td>
-                <span class="status-badge {{ 'published' if post.published else 'draft' }}">
-                  {{ 'Published' if post.published else 'Draft' }}
-                </span>
-              </td>
-              <td>{{ post.published_at.strftime('%Y-%m-%d %H:%M') if post.published_at else 'Not published' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn preview-btn" data-id="{{ post.id }}"><i class="fas fa-eye"></i></button>
-                  <button class="action-btn edit-btn" data-id="{{ post.id }}"><i class="fas fa-edit"></i></button>
-                  <button class="action-btn status-btn" data-id="{{ post.id }}" data-status="{{ post.published }}">
-                    <i class="fas {{ 'fa-eye-slash' if post.published else 'fa-eye' }}"></i>
-                  </button>
-                  <button class="action-btn delete-btn" data-id="{{ post.id }}"><i class="fas fa-trash-alt"></i></button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="blogTableBody"></tbody>
         </table>
       </div>
 
@@ -444,15 +306,15 @@
         <div class="bulk-actions">
           <select id="blogBulkAction">
             <option value="">Bulk Actions</option>
-            <option value="publish">Publish</option>
-            <option value="unpublish">Unpublish</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
             <option value="delete">Delete</option>
           </select>
           <button class="btn btn-outline" id="applyBlogBulkAction">Apply</button>
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevBlogPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of {{ total_blog_pages }}</span>
+          <span class="page-info">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextBlogPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -476,11 +338,6 @@
             <option value="employer">Employer</option>
             <option value="admin">Admin</option>
           </select>
-          <select id="userStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-          </select>
         </div>
       </div>
 
@@ -488,7 +345,6 @@
         <table>
           <thead>
             <tr>
-              <th width="50px"><input type="checkbox" id="selectAllUsers"></th>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -497,32 +353,7 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="usersTableBody">
-            {% for user in users %}
-            <tr data-id="{{ user.id }}">
-              <td><input type="checkbox" class="user-checkbox" value="{{ user.id }}"></td>
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td>{{ user.role }}</td>
-              <td>
-                <span class="status-badge {{ 'active' if user.active else 'suspended' }}">
-                  {{ 'Active' if user.active else 'Suspended' }}
-                </span>
-              </td>
-              <td>{{ user.joined_at.strftime('%Y-%m-%d %H:%M') if user.joined_at else 'N/A' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn view-btn" data-id="{{ user.id }}"><i class="fas fa-user"></i></button>
-                  <button class="action-btn edit-btn" data-id="{{ user.id }}"><i class="fas fa-edit"></i></button>
-                  <button class="action-btn status-btn" data-id="{{ user.id }}" data-status="{{ user.active }}">
-                    <i class="fas {{ 'fa-toggle-on' if user.active else 'fa-toggle-off' }}"></i>
-                  </button>
-                  <button class="action-btn message-btn" data-id="{{ user.id }}"><i class="fas fa-envelope"></i></button>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="usersTableBody"></tbody>
         </table>
       </div>
 
@@ -538,7 +369,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevUserPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of {{ total_user_pages }}</span>
+          <span class="page-info">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextUserPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -551,7 +382,7 @@
   <div class="modal-content large">
     <span class="close-modal">&times;</span>
     <h2 id="courseModalTitle">Add New Course</h2>
-    <form id="courseForm" class="admin-form" enctype="multipart/form-data" action="/admin/courses/save">
+    <form id="courseForm" class="admin-form" enctype="multipart/form-data" action="/api/admin/courses/save">
       <input type="hidden" id="courseId" name="id" value="">
 
       <div class="form-row">
@@ -560,8 +391,8 @@
           <label for="courseTitle">Title*</label>
         </div>
         <div class="form-group">
-          <input type="text" id="courseSlug" name="slug" required placeholder=" ">
-          <label for="courseSlug">URL Slug*</label>
+          <input type="text" id="courseSlug" name="slug" placeholder=" ">
+          <label for="courseSlug">URL Slug</label>
         </div>
       </div>
 
@@ -570,8 +401,8 @@
           <select id="courseCategory" name="category" required>
             <option value="" disabled selected>Select Category</option>
             <option value="technology">Technology</option>
-            <option value="business">Marketing</option>
             <option value="business">Business</option>
+            <option value="marketing">Marketing</option>
           </select>
           <label for="courseCategory">Category*</label>
         </div>
@@ -581,37 +412,36 @@
         </div>
       </div>
 
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="courseDuration" name="duration" placeholder=" ">
+          <label for="courseDuration">Duration</label>
+        </div>
+        <div class="form-group">
+          <input type="url" id="courseApplicationLink" name="application_link" placeholder=" ">
+          <label for="courseApplicationLink">Application Link</label>
+        </div>
+      </div>
+
       <div class="form-group">
         <textarea id="courseDescription" name="description" required placeholder=" "></textarea>
         <label for="courseDescription">Description*</label>
       </div>
 
-      <div class="form-group">
-        <div class="file-upload">
-          <input type="file" id="courseImage" name="image" accept="image/*">
-          <i class="fas fa-cloud-upload-alt"></i>
-          <p>Drag & drop your file here or click to browse</p>
-          <div class="preview-container">
-            <img id="courseImagePreview" src="" alt="Course Preview">
-            <button type="button" class="btn-remove-image"><i class="fas fa-times"></i></button>
-          </div>
-        </div>
-      </div>
-
       <div class="form-row">
         <div class="form-group">
-          <select id="coursePublished" name="published">
-            <option value="true">Published</option>
-            <option value="false">Draft</option>
-          </select>
-          <label for="coursePublished">Status</label>
+          <label class="switch">
+            <input type="checkbox" id="courseActive" name="is_active" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="courseActive">Active</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" id="cancelCourse">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveCourse"><i class="fas fa-save"></i> Save Course</button>
-        <button type="button" class="btn btn-success" id="saveAndNewCourse"><i class="fas fa-save"></i> Save & New</button>
+        <button type="button" class="btn btn-outline close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveCourse">Save</button>
+        <button type="button" class="btn btn-success" id="saveAndNewCourse">Save & New</button>
       </div>
     </form>
   </div>
@@ -622,15 +452,8 @@
   <div class="modal-content large">
     <span class="close-modal">&times;</span>
     <h2 id="jobModalTitle">Add New Job</h2>
-    <form id="jobForm" class="admin-form" enctype="multipart/form-data" action="/admin/jobs/save">
+    <form id="jobForm" class="admin-form" enctype="multipart/form-data" action="/api/admin/jobs/save">
       <input type="hidden" id="jobId" name="id" value="">
-
-      <div class="form-row">
-        <div class="form-group">
-          <input type="text" id="jobSalary" name="salary" placeholder=" ">
-          <label for="jobSalary">Salary</label>
-        </div>
-      </div>
 
       <div class="form-row">
         <div class="form-group" style="flex: 2;">
@@ -653,8 +476,21 @@
             <option value="" disabled selected>Select Type</option>
             <option value="full-time">Full-time</option>
             <option value="part-time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="remote">Remote</option>
           </select>
           <label for="jobType">Job Type*</label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" id="jobSalary" name="salary" placeholder=" ">
+          <label for="jobSalary">Salary</label>
+        </div>
+        <div class="form-group">
+          <input type="url" id="jobApplicationLink" name="application_link" required placeholder=" ">
+          <label for="jobApplicationLink">Application URL*</label>
         </div>
       </div>
 
@@ -665,25 +501,18 @@
 
       <div class="form-row">
         <div class="form-group">
-          <select id="jobActive" name="active">
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
-          <label for="jobActive">Status</label>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <input type="url" id="jobUrl" name="url" required placeholder=" ">
-          <label for="jobUrl">Application URL*</label>
+          <label class="switch">
+            <input type="checkbox" id="jobActive" name="is_active" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="jobActive">Active</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" id="cancelJob">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveJob"><i class="fas fa-save"></i> Save Job</button>
-        <button type="button" class="btn btn-success" id="saveAndNewJob"><i class="fas fa-save"></i> Save & New</button>
+        <button type="button" class="btn btn-outline close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveJob">Save</button>
+        <button type="button" class="btn btn-success" id="saveAndNewJob">Save & New</button>
       </div>
     </form>
   </div>
@@ -694,15 +523,8 @@
   <div class="modal-content large">
     <span class="close-modal">&times;</span>
     <h2 id="internshipModalTitle">Add New Internship</h2>
-    <form id="internshipForm" class="admin-form" enctype="multipart/form-data" action="/admin/internships/save">
+    <form id="internshipForm" class="admin-form" enctype="multipart/form-data" action="/api/admin/internships/save">
       <input type="hidden" id="internshipId" name="id" value="">
-
-      <div class="form-row">
-        <div class="form-group">
-          <input type="text" id="internshipStipend" name="stipend" placeholder=" ">
-          <label for="internshipStipend">Stipend</label>
-        </div>
-      </div>
 
       <div class="form-row">
         <div class="form-group" style="flex: 2;">
@@ -717,26 +539,33 @@
 
       <div class="form-row">
         <div class="form-group">
+          <input type="text" id="internshipLocation" name="location" placeholder=" ">
+          <label for="internshipLocation">Location</label>
+        </div>
+        <div class="form-group">
           <input type="text" id="internshipDuration" name="duration" required placeholder=" ">
           <label for="internshipDuration">Duration*</label>
         </div>
+      </div>
+
+      <div class="form-row">
         <div class="form-group">
-          <select id="internshipType" name="type">
-            <option value="" disabled selected>Select Type</option>
-            <option value="summer">Summer</option>
-            <option value="winter">Winter</option>
-          </select>
-          <label for="internshipType">Internship Type</label>
+          <input type="text" id="internshipStipend" name="stipend" placeholder=" ">
+          <label for="internshipStipend">Stipend</label>
+        </div>
+        <div class="form-group">
+          <input type="url" id="internshipApplicationLink" name="application_link" required placeholder=" ">
+          <label for="internshipApplicationLink">Application URL*</label>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group checkbox-group">
-          <input type="checkbox" id="internshipPaid" name="paid">
+          <input type="checkbox" id="internshipPaid" name="is_paid">
           <label for="internshipPaid">Paid Internship</label>
         </div>
         <div class="form-group checkbox-group">
-          <input type="checkbox" id="internshipRemote" name="remote">
+          <input type="checkbox" id="internshipRemote" name="is_remote">
           <label for="internshipRemote">Remote Position</label>
         </div>
       </div>
@@ -748,25 +577,18 @@
 
       <div class="form-row">
         <div class="form-group">
-          <select id="internshipActive" name="active">
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
-          <label for="internshipActive">Status</label>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <input type="url" id="internshipUrl" name="url" required placeholder=" ">
-          <label for="internshipUrl">Application URL*</label>
+          <label class="switch">
+            <input type="checkbox" id="internshipActive" name="is_active" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="internshipActive">Active</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" id="cancelInternship">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveInternship"><i class="fas fa-save"></i> Save Internship</button>
-        <button type="button" class="btn btn-success" id="saveAndNewInternship"><i class="fas fa-save"></i> Save & New</button>
+        <button type="button" class="btn btn-outline close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveInternship">Save</button>
+        <button type="button" class="btn btn-success" id="saveAndNewInternship">Save & New</button>
       </div>
     </form>
   </div>
@@ -777,7 +599,7 @@
   <div class="modal-content large">
     <span class="close-modal">&times;</span>
     <h2 id="blogModalTitle">Add New Blog Post</h2>
-    <form id="blogForm" class="admin-form" enctype="multipart/form-data" action="/admin/blog/save">
+    <form id="blogForm" class="admin-form" enctype="multipart/form-data" action="/api/admin/blog/save">
       <input type="hidden" id="blogId" name="id" value="">
 
       <div class="form-row">
@@ -794,8 +616,9 @@
       <div class="form-group">
         <select id="blogCategories" name="categories" multiple required>
           <option value="career-advice">Career Advice</option>
-          <option value="job-search">Job Search</option>
           <option value="resume-tips">Resume Tips</option>
+          <option value="interviewing">Interviewing</option>
+          <option value="job-search">Job Search</option>
         </select>
         <label for="blogCategories">Categories*</label>
       </div>
@@ -805,32 +628,24 @@
         <label for="blogContent">Content*</label>
       </div>
 
-      <div class="form-group">
-        <div class="file-upload">
-          <input type="file" id="blogImage" name="image" accept="image/*">
-          <i class="fas fa-cloud-upload-alt"></i>
-          <p>Drag & drop your file here or click to browse</p>
-          <div class="preview-container">
-            <img id="blogImagePreview" src="" alt="Blog Preview">
-            <button type="button" class="btn-remove-image"><i class="fas fa-times"></i></button>
-          </div>
-        </div>
-      </div>
-
       <div class="form-row">
         <div class="form-group">
-          <select id="blogPublished" name="published">
-            <option value="true">Published</option>
-            <option value="false">Draft</option>
-          </select>
-          <label for="blogPublished">Status</label>
+          <input type="text" id="blogAuthor" name="author" required placeholder=" ">
+          <label for="blogAuthor">Author*</label>
+        </div>
+        <div class="form-group">
+          <label class="switch">
+            <input type="checkbox" id="blogActive" name="is_active" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="blogActive">Active</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" id="cancelBlog">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveBlog"><i class="fas fa-save"></i> Save Post</button>
-        <button type="button" class="btn btn-success" id="saveAndNewBlog"><i class="fas fa-save"></i> Save & New</button>
+        <button type="button" class="btn btn-outline close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveBlog">Save</button>
+        <button type="button" class="btn btn-success" id="saveAndNewBlog">Save & New</button>
       </div>
     </form>
   </div>
@@ -841,7 +656,7 @@
   <div class="modal-content">
     <span class="close-modal">&times;</span>
     <h2 id="userModalTitle">Edit User</h2>
-    <form id="userForm" class="admin-form" action="/admin/users/save">
+    <form id="userForm" class="admin-form" action="/api/admin/users/save">
       <input type="hidden" id="userId" name="id" value="">
 
       <div class="form-row">
@@ -866,29 +681,30 @@
           <label for="userRole">Role*</label>
         </div>
         <div class="form-group">
-          <select id="userActive" name="active">
-            <option value="true">Active</option>
-            <option value="false">Suspended</option>
-          </select>
-          <label for="userActive">Status</label>
+          <label class="switch">
+            <input type="checkbox" id="userActive" name="is_active" checked>
+            <span class="slider round"></span>
+          </label>
+          <label for="userActive">Active</label>
         </div>
       </div>
+
       <div class="form-actions">
-        <button type="button" class="btn btn-outline" id="cancelUser">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveUser"><i class="fas fa-save"></i> Save Changes</button>
+        <button type="button" class="btn btn-outline close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveUser">Save Changes</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Confirmation Modal -->
-<div class="modal" id="confirmModal">
-  <div class="modal-content small">
-    <h3 id="confirmModalTitle">Confirm Action</h3>
-    <p id="confirmModalMessage">Are you sure you want to perform this action?</p>
+<!-- Confirm Modal -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <h3>Confirm</h3>
+    <p id="confirmModalMessage">Are you sure?</p>
     <div class="modal-actions">
-      <button type="button" class="btn btn-outline" id="cancelConfirm">Cancel</button>
-      <button type="button" class="btn btn-danger" id="confirmAction">Confirm</button>
+      <button id="cancelConfirm" class="btn btn-outline">Cancel</button>
+      <button id="confirmAction" class="btn btn-danger">Confirm</button>
     </div>
   </div>
 </div>
@@ -900,7 +716,5 @@
     <span>Loading...</span>
   </div>
 </div>
-
-{% block footer %}{% endblock %}
 
 {% endblock %}

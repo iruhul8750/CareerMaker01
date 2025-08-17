@@ -338,7 +338,7 @@ def index():
                          username=username)
 
 
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
     try:
         data = request.form
@@ -368,6 +368,7 @@ def register():
         # Generate and store OTP
         otp, expires_at = generate_otp()
 
+        # Store OTP first (without creating user)
         otp_response = supabase.table('otp_verification').insert({
             'email': email,
             'otp': otp,
@@ -377,66 +378,70 @@ def register():
         if not otp_response.data:
             raise Exception('Failed to store OTP in database')
 
-        # Send OTP email
-        if not send_otp_email(email, username, otp):
-            raise Exception('Failed to send OTP email. Please try again later.')
+        # Attempt to send OTP email
+        email_sent = send_otp_email(email, username, otp)
+
+        if not email_sent:
+            # For development - log OTP to console
+            logger.info(f"OTP for {email}: {otp} (email sending failed)")
 
         return jsonify({
             'status': 'success',
-            'message': 'OTP sent to your email. Please check your inbox.',
+            'message': 'OTP sent to your email. Please verify to complete registration.',
             'requires_verification': True,
-            'email': email
+            'email': email,
+            # For development only - remove in production:
+            'otp': otp if not email_sent else None
         })
 
     except Exception as e:
         logger.error(f"Registration error: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
-            'message': str(e) if app.debug else 'Registration failed. Please try again.'
+            'message': 'Registration failed. Please try again.'
         }), 500
 
 
-@app.route('/api/send-otp', methods=['POST'])
-def send_otp_verification():
-    """Endpoint to send OTP for verification"""
-    data = request.get_json()
-    email = data.get('email')
-    purpose = data.get('purpose', 'registration')  # Default to registration
-
-    if not email:
-        return jsonify({'error': 'Email is required'}), 400
-
+def send_otp_email(user_email, user_name, otp):
+    """Send OTP email using SMTP with proper error handling"""
     try:
-        # Check if user exists (for password reset)
-        if purpose == 'password-reset':
-            user = supabase.table('users').select('username').eq('email', email).maybe_single().execute()
-            if not user.data:
-                return jsonify(
-                    {'status': 'success', 'message': 'If an account exists with this email, an OTP has been sent'})
+        # Create email message
+        msg = EmailMessage()
+        msg.set_content(f"""
+        Hello {user_name},
 
-        # Generate and store OTP
-        otp, expires_at = generate_otp()
+        Your verification code is: {otp}
 
-        # Determine which table to use
-        table = 'password_reset_otp' if purpose == 'password-reset' else 'otp_verification'
+        This code will expire in {OTP_EXPIRY_MINUTES} minutes.
 
-        # Upsert the OTP record
-        supabase.table(table).upsert({
-            'email': email,
-            'otp': otp,
-            'expires_at': expires_at
-        }).execute()
+        If you didn't request this, please ignore this email.
+        """)
+        msg['Subject'] = 'Your CareerMaker Verification Code'
+        msg['From'] = SMTP_EMAIL
+        msg['To'] = user_email
 
-        # Send OTP email
-        username = user.data.get('username', 'User') if purpose == 'password-reset' else 'User'
-        if send_otp_email(email, username, otp):
-            return jsonify({'status': 'success', 'message': 'OTP sent successfully'})
+        # Configure SMTP connection based on settings
+        if os.getenv('SMTP_USE_TLS', 'True').lower() == 'true':
+            # Use STARTTLS (port 587)
+            with smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT)) as server:
+                server.ehlo()
+                server.starttls()  # Enable TLS encryption
+                server.ehlo()
+                server.login(SMTP_EMAIL, SMTP_PASSWORD)
+                server.send_message(msg)
         else:
-            raise Exception('Failed to send OTP email')
+            # Use SSL (port 465)
+            with smtplib.SMTP_SSL(SMTP_SERVER, int(SMTP_PORT)) as server:
+                server.login(SMTP_EMAIL, SMTP_PASSWORD)
+                server.send_message(msg)
+
+        logger.info(f"OTP email sent successfully to {user_email}")
+        return True
 
     except Exception as e:
-        logger.error(f"Error sending OTP: {str(e)}")
-        return jsonify({'error': 'Failed to send OTP'}), 500
+        logger.error(f"SMTP Error: {str(e)}")
+        logger.error(f"SMTP Configuration: Server={SMTP_SERVER}, Port={SMTP_PORT}, Username={SMTP_EMAIL}")
+        return False
 
 
 @app.route('/api/verify-otp', methods=['POST'])
@@ -463,12 +468,12 @@ def verify_otp():
         if not otp_record.data:
             return jsonify({'status': 'error', 'message': 'No OTP found for this email'}), 404
 
-        # Timezone-aware comparison
+        # Check expiration
         expires_at = parse_db_timestamp(otp_record.data['expires_at'])
         current_time = get_current_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
-            # Create user account
+            # OTP is valid - create the user
             user_data = {
                 'username': username,
                 'email': email,
@@ -488,19 +493,27 @@ def verify_otp():
 
             return jsonify({
                 'status': 'success',
-                'message': 'Registration successful! Please login to access your dashboard.',
-                'redirect': url_for('index')
+                'message': 'Registration successful! You can now login.',
+                'redirect': '/',  # Redirect to home page
+                'showLoginModal': True  # Flag to show login modal
             })
         else:
             return jsonify({'status': 'error', 'message': 'Invalid or expired OTP'}), 400
+
     except Exception as e:
         logger.error(f"OTP verification error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': 'OTP verification failed'}), 500
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Only accept JSON data for API consistency
+    if request.method == 'GET':
+        # If user is already logged in, redirect to dashboard
+        if 'user_id' in session:
+            return redirect(url_for('user_dashboard'))
+        return render_template('index.html')  # This will show the modal via JavaScript
+
+    # POST request handling remains the same
     if not request.is_json:
         return jsonify({'error': 'Content-Type must be application/json'}), 415
 
@@ -534,7 +547,10 @@ def login():
             return jsonify({
                 'status': 'success',
                 'message': 'Login successful!',
-                'redirect': url_for('index')
+                'user': {
+                    'email': user['email'],
+                    'username': user['username']
+                }
             })
 
         return jsonify({'error': 'Invalid email or password'}), 401
@@ -546,34 +562,41 @@ def login():
 
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
-    if request.method == 'POST':
+    if request.method == 'GET':
+        return render_template('reset-password.html')
+
+    # POST request
+    try:
         email = request.form.get('email')
-        try:
-            user = supabase.table('users').select('*').eq('email', email).maybe_single().execute()
+        if not email:
+            return jsonify({'status': 'error', 'message': 'Email is required'}), 400
 
-            # Always return success to prevent email enumeration
-            if user.data:
-                # Generate and send OTP for password reset
-                otp, expires_at = generate_otp()
-                supabase.table('password_reset_otp').insert({
-                    'email': email,
-                    'otp': otp,
-                    'expires_at': expires_at
-                }).execute()
-                send_otp_email(email, user.data.get('username', 'User'), otp)
+        # Check if user exists
+        user = supabase.table('users').select('*').eq('email', email).maybe_single().execute()
 
-            return jsonify({
-                'status': 'success',
-                'message': 'If an account exists with this email, an OTP has been sent'
-            })
-        except Exception as e:
-            logger.error(f"Password reset error: {str(e)}")
-            return jsonify({
-                'status': 'error',
-                'message': 'Error processing your request. Please try again.'
-            }), 500
+        # Always return success to prevent email enumeration
+        if user.data:
+            # Generate and send OTP for password reset
+            otp, expires_at = generate_otp()
+            supabase.table('password_reset_otp').insert({
+                'email': email,
+                'otp': otp,
+                'expires_at': expires_at
+            }).execute()
 
-    return render_template('reset-password.html')
+            send_otp_email(email, user.data.get('username', 'User'), otp)
+
+        return jsonify({
+            'status': 'success',
+            'message': 'If an account exists with this email, an OTP has been sent',
+            'redirect': url_for('reset_password_otp', email=email)
+        })
+    except Exception as e:
+        logger.error(f"Password reset error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Error processing your request. Please try again.'
+        }), 500
 
 @app.route('/reset-password-otp', methods=['GET', 'POST'])
 def reset_password_otp():
@@ -584,7 +607,7 @@ def reset_password_otp():
             return redirect(url_for('reset_password'))
         return render_template('reset-password-otp.html', email=email)
 
-    # POST request: handle form submission
+    # POST request
     try:
         data = request.get_json() or request.form
         email = data.get('email')
@@ -630,7 +653,8 @@ def reset_password_otp():
             return jsonify({
                 'status': 'success',
                 'message': 'Password updated successfully',
-                'redirect': url_for('login')
+                'redirect': '/',  # Redirect to home page
+                'showLoginModal': True  # Flag to show login modal
             })
         else:
             return jsonify({'error': 'Invalid or expired OTP'}), 400

@@ -29,7 +29,7 @@
   <header>
     <div class="container">
       <nav class="navbar" aria-label="Main navigation">
-        <a href="/" class="logo" aria-label="CareerMaker Home">CareerMaker</a>
+        <a href="/" class="logo" aria-label="CareerMaker Home"><i class="fas fa-graduation-cap"></i> CareerMaker</a>
 
         <!-- Mobile Menu Toggle -->
         <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
@@ -38,12 +38,14 @@
 
         <div class="nav-container" id="navContainer">
           <ul class="nav-links">
-            <li><a href="/" class="{{ 'active' if request.path == '/' else '' }}">Home</a></li>
-            <li><a href="/courses" class="{{ 'active' if request.path == '/courses' else '' }}">Courses</a></li>
-            <li><a href="/jobs" class="{{ 'active' if request.path == '/jobs' else '' }}">Jobs</a></li>
-            <li><a href="/internships" class="{{ 'active' if request.path == '/internships' else '' }}">Internships</a></li>
-            <li><a href="/blog" class="{{ 'active' if request.path == '/blog' else '' }}">Blog</a></li>
-            <li><a href="/contact" class="{{ 'active' if request.path == '/contact' else '' }}">Contact</a></li>
+            <li><a href="/" class="{{ 'active' if request.path == '/' else '' }}"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="#features"><i class="fas fa-star"></i> Features</a></li>
+            <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
+            <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
+            <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
+            <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
+            <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
           </ul>
 
           <div class="nav-right">
@@ -53,12 +55,12 @@
             </div>
 
             <div class="auth-buttons">
-              {% if 'user_id' in session %}
-                <a href="/dashboard" class="btn btn-primary" id="profileLink">My Profile</a>
+              {% if logged_in %}
+                <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
                 <button class="btn btn-outline" id="logoutBtn">Logout</button>
               {% else %}
-                <a href="/login" class="btn btn-outline login-btn">Login</a>
-                <a href="/register" class="btn btn-primary register-btn">Register</a>
+                <button class="btn btn-outline login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
+                <button class="btn btn-primary register-btn"><i class="fas fa-user-plus"></i> Register</button>
               {% endif %}
             </div>
           </div>
@@ -84,7 +86,6 @@
     </div>
 
     {% block content %}{% endblock %}
-    {% block error_content %}{% endblock %}
   </main>
 
   <!-- Footer -->
@@ -93,221 +94,67 @@
       <div class="footer-grid">
         <div class="footer-col">
           <h3>CareerMaker</h3>
-          <p>Empowering your career growth through high-quality online education and career opportunities.</p>
+          <p>Empowering your career journey with quality education and job opportunities.</p>
           <div class="social-links">
             <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
             <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
             <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
             <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
           </div>
         </div>
         <div class="footer-col">
           <h3>Quick Links</h3>
           <ul class="footer-links">
-            <li><a href="/">Home</a></li>
-            <li><a href="/courses">Courses</a></li>
-            <li><a href="/jobs">Jobs</a></li>
-            <li><a href="/internships">Internships</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h3>Resources</h3>
-          <ul class="footer-links">
-            <li><a href="#">Career Guide</a></li>
-            <li><a href="#">Resume Builder</a></li>
-            <li><a href="#">Interview Prep</a></li>
-            <li><a href="#">Skill Assessment</a></li>
+            <li><a href="/"><i class="fas fa-chevron-right"></i> Home</a></li>
+            <li><a href="#courses"><i class="fas fa-chevron-right"></i> Courses</a></li>
+            <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
+            <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
+            <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
           </ul>
         </div>
         <div class="footer-col">
           <h3>Support</h3>
           <ul class="footer-links">
-            <li><a href="#">Help Center</a></li>
-            <li><a href="#">FAQs</a></li>
-            <li><a href="/privacy">Privacy Policy</a></li>
-            <li><a href="/terms">Terms of Service</a></li>
+            <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
+            <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
+            <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
+            <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
           </ul>
         </div>
+        <form id="newsletterForm" class="newsletter-form" novalidate>
+          <div class="form-group floating-label-group">
+            <input type="email" id="newsletterEmail" name="email" required placeholder=" ">
+            <label for="newsletterEmail">Your email address</label>
+          </div>
+          <button type="submit" class="btn btn-success">
+            <span class="btn-text">Subscribe</span>
+            <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+          </button>
+          <div id="newsletterResponse" class="form-response" style="display: none;"></div>
+        </form>
       </div>
       <div class="footer-bottom">
         <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
+        <div class="footer-links">
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms of Service</a>
+          <a href="/sitemap">Sitemap</a>
+        </div>
       </div>
     </div>
   </footer>
-
-<!-- Logout Confirmation Modal -->
-<div class="modal" id="logoutModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="logoutModalTitle">
-  <div class="modal-overlay"></div>
-  <div class="modal-content medium">
-    <button class="close-modal" id="closeLogoutModal" aria-label="Close modal">&times;</button>
-    <div class="modal-header">
-      <h2 id="logoutModalTitle">Confirm Logout</h2>
-      <p>Are you sure you want to logout from your account?</p>
-    </div>
-    <div class="modal-body">
-      <p>You'll need to log in again to access your saved items and profile.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
-      <button class="btn btn-danger" id="confirmLogoutBtn">Logout</button>
-    </div>
-  </div>
-</div>
-
-  <!-- Detail Modal -->
-  <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalTitle">
-    <div class="modal-overlay"></div>
-    <div class="modal-content large">
-      <button class="close-modal" aria-label="Close modal">&times;</button>
-      <div id="modalContent">
-        <!-- Content loaded dynamically -->
-      </div>
-    </div>
-  </div>
 
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
     <div class="loading-spinner">
       <div class="spinner"></div>
-      <span>Loading...</span>
+      <p>Loading...</p>
     </div>
   </div>
 
   <!-- Main JavaScript -->
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-  <!-- Inline Scripts -->
-  <script>
-    // Initialize theme from localStorage
-    document.addEventListener('DOMContentLoaded', function() {
-      // Set current year in footer
-      document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-      // Theme initialization
-      const currentTheme = localStorage.getItem('theme') ||
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-
-      if (currentTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        document.getElementById('themeColorMeta').content = '#16213e';
-        const toggleIcon = document.querySelector('.toggle-icon');
-        const toggleText = document.querySelector('.toggle-text');
-        if (toggleIcon && toggleText) {
-          toggleIcon.className = 'fas fa-sun toggle-icon';
-          toggleText.textContent = 'Light Mode';
-        }
-      }
-
-      // Mobile menu toggle
-      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-      const navContainer = document.getElementById('navContainer');
-
-      if (mobileMenuToggle && navContainer) {
-        mobileMenuToggle.addEventListener('click', function() {
-          const isExpanded = this.getAttribute('aria-expanded') === 'true';
-          this.setAttribute('aria-expanded', !isExpanded);
-          navContainer.classList.toggle('active');
-          this.classList.toggle('active');
-        });
-      }
-
-      // Auto-dismiss flash messages after 5 seconds
-      const flashMessages = document.querySelectorAll('.flash');
-      flashMessages.forEach(message => {
-        setTimeout(() => {
-          message.style.opacity = '0';
-          setTimeout(() => {
-            message.remove();
-          }, 300);
-        }, 5000);
-      });
-
-      // Close flash messages
-      document.querySelectorAll('.flash-close').forEach(btn => {
-        btn.addEventListener('click', function() {
-          this.parentElement.style.opacity = '0';
-          setTimeout(() => {
-            this.parentElement.remove();
-          }, 300);
-        });
-      });
-
-      // Profile link click handler to prevent flash message persistence
-      const profileLink = document.getElementById('profileLink');
-      if (profileLink) {
-        profileLink.addEventListener('click', function(e) {
-          // Clear any existing flash messages before navigating
-          document.getElementById('flashMessages').innerHTML = '';
-        });
-      }
-    });
-      document.addEventListener('DOMContentLoaded', function() {
-    // Logout Modal Handling
-    const logoutModal = document.getElementById('logoutModal');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-    const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
-    const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
-
-    // Function to close logout modal
-    function closeLogoutModal() {
-      logoutModal.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
-
-    // Open logout modal when logout button is clicked
-   if (logoutBtn) {
-         logoutBtn.addEventListener('click', function(e) {
-           e.preventDefault();
-           e.stopPropagation(); // Add this line to prevent event bubbling
-           logoutModal.style.display = 'flex';
-           document.body.style.overflow = 'hidden';
-         });
-   }
-
-    // Close modal when cancel button is clicked
-    if (cancelLogoutBtn) {
-      cancelLogoutBtn.addEventListener('click', closeLogoutModal);
-    }
-
-    // Close modal when X button is clicked
-    if (closeLogoutModalBtn) {
-      closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
-    }
-
-    // Close modal when clicking outside the modal content
-    logoutModal.addEventListener('click', function(e) {
-      if (e.target === logoutModal) {
-        closeLogoutModal();
-      }
-    });
-
-    // Handle logout confirmation
-    if (confirmLogoutBtn) {
-      confirmLogoutBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        // Show loading indicator
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        if (loadingOverlay) loadingOverlay.style.display = 'flex';
-
-        // Perform logout
-        fetch('/logout', {
-          method: 'POST',
-          credentials: 'same-origin'
-        })
-        .then(response => {
-          if (response.redirected) {
-            window.location.href = response.url;
-          }
-        })
-        .catch(error => {
-          console.error('Logout error:', error);
-          if (loadingOverlay) loadingOverlay.style.display = 'none';
-        });
-      });
-    }
-  });
-  </script>
 
   {% block extra_js %}{% endblock %}
 </body>

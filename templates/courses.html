@@ -9,8 +9,8 @@
       <input type="search" name="search" placeholder="Search courses..." value="{{ search if search else '' }}">
       <select name="category">
         <option value="">All Categories</option>
-        {% for category in ['Programming', 'Design', 'Business', 'Marketing'] %}
-        <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>{{ category }}</option>
+        {% for category in course_categories %}
+        <option value="{{ category }}" {% if category == category %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
       </select>
       <button type="submit" class="btn btn-primary">Filter</button>
@@ -20,7 +20,7 @@
   <div class="preview-grid">
     {% if courses|length > 0 %}
       {% for course in courses %}
-      <div class="preview-card" data-tags="{{ course.category|lower }}">
+      <div class="preview-card" data-id="{{ course.id }}" data-tags="{{ course.category|lower }}">
         {% if course.image %}
         <img src="{{ course.image }}" alt="{{ course.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-course.jpg'">
         {% else %}
@@ -35,19 +35,20 @@
             <span class="price">${{ course.price }}</span>
             <span class="level">{{ course.level }}</span>
           </div>
-
-            <div class="action-buttons">
-              <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course">
-                <i class="far fa-bookmark"></i>
-              </button>
-              <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
-                <i class="fas fa-share-alt"></i>
-              </button>
-              <button class="btn btn-primary apply-btn" data-type="course">
-                Enroll Now
-              </button>
-            </div>
         </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course">
+            <i class="far fa-bookmark"></i>
+          </button>
+          <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
+            <i class="fas fa-share-alt"></i>
+          </button>
+          <button class="btn btn-primary apply-btn" data-type="course" {% if not course.application_link %}disabled{% endif %}>
+            Enroll Now
+          </button>
+        </div>
+      </div>
       {% endfor %}
     {% else %}
       <div class="empty-state">
