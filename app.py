@@ -341,9 +341,18 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     try:
-        data = request.form
-        required_fields = ['username', 'email', 'password', 'confirm_password']
+        if request.method == 'GET':
+            return render_template('index.html')
 
+        # Get data from request
+        data = request.get_json() if request.is_json else request.form.to_dict()
+
+        # Handle OTP resend request
+        if data.get('resend') == 'true':
+            return handle_otp_resend(data)
+
+        # Original registration logic
+        required_fields = ['username', 'email', 'password', 'confirm_password']
         if not all(data.get(field) for field in required_fields):
             return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
 
@@ -367,12 +376,11 @@ def register():
 
         # Generate and store OTP
         otp, expires_at = generate_otp()
-
-        # Store OTP first (without creating user)
         otp_response = supabase.table('otp_verification').insert({
             'email': email,
             'otp': otp,
-            'expires_at': expires_at
+            'expires_at': expires_at,
+            'purpose': 'registration'
         }).execute()
 
         if not otp_response.data:
@@ -381,17 +389,13 @@ def register():
         # Attempt to send OTP email
         email_sent = send_otp_email(email, username, otp)
 
-        if not email_sent:
-            # For development - log OTP to console
-            logger.info(f"OTP for {email}: {otp} (email sending failed)")
-
         return jsonify({
             'status': 'success',
             'message': 'OTP sent to your email. Please verify to complete registration.',
             'requires_verification': True,
             'email': email,
-            # For development only - remove in production:
-            'otp': otp if not email_sent else None
+            'username': username,
+            'otp': otp if not email_sent else None  # For development only
         })
 
     except Exception as e:
@@ -400,6 +404,49 @@ def register():
             'status': 'error',
             'message': 'Registration failed. Please try again.'
         }), 500
+
+
+@app.route('/resend-otp', methods=['POST'])
+def resend_otp():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        purpose = data.get('purpose', 'registration')
+
+        if not email:
+            return jsonify({'status': 'error', 'message': 'Email is required'}), 400
+
+        # Check if this is for registration and email isn't already registered
+        if purpose == 'registration':
+            existing_user = supabase.table('users').select('email').eq('email', email).execute()
+            if existing_user.data:
+                return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
+
+        # Delete any existing OTPs for this email
+        supabase.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
+
+        # Generate and store new OTP
+        otp, expires_at = generate_otp()
+        supabase.table('otp_verification').insert({
+            'email': email,
+            'otp': otp,
+            'expires_at': expires_at,
+            'purpose': purpose
+        }).execute()
+
+        # Send OTP email
+        username = data.get('username', 'User')
+        email_sent = send_otp_email(email, username, otp)
+
+        return jsonify({
+            'status': 'success',
+            'message': 'New OTP sent successfully',
+            'otp': otp if not email_sent else None  # For development only
+        })
+
+    except Exception as e:
+        logger.error(f"OTP resend error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 def send_otp_email(user_email, user_name, otp):
@@ -452,14 +499,20 @@ def verify_otp():
         otp = data.get('otp')
         username = data.get('username')
         password = data.get('password')
+        purpose = data.get('purpose', 'registration')
 
-        if not all([email, otp, username, password]):
+        if not all([email, otp]):
+            return jsonify({'status': 'error', 'message': 'Email and OTP are required'}), 400
+
+        # For registration, ensure we have all required fields
+        if purpose == 'registration' and not all([username, password]):
             return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
 
-        # Get the latest OTP for this email
+        # Get the latest OTP for this email and purpose
         otp_record = supabase.table('otp_verification') \
             .select('*') \
             .eq('email', email) \
+            .eq('purpose', purpose) \
             .order('created_at', desc=True) \
             .limit(1) \
             .maybe_single() \
@@ -473,29 +526,30 @@ def verify_otp():
         current_time = get_current_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
-            # OTP is valid - create the user
-            user_data = {
-                'username': username,
-                'email': email,
-                'password_hash': hash_password(password),
-                'is_verified': True,
-                'verified_at': current_time.isoformat(),
-                'created_at': current_time.isoformat()
-            }
+            if purpose == 'registration':
+                # OTP is valid - create the user
+                user_data = {
+                    'username': username,
+                    'email': email,
+                    'password_hash': hash_password(password),
+                    'is_verified': True,
+                    'verified_at': current_time.isoformat(),
+                    'created_at': current_time.isoformat()
+                }
 
-            user_response = supabase.table('users').insert(user_data).execute()
+                user_response = supabase.table('users').insert(user_data).execute()
 
-            if not user_response.data:
-                raise Exception('Failed to create user account')
+                if not user_response.data:
+                    raise Exception('Failed to create user account')
 
             # Delete the used OTP
             supabase.table('otp_verification').delete().eq('id', otp_record.data['id']).execute()
 
             return jsonify({
                 'status': 'success',
-                'message': 'Registration successful! You can now login.',
+                'message': 'Verification successful!' + (' You can now login.' if purpose == 'registration' else ''),
                 'redirect': '/',  # Redirect to home page
-                'showLoginModal': True  # Flag to show login modal
+                'showLoginModal': purpose == 'registration'  # Show login modal for registration
             })
         else:
             return jsonify({'status': 'error', 'message': 'Invalid or expired OTP'}), 400
@@ -511,6 +565,11 @@ def login():
         # If user is already logged in, redirect to dashboard
         if 'user_id' in session:
             return redirect(url_for('user_dashboard'))
+
+        # Check if this is a request from reset password page
+        if request.referrer and 'reset-password' in request.referrer:
+            # Return the login page with a flag to show modal
+            return render_template('index.html', show_login_modal=True)
         return render_template('index.html')  # This will show the modal via JavaScript
 
     # POST request handling remains the same
@@ -547,10 +606,7 @@ def login():
             return jsonify({
                 'status': 'success',
                 'message': 'Login successful!',
-                'user': {
-                    'email': user['email'],
-                    'username': user['username']
-                }
+                'redirect': url_for('index')
             })
 
         return jsonify({'error': 'Invalid email or password'}), 401
@@ -565,18 +621,38 @@ def reset_password():
     if request.method == 'GET':
         return render_template('reset-password.html')
 
-    # POST request
     try:
-        email = request.form.get('email')
+        data = request.get_json() if request.is_json else request.form
+        is_resend = data.get('resend', False)
+        email = data.get('email')
+
         if not email:
             return jsonify({'status': 'error', 'message': 'Email is required'}), 400
 
-        # Check if user exists
+        # Handle OTP resend request
+        if is_resend:
+            # Generate and store new OTP
+            otp, expires_at = generate_otp()
+            supabase.table('password_reset_otp').insert({
+                'email': email,
+                'otp': otp,
+                'expires_at': expires_at
+            }).execute()
+
+            # Get username for email
+            user = supabase.table('users').select('username').eq('email', email).maybe_single().execute()
+            username = user.data.get('username', 'User') if user.data else 'User'
+
+            send_otp_email(email, username, otp)
+            return jsonify({
+                'status': 'success',
+                'message': 'New OTP sent successfully'
+            })
+
+        # Original password reset logic
         user = supabase.table('users').select('*').eq('email', email).maybe_single().execute()
 
-        # Always return success to prevent email enumeration
         if user.data:
-            # Generate and send OTP for password reset
             otp, expires_at = generate_otp()
             supabase.table('password_reset_otp').insert({
                 'email': email,
@@ -591,6 +667,7 @@ def reset_password():
             'message': 'If an account exists with this email, an OTP has been sent',
             'redirect': url_for('reset_password_otp', email=email)
         })
+
     except Exception as e:
         logger.error(f"Password reset error: {str(e)}")
         return jsonify({

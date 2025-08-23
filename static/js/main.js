@@ -1,4 +1,6 @@
+// =============================================
 // Unified Notification System
+// =============================================
 function showToast(message, type = 'success', duration = 3000) {
   const existingToasts = document.querySelectorAll('.toast');
   existingToasts.forEach(toast => toast.remove());
@@ -17,7 +19,9 @@ function showToast(message, type = 'success', duration = 3000) {
   }, duration);
 }
 
+// =============================================
 // Loading State Management
+// =============================================
 function showLoading() {
   const loadingOverlay = document.getElementById('loadingOverlay') || createLoadingOverlay();
   loadingOverlay.style.display = 'flex';
@@ -57,7 +61,9 @@ function createLoadingOverlay() {
   return overlay;
 }
 
+// =============================================
 // OTP Verification System
+// =============================================
 function showOTPVerificationModal(email, username = null, password = null, purpose = 'registration') {
   document.querySelectorAll('.modal').forEach(m => m.remove());
 
@@ -99,6 +105,56 @@ function showOTPVerificationModal(email, username = null, password = null, purpo
 
   startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
+  // OTP Resend Handler
+  resendOtpBtn?.addEventListener('click', async function(e) {
+    e.preventDefault();
+    if (this.style.pointerEvents === 'none') return;
+
+    const originalContent = this.innerHTML;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    this.style.pointerEvents = 'none';
+
+    try {
+      const formData = new FormData(otpForm);
+      const payload = {
+        email: formData.get('email'),
+        purpose: formData.get('purpose')
+      };
+
+      if (formData.has('username')) {
+        payload.username = formData.get('username');
+      }
+
+      const response = await fetch('/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to resend OTP');
+      }
+
+      const data = await response.json();
+      showToast(data.message || 'New OTP sent successfully!', 'success');
+      startResendTimer(resendOtpBtn, resendTimer, timerCount);
+
+      if (data.otp) {
+        console.log('Development OTP:', data.otp);
+      }
+    } catch (error) {
+      console.error('Resend OTP Error:', error);
+      showToast(error.message || 'Failed to resend OTP. Please try again.', 'error');
+    } finally {
+      this.innerHTML = originalContent;
+      setTimeout(() => {
+        this.style.pointerEvents = 'auto';
+      }, 30000);
+    }
+  });
+
+  // OTP Verification Handler
   otpForm?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const btnText = verifyBtn.querySelector('.btn-text');
@@ -148,32 +204,6 @@ function showOTPVerificationModal(email, username = null, password = null, purpo
     }
   });
 
-  resendOtpBtn?.addEventListener('click', async function(e) {
-    e.preventDefault();
-    const email = document.querySelector('input[name="email"]').value;
-    const purpose = document.querySelector('input[name="purpose"]').value;
-    resendOtpBtn.style.pointerEvents = 'none';
-    startResendTimer(resendOtpBtn, resendTimer, timerCount);
-
-    try {
-      const endpoint = purpose === 'password-reset' ? '/reset-password' : '/register';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          purpose: purpose
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to resend OTP');
-      showToast('New OTP sent successfully!', 'success');
-    } catch (error) {
-      showToast(error.message || 'Failed to send OTP', 'error');
-    }
-  });
-
   document.querySelector('.close-modal')?.addEventListener('click', function() {
     document.querySelector('.modal').remove();
   });
@@ -197,7 +227,9 @@ function startResendTimer(button, timerElement, countElement) {
   }, 1000);
 }
 
+// =============================================
 // Registration Form
+// =============================================
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
   // Password validation UI
@@ -368,7 +400,9 @@ if (registerForm) {
   }
 }
 
+// =============================================
 // Login Form
+// =============================================
 document.getElementById('loginForm')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const submitBtn = this.querySelector('button[type="submit"]');
@@ -409,7 +443,9 @@ document.getElementById('loginForm')?.addEventListener('submit', function(e) {
   });
 });
 
+// =============================================
 // Logout Handling
+// =============================================
 const logoutBtn = document.getElementById('logoutBtn');
 const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
 const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
@@ -455,7 +491,9 @@ if (confirmLogoutBtn) {
   });
 }
 
+// =============================================
 // Modal Handling
+// =============================================
 const loginModal = document.getElementById('loginModal');
 const registerModal = document.getElementById('registerModal');
 const detailModal = document.getElementById('detailModal');
@@ -508,7 +546,9 @@ window.addEventListener('click', function(e) {
   }
 });
 
+// =============================================
 // Bookmark Functionality
+// =============================================
 document.addEventListener('click', function(e) {
   const bookmarkBtn = e.target.closest('.bookmark-btn');
   if (bookmarkBtn) {
@@ -583,7 +623,9 @@ function removeBookmark(itemId, itemType, element) {
   .finally(hideLoading);
 }
 
+// =============================================
 // Share Functionality
+// =============================================
 document.addEventListener('click', function(e) {
   const shareBtn = e.target.closest('.share-btn');
   if (shareBtn) {
@@ -594,7 +636,9 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// =============================================
 // Apply/Enroll Functionality
+// =============================================
 document.addEventListener('click', function(e) {
   const applyBtn = e.target.closest('.apply-btn');
   if (applyBtn) {
@@ -625,7 +669,9 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// =============================================
 // Dashboard Link Handling
+// =============================================
 document.addEventListener('click', function(e) {
   const dashboardLink = e.target.closest('a[href="/dashboard"]');
   if (dashboardLink) {
@@ -650,7 +696,9 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// =============================================
 // Contact Form Handling
+// =============================================
 const contactForm = document.getElementById('contactForm');
 if (contactForm) {
   contactForm.addEventListener('submit', async function(e) {
@@ -692,7 +740,9 @@ if (contactForm) {
   });
 }
 
+// =============================================
 // Newsletter Form Handling
+// =============================================
 const newsletterForm = document.getElementById('newsletterForm');
 if (newsletterForm) {
   newsletterForm.addEventListener('submit', async function(e) {
@@ -739,7 +789,9 @@ if (newsletterForm) {
   });
 }
 
+// =============================================
 // Flash Message Handling
+// =============================================
 function initFlashMessages() {
   const flashMessages = document.querySelectorAll('.alert');
   flashMessages.forEach(message => {
@@ -758,7 +810,9 @@ function initFlashMessages() {
   });
 }
 
+// =============================================
 // Scroll to Top Button
+// =============================================
 const scrollToTopBtn = document.createElement('div');
 scrollToTopBtn.className = 'scroll-to-top';
 scrollToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
@@ -772,7 +826,9 @@ scrollToTopBtn.addEventListener('click', function() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
+// =============================================
 // Active Navigation on Scroll
+// =============================================
 const sections = document.querySelectorAll('section');
 const navLinks = document.querySelectorAll('.nav-links a');
 
@@ -797,7 +853,9 @@ function updateActiveNav() {
 window.addEventListener('scroll', updateActiveNav);
 updateActiveNav();
 
+// =============================================
 // Smooth Scrolling for anchor links
+// =============================================
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function(e) {
     e.preventDefault();
@@ -815,32 +873,25 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
+// =============================================
 // Set current year in footer
+// =============================================
 const currentYear = document.getElementById('currentYear');
 if (currentYear) currentYear.textContent = new Date().getFullYear();
 
+// =============================================
 // Close flash messages
+// =============================================
 document.querySelectorAll('.flash-close').forEach(btn => {
   btn.addEventListener('click', function() {
     this.parentElement.remove();
   });
 });
 
+// =============================================
 // Initialize application when DOM is loaded
+// =============================================
 document.addEventListener('DOMContentLoaded', function() {
-  // Check if we need to show login modal
-  if (sessionStorage.getItem('showLoginModal') === 'true') {
-    sessionStorage.removeItem('showLoginModal');
-    setTimeout(() => {
-      const loginModal = document.getElementById('loginModal');
-      if (loginModal) {
-        loginModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        loginModal.querySelector('#loginEmail')?.focus();
-      }
-    }, 300);
-  }
-
   // Check for logout message
   if (sessionStorage.getItem('logoutMessage')) {
     const message = sessionStorage.getItem('logoutMessage');
@@ -848,15 +899,24 @@ document.addEventListener('DOMContentLoaded', function() {
     showToast(message, 'success');
   }
 
-  // Check for pending OTP verification
-  const pendingRegistration = sessionStorage.getItem('pendingRegistration');
-  if (pendingRegistration) {
-    try {
-      const { email, username, password } = JSON.parse(pendingRegistration);
-      showOTPVerificationModal(email, username, password);
-      sessionStorage.removeItem('pendingRegistration');
-    } catch (e) {
-      console.error('Error parsing pending registration:', e);
+  // Check URL for login modal parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('showLogin') === 'true') {
+    const loginModal = document.getElementById('loginModal');
+    if (loginModal) {
+      loginModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+
+      // Focus on the email input when modal opens
+      const emailInput = loginModal.querySelector('#loginEmail');
+      if (emailInput) {
+        setTimeout(() => emailInput.focus(), 100);
+      }
+
+      // Remove the parameter from URL without refreshing
+      const url = new URL(window.location);
+      url.searchParams.delete('showLogin');
+      window.history.replaceState({}, '', url);
     }
   }
 
@@ -869,30 +929,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (savedTheme === 'dark-mode') {
       body.classList.add('dark-mode');
-      updateThemeMeta('dark');
     }
 
     themeToggle.addEventListener('click', function() {
       body.classList.toggle('dark-mode');
       const isDarkMode = body.classList.contains('dark-mode');
       localStorage.setItem('theme', isDarkMode ? 'dark-mode' : '');
-      updateThemeMeta(isDarkMode ? 'dark' : 'light');
-      updateDarkModeText(isDarkMode);
     });
-
-    function updateThemeMeta(theme) {
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.content = theme === 'dark' ? '#111827' : '#10b981';
-    }
-
-    function updateDarkModeText(isDarkMode) {
-      const toggleText = themeToggle.querySelector('.toggle-text');
-      const toggleIcon = themeToggle.querySelector('.toggle-icon');
-      if (toggleText && toggleIcon) {
-        toggleText.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
-        toggleIcon.className = isDarkMode ? 'fas fa-sun toggle-icon' : 'fas fa-moon toggle-icon';
-      }
-    }
   }
 
   // Mobile Navigation
