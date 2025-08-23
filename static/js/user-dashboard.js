@@ -24,12 +24,70 @@ document.addEventListener('DOMContentLoaded', function() {
     function initProfilePicture() {
         if (!avatarInitials) return;
 
-        // Set default initials display
+        // Get username from the page to show initial
+        const usernameElement = document.querySelector('.user-info h2');
+        const username = usernameElement ? usernameElement.textContent.trim() : '';
+        const userInitial = username ? username[0].toUpperCase() : '?';
+
+        // Always set the initial in the avatar (will be shown if no profile picture)
+        avatarInitials.textContent = userInitial;
+
+        // Check if we have a cached profile picture URL
+        const cachedProfilePic = localStorage.getItem('profilePicUrl');
+        const cachedTimestamp = localStorage.getItem('profilePicTimestamp');
+        const currentTime = new Date().getTime();
+        const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+        // Use cached image if it's less than 24 hours old and not a broken image
+        if (cachedProfilePic && cachedTimestamp && (currentTime - cachedTimestamp < oneDay)) {
+            // Preload the image to check if it's valid
+            const testImage = new Image();
+            testImage.onload = function() {
+                // Image loaded successfully, show it
+                avatarImg.src = cachedProfilePic;
+                avatarImg.style.display = 'block';
+                avatarInitials.style.display = 'none';
+                console.log('Using cached profile picture');
+            };
+            testImage.onerror = function() {
+                // Image failed to load, show initial
+                showInitialAvatar();
+                console.log('Cached image failed to load, showing initial');
+            };
+            testImage.src = cachedProfilePic;
+        }
+        // Check if server-rendered image exists and is not empty
+        else if (avatarImg.src && avatarImg.src !== window.location.origin + '/') {
+            // Preload the image to check if it's valid
+            const testImage = new Image();
+            testImage.onload = function() {
+                // Image loaded successfully, show it and cache it
+                localStorage.setItem('profilePicUrl', avatarImg.src);
+                localStorage.setItem('profilePicTimestamp', currentTime);
+                avatarImg.style.display = 'block';
+                avatarInitials.style.display = 'none';
+                console.log('Using server-rendered profile picture');
+            };
+            testImage.onerror = function() {
+                // Image failed to load, show initial
+                showInitialAvatar();
+                console.log('Server image failed to load, showing initial');
+            };
+            testImage.src = avatarImg.src;
+        }
+        // Show initial avatar if no profile picture
+        else {
+            showInitialAvatar();
+            console.log('No profile picture found, showing initial');
+        }
+    }
+
+    function showInitialAvatar() {
         avatarInitials.style.display = 'flex';
         avatarImg.style.display = 'none';
-
-        // Load current profile picture if available
-        loadProfilePicture();
+        // Clear any outdated cache
+        localStorage.removeItem('profilePicUrl');
+        localStorage.removeItem('profilePicTimestamp');
     }
 
     async function loadProfilePicture() {
@@ -42,17 +100,44 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('Failed to load profile picture');
 
             const data = await response.json();
+
+            // Check if we got a valid image URL
             if (data.success && data.image_url) {
-                // Update avatar with cache busting
-                avatarImg.src = data.image_url + '?t=' + Date.now();
-                avatarImg.style.display = 'block';
-                avatarInitials.style.display = 'none';
+                // Preload the image to check if it's valid
+                const testImage = new Image();
+                testImage.onload = function() {
+                    // Image loaded successfully
+                    const timestamp = new Date().getTime();
+                    const imageUrl = data.image_url + '?t=' + timestamp;
+
+                    // Update avatar
+                    avatarImg.src = imageUrl;
+                    avatarImg.style.display = 'block';
+                    avatarInitials.style.display = 'none';
+
+                    // Store in localStorage with timestamp
+                    localStorage.setItem('profilePicUrl', imageUrl);
+                    localStorage.setItem('profilePicTimestamp', timestamp);
+                    console.log('Profile picture loaded from API and cached');
+                    hideLoading();
+                };
+                testImage.onerror = function() {
+                    // Image failed to load, show initial
+                    showInitialAvatar();
+                    console.log('API image failed to load, showing initial');
+                    hideLoading();
+                };
+                testImage.src = data.image_url;
+            } else {
+                // No profile picture found, show initial
+                showInitialAvatar();
+                console.log('No profile picture found, showing initial');
+                hideLoading();
             }
         } catch (error) {
             console.error('Profile picture load error:', error);
-            avatarInitials.style.display = 'flex';
-            avatarImg.style.display = 'none';
-        } finally {
+            // Fallback to initial on error
+            showInitialAvatar();
             hideLoading();
         }
     }
@@ -93,11 +178,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Upload failed');
 
-                avatarImg.src = data.image_url + '?t=' + Date.now();
+                // Add cache busting parameter
+                const timestamp = new Date().getTime();
+                const imageUrl = data.image_url + '?t=' + timestamp;
+
+                // Update avatar
+                avatarImg.src = imageUrl;
                 avatarImg.style.display = 'block';
+
+                // Store in localStorage with timestamp
+                localStorage.setItem('profilePicUrl', imageUrl);
+                localStorage.setItem('profilePicTimestamp', timestamp);
+
                 showToast('Profile picture updated!', 'success');
             } catch (error) {
-                avatarInitials.style.display = 'flex';
+                // Show initial on upload error
+                showInitialAvatar();
                 showToast(error.message, 'error');
                 console.error('Upload error:', error);
             } finally {
@@ -276,4 +372,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         }, 3000);
     }
+
+    // ======================
+    // Clear cache on logout
+    // ======================
+    function setupLogoutCacheClear() {
+        const logoutButtons = document.querySelectorAll('#logoutBtn, #dashboardLogoutBtn');
+        logoutButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Clear profile picture cache on logout
+                localStorage.removeItem('profilePicUrl');
+                localStorage.removeItem('profilePicTimestamp');
+            });
+        });
+    }
+
+    // Initialize logout cache clearing
+    setupLogoutCacheClear();
 });

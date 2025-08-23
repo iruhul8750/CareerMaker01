@@ -26,31 +26,31 @@
     {% endwith %}
 
     <!-- Dashboard Header -->
-    <div class="dashboard-header">
-      <div class="user-profile">
-        <div class="avatar-container">
-          <label for="profilePicUpload" class="avatar-wrapper">
-            <div class="avatar-initials" id="userAvatarInitials">
-              {{ username[0]|upper if username else '?' }}
-            </div>
-            <img src="{{ avatar_url if avatar_url else '' }}" id="userAvatarImage" class="user-avatar" alt="Profile Picture" style="display:{{ 'block' if avatar_url else 'none' }};">
-            <div class="avatar-overlay">
-              <i class="fas fa-camera"></i>
-              <span>Change Photo</span>
-            </div>
-          </label>
-          <input type="file" id="profilePicUpload" accept="image/*" style="display:none">
+<div class="dashboard-header">
+  <div class="user-profile">
+    <div class="avatar-container">
+      <label for="profilePicUpload" class="avatar-wrapper">
+        <div class="avatar-initials" id="userAvatarInitials">
+          {{ username[0]|upper if username else '?' }}
         </div>
-        <div class="user-info">
-          <h2>{{ username }}</h2>
-          <p>{{ email }}</p>
-          <!-- Add Logout Button in Dashboard -->
-          <button class="btn btn-outline dashboard-logout-btn" id="dashboardLogoutBtn" style="margin-top: 10px;">
-            <i class="fas fa-sign-out-alt"></i> Logout
-          </button>
+        <img src="{{ avatar_url if avatar_url else '' }}" id="userAvatarImage" class="user-avatar" alt="Profile Picture" style="display:none;">
+        <div class="avatar-overlay">
+          <i class="fas fa-camera"></i>
+          <span>Change Photo</span>
         </div>
-      </div>
+      </label>
+      <input type="file" id="profilePicUpload" accept="image/*" style="display:none">
     </div>
+    <div class="user-info">
+      <h2>{{ username }}</h2>
+      <p>{{ email }}</p>
+      <!-- Add Logout Button in Dashboard -->
+      <button class="btn btn-outline dashboard-logout-btn" id="dashboardLogoutBtn" style="margin-top: 10px;">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+</div>
 
     <!-- Dashboard Tabs -->
     <div class="dashboard-tabs">
