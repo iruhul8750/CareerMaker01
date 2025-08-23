@@ -44,6 +44,10 @@
         <div class="user-info">
           <h2>{{ username }}</h2>
           <p>{{ email }}</p>
+          <!-- Add Logout Button in Dashboard -->
+          <button class="btn btn-outline dashboard-logout-btn" id="dashboardLogoutBtn" style="margin-top: 10px;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
         </div>
       </div>
     </div>
@@ -182,4 +186,17 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/user-dashboard.js') }}"></script>
+<script>
+  // Add logout functionality for the dashboard logout button
+  document.addEventListener('DOMContentLoaded', function() {
+    const dashboardLogoutBtn = document.getElementById('dashboardLogoutBtn');
+    if (dashboardLogoutBtn) {
+      dashboardLogoutBtn.addEventListener('click', function() {
+        // Show the logout confirmation modal
+        document.getElementById('logoutModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      });
+    }
+  });
+</script>
 {% endblock %}

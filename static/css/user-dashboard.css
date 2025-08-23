@@ -636,3 +636,85 @@
     width: 100%;
   }
 }
+/* Add this to your user-dashboard.css file */
+.dashboard-logout-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.dashboard-logout-btn:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.user-info {
+  text-align: center;
+}
+
+.user-info h2 {
+  margin-bottom: 5px;
+}
+
+.user-info p {
+  margin-bottom: 15px;
+  color: #718096;
+}
+/* Logout button on the far right */
+.dashboard-logout-btn {
+  grid-column: 2;
+  justify-self: end;     /* stick to the right edge */
+  align-self: start;     /* top-right; remove if you want centered */
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  margin: 0 !important;  /* override inline margin-top if present */
+}
+
+.dashboard-logout-btn:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+/* Optional: mobile stacking */
+@media (max-width: 576px) {
+  .user-profile {
+    align-items: flex-start;
+  }
+  .user-info {
+    grid-template-columns: 1fr; /* stack text and button */
+  }
+  .dashboard-logout-btn {
+    justify-self: stretch; /* full width on mobile */
+    align-self: auto;
+    margin-top: 8px !important;
+  }
+}
+/* Make the header a positioning context */
+.dashboard-header {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+/* Force the logout button to top-right corner */
+.dashboard-logout-btn {
+  position: absolute;
+  top: 0;       /* align to top of header */
+  right: 0;     /* push to far right */
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  margin: 0 !important; /* override inline margin */
+}
+
+.dashboard-logout-btn:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+

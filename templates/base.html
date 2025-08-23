@@ -153,6 +153,22 @@
     </div>
   </div>
 
+  <!-- Logout Modal -->
+  <div class="modal" id="logoutModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content small">
+      <button class="close-modal" id="closeLogoutModal"><i class="fas fa-times"></i></button>
+      <div class="modal-header">
+        <h2>Confirm Logout</h2>
+        <p>Are you sure you want to log out?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
+        <button class="btn btn-primary" id="confirmLogoutBtn">Logout</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main JavaScript -->
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
