@@ -171,7 +171,12 @@
 
   <!-- Main JavaScript -->
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
+<script>
+// Add dashboard class to body when on dashboard pages
+if (window.location.pathname.startsWith('/dashboard')) {
+  document.body.classList.add('dashboard-page');
+}
+</script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

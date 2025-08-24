@@ -2889,3 +2889,7 @@ footer::before {
     color: #23d160;
     text-decoration: line-through;
 }
+/* Hide auth buttons on dashboard pages */
+body.dashboard-page .auth-buttons {
+  display: none;
+}
