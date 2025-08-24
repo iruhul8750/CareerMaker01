@@ -913,9 +913,16 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => emailInput.focus(), 100);
       }
 
-      // Remove the parameter from URL without refreshing
+      // Show success message if provided in URL
+      const message = urlParams.get('message');
+      if (message) {
+        showToast(message, 'success');
+      }
+
+      // Remove the parameters from URL without refreshing
       const url = new URL(window.location);
       url.searchParams.delete('showLogin');
+      url.searchParams.delete('message');
       window.history.replaceState({}, '', url);
     }
   }
