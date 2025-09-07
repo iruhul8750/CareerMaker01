@@ -712,81 +712,6 @@ section {
   color: #adb5bd;
 }
 
-/* Newsletter */
-.newsletter {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-  color: white;
-  text-align: center;
-  padding: 3rem 0;
-  position: relative;
-  overflow: hidden;
-}
-
-.newsletter::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url('/static/images/newsletter-pattern.png') repeat;
-  opacity: 0.1;
-}
-
-.dark-mode .newsletter {
-  background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
-}
-
-.newsletter h3 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.newsletter p {
-  margin-bottom: 2rem;
-  font-size: 1.1rem;
-  opacity: 0.9;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  position: relative;
-  z-index: 1;
-}
-
-.newsletter-form {
-  display: flex;
-  max-width: 500px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 1;
-}
-
-.newsletter-form input {
-  flex: 1;
-  padding: 0.8rem 1.2rem;
-  border: none;
-  border-radius: 50px 0 0 50px;
-  font-size: 1rem;
-  outline: none;
-}
-
-.newsletter-form button {
-  padding: 0 1.5rem;
-  border: none;
-  background-color: var(--success-color);
-  color: white;
-  border-radius: 0 50px 50px 0;
-  cursor: pointer;
-  font-weight: 600;
-  transition: var(--transition);
-}
-
-.newsletter-form button:hover {
-  background-color: #059669;
-}
-
 /* Contact Section */
 .contact-section {
   padding: 5rem 0;
@@ -2893,26 +2818,49 @@ footer::before {
 body.dashboard-page .auth-buttons {
   display: none;
 }
-/* Footer Newsletter Styles */
+/* Footer Newsletter Styles - Right Side Position */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr; /* Adjusted to give more space to newsletter */
+  gap: 2rem;
+  margin-bottom: 3rem;
+  position: relative;
+  z-index: 1;
+}
+
 .footer-newsletter {
-  grid-column: span 2;
-  text-align: center;
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  margin-top: 0.5rem;
+  text-align: left;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  margin-top: 0;
+  grid-column: 4; /* Position in the 4th column (far right) */
 }
 
 .footer-newsletter h3 {
   color: var(--accent-color);
-  margin-bottom: 0.5rem;
-  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-newsletter h3::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: var(--accent-color);
+  border-radius: 2px;
 }
 
 .newsletter-desc {
   color: #adb5bd;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 
 .footer .newsletter-form {
@@ -2920,45 +2868,146 @@ body.dashboard-page .auth-buttons {
   flex-direction: column;
   gap: 1rem;
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .footer .floating-label-group {
   margin-bottom: 0;
+  position: relative;
+}
+
+.footer .floating-label-group input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.footer .floating-label-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.2);
+}
+
+.footer .floating-label-group label {
+  color: #adb5bd;
+  top: 0.8rem;
+  left: 1rem;
+  background: transparent;
+}
+
+.footer .floating-label-group.focused label,
+.footer .floating-label-group.has-value label {
+  top: -0.5rem;
+  left: 0.8rem;
+  background: linear-gradient(135deg, var(--dark-color) 0%, #1a1a2e 100%);
+  padding: 0 0.5rem;
 }
 
 .footer .btn-success {
   min-width: auto;
   white-space: nowrap;
-  padding: 0.7rem 1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border: none;
+  font-weight: 600;
+  transition: var(--transition);
 }
 
-/* Adjust footer grid for newsletter */
-.footer-grid {
-  grid-template-columns: repeat(4, 1fr);
+.footer .btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
 }
 
 /* Responsive adjustments */
-@media (max-width: 992px) {
+@media (max-width: 1200px) {
   .footer-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .footer-newsletter {
-    grid-column: span 2;
+    grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
+    gap: 1.5rem;
   }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 992px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  .footer-newsletter {
+    grid-column: span 2; /* Newsletter takes full width on medium screens */
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .footer-newsletter h3::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
   .footer-grid {
     grid-template-columns: 1fr;
+    gap: 2rem;
   }
 
   .footer-newsletter {
     grid-column: span 1;
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .footer .newsletter-form {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-newsletter {
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-top: 1rem;
   }
 
   .footer .newsletter-form {
     flex-direction: column;
   }
+}
+
+/* Newsletter form response styling */
+.footer #newsletterResponse {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.footer #newsletterResponse.success {
+  color: var(--accent-color);
+}
+
+.footer #newsletterResponse.error {
+  color: #ff6b6b;
+}
+
+/* Loading state for newsletter button */
+.footer .btn-success .loading-icon {
+  display: none;
+  margin-right: 0.5rem;
+}
+
+.footer .btn-success.loading .btn-text {
+  display: none;
+}
+
+.footer .btn-success.loading .loading-icon {
+  display: inline-block;
 }

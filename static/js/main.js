@@ -25,11 +25,13 @@ function showToast(message, type = 'success', duration = 3000) {
 function showLoading() {
   const loadingOverlay = document.getElementById('loadingOverlay') || createLoadingOverlay();
   loadingOverlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 function hideLoading() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   if (loadingOverlay) loadingOverlay.style.display = 'none';
+  document.body.style.overflow = 'auto';
 }
 
 function createLoadingOverlay() {
@@ -56,6 +58,12 @@ function createLoadingOverlay() {
       border-radius: 50%;
       animation: spin 1s linear infinite;
     "></div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   `;
   document.body.appendChild(overlay);
   return overlay;
@@ -191,6 +199,11 @@ function showOTPVerificationModal(email, username = null, password = null, purpo
       if (data.redirect) {
         setTimeout(() => {
           window.location.href = data.redirect;
+        }, 1500);
+      } else if (data.showLoginModal) {
+        setTimeout(() => {
+          document.querySelector('.modal').remove();
+          showLoginModal();
         }, 1500);
       }
     } catch (error) {
@@ -348,7 +361,7 @@ if (registerForm) {
           formData.get('password')
         );
 
-        registerModal.style.display = 'none';
+        document.getElementById('registerModal').style.display = 'none';
 
         if (data.otp) {
           console.log('Development OTP:', data.otp);
@@ -406,10 +419,14 @@ if (registerForm) {
 document.getElementById('loginForm')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const submitBtn = this.querySelector('button[type="submit"]');
-  const originalText = submitBtn.innerHTML;
+  const loadingIcon = submitBtn.querySelector('.loading-icon');
+  const btnText = submitBtn.querySelector('.btn-text');
+  const responseDiv = document.getElementById('loginResponse');
 
+  btnText.style.display = 'none';
+  loadingIcon.style.display = 'inline-block';
   submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+  responseDiv.style.display = 'none';
 
   const formData = {
     email: this.querySelector('#loginEmail').value,
@@ -435,11 +452,14 @@ document.getElementById('loginForm')?.addEventListener('submit', function(e) {
     }
   })
   .catch(error => {
-    showToast(error.error || 'Login failed', 'error');
+    responseDiv.style.display = 'block';
+    responseDiv.className = 'form-response error';
+    responseDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.error || 'Login failed'}`;
   })
   .finally(() => {
+    btnText.style.display = 'inline-block';
+    loadingIcon.style.display = 'none';
     submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
   });
 });
 
@@ -547,12 +567,37 @@ window.addEventListener('click', function(e) {
 });
 
 // =============================================
-// Bookmark Functionality
+// Bookmark Functionality - COMPLETE FIX
 // =============================================
 document.addEventListener('click', function(e) {
   const bookmarkBtn = e.target.closest('.bookmark-btn');
   if (bookmarkBtn) {
     e.preventDefault();
+    e.stopPropagation();
+
+    handleBookmarkClick(bookmarkBtn);
+  }
+});
+
+function handleBookmarkClick(bookmarkBtn) {
+  // Check if user is logged in
+  fetch('/api/check-session', {
+    credentials: 'include'
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to check session');
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (!data.logged_in) {
+      showToast('Please login to bookmark items', 'warning');
+      document.getElementById('loginModal').style.display = 'flex';
+      return;
+    }
+
+    // User is logged in, proceed with bookmarking
     const itemId = bookmarkBtn.dataset.id;
     const itemType = bookmarkBtn.dataset.type;
     const isBookmarked = bookmarkBtn.classList.contains('bookmarked');
@@ -562,66 +607,173 @@ document.addEventListener('click', function(e) {
     } else {
       addBookmark(itemId, itemType, bookmarkBtn);
     }
-  }
-});
+  })
+  .catch(error => {
+    console.error('Session check error:', error);
+    showToast('Please login to bookmark items', 'warning');
+    document.getElementById('loginModal').style.display = 'flex';
+  });
+}
 
 function addBookmark(itemId, itemType, element) {
-  showLoading();
-  fetch('/bookmark/' + itemType + '/' + itemId, {
+  // Show loading state on the specific button
+  const originalHTML = element.innerHTML;
+  element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  element.disabled = true;
+
+  fetch(`/api/bookmark/${itemType}/${itemId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin'
+    credentials: 'include'
   })
   .then(response => {
-    if (!response.ok) return response.json().then(err => { throw err; });
+    if (!response.ok) {
+      return response.json().then(errorData => {
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      });
+    }
     return response.json();
   })
   .then(data => {
     if (data.status === 'added') {
       element.classList.add('bookmarked');
-      const icon = element.querySelector('i') || document.createElement('i');
-      icon.className = 'fas fa-bookmark';
-      element.innerHTML = icon.outerHTML + ' <span class="btn-text">Saved</span>';
-      showToast('Item bookmarked', 'success');
+      updateBookmarkButton(element, true);
+      showToast('Item bookmarked successfully', 'success');
+    } else if (data.error) {
+      throw new Error(data.error);
     } else {
-      showToast('Failed to bookmark', 'error');
+      throw new Error('Failed to bookmark item');
     }
   })
   .catch(error => {
-    console.error('Error:', error);
-    showToast(error.message || 'An error occurred. Please try again.', 'error');
+    console.error('Bookmark error:', error);
+
+    if (error.message.includes('login') || error.message.includes('401')) {
+      showToast('Please login to bookmark items', 'warning');
+      document.getElementById('loginModal').style.display = 'flex';
+    } else {
+      showToast(error.message || 'Failed to bookmark item', 'error');
+    }
   })
-  .finally(hideLoading);
+  .finally(() => {
+    element.disabled = false;
+    element.innerHTML = originalHTML;
+  });
 }
 
 function removeBookmark(itemId, itemType, element) {
-  showLoading();
-  fetch('/bookmark/' + itemType + '/' + itemId, {
+  // Show loading state on the specific button
+  const originalHTML = element.innerHTML;
+  element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  element.disabled = true;
+
+  fetch(`/api/bookmark/${itemType}/${itemId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin'
+    credentials: 'include'
   })
   .then(response => {
-    if (!response.ok) return response.json().then(err => { throw err; });
+    if (!response.ok) {
+      return response.json().then(errorData => {
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      });
+    }
     return response.json();
   })
   .then(data => {
     if (data.status === 'removed') {
       element.classList.remove('bookmarked');
-      const icon = element.querySelector('i') || document.createElement('i');
-      icon.className = 'far fa-bookmark';
-      element.innerHTML = icon.outerHTML + ' <span class="btn-text">Save</span>';
-      showToast('Bookmark removed', 'success');
+      updateBookmarkButton(element, false);
+      showToast('Bookmark removed successfully', 'success');
+    } else if (data.error) {
+      throw new Error(data.error);
     } else {
-      showToast('Failed to remove bookmark', 'error');
+      throw new Error('Failed to remove bookmark');
     }
   })
   .catch(error => {
-    console.error('Error:', error);
-    showToast(error.message || 'An error occurred. Please try again.', 'error');
+    console.error('Bookmark error:', error);
+
+    if (error.message.includes('login') || error.message.includes('401')) {
+      showToast('Please login to manage bookmarks', 'warning');
+      document.getElementById('loginModal').style.display = 'flex';
+    } else {
+      showToast(error.message || 'Failed to remove bookmark', 'error');
+    }
   })
-  .finally(hideLoading);
+  .finally(() => {
+    element.disabled = false;
+    element.innerHTML = originalHTML;
+  });
 }
+
+function updateBookmarkButton(element, isBookmarked) {
+  const icon = element.querySelector('i') || document.createElement('i');
+  const textSpan = element.querySelector('.btn-text') || document.createElement('span');
+
+  textSpan.className = 'btn-text';
+
+  if (isBookmarked) {
+    icon.className = 'fas fa-bookmark';
+    textSpan.textContent = 'Saved';
+  } else {
+    icon.className = 'far fa-bookmark';
+    textSpan.textContent = 'Save';
+  }
+
+  element.innerHTML = icon.outerHTML + ' ' + textSpan.outerHTML;
+}
+
+// =============================================
+// Apply/Enroll Functionality - FIXED
+// =============================================
+document.addEventListener('click', function(e) {
+  const applyBtn = e.target.closest('.apply-btn');
+  if (applyBtn) {
+    e.preventDefault();
+    const itemType = applyBtn.dataset.type;
+    const itemId = applyBtn.closest('.preview-card').dataset.id;
+
+    if (applyBtn.disabled) return;
+
+    // Store original button state
+    const originalText = applyBtn.innerHTML;
+    const originalDisabled = applyBtn.disabled;
+
+    // Show loading state
+    applyBtn.disabled = true;
+    applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+    fetch(`/get-application-link/${itemType}/${itemId}`, {
+      credentials: 'same-origin'
+    })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(errorData => {
+          throw new Error(errorData.error || 'Failed to get application link');
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.application_link) {
+        window.open(data.application_link, '_blank');
+        showToast('Application opened in new tab', 'success');
+      } else if (data.error) {
+        showToast(data.error, 'error');
+      } else {
+        showToast('Application link not available', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showToast(error.message || 'Failed to get application link', 'error');
+    })
+    .finally(() => {
+      // Always restore button state
+      applyBtn.disabled = originalDisabled;
+      applyBtn.innerHTML = originalText;
+    });
+  }
+});
 
 // =============================================
 // Share Functionality
@@ -636,38 +788,6 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// =============================================
-// Apply/Enroll Functionality
-// =============================================
-document.addEventListener('click', function(e) {
-  const applyBtn = e.target.closest('.apply-btn');
-  if (applyBtn) {
-    e.preventDefault();
-    const itemType = applyBtn.dataset.type;
-    const itemId = applyBtn.closest('.preview-card').dataset.id;
-
-    if (applyBtn.disabled) return;
-
-    showLoading();
-
-    fetch(`/get-application-link/${itemType}/${itemId}`, {
-      credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.application_link) {
-        window.open(data.application_link, '_blank');
-      } else {
-        showToast('Application link not available', 'error');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      showToast('Failed to get application link', 'error');
-    })
-    .finally(hideLoading);
-  }
-});
 
 // =============================================
 // Dashboard Link Handling
@@ -704,12 +824,13 @@ if (contactForm) {
   contactForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     const submitBtn = contactForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    const loadingIcon = submitBtn.querySelector('.loading-icon');
+    const btnText = submitBtn.querySelector('.btn-text');
     const formResponse = document.getElementById('formResponse');
 
+    btnText.style.display = 'none';
+    loadingIcon.style.display = 'inline-block';
     submitBtn.disabled = true;
-    submitBtn.querySelector('.btn-text').textContent = 'Sending...';
-    submitBtn.querySelector('.loading-icon').style.display = 'inline-block';
     formResponse.style.display = 'none';
 
     try {
@@ -734,8 +855,9 @@ if (contactForm) {
       formResponse.textContent = error.message || 'An error occurred. Please try again.';
       formResponse.style.display = 'block';
     } finally {
+      btnText.style.display = 'inline-block';
+      loadingIcon.style.display = 'none';
       submitBtn.disabled = false;
-      submitBtn.innerHTML = originalText;
     }
   });
 }
@@ -748,13 +870,14 @@ if (newsletterForm) {
   newsletterForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     const submitBtn = newsletterForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    const loadingIcon = submitBtn.querySelector('.loading-icon');
+    const btnText = submitBtn.querySelector('.btn-text');
     const formResponse = document.getElementById('newsletterResponse');
     const emailInput = newsletterForm.querySelector('input[type="email"]');
 
+    btnText.style.display = 'none';
+    loadingIcon.style.display = 'inline-block';
     submitBtn.disabled = true;
-    submitBtn.querySelector('.btn-text').textContent = 'Subscribing...';
-    submitBtn.querySelector('.loading-icon').style.display = 'inline-block';
     formResponse.style.display = 'none';
 
     try {
@@ -783,8 +906,9 @@ if (newsletterForm) {
       formResponse.textContent = error.message || 'An error occurred. Please try again.';
       formResponse.style.display = 'block';
     } finally {
+      btnText.style.display = 'inline-block';
+      loadingIcon.style.display = 'none';
       submitBtn.disabled = false;
-      submitBtn.innerHTML = originalText;
     }
   });
 }
@@ -889,6 +1013,44 @@ document.querySelectorAll('.flash-close').forEach(btn => {
 });
 
 // =============================================
+// Dark Mode Toggle
+// =============================================
+function initDarkMode() {
+  const themeToggle = document.querySelector('.theme-toggle');
+  if (!themeToggle) return;
+
+  const body = document.body;
+
+  // Check for saved theme preference or use system preference
+  const savedTheme = localStorage.getItem('theme');
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // Set initial theme
+  if (savedTheme === 'dark-mode' || (!savedTheme && systemPrefersDark)) {
+    body.classList.add('dark-mode');
+  }
+
+  // Toggle theme when button is clicked
+  themeToggle.addEventListener('click', function() {
+    body.classList.toggle('dark-mode');
+    const isDarkMode = body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDarkMode ? 'dark-mode' : 'light-mode');
+
+    // Update icon
+    const icon = this.querySelector('i');
+    if (icon) {
+      icon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+    }
+  });
+
+  // Update icon based on current theme
+  const icon = themeToggle.querySelector('i');
+  if (icon) {
+    icon.className = body.classList.contains('dark-mode') ? 'fas fa-sun' : 'fas fa-moon';
+  }
+}
+
+// =============================================
 // Initialize application when DOM is loaded
 // =============================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -927,23 +1089,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Theme Management
-  const themeToggle = document.querySelector('.theme-toggle');
-  if (themeToggle) {
-    const body = document.body;
-    const savedTheme = localStorage.getItem('theme') ||
-                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark-mode' : '');
-
-    if (savedTheme === 'dark-mode') {
-      body.classList.add('dark-mode');
-    }
-
-    themeToggle.addEventListener('click', function() {
-      body.classList.toggle('dark-mode');
-      const isDarkMode = body.classList.contains('dark-mode');
-      localStorage.setItem('theme', isDarkMode ? 'dark-mode' : '');
-    });
-  }
+  // Initialize dark mode
+  initDarkMode();
 
   // Mobile Navigation
   const mobileMenuToggle = document.getElementById('mobileMenuToggle');
