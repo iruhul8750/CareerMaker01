@@ -25,7 +25,6 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>CareerMaker Admin</h2>
-      <button class="sidebar-toggle"><i class="fas fa-bars"></i></button>
     </div>
     <ul class="sidebar-menu">
       <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
@@ -40,16 +39,33 @@
     </ul>
   </div>
 
+
   <!-- Main Content -->
+   <!-- Notification Container -->
+  <div id="notificationContainer" class="notification-container"></div>
   <div class="main-content">
     <div class="admin-header">
       <div class="admin-title"><h1 id="pageTitle">Admin Dashboard</h1></div>
       <div class="admin-user">
         <img src="{{ url_for('static', filename='images/admin.png') }}" alt="Admin" class="admin-avatar">
         <span class="admin-name">{{ admin_name }}</span>
-        <div class="notification-bell">
-          <i class="fas fa-bell"></i>
-          <span class="notification-count" id="notificationCount">0</span>
+        <div class="notification-dropdown">
+          <div class="notification-bell">
+            <i class="fas fa-bell"></i>
+            <span class="notification-count" id="notificationCount">0</span>
+          </div>
+          <div class="notification-list" id="notificationList">
+            <div class="notification-header">
+              <h3>Notifications</h3>
+              <button class="mark-all-read">Mark all as read</button>
+            </div>
+            <div class="notification-items">
+              <!-- Notifications will be loaded here -->
+            </div>
+            <div class="notification-footer">
+              <a href="#messages">View all notifications</a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -127,9 +143,11 @@
         <div class="filter-options">
           <select id="courseCategoryFilter">
             <option value="">All Categories</option>
-            <option value="technology">Technology</option>
-            <option value="business">Business</option>
-            <option value="marketing">Marketing</option>
+            <option value="Programming">Programming</option>
+            <option value="Design">Design</option>
+            <option value="Business">Business</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Data Science">Data Science</option>
           </select>
         </div>
       </div>
@@ -141,8 +159,8 @@
               <th><input type="checkbox" id="selectAllCourses"></th>
               <th>Title</th>
               <th>Category</th>
-              <th>Price</th>
-              <th>Duration</th>
+              <th>Instructor</th>
+              <th>Created</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -163,7 +181,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevCoursePage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of 1</span>
+          <span class="page-info" id="coursePageInfo">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextCoursePage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -184,9 +202,11 @@
         <div class="filter-options">
           <select id="jobTypeFilter">
             <option value="">All Types</option>
-            <option value="full-time">Full-time</option>
-            <option value="part-time">Part-time</option>
-            <option value="remote">Remote</option>
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+            <option value="Contract">Contract</option>
+            <option value="Remote">Remote</option>
+            <option value="Internship">Internship</option>
           </select>
         </div>
       </div>
@@ -200,6 +220,7 @@
               <th>Company</th>
               <th>Location</th>
               <th>Type</th>
+              <th>Created</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -220,7 +241,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevJobPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of 1</span>
+          <span class="page-info" id="jobPageInfo">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextJobPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -241,9 +262,11 @@
         <div class="filter-options">
           <select id="internshipTypeFilter">
             <option value="">All Types</option>
-            <option value="summer">Summer</option>
-            <option value="winter">Winter</option>
-            <option value="paid">Paid</option>
+            <option value="Paid">Paid</option>
+            <option value="Unpaid">Unpaid</option>
+            <option value="For Credit">For Credit</option>
+            <option value="Remote">Remote</option>
+            <option value="On-site">On-site</option>
           </select>
         </div>
       </div>
@@ -255,8 +278,9 @@
               <th><input type="checkbox" id="selectAllInternships"></th>
               <th>Title</th>
               <th>Company</th>
+              <th>Location</th>
               <th>Duration</th>
-              <th>Stipend</th>
+              <th>Created</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -277,7 +301,7 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevInternshipPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of 1</span>
+          <span class="page-info" id="internshipPageInfo">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextInternshipPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
@@ -298,9 +322,11 @@
         <div class="filter-options">
           <select id="blogCategoryFilter">
             <option value="">All Categories</option>
-            <option value="career-advice">Career Advice</option>
-            <option value="resume-tips">Resume Tips</option>
-            <option value="interviewing">Interviewing</option>
+            <option value="Career Advice">Career Advice</option>
+            <option value="Resume Tips">Resume Tips</option>
+            <option value="Interviewing">Interviewing</option>
+            <option value="Industry News">Industry News</option>
+            <option value="Professional Development">Professional Development</option>
           </select>
         </div>
       </div>
@@ -313,8 +339,8 @@
               <th>Title</th>
               <th>Author</th>
               <th>Categories</th>
+              <th>Created</th>
               <th>Status</th>
-              <th>Published</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -334,445 +360,631 @@
         </div>
         <div class="pagination">
           <button class="btn btn-outline" id="prevBlogPage"><i class="fas fa-chevron-left"></i></button>
-          <span class="page-info">Page 1 of 1</span>
+          <span class="page-info" id="blogPageInfo">Page 1 of 1</span>
           <button class="btn btn-outline" id="nextBlogPage"><i class="fas fa-chevron-right"></i></button>
         </div>
       </div>
     </div>
 
- <!-- Users Section -->
-<div class="admin-section" id="users">
-  <div class="section-header">
-    <h2>User Management</h2>
-  </div>
+    <!-- Users Section -->
+    <div class="admin-section" id="users">
+      <div class="section-header">
+        <h2>User Management</h2>
+      </div>
 
-  <div class="content-filters">
-    <div class="search-box">
-      <input type="text" placeholder="Search users..." id="userSearch">
-      <i class="fas fa-search"></i>
-    </div>
-    <div class="filter-options">
-      <select id="userRoleFilter">
-        <option value="">All Roles</option>
-        <option value="student">Student</option>
-        <option value="employer">Employer</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="content-table">
-    <table>
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="selectAllUsers"></th>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Joined</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="usersTableBody"></tbody>
-    </table>
-  </div>
-
-  <div class="table-footer">
-    <div class="bulk-actions">
-      <select id="userBulkAction">
-        <option value="">Bulk Actions</option>
-        <option value="activate">Activate</option>
-        <option value="deactivate">Deactivate</option>
-        <option value="delete">Delete</option>
-      </select>
-      <button class="btn btn-outline" id="applyUserBulkAction">Apply</button>
-    </div>
-    <div class="pagination">
-      <button class="btn btn-outline" id="prevUserPage"><i class="fas fa-chevron-left"></i></button>
-      <span class="page-info">Page 1 of 1</span>
-      <button class="btn btn-outline" id="nextUserPage"><i class="fas fa-chevron-right"></i></button>
-    </div>
-  </div>
-</div>
-
-<!-- Messages Section -->
-<div class="admin-section" id="messages">
-  <div class="section-header">
-    <h2>Message Management</h2>
-  </div>
-
-  <div class="content-filters">
-    <div class="search-box">
-      <input type="text" placeholder="Search messages..." id="messageSearch">
-      <i class="fas fa-search"></i>
-    </div>
-    <div class="filter-options">
-      <select id="messageStatusFilter">
-        <option value="">All Status</option>
-        <option value="unread">Unread</option>
-        <option value="read">Read</option>
-        <option value="replied">Replied</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="content-table">
-    <table>
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="selectAllMessages"></th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Subject</th>
-          <th>Message</th>
-          <th>Status</th>
-          <th>Received</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="messagesTableBody"></tbody>
-    </table>
-  </div>
-
-  <div class="table-footer">
-    <div class="bulk-actions">
-      <select id="messageBulkAction">
-        <option value="">Bulk Actions</option>
-        <option value="mark_read">Mark as Read</option>
-        <option value="mark_unread">Mark as Unread</option>
-        <option value="mark_replied">Mark as Replied</option>
-        <option value="delete">Delete</option>
-      </select>
-      <button class="btn btn-outline" id="applyMessageBulkAction">Apply</button>
-    </div>
-    <div class="pagination">
-      <button class="btn btn-outline" id="prevMessagePage"><i class="fas fa-chevron-left"></i></button>
-      <span class="page-info">Page 1 of 1</span>
-      <button class="btn btn-outline" id="nextMessagePage"><i class="fas fa-chevron-right"></i></button>
-    </div>
-  </div>
-</div>
-
-<!-- Newsletter Section -->
-<div class="admin-section" id="newsletter">
-  <div class="section-header">
-    <h2>Newsletter Management</h2>
-    <button class="btn btn-primary" id="sendNewsletterBtn"><i class="fas fa-paper-plane"></i> Send Newsletter</button>
-  </div>
-
-  <div class="content-filters">
-    <div class="search-box">
-      <input type="text" placeholder="Search subscribers..." id="subscriberSearch">
-      <i class="fas fa-search"></i>
-    </div>
-    <div class="filter-options">
-      <select id="subscriberStatusFilter">
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="content-table">
-    <table>
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="selectAllNewsletter"></th>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Subscribed</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="newsletterTableBody"></tbody>
-    </table>
-  </div>
-
-  <div class="table-footer">
-    <div class="bulk-actions">
-      <select id="newsletterBulkAction">
-        <option value="">Bulk Actions</option>
-        <option value="activate">Activate</option>
-        <option value="deactivate">Deactivate</option>
-        <option value="delete">Delete</option>
-      </select>
-      <button class="btn btn-outline" id="applyNewsletterBulkAction">Apply</button>
-    </div>
-    <div class="pagination">
-      <button class="btn btn-outline" id="prevNewsletterPage"><i class="fas fa-chevron-left"></i></button>
-      <span class="page-info">Page 1 of 1</span>
-      <button class="btn btn-outline" id="nextNewsletterPage"><i class="fas fa-chevron-right"></i></button>
-    </div>
-  </div>
-</div>
-
-   <!-- Internship Modal -->
-  <div class="modal" id="internshipModal">
-    <div class="modal-content large">
-      <span class="close-modal">&times;</span>
-      <h2 id="internshipModalTitle">Add New Internship</h2>
-      <form id="internshipForm" class="admin-form">
-        <input type="hidden" id="internshipId" name="id" value="">
-
-        <div class="form-row">
-          <div class="form-group" style="flex: 2;">
-            <input type="text" id="internshipTitle" name="title" required placeholder=" ">
-            <label for="internshipTitle">Title*</label>
-          </div>
-          <div class="form-group">
-            <input type="text" id="internshipCompany" name="company" required placeholder=" ">
-            <label for="internshipCompany">Company*</label>
-          </div>
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search users..." id="userSearch">
+          <i class="fas fa-search"></i>
         </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <input type="text" id="internshipLocation" name="location" placeholder=" ">
-            <label for="internshipLocation">Location</label>
-          </div>
-            <div class="form-group">
-            <input type="text" id="internshipDuration" name="duration" required placeholder=" ">
-            <label for="internshipDuration">Duration*</label>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <input type="text" id="internshipStipend" name="stipend" placeholder=" ">
-            <label for="internshipStipend">Stipend</label>
-          </div>
-          <div class="form-group">
-            <input type="url" id="internshipApplicationLink" name="application_link" required placeholder=" ">
-            <label for="internshipApplicationLink">Application URL*</label>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group checkbox-group">
-            <input type="checkbox" id="internshipPaid" name="is_paid">
-            <label for="internshipPaid">Paid Internship</label>
-          </div>
-          <div class="form-group checkbox-group">
-            <input type="checkbox" id="internshipRemote" name="is_remote">
-            <label for="internshipRemote">Remote Position</label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <textarea id="internshipDescription" name="description" required placeholder=" "></textarea>
-          <label for="internshipDescription">Description*</label>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="switch">
-              <input type="checkbox" id="internshipActive" name="is_active" checked>
-              <span class="slider round"></span>
-            </label>
-            <label for="internshipActive">Active</label>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveInternship">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Blog Modal -->
-  <div class="modal" id="blogModal">
-    <div class="modal-content large">
-      <span class="close-modal">&times;</span>
-      <h2 id="blogModalTitle">Add New Blog Post</h2>
-      <form id="blogForm" class="admin-form">
-        <input type="hidden" id="blogId" name="id" value="">
-
-        <div class="form-row">
-          <div class="form-group" style="flex: 2;">
-            <input type="text" id="blogTitle" name="title" required placeholder=" ">
-            <label for="blogTitle">Title*</label>
-          </div>
-          <div class="form-group">
-            <input type="text" id="blogSlug" name="slug" placeholder=" ">
-            <label for="blogSlug">URL Slug</label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <select id="blogCategories" name="categories" multiple required>
-            <option value="career-advice">Career Advice</option>
-            <option value="resume-tips">Resume Tips</option>
-            <option value="interviewing">Interviewing</option>
-            <option value="job-search">Job Search</option>
+        <div class="filter-options">
+          <select id="userRoleFilter">
+            <option value="">All Roles</option>
+            <option value="student">Student</option>
+            <option value="professional">Professional</option>
+            <option value="employer">Employer</option>
+            <option value="admin">Admin</option>
           </select>
-          <label for="blogCategories">Categories*</label>
         </div>
+      </div>
 
-        <div class="form-group">
-          <textarea id="blogContent" name="content" required placeholder=" "></textarea>
-          <label for="blogContent">Content*</label>
-        </div>
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAllUsers"></th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <input type="text" id="blogAuthor" name="author" required placeholder=" ">
-            <label for="blogAuthor">Author*</label>
-          </div>
-          <div class="form-group">
-            <label class="switch">
-              <input type="checkbox" id="blogActive" name="is_active" checked>
-              <span class="slider round"></span>
-            </label>
-            <label for="blogActive">Active</label>
-          </div>
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="userBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyUserBulkAction">Apply</button>
         </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveBlog">Save</button>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevUserPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info" id="userPageInfo">Page 1 of 1</span>
+          <button class="btn btn-outline" id="nextUserPage"><i class="fas fa-chevron-right"></i></button>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
 
-  <!-- User Modal -->
-  <div class="modal" id="userModal">
-    <div class="modal-content">
-      <span class="close-modal">&times;</span>
-      <h2 id="userModalTitle">Edit User</h2>
-      <form id="userForm" class="admin-form">
-        <input type="hidden" id="userId" name="id" value="">
+    <!-- Messages Section -->
+    <div class="admin-section" id="messages">
+      <div class="section-header">
+        <h2>Message Management</h2>
+      </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <input type="text" id="userName" name="username" required placeholder=" ">
-            <label for="userName">Name*</label>
-          </div>
-          <div class="form-group">
-            <input type="email" id="userEmail" name="email" required placeholder=" ">
-            <label for="userEmail">Email*</label>
-          </div>
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search messages..." id="messageSearch">
+          <i class="fas fa-search"></i>
         </div>
+        <div class="filter-options">
+          <select id="messageStatusFilter">
+            <option value="">All Status</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+            <option value="replied">Replied</option>
+          </select>
+        </div>
+      </div>
 
-        <div class="form-row">
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAllMessages"></th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Subject</th>
+              <th>Received</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="messagesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="messageBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="mark_read">Mark as Read</option>
+            <option value="mark_unread">Mark as Unread</option>
+            <option value="mark_replied">Mark as Replied</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyMessageBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevMessagePage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info" id="messagePageInfo">Page 1 of 1</span>
+          <button class="btn btn-outline" id="nextMessagePage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Newsletter Section -->
+    <div class="admin-section" id="newsletter">
+      <div class="section-header">
+        <h2>Newsletter Management</h2>
+        <button class="btn btn-primary" id="sendNewsletterBtn"><i class="fas fa-paper-plane"></i> Send Newsletter</button>
+      </div>
+
+      <div class="content-filters">
+        <div class="search-box">
+          <input type="text" placeholder="Search subscribers..." id="subscriberSearch">
+          <i class="fas fa-search"></i>
+        </div>
+        <div class="filter-options">
+          <select id="subscriberStatusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content-table">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAllNewsletter"></th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Subscribed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="newsletterTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="bulk-actions">
+          <select id="newsletterBulkAction">
+            <option value="">Bulk Actions</option>
+            <option value="activate">Activate</option>
+            <option value="deactivate">Deactivate</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button class="btn btn-outline" id="applyNewsletterBulkAction">Apply</button>
+        </div>
+        <div class="pagination">
+          <button class="btn btn-outline" id="prevNewsletterPage"><i class="fas fa-chevron-left"></i></button>
+          <span class="page-info" id="newsletterPageInfo">Page 1 of 1</span>
+          <button class="btn btn-outline" id="nextNewsletterPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Course Modal -->
+    <div class="modal" id="courseModal">
+      <div class="modal-content large">
+        <span class="close-modal">&times;</span>
+        <h2 id="courseModalTitle">Add New Course</h2>
+        <form id="courseForm" class="admin-form">
+          <input type="hidden" id="courseId" name="id" value="">
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <input type="text" id="courseTitle" name="title" required placeholder=" ">
+              <label for="courseTitle">Title*</label>
+            </div>
+            <div class="form-group">
+              <select id="courseCategory" name="category" required>
+                <option value="">Select Category</option>
+                <option value="Programming">Programming</option>
+                <option value="Design">Design</option>
+                <option value="Business">Business</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Data Science">Data Science</option>
+              </select>
+              <label for="courseCategory">Select Category*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="number" id="coursePrice" name="price" required placeholder=" " step="0.01">
+              <label for="coursePrice">Price*</label>
+            </div>
+            <div class="form-group">
+              <input type="text" id="courseDuration" name="duration" placeholder=" ">
+              <label for="courseDuration">Duration</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <select id="courseLevel" name="level" required>
+                <option value="">Select Level</option>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+              <label for="courseLevel">Select Level*</label>
+            </div>
+            <div class="form-group">
+              <input type="url" id="courseApplicationLink" name="application_link" required placeholder=" ">
+              <label for="courseApplicationLink">Application URL*</label>
+            </div>
+          </div>
+
           <div class="form-group">
-            <select id="userRole" name="role" required>
-              <option value="" disabled selected>Select Role</option>
-              <option value="student">Student</option>
-              <option value="employer">Employer</option>
-              <option value="admin">Admin</option>
+            <textarea id="courseDescription" name="description" required placeholder=" "></textarea>
+            <label for="courseDescription">Description*</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <input type="checkbox" id="courseFeatured" name="is_featured">
+              <label for="courseFeatured">Featured</label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="courseActive" name="is_active" checked>
+                <span class="slider round"></span>
+              </label>
+              <label for="courseActive">Active</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveCourse">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Job Modal -->
+    <div class="modal" id="jobModal">
+      <div class="modal-content large">
+        <span class="close-modal">&times;</span>
+        <h2 id="jobModalTitle">Add New Job</h2>
+        <form id="jobForm" class="admin-form">
+          <input type="hidden" id="jobId" name="id" value="">
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <input type="text" id="jobTitle" name="title" required placeholder=" ">
+              <label for="jobTitle">Title*</label>
+            </div>
+            <div class="form-group">
+              <input type="text" id="jobCompany" name="company" required placeholder=" ">
+              <label for="jobCompany">Company*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="jobLocation" name="location" placeholder=" ">
+              <label for="jobLocation">Location</label>
+            </div>
+            <div class="form-group">
+              <select id="jobType" name="type" required>
+                <option value="">Select Type</option>
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Remote">Remote</option>
+                <option value="Internship">Internship</option>
+              </select>
+              <label for="jobType">Select Type*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="jobSalary" name="salary" placeholder=" ">
+              <label for="jobSalary">Salary</label>
+            </div>
+            <div class="form-group">
+              <input type="url" id="jobApplicationLink" name="application_link" required placeholder=" ">
+              <label for="jobApplicationLink">Application URL*</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <textarea id="jobDescription" name="description" required placeholder=" "></textarea>
+            <label for="jobDescription">Description*</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <input type="checkbox" id="jobRemote" name="is_remote">
+              <label for="jobRemote">Remote Position</label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="jobActive" name="is_active" checked>
+                <span class="slider round"></span>
+              </label>
+              <label for="jobActive">Active</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveJob">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Internship Modal -->
+    <div class="modal" id="internshipModal">
+      <div class="modal-content large">
+        <span class="close-modal">&times;</span>
+        <h2 id="internshipModalTitle">Add New Internship</h2>
+        <form id="internshipForm" class="admin-form">
+          <input type="hidden" id="internshipId" name="id" value="">
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <input type="text" id="internshipTitle" name="title" required placeholder=" ">
+              <label for="internshipTitle">Title*</label>
+            </div>
+            <div class="form-group">
+              <input type="text" id="internshipCompany" name="company" required placeholder=" ">
+              <label for="internshipCompany">Company*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="internshipLocation" name="location" placeholder=" ">
+              <label for="internshipLocation">Location</label>
+            </div>
+            <div class="form-group">
+              <input type="text" id="internshipDuration" name="duration" required placeholder=" ">
+              <label for="internshipDuration">Duration*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="internshipStipend" name="stipend" placeholder=" ">
+              <label for="internshipStipend">Stipend</label>
+            </div>
+            <div class="form-group">
+              <select id="internshipType" name="type" required>
+                <option value="">Select Type</option>
+                <option value="Paid">Paid</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="For Credit">For Credit</option>
+                <option value="Remote">Remote</option>
+                <option value="On-site">On-site</option>
+              </select>
+              <label for="internshipType">Select Type*</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="url" id="internshipApplicationLink" name="application_link" required placeholder=" ">
+              <label for="internshipApplicationLink">Application URL*</label>
+            </div>
+            <div class="form-group checkbox-group">
+              <input type="checkbox" id="internshipRemote" name="is_remote">
+              <label for="internshipRemote">Remote Position</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <textarea id="internshipDescription" name="description" required placeholder=" "></textarea>
+            <label for="internshipDescription">Description*</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="internshipActive" name="is_active" checked>
+                <span class="slider round"></span>
+              </label>
+              <label for="internshipActive">Active</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveInternship">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Blog Modal -->
+    <div class="modal" id="blogModal">
+      <div class="modal-content large">
+        <span class="close-modal">&times;</span>
+        <h2 id="blogModalTitle">Add New Blog Post</h2>
+        <form id="blogForm" class="admin-form">
+          <input type="hidden" id="blogId" name="id" value="">
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <input type="text" id="blogTitle" name="title" required placeholder=" ">
+              <label for="blogTitle">Title*</label>
+            </div>
+            <div class="form-group">
+              <input type="text" id="blogSlug" name="slug" placeholder=" ">
+              <label for="blogSlug">URL Slug</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <select id="blogCategory" name="category" required>
+              <option value="">Select Category</option>
+              <option value="Career Advice">Career Advice</option>
+              <option value="Resume Tips">Resume Tips</option>
+              <option value="Interviewing">Interviewing</option>
+              <option value="Industry News">Industry News</option>
+              <option value="Professional Development">Professional Development</option>
             </select>
-            <label for="userRole">Role*</label>
+            <label for="blogCategory">Select Category*</label>
           </div>
+
           <div class="form-group">
-            <label class="switch">
-              <input type="checkbox" id="userActive" name="is_active" checked>
-              <span class="slider round"></span>
-            </label>
-            <label for="userActive">Active</label>
+            <textarea id="blogContent" name="content" required placeholder=" "></textarea>
+            <label for="blogContent">Content*</label>
           </div>
-        </div>
 
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveUser">Save Changes</button>
-        </div>
-      </form>
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="blogAuthor" name="author" required placeholder=" ">
+              <label for="blogAuthor">Author*</label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="blogActive" name="is_active" checked>
+                <span class="slider round"></span>
+              </label>
+              <label for="blogActive">Active</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveBlog">Save</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <!-- Newsletter Modal -->
-  <div class="modal" id="newsletterModal">
-    <div class="modal-content large">
-      <span class="close-modal">&times;</span>
-      <h2>Send Newsletter</h2>
-      <form id="newsletterForm" class="admin-form">
-        <div class="form-group">
-          <input type="text" id="newsletterSubject" name="subject" required placeholder=" ">
-          <label for="newsletterSubject">Subject*</label>
-        </div>
+    <!-- User Modal -->
+    <div class="modal" id="userModal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2 id="userModalTitle">Edit User</h2>
+        <form id="userForm" class="admin-form">
+          <input type="hidden" id="userId" name="id" value="">
 
-        <div class="form-group">
-          <textarea id="newsletterContent" name="content" required placeholder=" " rows="10"></textarea>
-          <label for="newsletterContent">Content*</label>
-        </div>
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" id="userName" name="username" required placeholder=" ">
+              <label for="userName">Name*</label>
+            </div>
+            <div class="form-group">
+              <input type="email" id="userEmail" name="email" required placeholder=" ">
+              <label for="userEmail">Email*</label>
+            </div>
+          </div>
 
-        <div class="form-row">
+          <div class="form-row">
+            <div class="form-group">
+              <select id="userRole" name="role" required>
+                <option value="" disabled selected>Select Role</option>
+                <option value="student">Student</option>
+                <option value="professional">Professional</option>
+                <option value="employer">Employer</option>
+                <option value="admin">Admin</option>
+              </select>
+              <label for="userRole">Role*</label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="userActive" name="is_active" checked>
+                <span class="slider round"></span>
+              </label>
+              <label for="userActive">Active</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveUser">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Newsletter Modal -->
+    <div class="modal" id="newsletterModal">
+      <div class="modal-content large">
+        <span class="close-modal">&times;</span>
+        <h2>Send Newsletter</h2>
+        <form id="newsletterForm" class="admin-form">
           <div class="form-group">
-            <select id="newsletterRecipients" name="recipients">
-              <option value="all">All Subscribers</option>
-              <option value="active">Active Subscribers Only</option>
-              <option value="selected">Selected Subscribers</option>
-            </select>
-            <label for="newsletterRecipients">Recipients</label>
+            <input type="text" id="newsletterSubject" name="subject" required placeholder=" ">
+            <label for="newsletterSubject">Subject*</label>
           </div>
+
           <div class="form-group">
-            <label class="switch">
-              <input type="checkbox" id="newsletterTest" name="test_mode">
-              <span class="slider round"></span>
-            </label>
-            <label for="newsletterTest">Send Test Email</label>
+            <textarea id="newsletterContent" name="content" required placeholder=" " rows="10"></textarea>
+            <label for="newsletterContent">Content*</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <select id="newsletterRecipients" name="recipients">
+                <option value="all">All Subscribers</option>
+                <option value="active">Active Subscribers Only</option>
+                <option value="selected">Selected Subscribers</option>
+              </select>
+              <label for="newsletterRecipients">Recipients</label>
+            </div>
+            <div class="form-group">
+              <label class="switch">
+                <input type="checkbox" id="newsletterTest" name="test_mode">
+                <span class="slider round"></span>
+              </label>
+              <label for="newsletterTest">Send Test Email</label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="sendNewsletter">Send Newsletter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Message Reply Modal -->
+    <div class="modal" id="messageReplyModal">
+      <div class="modal-content medium">
+        <span class="close-modal">&times;</span>
+        <h2>Reply to Message</h2>
+        <form id="messageReplyForm" class="admin-form">
+          <input type="hidden" id="messageId" name="message_id" value="">
+          <input type="hidden" id="recipientEmail" name="recipient_email" value="">
+
+          <div class="form-group">
+            <input type="text" id="replySubject" name="subject" required placeholder=" ">
+            <label for="replySubject">Subject*</label>
+          </div>
+
+          <div class="form-group">
+            <textarea id="replyMessage" name="message" required placeholder=" " rows="8"></textarea>
+            <label for="replyMessage">Message*</label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline close-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="sendReply">Send Reply</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Message View Modal -->
+    <div class="modal" id="messageViewModal">
+      <div class="modal-content medium">
+        <span class="close-modal">&times;</span>
+        <h2>Message Details</h2>
+        <div class="message-details">
+          <div class="detail-row">
+            <strong>From:</strong> <span id="viewMessageName"></span>
+          </div>
+          <div class="detail-row">
+            <strong>Email:</strong> <span id="viewMessageEmail"></span>
+          </div>
+          <div class="detail-row">
+            <strong>Subject:</strong> <span id="viewMessageSubject"></span>
+          </div>
+          <div class="detail-row">
+            <strong>Received:</strong> <span id="viewMessageDate"></span>
+          </div>
+          <div class="detail-row">
+            <strong>Status:</strong> <span id="viewMessageStatus"></span>
+          </div>
+          <div class="message-content">
+            <strong>Message:</strong>
+            <div id="viewMessageContent" class="message-body"></div>
           </div>
         </div>
-
         <div class="form-actions">
-          <button type="button" class="btn btn-outline close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="sendNewsletter">Send Newsletter</button>
+            <button type="button" class="btn btn-outline close-modal">Close</button>
+            <button type="button" class="btn btn-primary" id="replyFromView">Reply</button>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
 
-  <!-- Message Reply Modal -->
-  <div class="modal" id="messageReplyModal">
-    <div class="modal-content medium">
-      <span class="close-modal">&times;</span>
-      <h2>Reply to Message</h2>
-      <form id="messageReplyForm" class="admin-form">
-        <input type="hidden" id="messageId" name="message_id" value="">
-        <input type="hidden" id="recipientEmail" name="recipient_email" value="">
-
-        <div class="form-group">
-          <input type="text" id="replySubject" name="subject" required placeholder=" ">
-          <label for="replySubject">Subject*</label>
-        </div>
-
-        <div class="form-group">
-          <textarea id="replyMessage" name="message" required placeholder=" " rows="8"></textarea>
-          <label for="replyMessage">Message*</label>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="sendReply">Send Reply</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Confirm Modal -->
-  <div id="confirmModal" class="modal">
-    <div class="modal-content">
-      <h3>Confirm</h3>
-      <p id="confirmModalMessage">Are you sure?</p>
-      <div class="modal-actions">
-        <button id="cancelConfirm" class="btn btn-outline">Cancel</button>
-        <button id="confirmAction" class="btn btn-danger">Confirm</button>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Loading...</span>
       </div>
     </div>
   </div>
-
-  <!-- Loading Overlay -->
-  <div class="loading-overlay">
-    <div class="loading-spinner">
-      <i class="fas fa-spinner fa-spin"></i>
-      <span>Loading...</span>
-    </div>
-  </div>
-</div>
 </div>
 {% endblock %}
