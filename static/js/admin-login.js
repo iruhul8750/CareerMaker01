@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
       submitButton.disabled = true;
       submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
 
+      // Clear previous errors
+      clearErrors();
+
       fetch(form.action, {
         method: 'POST',
         body: formData,
@@ -35,17 +38,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       })
       .then(response => {
-        if (response.redirected) {
-          window.location.href = response.url;
-          return;
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json().then(data => {
+            if (response.ok) {
+              return { success: true, data };
+            } else {
+              return { success: false, data };
+            }
+          });
+        } else {
+          // If not JSON, it's probably a redirect or HTML response
+          if (response.redirected) {
+            window.location.href = response.url;
+            return { redirected: true };
+          }
+          // If we get HTML when expecting JSON, show error
+          return { success: false, data: { error: 'Unexpected response from server' } };
         }
-        return response.json();
       })
-      .then(data => {
-        if (data && data.success) {
-          window.location.href = data.redirect || '/admin/dashboard';
-        } else if (data) {
-          showError(data.error || 'Invalid credentials');
+      .then(result => {
+        if (result.redirected) {
+          return; // Already handled redirect
+        }
+
+        if (result.success) {
+          if (result.data.success) {
+            // Successful login via AJAX
+            window.location.href = result.data.redirect || '/admin/dashboard';
+          } else {
+            // Login failed via AJAX
+            showError(result.data.error || 'Invalid credentials');
+          }
+        } else {
+          // Error case
+          showError(result.data.error || 'An error occurred. Please try again.');
         }
       })
       .catch(error => {
@@ -64,27 +92,41 @@ document.addEventListener('DOMContentLoaded', function() {
     if (formMessages) {
       formMessages.innerHTML = `
         <div class="alert alert-danger">
-          ${message}
+          <i class="fas fa-exclamation-circle"></i> ${message}
         </div>
       `;
 
       // Auto-hide error after 5 seconds
       setTimeout(() => {
-        formMessages.style.opacity = '0';
-        setTimeout(() => {
-          formMessages.innerHTML = '';
-          formMessages.style.opacity = '1';
-        }, 300);
+        clearErrors();
       }, 5000);
     }
   }
 
-  // Auto-hide flash messages
+  function clearErrors() {
+    const formMessages = document.getElementById('formMessages');
+    if (formMessages) {
+      formMessages.innerHTML = '';
+    }
+  }
+
+  // Auto-hide flash messages after 5 seconds
   const flashMessages = document.querySelectorAll('.flashed-message');
   flashMessages.forEach(message => {
     setTimeout(() => {
+      message.style.transition = 'opacity 0.3s ease';
       message.style.opacity = '0';
-      setTimeout(() => message.remove(), 300);
+      setTimeout(() => {
+        if (message.parentNode) {
+          message.remove();
+        }
+      }, 300);
     }, 5000);
   });
+
+  // Focus on username field when page loads
+  const usernameField = document.getElementById('username');
+  if (usernameField) {
+    usernameField.focus();
+  }
 });

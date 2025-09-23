@@ -224,12 +224,45 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            return jsonify({'error': 'Admin access required'}), 403
-        return f(*args, **kwargs)
+        try:
+            if not session.get('admin_logged_in'):
+                return jsonify({
+                    'success': False,
+                    'message': 'Admin access required. Please login.',
+                    'requires_login': True,
+                    'redirect_url': '/admin/login'
+                }), 401
+
+            # Additional verification that admin still exists and is active
+            admin_id = session.get('admin_id')
+            if admin_id:
+                admin = supabase_admin.table('admins') \
+                    .select('id, is_active') \
+                    .eq('id', admin_id) \
+                    .maybe_single() \
+                    .execute()
+
+                if not admin.data or not admin.data.get('is_active', True):
+                    session.clear()
+                    return jsonify({
+                        'success': False,
+                        'message': 'Admin account no longer active',
+                        'requires_login': True,
+                        'redirect_url': '/admin/login'
+                    }), 401
+
+            return f(*args, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Admin required decorator error: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': 'Authentication error',
+                'requires_login': True,
+                'redirect_url': '/admin/login'
+            }), 500
 
     return decorated_function
-
 
 def get_company_logo(application_link, content_type=None, content_id=None):
     try:
@@ -278,6 +311,17 @@ def get_company_logo(application_link, content_type=None, content_id=None):
         logger.error(f"Error getting company logo: {str(e)}")
         return ""
 
+def handle_categories_data(data):
+    """Handle categories data conversion from string to array"""
+    if 'categories' in data:
+        if isinstance(data['categories'], str):
+            # Convert comma-separated string to array
+            categories = [cat.strip() for cat in data['categories'].split(',') if cat.strip()]
+            data['categories'] = categories
+        elif isinstance(data['categories'], list):
+            # Ensure it's a proper array
+            data['categories'] = [cat for cat in data['categories'] if cat]
+    return data
 
 # Routes
 @app.route('/')
@@ -518,6 +562,14 @@ def login():
 
     try:
         user = supabase.table('users').select('*').eq('email', email).single().execute().data
+
+        if user and verify_password(user['password_hash'], password):
+            # Check if user is active
+            if not user.get('is_active', True):
+                return jsonify({
+                    'error': 'Your account has been deactivated. Please contact administrator.',
+                    'account_inactive': True
+                }), 401
 
         if user and verify_password(user['password_hash'], password):
             if not user.get('is_verified'):
@@ -1441,15 +1493,24 @@ def unsubscribe_newsletter():
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
+    # Check for logout message and display it only once
+    message = request.args.get('message')
+    if message == 'logout_success':
+        flash('Logged out successfully', 'success')
+
+    # Clear any logout flags
+    session.pop('admin_logout_initiated', None)
+
     if request.method == 'GET':
-        if session.get('admin_logged_in'):
-            return redirect(url_for('admin_dashboard'))
         return render_template('admin/admin-login.html')
 
+    # POST request handling
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
     if not username or not password:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Both username and password are required'})
         flash('Both username and password are required', 'danger')
         return render_template('admin/admin-login.html')
 
@@ -1462,12 +1523,16 @@ def admin_login():
             .execute()
 
         if not response.data:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Invalid credentials'})
             flash('Invalid credentials', 'danger')
             return render_template('admin/admin-login.html')
 
         admin = response.data
 
         if not verify_password(admin['password_hash'], password):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Invalid credentials'})
             flash('Invalid credentials', 'danger')
             return render_template('admin/admin-login.html')
 
@@ -1479,28 +1544,88 @@ def admin_login():
             'admin_logged_in': True
         })
 
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': 'Login successful!',
+                'redirect': url_for('admin_dashboard')
+            })
+
         return redirect(url_for('admin_dashboard'))
 
     except Exception as e:
         print(f"ADMIN LOGIN ERROR: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'An error occurred. Please try again.'})
         flash('An error occurred. Please try again.', 'danger')
         return render_template('admin/admin-login.html')
 
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_id', None)
-    session.pop('admin_username', None)
-    session.pop('admin_email', None)
-    session.pop('is_superadmin', None)
-    session.pop('admin_logged_in', None)
-    flash('Logged out successfully', 'success')
-    return redirect(url_for('admin_login'))
+    # Clear all admin session variables
+    admin_vars = ['admin_id', 'admin_username', 'admin_email', 'is_superadmin', 'admin_logged_in']
+    for var in admin_vars:
+        session.pop(var, None)
+
+    # Redirect to admin login with message in URL parameter
+    return redirect(url_for('admin_login', message='logout_success'))
+
+
+@app.route('/api/admin/check-session')
+def check_admin_session():
+    try:
+        # Check if admin is logged in
+        if not session.get('admin_logged_in'):
+            return jsonify({
+                'logged_in': False,
+                'message': 'Admin access required. Please login.',
+                'requires_login': True,
+                'redirect_url': '/admin/login'
+            }), 401
+
+        # Verify the session is still valid by checking with database
+        admin_id = session.get('admin_id')
+        if admin_id:
+            # Use admin client to verify admin still exists (bypasses RLS)
+            admin = supabase_admin.table('admins') \
+                .select('id, username, is_active') \
+                .eq('id', admin_id) \
+                .maybe_single() \
+                .execute()
+
+            if not admin.data or not admin.data.get('is_active', True):
+                # Admin doesn't exist or is inactive - clear session
+                session.clear()
+                return jsonify({
+                    'logged_in': False,
+                    'message': 'Admin account no longer active',
+                    'requires_login': True,
+                    'redirect_url': '/admin/login'
+                }), 401
+
+        return jsonify({
+            'logged_in': True,
+            'username': session.get('admin_username'),
+            'is_superadmin': session.get('is_superadmin', False)
+        })
+
+    except Exception as e:
+        logger.error(f"Error checking admin session: {str(e)}")
+        return jsonify({
+            'logged_in': False,
+            'message': 'Error checking session status',
+            'requires_login': True,
+            'redirect_url': '/admin/login'
+        }), 500
 
 
 @app.route('/admin/dashboard')
-@admin_required
 def admin_dashboard():
+    # Check if admin is logged in
+    if not session.get('admin_logged_in'):
+        flash('Please login to access the dashboard', 'warning')
+        return redirect(url_for('admin_login'))
     try:
         if not session.get('admin_logged_in'):
             flash('Please login to access the dashboard', 'warning')
@@ -1584,12 +1709,8 @@ def admin_dashboard():
 
     except Exception as e:
         print(f"Dashboard error: {str(e)}")
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'error': str(e)}), 500
-        else:
-            flash('Failed to load dashboard data. Please try again.', 'danger')
-            return redirect(url_for('admin_login'))
-
+        flash('Failed to load dashboard data. Please try again.', 'danger')
+        return redirect(url_for('admin_login'))
 
 # ===== ADMIN DATA FETCHING ROUTES =====
 
@@ -1635,6 +1756,109 @@ def admin_dashboard_stats():
     except Exception as e:
         logger.error(f"Error loading dashboard stats: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+# ===== CREATE/UPDATE ROUTES =====
+
+@app.route('/api/admin/<string:resource>', methods=['POST'])
+@admin_required
+def create_admin_resource(resource):
+    try:
+        # Validate resource type
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users']
+        if resource not in valid_resources:
+            return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
+
+        data = request.get_json()
+
+        # Handle categories data for blog posts
+        if resource == 'blog' and 'categories' in data:
+            data = handle_categories_data(data)
+
+        # Validate required fields
+        required_fields = {
+            'courses': ['title', 'category', 'instructor', 'application_link'],
+            'jobs': ['title', 'company', 'location', 'application_link'],
+            'internships': ['title', 'company', 'location', 'application_link'],
+            'blog': ['title', 'author', 'content', 'categories']
+        }
+
+        if resource in required_fields:
+            for field in required_fields[resource]:
+                if not data.get(field):
+                    return jsonify({'success': False, 'message': f'{field.replace("_", " ")} is required'}), 400
+
+        # Determine the correct table name
+        table_map = {
+            'blog': 'blog_posts'
+        }
+        table_name = table_map.get(resource, resource)
+
+        # Add created_at timestamp
+        data['created_at'] = get_current_time().isoformat()
+        data['updated_at'] = get_current_time().isoformat()
+
+        # Set default featured status for new items
+        if resource in ['courses', 'jobs', 'internships', 'blog']:
+            data['is_featured'] = data.get('is_featured', True)
+            data['is_active'] = data.get('is_active', True)
+
+        # Insert into database
+        response = supabase_admin.table(table_name).insert(data).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
+
+        return jsonify({
+            'success': True,
+            'message': f'{resource[:-1]} created successfully',
+            'data': response.data[0]
+        })
+
+    except Exception as e:
+        logger.error(f"Error creating {resource}: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
+
+
+@app.route('/api/admin/<string:resource>/<string:id>', methods=['PUT'])
+@admin_required
+def update_admin_resource(resource, id):
+    try:
+        # Validate resource type
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users']
+        if resource not in valid_resources:
+            return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
+
+        data = request.get_json()
+
+        # Handle categories data for blog posts
+        if resource == 'blog' and 'categories' in data:
+            data = handle_categories_data(data)
+
+        # Determine the correct table name
+        table_map = {
+            'blog': 'blog_posts'
+        }
+        table_name = table_map.get(resource, resource)
+
+        # Add updated_at timestamp
+        data['updated_at'] = get_current_time().isoformat()
+
+        # Update in database
+        response = supabase_admin.table(table_name).update(data).eq('id', id).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': f'{resource[:-1]} not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'message': f'{resource[:-1]} updated successfully',
+            'data': response.data[0]
+        })
+
+    except Exception as e:
+        logger.error(f"Error updating {resource}: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
 
 # ===== STATUS TOGGLE ROUTES =====
@@ -1808,7 +2032,7 @@ def get_admin_resources(resource):
         per_page = 10
         search = request.args.get('search', '')
 
-        # Determine the correct table name
+        # Map resources to table names
         table_map = {
             'blog': 'blog_posts',
             'messages': 'contact_messages',
@@ -1816,23 +2040,23 @@ def get_admin_resources(resource):
         }
         table_name = table_map.get(resource, resource)
 
-        # Build query
+        # Build base query
         query = supabase_admin.table(table_name).select('*')
 
-        # Apply search filter if provided
+        # Apply search filters
         if search:
             if resource == 'courses':
-                query = query.ilike('title', f'%{search}%')
+                query = query.or_(f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
             elif resource == 'jobs':
-                query = query.ilike('title', f'%{search}%')
+                query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'internships':
-                query = query.ilike('title', f'%{search}%')
+                query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'blog':
-                query = query.ilike('title', f'%{search}%')
+                query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
             elif resource == 'users':
-                query = query.ilike('username', f'%{search}%')
+                query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
             elif resource == 'messages':
-                query = query.ilike('name', f'%{search}%')
+                query = query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
                 query = query.ilike('email', f'%{search}%')
 
@@ -1844,26 +2068,26 @@ def get_admin_resources(resource):
         else:
             query = query.order('created_at', desc=True)
 
-        # Get paginated data
+        # Paginate
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page - 1
         data_response = query.range(start_idx, end_idx).execute()
 
-        # Get total count
+        # Count query
         count_query = supabase_admin.table(table_name).select('id', count='exact')
         if search:
             if resource == 'courses':
-                count_query = count_query.ilike('title', f'%{search}%')
+                count_query = count_query.or_(f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
             elif resource == 'jobs':
-                count_query = count_query.ilike('title', f'%{search}%')
+                count_query = count_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'internships':
-                count_query = count_query.ilike('title', f'%{search}%')
+                count_query = count_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'blog':
-                count_query = count_query.ilike('title', f'%{search}%')
+                count_query = count_query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
             elif resource == 'users':
-                count_query = count_query.ilike('username', f'%{search}%')
+                count_query = count_query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
             elif resource == 'messages':
-                count_query = count_query.ilike('name', f'%{search}%')
+                count_query = count_query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
                 count_query = count_query.ilike('email', f'%{search}%')
 
@@ -1879,6 +2103,7 @@ def get_admin_resources(resource):
     except Exception as e:
         logger.error(f"Error loading {resource}: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 # ===== SINGLE ITEM ROUTES =====
@@ -1971,6 +2196,67 @@ def update_message_status(id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/admin/messages/bulk-status', methods=['POST'])
+@admin_required
+def bulk_update_message_status():
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+        status = data.get('status')
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No items selected'}), 400
+
+        if status not in ['unread', 'read', 'replied']:
+            return jsonify({'success': False, 'message': 'Invalid status'}), 400
+
+        # Update status in database
+        update_data = {'status': status, 'updated_at': get_current_time().isoformat()}
+        response = supabase_admin.table('contact_messages').update(update_data).in_('id', ids).execute()
+
+        return jsonify({
+            'success': True,
+            'message': f'{len(response.data) if response.data else 0} messages status updated successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk updating message status: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+
+
+@app.route('/api/admin/messages/reply', methods=['POST'])
+@admin_required
+def admin_message_reply():
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['message_id', 'email', 'subject', 'message']
+        if not all(field in data for field in required_fields):
+            return jsonify({'success': False, 'message': 'All fields are required'}), 400
+
+        # Send email
+        email_sent = send_email_smtp(
+            data['email'],
+            data['subject'],
+            data['message']
+        )
+
+        if email_sent:
+            # Update message status to replied
+            supabase_admin.table('contact_messages').update({
+                'status': 'replied',
+                'updated_at': get_current_time().isoformat()
+            }).eq('id', data['message_id']).execute()
+
+            return jsonify({'success': True, 'message': 'Reply sent successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send email'}), 500
+
+    except Exception as e:
+        logger.error(f"Error sending message reply: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to send reply'}), 500
+
 # ===== NOTIFICATION ROUTES =====
 
 @app.route('/api/admin/notifications')
@@ -2023,57 +2309,94 @@ def send_newsletter():
         if not subject or not content:
             return jsonify({'success': False, 'message': 'Subject and content are required'}), 400
 
-        # Get subscribers based on recipient type
-        if recipients_type == 'all':
-            subscribers = supabase_admin.table('newsletter_subscribers') \
-                              .select('*') \
-                              .eq('is_active', True) \
-                              .execute().data or []
-        elif recipients_type == 'active':
-            subscribers = supabase_admin.table('newsletter_subscribers') \
-                              .select('*') \
-                              .eq('is_active', True) \
-                              .execute().data or []
-        else:
-            subscriber_ids = data.get('subscriber_ids', [])
-            if not subscriber_ids:
-                return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
-
-            subscribers = supabase_admin.table('newsletter_subscribers') \
-                              .select('*') \
-                              .in_('id', subscriber_ids) \
-                              .eq('is_active', True) \
-                              .execute().data or []
-
-        if test_mode:
-            # Send test email to admin
-            email_sent = send_email_smtp(
-                session.get('admin_email', 'admin@careermaker.com'),
-                f"[TEST] {subject}",
-                content
-            )
-
-            if email_sent:
-                return jsonify({'success': True, 'message': 'Test email sent successfully'})
+        # Prepare subscriber list before background thread
+        subscribers = []
+        if not test_mode:
+            if recipients_type == 'all':
+                subscribers = supabase_admin.table('newsletter_subscribers') \
+                                .select('*') \
+                                .eq('is_active', True) \
+                                .execute().data or []
+            elif recipients_type == 'active':
+                subscribers = supabase_admin.table('newsletter_subscribers') \
+                                .select('*') \
+                                .eq('is_active', True) \
+                                .execute().data or []
             else:
-                return jsonify({'success': False, 'message': 'Error sending test email'})
-        else:
-            # Send to all subscribers
-            success_count = 0
-            for subscriber in subscribers:
-                email_sent = send_email_smtp(subscriber['email'], subject, content)
-                if email_sent:
-                    success_count += 1
+                subscriber_ids = data.get('subscriber_ids', [])
+                if not subscriber_ids:
+                    return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
 
-            return jsonify({
-                'success': True,
-                'message': f'Newsletter sent to {success_count} out of {len(subscribers)} subscribers'
-            })
+                subscribers = supabase_admin.table('newsletter_subscribers') \
+                                .select('*') \
+                                .in_('id', subscriber_ids) \
+                                .eq('is_active', True) \
+                                .execute().data or []
+
+        # Run in background
+        from threading import Thread
+        def send_newsletter_async(subscribers, subject, content, test_mode):
+            try:
+                if test_mode:
+                    # Send test email only to admin
+                    send_email_smtp(
+                        session.get('admin_email', 'admin@careermaker.com'),
+                        f"[TEST] {subject}",
+                        content
+                    )
+                    logger.info("Test newsletter sent to admin")
+                else:
+                    # Send to subscribers
+                    success_count = 0
+                    for subscriber in subscribers:
+                        email_sent = send_email_smtp(subscriber['email'], subject, content)
+                        if email_sent:
+                            success_count += 1
+
+                    logger.info(f"Newsletter sent to {success_count} out of {len(subscribers)} subscribers")
+
+            except Exception as e:
+                logger.error(f"Error in async newsletter sending: {str(e)}")
+
+        # Start thread
+        thread = Thread(target=send_newsletter_async, args=(subscribers, subject, content, test_mode))
+        thread.start()
+
+        # Return immediate response
+        return jsonify({
+            'success': True,
+            'message': 'Newsletter is being sent in the background. You will receive a notification when complete.'
+        })
 
     except Exception as e:
         logger.error(f"Error sending newsletter: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to send newsletter'}), 500
 
+
+@app.route('/api/admin/newsletter/<string:id>/status', methods=['PUT'])
+@admin_required
+def toggle_newsletter_status(id):
+    try:
+        data = request.get_json()
+        is_active = data.get('is_active')
+
+        if is_active is None:
+            return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
+
+        # Update status in database
+        response = supabase_admin.table('newsletter_subscribers').update({
+            'is_active': is_active,
+            'updated_at': get_current_time().isoformat()
+        }).eq('id', id).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Subscriber not found'}), 404
+
+        return jsonify({'success': True, 'message': 'Subscriber status updated successfully'})
+
+    except Exception as e:
+        logger.error(f"Error updating newsletter status: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update status'}), 500
 
 # Error Handlers
 @app.errorhandler(404)

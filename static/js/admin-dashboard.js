@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
         messages: 1,
         newsletter: 1
     };
-    let currentSection = 'dashboard';
+    let currentSection = sessionStorage.getItem('currentSection') || 'dashboard';
     const itemsPerPage = 10;
     let selectedItems = {
         courses: [],
@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Store notification timeouts for proper management
     let notificationTimeouts = new Map();
+    let allNotifications = [];
+    let showAllNotifications = false;
 
     // Initialize the dashboard
     initDashboard();
@@ -39,10 +41,188 @@ document.addEventListener('DOMContentLoaded', function() {
         setupBulkActions();
         setupSearchFilters();
         setupPagination();
+        setupSelect2();
 
-        if (currentSection !== 'dashboard') {
-            loadSectionData(currentSection);
+        // Load the last active section - FIXED: Properly restore current section on refresh
+        restoreCurrentSection();
+
+        // Check session every 5 minutes
+        setInterval(checkAdminSession, 5 * 60 * 1000);
+
+        // Setup global AJAX error handling
+        setupGlobalErrorHandling();
+    }
+
+    // Setup global AJAX error handling
+    function setupGlobalErrorHandling() {
+        // Store original fetch function
+        const originalFetch = window.fetch;
+
+        // Override fetch to handle session errors globally
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    if (response.status === 401) {
+                        return response.json().then(data => {
+                            if (data.requires_login) {
+                                showSessionExpiredMessage();
+                                throw new Error('Session expired');
+                            }
+                            return response;
+                        });
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    if (error.message.includes('Session expired')) {
+                        // Already handled by showSessionExpiredMessage
+                        throw error;
+                    }
+                    // For other errors, show a generic notification
+                    showNotification('An error occurred. Please try again.', 'error');
+                    throw error;
+                });
+        };
+    }
+
+    // FIXED: Properly restore current section on page refresh
+    function restoreCurrentSection() {
+        // First, remove active class from all menu items and sections
+        document.querySelectorAll('.sidebar-menu a').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // If we have a stored section and it's not dashboard, try to activate it
+        if (currentSection && currentSection !== 'dashboard') {
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${currentSection}"]`);
+            const targetSection = document.getElementById(currentSection);
+
+            if (menuItem && targetSection) {
+                menuItem.classList.add('active');
+                targetSection.classList.add('active');
+
+                // Update page title
+                const sectionName = menuItem.querySelector('span').textContent;
+                document.getElementById('pageTitle').textContent = sectionName + ' Management';
+
+                // Load section data
+                loadSectionData(currentSection);
+                return;
+            }
         }
+
+        // Default to dashboard if no valid section found
+        const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+        const dashboardSection = document.getElementById('dashboard');
+
+        if (dashboardItem && dashboardSection) {
+            dashboardItem.classList.add('active');
+            dashboardSection.classList.add('active');
+            document.getElementById('pageTitle').textContent = 'Admin Dashboard';
+        }
+    }
+
+    // Initialize Select2 for multi-select dropdowns
+    function setupSelect2() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            // Initialize Select2 for blog categories
+            if ($('#blogCategories').length) {
+                $('#blogCategories').select2({
+                    placeholder: "Select categories",
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#blogModal')
+                });
+            }
+        }
+    }
+
+    // Enhanced session check with automatic redirect
+    function checkAdminSession() {
+        fetch('/api/admin/check-session', {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (response.status === 401) {
+                throw new Error('Session expired');
+            }
+            if (!response.ok) {
+                throw new Error('Failed to check session');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.logged_in) {
+                showSessionExpiredMessage();
+            }
+        })
+        .catch(error => {
+            console.error('Session check failed:', error);
+            showSessionExpiredMessage();
+        });
+    }
+
+    // Show session expired message and redirect to login
+    function showSessionExpiredMessage() {
+        // Create overlay for session expired message
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        `;
+
+        // Create message card
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        `;
+
+        // Add icon and message
+        card.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f39c12; margin-bottom: 20px;"></i>
+            <h2 style="margin: 0 0 15px 0; color: #333; font-weight: 600;">Session Expired</h2>
+            <p style="margin: 0 0 25px 0; color: #666; line-height: 1.5;">Your admin session has expired. Please log in again to continue.</p>
+            <button id="loginRedirectBtn" style="background: #4a6cf7; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Login Again</button>
+            <div id="countdown" style="margin-top: 15px; font-size: 14px; color: #888;">Redirecting in 10 seconds...</div>
+        `;
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        // Add button event listener
+        document.getElementById('loginRedirectBtn').addEventListener('click', function() {
+            window.location.href = '/admin/login?message=session_expired';
+        });
+
+        // Auto-redirect after 10 seconds
+        let seconds = 10;
+        const countdownInterval = setInterval(() => {
+            seconds--;
+            document.getElementById('countdown').textContent = `Redirecting in ${seconds} seconds...`;
+
+            if (seconds <= 0) {
+                clearInterval(countdownInterval);
+                window.location.href = '/admin/login?message=session_expired';
+            }
+        }, 1000);
     }
 
     // Display time-based welcome message
@@ -104,15 +284,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         section.classList.remove('active');
                     });
 
-                    document.getElementById(targetSection).classList.add('active');
+                    const sectionElement = document.getElementById(targetSection);
+                    if (sectionElement) {
+                        sectionElement.classList.add('active');
 
-                    const sectionName = document.querySelector(`.sidebar-menu a[href="#${targetSection}"] span`).textContent;
-                    document.getElementById('pageTitle').textContent = sectionName + ' Management';
+                        const sectionName = this.querySelector('span').textContent;
+                        document.getElementById('pageTitle').textContent = sectionName + ' Management';
 
-                    currentSection = targetSection;
+                        currentSection = targetSection;
+                        sessionStorage.setItem('currentSection', targetSection);
 
-                    if (targetSection !== 'dashboard') {
-                        loadSectionData(targetSection);
+                        if (targetSection !== 'dashboard') {
+                            loadSectionData(targetSection);
+                        }
                     }
                 }
             });
@@ -137,11 +321,18 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationBell.addEventListener('click', function(e) {
                 e.stopPropagation();
                 notificationList.classList.toggle('show');
+
+                if (notificationList.classList.contains('show')) {
+                    showAllNotifications = !showAllNotifications;
+                    renderNotifications();
+                }
             });
 
             document.addEventListener('click', function(e) {
                 if (!notificationBell.contains(e.target) && !notificationList.contains(e.target)) {
                     notificationList.classList.remove('show');
+                    showAllNotifications = false;
+                    renderNotifications();
                 }
             });
 
@@ -150,6 +341,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 markAllReadBtn.addEventListener('click', function() {
                     markAllNotificationsAsRead();
                 });
+            }
+
+            // Add view all toggle button
+            const viewAllBtn = document.createElement('button');
+            viewAllBtn.className = 'view-all-notifications';
+            viewAllBtn.innerHTML = '<i class="fas fa-chevron-down"></i> View All';
+            viewAllBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                showAllNotifications = !showAllNotifications;
+                renderNotifications();
+            });
+
+            const notificationFooter = notificationList.querySelector('.notification-footer');
+            if (notificationFooter) {
+                notificationFooter.appendChild(viewAllBtn);
             }
         }
     }
@@ -185,44 +391,91 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(notifications => {
-            const notificationItems = document.querySelector('.notification-items');
-            const notificationCount = document.getElementById('notificationCount');
-
-            if (!notificationItems) return;
-
-            notificationItems.innerHTML = '';
-
-            const unreadCount = notifications.filter(n => !n.is_read).length;
-            notificationCount.textContent = unreadCount;
-            notificationCount.style.display = unreadCount > 0 ? 'flex' : 'none';
-
-            if (notifications.length === 0) {
-                notificationItems.innerHTML = '<div class="no-notifications">No notifications</div>';
-                return;
-            }
-
-            notifications.forEach(notification => {
-                const notificationItem = document.createElement('div');
-                notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
-
-                const formattedDate = formatDate(notification.created_at, true);
-
-                notificationItem.innerHTML = `
-                    <div class="notification-icon">
-                        <i class="fas fa-${getNotificationIcon(notification.type)}"></i>
-                    </div>
-                    <div class="notification-content">
-                        <p>${notification.message}</p>
-                        <small>${formattedDate}</small>
-                    </div>
-                `;
-
-                notificationItems.appendChild(notificationItem);
-            });
+            allNotifications = notifications;
+            renderNotifications();
         })
         .catch(error => {
             console.error('Error loading notifications:', error);
         });
+    }
+
+    function renderNotifications() {
+        const notificationItems = document.querySelector('.notification-items');
+        const notificationCount = document.getElementById('notificationCount');
+
+        if (!notificationItems) return;
+
+        notificationItems.innerHTML = '';
+
+        // Limit displayed notifications based on showAllNotifications flag
+        const displayedNotifications = showAllNotifications ? allNotifications : allNotifications.slice(0, 4);
+
+        // Update notification count
+        const unreadCount = allNotifications.filter(n => !n.is_read).length;
+        const displayCount = Math.min(unreadCount, 4);
+        notificationCount.textContent = displayCount > 0 ? displayCount : '';
+        notificationCount.style.display = displayCount > 0 ? 'flex' : 'none';
+
+        if (allNotifications.length === 0) {
+            notificationItems.innerHTML = '<div class="no-notifications">No notifications</div>';
+            return;
+        }
+
+        displayedNotifications.forEach(notification => {
+            const notificationItem = document.createElement('div');
+            notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
+            notificationItem.setAttribute('data-type', notification.type);
+            notificationItem.setAttribute('data-id', notification.related_id);
+            notificationItem.style.cursor = 'pointer';
+
+            const formattedDate = formatDate(notification.created_at, true);
+
+            notificationItem.innerHTML = `
+                <div class="notification-icon">
+                    <i class="fas fa-${getNotificationIcon(notification.type)}"></i>
+                </div>
+                <div class="notification-content">
+                    <p>${notification.message}</p>
+                    <small>${formattedDate}</small>
+                </div>
+            `;
+
+            // Add click event to navigate to relevant section
+            notificationItem.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                const id = this.getAttribute('data-id');
+
+                // Close notification dropdown
+                document.getElementById('notificationList').classList.remove('show');
+
+                // Navigate to appropriate section
+                const sectionMap = {
+                    'message': 'messages',
+                    'user': 'users',
+                    'course': 'courses',
+                    'job': 'jobs',
+                    'internship': 'internships',
+                    'blog': 'blog'
+                };
+
+                if (sectionMap[type]) {
+                    const menuItem = document.querySelector(`.sidebar-menu a[href="#${sectionMap[type]}"]`);
+                    if (menuItem) {
+                        menuItem.click();
+                    }
+                }
+            });
+
+            notificationItems.appendChild(notificationItem);
+        });
+
+        // Update view all button text
+        const viewAllBtn = document.querySelector('.view-all-notifications');
+        if (viewAllBtn) {
+            viewAllBtn.innerHTML = showAllNotifications ?
+                '<i class="fas fa-chevron-up"></i> Show Less' :
+                '<i class="fas fa-chevron-down"></i> View All';
+        }
     }
 
     function getNotificationIcon(type) {
@@ -235,7 +488,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'blog': 'blog',
             'default': 'bell'
         };
-
         return icons[type] || icons.default;
     }
 
@@ -369,13 +621,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <input type="checkbox" class="status-toggle-checkbox" ${item.is_active ? 'checked' : ''} data-id="${item.id}">
                                 <span class="slider round"></span>
                             </label>
-                            <span class="status-text">${item.is_active ? 'Active' : 'Inactive'}</span>
+                            <span class="status-text">${item.is_active ? 'Active & Featured' : 'Inactive'}</span>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon toggle-featured" data-id="${item.id}" data-featured="${item.is_featured || false}">
-                            <i class="fas ${item.is_featured ? 'fa-star featured' : 'fa-star'}"></i>
-                        </button>
                         <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
                     </td>
@@ -388,6 +637,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${escapeHTML(item.company)}</td>
                     <td>${escapeHTML(item.location)}</td>
                     <td>${escapeHTML(item.type)}</td>
+                    <td>${escapeHTML(item.salary || 'N/A')}</td>
                     <td>${formatDate(item.created_at)}</td>
                     <td>
                         <div class="status-toggle">
@@ -395,13 +645,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <input type="checkbox" class="status-toggle-checkbox" ${item.is_active ? 'checked' : ''} data-id="${item.id}">
                                 <span class="slider round"></span>
                             </label>
-                            <span class="status-text">${item.is_active ? 'Active' : 'Inactive'}</span>
+                            <span class="status-text">${item.is_active ? 'Active & Featured' : 'Inactive'}</span>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon toggle-featured" data-id="${item.id}" data-featured="${item.is_featured || false}">
-                            <i class="fas ${item.is_featured ? 'fa-star featured' : 'fa-star'}"></i>
-                        </button>
                         <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
                     </td>
@@ -421,13 +668,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <input type="checkbox" class="status-toggle-checkbox" ${item.is_active ? 'checked' : ''} data-id="${item.id}">
                                 <span class="slider round"></span>
                             </label>
-                            <span class="status-text">${item.is_active ? 'Active' : 'Inactive'}</span>
+                            <span class="status-text">${item.is_active ? 'Active & Featured' : 'Inactive'}</span>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon toggle-featured" data-id="${item.id}" data-featured="${item.is_featured || false}">
-                            <i class="fas ${item.is_featured ? 'fa-star featured' : 'fa-star'}"></i>
-                        </button>
                         <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
                     </td>
@@ -438,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += `
                     <td>${escapeHTML(item.title)}</td>
                     <td>${escapeHTML(item.author)}</td>
-                    <td>${escapeHTML(item.categories)}</td>
+                    <td>${escapeHTML(Array.isArray(item.categories) ? item.categories.join(', ') : item.categories)}</td>
                     <td>${formatDate(item.created_at)}</td>
                     <td>
                         <div class="status-toggle">
@@ -446,13 +690,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <input type="checkbox" class="status-toggle-checkbox" ${item.is_active ? 'checked' : ''} data-id="${item.id}">
                                 <span class="slider round"></span>
                             </label>
-                            <span class="status-text">${item.is_active ? 'Active' : 'Inactive'}</span>
+                            <span class="status-text">${item.is_active ? 'Active & Featured' : 'Inactive'}</span>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon toggle-featured" data-id="${item.id}" data-featured="${item.is_featured || false}">
-                            <i class="fas ${item.is_featured ? 'fa-star featured' : 'fa-star'}"></i>
-                        </button>
                         <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
                     </td>
@@ -489,9 +730,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${formatDate(item.created_at)}</td>
                     <td><span class="status-badge ${item.status}">${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span></td>
                     <td>
-                        <button class="btn-icon view-message" data-id="${item.id}"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon reply-message" data-id="${item.id}" data-email="${item.email}"><i class="fas fa-reply"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <button class="btn-icon view-message" data-id="${item.id}" title="View Message"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon reply-message" data-id="${item.id}" data-email="${escapeHTML(item.email)}" data-subject="${escapeHTML(item.subject)}" title="Reply"><i class="fas fa-reply"></i></button>
+                        <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 break;
@@ -543,11 +784,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        const replyMessageBtn = row.querySelector('.reply-message');
+       const replyMessageBtn = row.querySelector('.reply-message');
         if (replyMessageBtn) {
-            replyMessageBtn.addEventListener('click', () => {
+            replyMessageBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent row click event
+                const id = replyMessageBtn.getAttribute('data-id');
                 const email = replyMessageBtn.getAttribute('data-email');
-                openReplyModal(id, email);
+                const subject = replyMessageBtn.getAttribute('data-subject');
+                openReplyModal(id, email, subject);
             });
         }
 
@@ -555,14 +799,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (statusToggle) {
             statusToggle.addEventListener('change', () => {
                 toggleStatus(section, id, statusToggle.checked);
-            });
-        }
-
-        const featuredToggle = row.querySelector('.toggle-featured');
-        if (featuredToggle) {
-            featuredToggle.addEventListener('click', () => {
-                const isFeatured = featuredToggle.getAttribute('data-featured') === 'true';
-                toggleFeatured(section, id, !isFeatured);
             });
         }
 
@@ -577,19 +813,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSelectAllCheckbox(section);
             });
         }
+
+        // Make message rows clickable but exclude checkboxes
+        if (section === 'messages') {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', (e) => {
+                if (!e.target.closest('input[type="checkbox"]') && !e.target.closest('button')) {
+                    viewMessage(id);
+                }
+            });
+        }
     }
 
-    // Toggle status (active/inactive)
+    // Toggle status (active/inactive) - now handles both active and featured state
     function toggleStatus(section, id, isActive) {
         showLoading();
 
-        fetch(`/api/admin/${section}/${id}/status`, {
+        // Fix section name for API endpoint
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog_posts';
+        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+
+        // For courses, jobs, internships, and blog, active state also controls featured state
+        const updateData = { is_active: isActive };
+        if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
+            updateData.is_featured = isActive;
+        }
+
+        fetch(`/api/admin/${apiSection}/${id}/status`, {
             method: 'PUT',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ is_active: isActive })
+            body: JSON.stringify(updateData)
         })
         .then(response => {
             if (!response.ok) throw new Error(`Failed to update ${section} status`);
@@ -597,13 +854,17 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+                const statusText = isActive ? 'activated & featured' : 'deactivated';
+                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${statusText} successfully`, 'success');
 
                 // Update the status text in the UI
-                const statusText = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`).closest('.status-toggle').querySelector('.status-text');
-                if (statusText) {
-                    statusText.textContent = isActive ? 'Active' : 'Inactive';
+                const statusTextElement = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`).closest('.status-toggle').querySelector('.status-text');
+                if (statusTextElement) {
+                    statusTextElement.textContent = isActive ? 'Active & Featured' : 'Inactive';
                 }
+
+                // Reload the section to reflect changes immediately
+                loadSectionData(section, currentPage[section]);
             } else {
                 showNotification(result.message || `Failed to update ${section} status`, 'error');
                 // Revert the checkbox state
@@ -621,52 +882,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (checkbox) {
                 checkbox.checked = !isActive;
             }
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-    // Toggle featured status
-    function toggleFeatured(section, id, isFeatured) {
-        showLoading();
-
-        fetch(`/api/admin/${section}/${id}/featured`, {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ is_featured: isFeatured })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to update ${section} featured status`);
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${isFeatured ? 'added to' : 'removed from'} featured successfully`, 'success');
-
-                // Update the featured icon in the UI
-                const featuredBtn = document.querySelector(`.toggle-featured[data-id="${id}"]`);
-                if (featuredBtn) {
-                    featuredBtn.setAttribute('data-featured', isFeatured);
-                    const icon = featuredBtn.querySelector('i');
-                    if (icon) {
-                        if (isFeatured) {
-                            icon.classList.add('featured');
-                        } else {
-                            icon.classList.remove('featured');
-                        }
-                    }
-                }
-            } else {
-                showNotification(result.message || `Failed to update ${section} featured status`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error updating ${section} featured status:`, error);
-            showNotification(`Failed to update ${section} featured status`, 'error');
         })
         .finally(() => {
             hideLoading();
@@ -766,16 +981,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupModals() {
+        // Add event listeners for modal buttons
         document.getElementById('addCourseBtn')?.addEventListener('click', () => openAddModal('course'));
         document.getElementById('addJobBtn')?.addEventListener('click', () => openAddModal('job'));
         document.getElementById('addInternshipBtn')?.addEventListener('click', () => openAddModal('internship'));
         document.getElementById('addBlogBtn')?.addEventListener('click', () => openAddModal('blog'));
         document.getElementById('sendNewsletterBtn')?.addEventListener('click', () => openNewsletterModal());
 
+        // Close modal buttons
         document.querySelectorAll('.close-modal').forEach(button => {
             button.addEventListener('click', closeModal);
         });
 
+        // Close modal when clicking outside
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -784,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // Form submissions
         document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
         document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
         document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
@@ -792,11 +1011,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
         document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
 
-        document.getElementById('replyFromView')?.addEventListener('click', () => {
-            const email = document.getElementById('viewMessageEmail').textContent;
-            const messageId = document.getElementById('viewMessage').getAttribute('data-id');
-            closeModal();
-            openReplyModal(messageId, email);
+        // Fix reply button in view modal
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'replyFromView' || e.target.closest('#replyFromView')) {
+                const email = document.getElementById('viewMessageEmail').textContent;
+                const messageId = document.getElementById('messageViewModal').getAttribute('data-id');
+                const subject = document.getElementById('viewMessageSubject').textContent;
+
+                closeModal();
+                setTimeout(() => openReplyModal(messageId, email, subject), 300);
+            }
         });
     }
 
@@ -816,15 +1040,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 titleElement.textContent = `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}`;
             }
 
+            // Set active to true by default for new items
             if (['course', 'job', 'internship', 'blog'].includes(type)) {
+                const activeField = form.querySelector('[name="is_active"]');
+                if (activeField) {
+                    activeField.checked = true;
+                }
+
+                // Remove featured field since it's now controlled by active state
                 const featuredField = form.querySelector('[name="is_featured"]');
                 if (featuredField) {
-                    featuredField.checked = true;
+                    featuredField.parentNode.style.display = 'none';
                 }
             }
         }
 
         modal.style.display = 'block';
+
+        // Reinitialize Select2 for blog categories
+        if (type === 'blog' && typeof $ !== 'undefined' && $.fn.select2) {
+            setTimeout(() => {
+                $('#blogCategories').select2({
+                    placeholder: "Select categories",
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#blogModal')
+                });
+            }, 100);
+        }
     }
 
     function openEditModal(section, id) {
@@ -850,11 +1093,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (field) {
                         if (field.type === 'checkbox') {
                             field.checked = item[key];
+                        } else if (key === 'categories' && Array.isArray(item[key])) {
+                            // Handle categories array for blog posts
+                            field.value = item[key].join(', ');
                         } else {
                             field.value = item[key] || '';
                         }
                     }
                 });
+
+                // Hide featured field since it's now controlled by active state
+                if (['course', 'job', 'internship', 'blog'].includes(section)) {
+                    const featuredField = form.querySelector('[name="is_featured"]');
+                    if (featuredField) {
+                        featuredField.parentNode.style.display = 'none';
+                    }
+                }
 
                 const titleElement = document.getElementById(`${section.slice(0, -1)}ModalTitle`);
                 if (titleElement) {
@@ -863,6 +1117,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             modal.style.display = 'block';
+
+            // Reinitialize Select2 for blog categories
+            if (section === 'blog' && typeof $ !== 'undefined' && $.fn.select2) {
+                setTimeout(() => {
+                    $('#blogCategories').select2({
+                        placeholder: "Select categories",
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#blogModal')
+                    });
+                }, 100);
+            }
         })
         .catch(error => {
             console.error(`Error loading ${section} item:`, error);
@@ -880,16 +1146,100 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.style.display = 'block';
     }
 
-    function openReplyModal(id, email) {
+    function openReplyModal(id, email, subject = '') {
         const modal = document.getElementById('messageReplyModal');
         if (!modal) return;
 
-        document.getElementById('recipientEmail').value = email;
-        document.getElementById('messageId').value = id;
+        // Show loading state
+        modal.classList.add('loading');
 
-        document.getElementById('replySubject').value = `Re: Your message`;
+        // First, fetch the full message details to get original subject and date
+        fetch(`/api/admin/messages/${id}`, {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch message details');
+            return response.json();
+        })
+        .then(message => {
+            // Remove loading state
+            modal.classList.remove('loading');
 
-        modal.style.display = 'block';
+            // Set the hidden fields
+            document.getElementById('recipientEmail').value = email;
+            document.getElementById('messageId').value = id;
+
+            // Use original subject with "Re:" prefix
+            const originalSubject = message.subject;
+            const replySubject = `Re: ${originalSubject}`;
+            document.getElementById('replySubject').value = replySubject;
+
+            // Display header information
+            document.getElementById('originalSender').textContent = `${message.name} <${message.email}>`;
+            document.getElementById('originalSubject').textContent = originalSubject;
+            document.getElementById('originalDate').textContent = formatDate(message.created_at, true);
+
+            // Display static fields with clear labels
+            document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+            document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
+
+            // Clear and focus on message textarea
+            const messageTextarea = document.getElementById('replyMessage');
+            messageTextarea.value = '';
+
+            // Add character counter
+            messageTextarea.addEventListener('input', updateCharCount);
+
+            modal.style.display = 'block';
+
+            // Focus on the message textarea with slight delay
+            setTimeout(() => {
+                messageTextarea.focus();
+                updateCharCount(); // Initial character count
+            }, 100);
+
+        })
+        .catch(error => {
+            console.error('Error loading message details:', error);
+            modal.classList.remove('loading');
+
+            // Fallback: use provided data if fetch fails
+            document.getElementById('recipientEmail').value = email;
+            document.getElementById('messageId').value = id;
+
+            const replySubject = subject ? `Re: ${subject}` : 'Re: Your message';
+            document.getElementById('replySubject').value = replySubject;
+
+            document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+            document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
+
+            document.getElementById('originalSender').textContent = 'Unknown sender';
+            document.getElementById('originalSubject').textContent = subject || 'No subject';
+            document.getElementById('originalDate').textContent = 'Unknown date';
+
+            modal.style.display = 'block';
+            setTimeout(() => document.getElementById('replyMessage').focus(), 100);
+        });
+    }
+
+    // Enhanced character counter
+    function updateCharCount() {
+        const textarea = document.getElementById('replyMessage');
+        const charCount = document.querySelector('.char-count');
+        if (textarea && charCount) {
+            const count = textarea.value.length;
+            charCount.textContent = `${count} characters`;
+
+            // Remove all classes first
+            charCount.classList.remove('warning', 'error');
+
+            // Add appropriate class based on length
+            if (count > 2000) {
+                charCount.classList.add('error');
+            } else if (count > 1000) {
+                charCount.classList.add('warning');
+            }
+        }
     }
 
     function viewMessage(id) {
@@ -911,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('viewMessageStatus').textContent = message.status.charAt(0).toUpperCase() + message.status.slice(1);
             document.getElementById('viewMessageContent').textContent = message.message;
 
+            // Fix: Set data-id attribute properly
             modal.setAttribute('data-id', message.id);
 
             modal.style.display = 'block';
@@ -942,7 +1293,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // FIXED: Search and filter functionality
     function setupForms() {
+        // Search functionality - FIXED: Proper event delegation
+        document.addEventListener('click', function(e) {
+            // Handle search icon clicks
+            if (e.target.classList.contains('fa-search') || e.target.closest('.fa-search')) {
+                const searchIcon = e.target.classList.contains('fa-search') ? e.target : e.target.closest('.fa-search');
+                const searchBox = searchIcon.closest('.search-box');
+                if (searchBox) {
+                    const input = searchBox.querySelector('input');
+                    const section = searchBox.closest('.admin-section').id;
+                    const searchTerm = input.value.trim();
+                    loadSectionData(section, 1, searchTerm);
+                }
+            }
+
+            // Handle clear search button clicks
+            if (e.target.classList.contains('fa-times') || e.target.closest('.fa-times')) {
+                const clearBtn = e.target.classList.contains('fa-times') ? e.target : e.target.closest('.fa-times');
+                const searchBox = clearBtn.closest('.search-box');
+                if (searchBox) {
+                    const input = searchBox.querySelector('input');
+                    input.value = '';
+                    const section = searchBox.closest('.admin-section').id;
+                    loadSectionData(section, 1);
+                }
+            }
+        });
+
+        // Enter key in search inputs
         document.querySelectorAll('.search-box input').forEach(input => {
             input.addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') {
@@ -951,26 +1331,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     loadSectionData(section, 1, searchTerm);
                 }
             });
-
-            const searchBox = this.closest('.search-box');
-            if (searchBox) {
-                const clearBtn = document.createElement('button');
-                clearBtn.innerHTML = '<i class="fas fa-times"></i>';
-                clearBtn.style.cssText = 'position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6c757d;';
-                clearBtn.addEventListener('click', () => {
-                    input.value = '';
-                    const section = input.closest('.admin-section').id;
-                    loadSectionData(section, 1);
-                });
-                searchBox.appendChild(clearBtn);
-            }
         });
 
-        document.querySelectorAll('.filter-options select').forEach(select => {
-            select.addEventListener('change', function() {
-                const section = this.closest('.admin-section').id;
-                const filterValue = this.value;
-                const filterName = this.id.replace('Filter', '').toLowerCase();
+        // Filter functionality - FIXED: Proper event delegation
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('filter-select')) {
+                const select = e.target;
+                const section = select.closest('.admin-section').id;
+                const filterValue = select.value;
+                const filterName = select.id.replace('Filter', '').toLowerCase();
 
                 const filters = {};
                 if (filterValue) {
@@ -978,7 +1347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 loadSectionData(section, 1, '', filters);
-            });
+            }
         });
     }
 
@@ -990,27 +1359,56 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = Object.fromEntries(formData.entries());
         const id = data.id;
 
+        // Convert checkbox values to boolean
         Object.keys(data).forEach(key => {
             if (data[key] === 'on') {
                 data[key] = true;
             } else if (data[key] === 'off') {
                 data[key] = false;
+            } else if (data[key] === '') {
+                // Remove empty fields except for text areas and certain fields
+                if (!['description', 'content', 'image', 'salary'].includes(key)) {
+                    delete data[key];
+                }
+            }
+
+            // Convert numeric fields
+            if (['rating', 'enrollments', 'duration_hours'].includes(key) && data[key]) {
+                data[key] = parseFloat(data[key]) || 0;
             }
         });
 
-        if (type === 'blog') {
-            if (!data.hasOwnProperty('is_published')) {
-                data.is_published = false;
-            }
-
-            if (data.is_published && !id) {
-                data.published_at = new Date().toISOString();
+        // Handle categories array for blog posts
+        if (type === 'blog' && data.categories) {
+            if (typeof data.categories === 'string') {
+                data.categories = data.categories.split(',').map(cat => cat.trim()).filter(cat => cat);
             }
         }
 
-        if (!id && ['courses', 'jobs', 'internships', 'blog'].includes(type)) {
-            if (!data.hasOwnProperty('is_featured')) {
-                data.is_featured = true;
+        // For courses, jobs, internships, and blog, sync featured state with active state
+        if (['courses', 'jobs', 'internships', 'blog'].includes(type)) {
+            data.is_featured = data.is_active;
+        }
+
+        // For new items, remove the ID field completely
+        if (!id || id === '') {
+            delete data.id;
+        }
+
+        // Validate required fields
+        const required_fields = {
+            'course': ['title', 'category', 'instructor', 'application_link'],
+            'job': ['title', 'company', 'location', 'application_link'],
+            'internship': ['title', 'company', 'location', 'application_link'],
+            'blog': ['title', 'author', 'content', 'categories']
+        };
+
+        if (type in required_fields) {
+            for (const field of required_fields[type]) {
+                if (!data[field]) {
+                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
+                    return;
+                }
             }
         }
 
@@ -1026,7 +1424,11 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(data)
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to ${id ? 'update' : 'create'} ${type}`);
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || `Failed to ${id ? 'update' : 'create'} ${type}`);
+                });
+            }
             return response.json();
         })
         .then(result => {
@@ -1034,57 +1436,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
                 closeModal();
                 form.reset();
-                loadSectionData(type);
+                // Reload the current section to show the new item immediately
+                loadSectionData(type, currentPage[type]);
             } else {
                 showNotification(result.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
             }
         })
         .catch(error => {
             console.error(`Error ${id ? 'updating' : 'creating'} ${type}:`, error);
-            showNotification(`Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+            showNotification(error.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
         });
     }
 
-    function handleNewsletterSubmit(e) {
-        e.preventDefault();
-
-        const form = e.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        fetch('/api/admin/newsletter/send', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to send newsletter');
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                showNotification('Newsletter sent successfully', 'success');
-                closeModal();
-                form.reset();
-            } else {
-                showNotification(result.message || 'Failed to send newsletter', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error sending newsletter:', error);
-            showNotification('Failed to send newsletter', 'error');
-        });
-    }
-
+   // Enhanced form submission
     function handleMessageReplySubmit(e) {
         e.preventDefault();
 
         const form = e.target;
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+
+        // Validate required fields
+        if (!data.message || data.message.trim() === '') {
+            showNotification('Please enter a reply message before sending', 'error');
+            document.getElementById('replyMessage').focus();
+            return;
+        }
+
+        if (data.message.trim().length < 10) {
+            showNotification('Please write a more detailed reply (minimum 10 characters)', 'warning');
+            document.getElementById('replyMessage').focus();
+            return;
+        }
+
+        const submitButton = document.getElementById('sendReplyBtn');
+        const originalText = submitButton.innerHTML;
+
+        // Show loading state
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
 
         fetch('/api/admin/messages/reply', {
             method: 'POST',
@@ -1100,29 +1490,38 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(result => {
             if (result.success) {
-                showNotification('Reply sent successfully', 'success');
-                closeModal();
-                form.reset();
+                showNotification('✅ Reply sent successfully!', 'success');
 
-                fetch(`/api/admin/messages/${data.message_id}/status`, {
-                    method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: 'replied' })
-                }).then(() => {
-                    if (currentSection === 'messages') {
-                        loadSectionData('messages', currentPage.messages);
-                    }
-                });
+                // Close modal after short delay
+                setTimeout(() => {
+                    closeModal();
+                    form.reset();
+
+                    // Update message status to replied and reload messages
+                    fetch(`/api/admin/messages/${data.message_id}/status`, {
+                        method: 'PUT',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ status: 'replied' })
+                    }).then(() => {
+                        if (currentSection === 'messages') {
+                            loadSectionData('messages', currentPage.messages);
+                        }
+                    });
+                }, 1000);
             } else {
                 showNotification(result.message || 'Failed to send reply', 'error');
             }
         })
         .catch(error => {
             console.error('Error sending reply:', error);
-            showNotification('Failed to send reply', 'error');
+            showNotification('Failed to send reply. Please check your connection and try again.', 'error');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
         });
     }
 
@@ -1147,6 +1546,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         selectedItems[sectionKey] = selectedItems[sectionKey].filter(itemId => itemId !== id);
                     }
                 });
+
+                updateSelectAllCheckbox(sectionKey);
             });
         });
 
@@ -1168,6 +1569,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     performBulkStatusUpdate(section, selectedItems[section], true);
                 } else if (action === 'deactivate') {
                     performBulkStatusUpdate(section, selectedItems[section], false);
+                } else if (action === 'mark_read') {
+                    performBulkMessageStatusUpdate(section, selectedItems[section], 'read');
+                } else if (action === 'mark_unread') {
+                    performBulkMessageStatusUpdate(section, selectedItems[section], 'unread');
+                } else if (action === 'mark_replied') {
+                    performBulkMessageStatusUpdate(section, selectedItems[section], 'replied');
                 }
             });
         });
@@ -1209,13 +1616,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function performBulkStatusUpdate(section, ids, isActive) {
         showLoading();
 
+        // For courses, jobs, internships, and blog, active state also controls featured state
+        const updateData = { ids: ids, is_active: isActive };
+        if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
+            updateData.is_featured = isActive;
+        }
+
         fetch(`/api/admin/${section}/bulk-status`, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ids: ids, is_active: isActive })
+            body: JSON.stringify(updateData)
         })
         .then(response => {
             if (!response.ok) throw new Error(`Failed to bulk update ${section} status`);
@@ -1223,7 +1636,41 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${ids.length} ${section} ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+                const statusText = isActive ? 'activated & featured' : 'deactivated';
+                showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
+                selectedItems[section] = [];
+                loadSectionData(section, currentPage[section]);
+            } else {
+                showNotification(result.message || `Failed to update ${section} status`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(`Error bulk updating ${section} status:`, error);
+            showNotification(`Failed to update ${section} status`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    function performBulkMessageStatusUpdate(section, ids, status) {
+        showLoading();
+
+        fetch(`/api/admin/${section}/bulk-status`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: ids, status: status })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to bulk update ${section} status`);
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                showNotification(`${ids.length} ${section} status updated successfully`, 'success');
                 selectedItems[section] = [];
                 loadSectionData(section, currentPage[section]);
             } else {
@@ -1248,31 +1695,35 @@ document.addEventListener('DOMContentLoaded', function() {
         selectAll.indeterminate = selectedItems[section].length > 0 && selectedItems[section].length < rowCheckboxes.length;
     }
 
+    // FIXED: Search and filter setup with proper event delegation
     function setupSearchFilters() {
-        document.querySelectorAll('.search-box input').forEach(input => {
-            const searchBtn = input.nextElementSibling;
-            if (searchBtn && searchBtn.classList.contains('search-btn')) {
-                searchBtn.addEventListener('click', () => {
+        // Add clear buttons to search boxes
+        document.querySelectorAll('.search-box').forEach(box => {
+            // Check if clear button already exists
+            if (!box.querySelector('.search-clear')) {
+                const clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'search-clear';
+                clearBtn.innerHTML = '<i class="fas fa-times"></i>';
+                clearBtn.style.cssText = 'position: absolute; right: 35px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6c757d; display: none;';
+
+                box.appendChild(clearBtn);
+
+                const input = box.querySelector('input');
+
+                // Show/hide clear button based on input value
+                input.addEventListener('input', function() {
+                    clearBtn.style.display = this.value ? 'block' : 'none';
+                });
+
+                // Clear input when clear button is clicked
+                clearBtn.addEventListener('click', function() {
+                    input.value = '';
+                    this.style.display = 'none';
                     const section = input.closest('.admin-section').id;
-                    const searchTerm = input.value.trim();
-                    loadSectionData(section, 1, searchTerm);
+                    loadSectionData(section, 1);
                 });
             }
-        });
-
-        document.querySelectorAll('.filter-options select').forEach(select => {
-            select.addEventListener('change', function() {
-                const section = this.closest('.admin-section').id;
-                const filterValue = this.value;
-                const filterName = this.id.replace('Filter', '').toLowerCase();
-
-                const filters = {};
-                if (filterValue) {
-                    filters[filterName] = filterValue;
-                }
-
-                loadSectionData(section, 1, '', filters);
-            });
         });
     }
 
@@ -1297,21 +1748,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function updatePaginationInfo(section, totalItems, currentPage) {
+    function updatePaginationInfo(section, totalItems, currentPageNum) {
         const paginationInfo = document.getElementById(`${section}PageInfo`);
         if (!paginationInfo) return;
 
         const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const startItem = (currentPage - 1) * itemsPerPage + 1;
-        const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+        const startItem = (currentPageNum - 1) * itemsPerPage + 1;
+        const endItem = Math.min(currentPageNum * itemsPerPage, totalItems);
 
-        paginationInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        paginationInfo.textContent = `Page ${currentPageNum} of ${totalPages}`;
 
         const prevBtn = document.getElementById(`prev${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
         const nextBtn = document.getElementById(`next${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
 
-        if (prevBtn) prevBtn.disabled = currentPage === 1;
-        if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        if (prevBtn) prevBtn.disabled = currentPageNum === 1;
+        if (nextBtn) nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
     }
 
     function showNotification(message, type = 'info') {
@@ -1363,28 +1814,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showLoading() {
-        const loading = document.querySelector('.loading-overlay');
-        if (loading) loading.style.display = 'flex';
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
     }
 
     function hideLoading() {
-        const loading = document.querySelector('.loading-overlay');
-        if (loading) loading.style.display = 'none';
-    }
-
-    function formatDate(dateString, includeTime = false) {
-        if (!dateString) return 'N/A';
-
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Invalid Date';
-
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        if (includeTime) {
-            options.hour = '2-digit';
-            options.minute = '2-digit';
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
         }
-
-        return date.toLocaleDateString('en-US', options);
     }
 
     function escapeHTML(str) {
@@ -1395,5 +1835,25 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function formatDate(dateString, includeTime = false) {
+        if (!dateString) return 'N/A';
+
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        };
+
+        if (includeTime) {
+            options.hour = '2-digit';
+            options.minute = '2-digit';
+        }
+
+        return date.toLocaleDateString('en-US', options);
     }
 });
