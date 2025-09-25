@@ -70,6 +70,235 @@ function createLoadingOverlay() {
 }
 
 // =============================================
+// Logo Preview System
+// =============================================
+function setupLogoPreview() {
+    // Listen for input on company fields in all modals
+    document.addEventListener('input', function(e) {
+        if (e.target.name === 'company' || e.target.id.includes('Company')) {
+            const companyName = e.target.value.trim();
+            if (companyName.length > 2) {
+                // Add delay to avoid too many API calls
+                clearTimeout(e.target.logoPreviewTimeout);
+                e.target.logoPreviewTimeout = setTimeout(() => {
+                    previewCompanyLogo(companyName, e.target);
+                }, 500);
+            } else {
+                // Clear preview if company name is too short
+                clearLogoPreview(e.target);
+            }
+        }
+    });
+
+    // Also handle blur event for immediate response
+    document.addEventListener('blur', function(e) {
+        if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
+            previewCompanyLogo(e.target.value.trim(), e.target);
+        }
+    }, true);
+}
+
+function clearLogoPreview(inputField) {
+    const formGroup = inputField.closest('.form-group');
+    if (!formGroup) return;
+
+    const existingPreview = formGroup.querySelector('.logo-preview');
+    if (existingPreview) {
+        existingPreview.remove();
+    }
+}
+
+function previewCompanyLogo(companyName, inputField) {
+    // Clear any existing preview first
+    clearLogoPreview(inputField);
+
+    const formGroup = inputField.closest('.form-group');
+    if (!formGroup) return;
+
+    // Create preview container
+    const previewContainer = document.createElement('div');
+    previewContainer.className = 'logo-preview';
+    previewContainer.innerHTML = `
+        <div class="logo-preview-content">
+            <div class="logo-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Searching logo for "${companyName}"...</span>
+            </div>
+            <div class="logo-result" style="display: none;">
+                <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+            </div>
+            <div class="logo-error" style="display: none;">
+                <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                <span style="font-size: 12px; color: #666;">No logo found</span>
+            </div>
+        </div>
+    `;
+
+    // Add some basic styles
+    previewContainer.style.cssText = `
+        margin-top: 8px;
+        padding: 8px;
+        border-radius: 4px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+    `;
+
+    // Insert after the input field's parent container
+    inputField.parentNode.appendChild(previewContainer);
+
+    // Fetch logo preview
+    fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const loading = previewContainer.querySelector('.logo-loading');
+            const result = previewContainer.querySelector('.logo-result');
+            const error = previewContainer.querySelector('.logo-error');
+            const logoImage = previewContainer.querySelector('.logo-image');
+
+            if (loading) loading.style.display = 'none';
+
+            if (data.success && data.logo_url) {
+                if (result) {
+                    logoImage.src = data.logo_url;
+                    logoImage.alt = `${companyName} logo`;
+                    result.style.display = 'flex';
+                    result.style.alignItems = 'center';
+                }
+            } else {
+                if (error) {
+                    error.style.display = 'flex';
+                    error.style.alignItems = 'center';
+                    error.style.gap = '8px';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching logo preview:', error);
+            const loading = previewContainer.querySelector('.logo-loading');
+            const errorDiv = previewContainer.querySelector('.logo-error');
+            if (loading) loading.style.display = 'none';
+            if (errorDiv) {
+                errorDiv.style.display = 'flex';
+                errorDiv.style.alignItems = 'center';
+                errorDiv.style.gap = '8px';
+            }
+        });
+}
+
+// =============================================
+// Content Card Functionality
+// =============================================
+function initializeContentCards() {
+    // Bookmark buttons
+    document.querySelectorAll('.bookmark-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const contentId = this.dataset.id;
+            const contentType = this.dataset.type;
+            const icon = this.querySelector('i');
+
+            toggleBookmark(contentId, contentType, icon, this);
+        });
+    });
+
+    // Apply buttons
+    document.querySelectorAll('.apply-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.disabled) return;
+
+            const contentId = this.dataset.id;
+            const contentType = this.dataset.type;
+
+            applyForContent(contentId, contentType, this);
+        });
+    });
+
+    // Share buttons
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const contentId = this.dataset.id;
+            const contentType = this.dataset.type;
+
+            shareContent(contentId, contentType);
+        });
+    });
+}
+
+function toggleBookmark(contentId, contentType, icon, button) {
+    fetch(`/api/bookmark/${contentType}/${contentId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'added') {
+            icon.className = 'fas fa-bookmark';
+            button.classList.add('active');
+            showToast('Added to bookmarks', 'success');
+        } else if (data.status === 'removed') {
+            icon.className = 'far fa-bookmark';
+            button.classList.remove('active');
+            showToast('Removed from bookmarks', 'info');
+        }
+    })
+    .catch(error => {
+        console.error('Bookmark error:', error);
+        showToast('Failed to update bookmark', 'error');
+    });
+}
+
+function applyForContent(contentId, contentType, button) {
+    // Show loading state
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    button.disabled = true;
+
+    fetch(`/get-application-link/${contentType}/${contentId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.application_link) {
+                window.open(data.application_link, '_blank');
+                showToast('Redirecting to application page', 'success');
+            } else {
+                showToast('Application link not available', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Application error:', error);
+            showToast('Failed to load application link', 'error');
+        })
+        .finally(() => {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+}
+
+function shareContent(contentId, contentType) {
+    if (navigator.share) {
+        // Use Web Share API if available
+        navigator.share({
+            title: document.title,
+            url: `${window.location.origin}/share/${contentType}/${contentId}`
+        });
+    } else {
+        // Fallback to copying to clipboard
+        const shareUrl = `${window.location.origin}/share/${contentType}/${contentId}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Link copied to clipboard', 'success');
+        });
+    }
+}
+
+// =============================================
 // OTP Verification System
 // =============================================
 function showOTPVerificationModal(email, username = null, password = null, purpose = 'registration') {
@@ -788,7 +1017,6 @@ document.addEventListener('click', function(e) {
   }
 });
 
-
 // =============================================
 // Dashboard Link Handling
 // =============================================
@@ -1091,6 +1319,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize dark mode
   initDarkMode();
+
+  // Initialize logo preview system
+  setupLogoPreview();
+
+  // Initialize content cards functionality
+  initializeContentCards();
 
   // Mobile Navigation
   const mobileMenuToggle = document.getElementById('mobileMenuToggle');

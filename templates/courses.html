@@ -21,19 +21,24 @@
     {% if courses|length > 0 %}
       {% for course in courses %}
       <div class="preview-card" data-id="{{ course.id }}" data-tags="{{ course.category|lower }}">
-        {% if course.image %}
-        <img src="{{ course.image }}" alt="{{ course.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-course.jpg'">
-        {% else %}
-        <img src="/static/images/default-course.jpg" alt="{{ course.title }}" class="preview-img">
-        {% endif %}
+        <div class="preview-image-container">
+          {% if course.company_logo %}
+          <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="company-logo" onerror="this.onerror=null;this.src='/static/images/default-course.png'">
+          {% else %}
+          <div class="default-logo course-logo">
+            <i class="fas fa-book"></i>
+          </div>
+          {% endif %}
+        </div>
         <div class="preview-content">
           <h3>{{ course.title }}</h3>
+          <p class="company">{{ course.company or course.instructor }}</p>
           <p class="category">{{ course.category }}</p>
           <p class="description">{{ course.description|truncate(100) }}</p>
 
           <div class="preview-meta">
-            <span class="price">${{ course.price }}</span>
-            <span class="level">{{ course.level }}</span>
+            <span class="price">{% if course.price and course.price != 'Free' %}${{ course.price }}{% else %}Free{% endif %}</span>
+            <span class="level">{{ course.level or 'All Levels' }}</span>
           </div>
         </div>
 
@@ -44,7 +49,7 @@
           <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
             <i class="fas fa-share-alt"></i>
           </button>
-          <button class="btn btn-primary apply-btn" data-type="course" {% if not course.application_link %}disabled{% endif %}>
+          <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}" {% if not course.application_link %}disabled{% endif %}>
             Enroll Now
           </button>
         </div>

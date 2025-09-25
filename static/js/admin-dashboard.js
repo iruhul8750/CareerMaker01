@@ -29,6 +29,127 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the dashboard
     initDashboard();
 
+    // Add this function to handle logo previews
+    function setupLogoPreview() {
+        // Listen for input on company fields in all modals
+        document.addEventListener('input', function(e) {
+            if (e.target.name === 'company' || e.target.id.includes('Company')) {
+                const companyName = e.target.value.trim();
+                if (companyName.length > 2) {
+                    // Add delay to avoid too many API calls
+                    clearTimeout(e.target.logoPreviewTimeout);
+                    e.target.logoPreviewTimeout = setTimeout(() => {
+                        previewCompanyLogo(companyName, e.target);
+                    }, 500);
+                } else {
+                    // Clear preview if company name is too short
+                    clearLogoPreview(e.target);
+                }
+            }
+        });
+
+        // Also handle blur event for immediate response
+        document.addEventListener('blur', function(e) {
+            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
+                previewCompanyLogo(e.target.value.trim(), e.target);
+            }
+        }, true);
+    }
+
+    function clearLogoPreview(inputField) {
+        const formGroup = inputField.closest('.form-group');
+        if (!formGroup) return;
+
+        const existingPreview = formGroup.querySelector('.logo-preview');
+        if (existingPreview) {
+            existingPreview.remove();
+        }
+    }
+
+    function previewCompanyLogo(companyName, inputField) {
+        // Clear any existing preview first
+        clearLogoPreview(inputField);
+
+        const formGroup = inputField.closest('.form-group');
+        if (!formGroup) return;
+
+        // Create preview container
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'logo-preview';
+        previewContainer.innerHTML = `
+            <div class="logo-preview-content">
+                <div class="logo-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Searching logo for "${companyName}"...</span>
+                </div>
+                <div class="logo-result" style="display: none;">
+                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                    <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+                </div>
+                <div class="logo-error" style="display: none;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                    <span style="font-size: 12px; color: #666;">No logo found</span>
+                </div>
+            </div>
+        `;
+
+        // Add some basic styles
+        previewContainer.style.cssText = `
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        `;
+
+        // Insert after the input field's parent container
+        inputField.parentNode.appendChild(previewContainer);
+
+        // Fetch logo preview
+        fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const loading = previewContainer.querySelector('.logo-loading');
+                const result = previewContainer.querySelector('.logo-result');
+                const error = previewContainer.querySelector('.logo-error');
+                const logoImage = previewContainer.querySelector('.logo-image');
+
+                if (loading) loading.style.display = 'none';
+
+                if (data.success && data.logo_url) {
+                    if (result) {
+                        logoImage.src = data.logo_url;
+                        logoImage.alt = `${companyName} logo`;
+                        result.style.display = 'flex';
+                        result.style.alignItems = 'center';
+                    }
+                } else {
+                    if (error) {
+                        error.style.display = 'flex';
+                        error.style.alignItems = 'center';
+                        error.style.gap = '8px';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching logo preview:', error);
+                const loading = previewContainer.querySelector('.logo-loading');
+                const errorDiv = previewContainer.querySelector('.logo-error');
+                if (loading) loading.style.display = 'none';
+                if (errorDiv) {
+                    errorDiv.style.display = 'flex';
+                    errorDiv.style.alignItems = 'center';
+                    errorDiv.style.gap = '8px';
+                }
+            });
+    }
+
+    // Update the initDashboard function to include logo preview setup
     function initDashboard() {
         // Display time-based welcome message
         displayWelcomeMessage();
@@ -42,8 +163,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setupSearchFilters();
         setupPagination();
         setupSelect2();
+        setupLogoPreview(); // Add this line
 
-        // Load the last active section - FIXED: Properly restore current section on refresh
+        // Load the last active section
         restoreCurrentSection();
 
         // Check session every 5 minutes
@@ -1467,6 +1589,11 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Please write a more detailed reply (minimum 10 characters)', 'warning');
             document.getElementById('replyMessage').focus();
             return;
+        }
+        // If it's a content type with company field, ensure logo data is handled
+        if (['job', 'internship', 'course'].includes(type) && data.company) {
+            // The logo will be automatically fetched by the backend
+            // based on the company name
         }
 
         const submitButton = document.getElementById('sendReplyBtn');

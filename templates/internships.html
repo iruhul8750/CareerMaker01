@@ -5,43 +5,58 @@
   <h1>Internship Programs</h1>
 
   <div class="filters">
-    <button class="filter-btn active" data-filter="all">All</button>
-    <button class="filter-btn" data-filter="summer">Summer</button>
-    <button class="filter-btn" data-filter="remote">Remote</button>
-    <button class="filter-btn" data-filter="paid">Paid</button>
+    <form action="/internships" method="GET" class="search-form">
+      <input type="search" name="search" placeholder="Search internships..." value="{{ search if search else '' }}">
+      <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
+      <select name="type">
+        <option value="">All Types</option>
+        <option value="Paid" {% if internship_type == 'Paid' %}selected{% endif %}>Paid</option>
+        <option value="Unpaid" {% if internship_type == 'Unpaid' %}selected{% endif %}>Unpaid</option>
+        <option value="Remote" {% if internship_type == 'Remote' %}selected{% endif %}>Remote</option>
+        <option value="On-site" {% if internship_type == 'On-site' %}selected{% endif %}>On-site</option>
+      </select>
+      <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
   </div>
 
   <div class="preview-grid">
     {% if internships|length > 0 %}
       {% for internship in internships %}
-      <div class="preview-card" data-tags="{{ internship.tags|join(' ') }}">
-        {% if internship.image %}
-        <img src="{{ internship.image }}" alt="{{ internship.title }}" class="preview-img" onerror="this.onerror=null;this.src='/static/images/default-internship.jpg'">
-        {% else %}
-        <img src="/static/images/default-internship.jpg" alt="{{ internship.title }}" class="preview-img">
-        {% endif %}
+      <div class="preview-card" data-id="{{ internship.id }}" data-tags="{{ internship.type|lower }} {% if internship.location == 'Remote' %}remote{% endif %}">
+        <div class="preview-image-container">
+          {% if internship.company_logo %}
+          <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo" onerror="this.onerror=null;this.src='/static/images/default-internship.png'">
+          {% else %}
+          <div class="default-logo internship-logo">
+            <i class="fas fa-user-graduate"></i>
+          </div>
+          {% endif %}
+        </div>
         <div class="preview-content">
           <h3>{{ internship.title }}</h3>
           <p class="company">{{ internship.company }}</p>
+          <p class="location">{{ internship.location }}</p>
           <p class="duration">{{ internship.duration }}</p>
           <p class="description">{{ internship.description|truncate(100) }}</p>
 
           <div class="preview-meta">
-            <span class="stipend">{% if internship.paid %}Stipend: {{ internship.stipend }}{% else %}Unpaid{% endif %}</span>
+            <span class="type">{{ internship.type }}</span>
+            <span class="stipend">{% if internship.type == 'Paid' %}Stipend: {{ internship.stipend or 'Available' }}{% else %}Unpaid{% endif %}</span>
           </div>
-
-           <div class="action-buttons">
-             <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship">
-               <i class="far fa-bookmark"></i>
-             </button>
-             <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}">
-               <i class="fas fa-share-alt"></i>
-             </button>
-             <button class="btn btn-primary apply-btn" data-type="internship" {% if not internship.application_link %}disabled{% endif %}>
-               Apply Now
-             </button>
-           </div>
         </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship">
+            <i class="far fa-bookmark"></i>
+          </button>
+          <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}">
+            <i class="fas fa-share-alt"></i>
+          </button>
+          <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}" {% if not internship.application_link %}disabled{% endif %}>
+            Apply Now
+          </button>
+        </div>
+      </div>
       {% endfor %}
     {% else %}
       <div class="empty-state">
@@ -52,32 +67,4 @@
     {% endif %}
   </div>
 </div>
-
-<script>
-// Filter functionality
-document.addEventListener('DOMContentLoaded', function() {
-  const filterButtons = document.querySelectorAll('.filter-btn');
-
-  filterButtons.forEach(btn => {
-    btn.addEventListener('click', function() {
-      const filter = this.dataset.filter;
-
-      // Update active state
-      filterButtons.forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-
-      // Filter items
-      document.querySelectorAll('.preview-card').forEach(card => {
-        if (filter === 'all') {
-          card.style.display = '';
-        } else {
-          const tags = card.dataset.tags.split(' ');
-          const matchesFilter = tags.includes(filter);
-          card.style.display = matchesFilter ? '' : 'none';
-        }
-      });
-    });
-  });
-});
-</script>
 {% endblock %}

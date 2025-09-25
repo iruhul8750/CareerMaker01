@@ -8,6 +8,9 @@ import smtplib
 import hashlib
 import binascii
 import smtplib
+import re
+import requests
+from fuzzywuzzy import fuzz
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -33,6 +36,11 @@ from dotenv import load_dotenv
 from PIL import Image
 from flask_cors import CORS
 from supabase import create_client, Client
+import requests
+from PIL import Image
+import io
+import base64
+import re
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -264,53 +272,828 @@ def admin_required(f):
 
     return decorated_function
 
-def get_company_logo(application_link, content_type=None, content_id=None):
+# Logo fetch functions for contents
+
+def fetch_company_logo(company_name):
+    """
+    Optimized company logo fetching with multiple strategies and better matching
+    """
+    if not company_name or len(company_name.strip()) < 2:
+        return None
+
     try:
-        # First check if we already have a logo in database
-        if content_type and content_id:
-            table_map = {
-                'course': 'courses',
-                'job': 'jobs',
-                'internship': 'internships'
-            }
-            if content_type in table_map:
-                content = supabase.table(table_map[content_type]).select('image').eq('id',
-                                                                                     content_id).single().execute().data
-                if content and content.get('image'):
-                    return content['image']
+        clean_name = company_name.strip()
+        logger.info(f"🔍 Optimized logo search for: {clean_name}")
 
-        # If no image in DB, try to fetch from application link domain
-        domain = urlparse(application_link).netloc
-        if domain.startswith('www.'):
-            domain = domain[4:]
+        # Normalize company name for better matching
+        normalized_name = normalize_company_name(clean_name)
 
-        # Try multiple logo sources
-        logo_sources = [
-            f"https://logo.clearbit.com/{domain}?size=150",
-            f"https://favicon.{domain}/favicon.ico",
-            f"https://{domain}/favicon.ico"
+        # Strategy 1: Pre-defined well-known companies with exact mappings
+        well_known_logos = get_well_known_logos()
+        logo_url = check_well_known_companies(normalized_name, well_known_logos)
+        if logo_url:
+            logger.info(f"✅ Found in well-known companies: {logo_url}")
+            return logo_url
+
+        # Strategy 2: Clearbit API with multiple domain variations
+        logo_url = try_clearbit_api(normalized_name)
+        if logo_url:
+            logger.info(f"✅ Found via Clearbit: {logo_url}")
+            return logo_url
+
+        # Strategy 3: Google favicon with domain discovery
+        logo_url = try_google_favicon(normalized_name)
+        if logo_url:
+            logger.info(f"✅ Found via Google favicon: {logo_url}")
+            return logo_url
+
+        # Strategy 4: DuckDuckGo icon service
+        logo_url = try_duckduckgo(normalized_name)
+        if logo_url:
+            logger.info(f"✅ Found via DuckDuckGo: {logo_url}")
+            return logo_url
+
+        # Strategy 5: Company domain discovery and favicon fetching
+        logo_url = try_domain_discovery(normalized_name)
+        if logo_url:
+            logger.info(f"✅ Found via domain discovery: {logo_url}")
+            return logo_url
+
+        logger.warning(f"❌ No logo found for: {clean_name}")
+        return None
+
+    except Exception as e:
+        logger.error(f"Error in optimized logo fetch for {company_name}: {str(e)}")
+        return None
+
+
+def normalize_company_name(company_name):
+    """
+    Normalize company name for better matching
+    """
+    # Convert to lowercase
+    name = company_name.lower()
+
+    # Remove common suffixes and legal entities
+    suffixes = [
+        'inc', 'corp', 'corporation', 'company', 'llc', 'limited', 'gmbh',
+        'ltd', 'plc', 'co', 'group', 'holdings', 'technologies', 'tech',
+        'software', 'systems', 'solutions', 'services', 'international'
+    ]
+
+    for suffix in suffixes:
+        name = re.sub(rf'\b{suffix}\b', '', name)
+
+    # Remove special characters and extra spaces
+    name = re.sub(r'[^\w\s]', '', name)
+    name = re.sub(r'\s+', ' ', name).strip()
+
+    return name
+
+
+def get_well_known_logos():
+    """
+    Comprehensive list of well-known companies with exact logo URLs
+    """
+    return {
+        # Indian Companies with proper domains
+        'tata': 'https://logo.clearbit.com/tata.com',
+        'tata motors': 'https://logo.clearbit.com/tatamotors.com',
+        'tata consultancy services': 'https://logo.clearbit.com/tcs.com',
+        'tcs': 'https://logo.clearbit.com/tcs.com',
+        'infosys': 'https://logo.clearbit.com/infosys.com',
+        'wipro': 'https://logo.clearbit.com/wipro.com',
+        'hcl': 'https://logo.clearbit.com/hcl.com',
+        'hcl technologies': 'https://logo.clearbit.com/hcl.com',
+        'tech mahindra': 'https://logo.clearbit.com/techmahindra.com',
+        'reliance': 'https://logo.clearbit.com/ril.com',
+        'reliance industries': 'https://logo.clearbit.com/ril.com',
+        'reliance jio': 'https://logo.clearbit.com/jio.com',
+        'jio': 'https://logo.clearbit.com/jio.com',
+        'adani': 'https://logo.clearbit.com/adani.com',
+        'adani group': 'https://logo.clearbit.com/adani.com',
+        'mahindra': 'https://logo.clearbit.com/mahindra.com',
+        'mahindra group': 'https://logo.clearbit.com/mahindra.com',
+        'bajaj': 'https://logo.clearbit.com/bajaj.com',
+        'bajaj auto': 'https://logo.clearbit.com/bajajauto.com',
+        'bajaj finserv': 'https://logo.clearbit.com/bajajfinserv.com',
+        'icici': 'https://logo.clearbit.com/icici.com',
+        'icici bank': 'https://logo.clearbit.com/icicibank.com',
+        'hdfc': 'https://logo.clearbit.com/hdfc.com',
+        'hdfc bank': 'https://logo.clearbit.com/hdfcbank.com',
+        'axis bank': 'https://logo.clearbit.com/axisbank.com',
+        'state bank of india': 'https://logo.clearbit.com/sbi.co.in',
+        'sbi': 'https://logo.clearbit.com/sbi.co.in',
+        'kotak mahindra bank': 'https://logo.clearbit.com/kotak.com',
+        'kotak': 'https://logo.clearbit.com/kotak.com',
+
+        # Indian PSUs and Government
+        'ongc': 'https://logo.clearbit.com/ongc.co.in',
+        'oil and natural gas corporation': 'https://logo.clearbit.com/ongc.co.in',
+        'ioc': 'https://logo.clearbit.com.iocl.com',
+        'indian oil': 'https://logo.clearbit.com.iocl.com',
+        'bhel': 'https://logo.clearbit.com/bhel.com',
+        'bharat heavy electricals': 'https://logo.clearbit.com/bhel.com',
+        'ntpc': 'https://logo.clearbit.com/ntpc.co.in',
+        'coal india': 'https://logo.clearbit.com/coalindia.in',
+        'bharat petroleum': 'https://logo.clearbit.com/bharatpetroleum.in',
+        'hpcl': 'https://logo.clearbit.com/hindustanpetroleum.com',
+        'hindustan petroleum': 'https://logo.clearbit.com/hindustanpetroleum.com',
+
+        # Indian IT Services
+        'mindtree': 'https://logo.clearbit.com/mindtree.com',
+        'larsen & toubro infotech': 'https://logo.clearbit.com/lntinfotech.com',
+        'lti': 'https://logo.clearbit.com/lntinfotech.com',
+        'mphasis': 'https://logo.clearbit.com/mphasis.com',
+        'hexaware': 'https://logo.clearbit.com/hexaware.com',
+        'cipla': 'https://logo.clearbit.com/cipla.com',
+        'dr reddys': 'https://logo.clearbit.com/drreddys.com',
+        'sun pharma': 'https://logo.clearbit.com/sunpharma.com',
+
+        # Indian Startups & Unicorns
+        'nykaa': 'https://logo.clearbit.com/nykaa.com',
+        'policybazaar': 'https://logo.clearbit.com/policybazaar.com',
+        'phonepe': 'https://logo.clearbit.com/phonepe.com',
+        'cred': 'https://logo.clearbit.com/cred.com',
+
+        # Indian Automotive
+        'maruti suzuki': 'https://logo.clearbit.com/marutisuzuki.com',
+        'maruti': 'https://logo.clearbit.com/marutisuzuki.com',
+        'hero motocorp': 'https://logo.clearbit.com/heromotocorp.com',
+        'hero': 'https://logo.clearbit.com/heromotocorp.com',
+        'mahindra & mahindra': 'https://logo.clearbit.com/mahindra.com',
+        'ashok leyland': 'https://logo.clearbit.com/ashokleyland.com',
+
+        # Indian Telecom
+        'airtel': 'https://logo.clearbit.com/airtel.com',
+        'bharti airtel': 'https://logo.clearbit.com/airtel.com',
+        'vodafone idea': 'https://logo.clearbit.com/myvi.com',
+        'vi': 'https://logo.clearbit.com/myvi.com',
+        'bsnl': 'https://logo.clearbit.com.bsnl.co.in',
+
+        # Global Tech Companies
+        'google': 'https://logo.clearbit.com/google.com',
+        'microsoft': 'https://logo.clearbit.com/microsoft.com',
+        'apple': 'https://logo.clearbit.com/apple.com',
+        'amazon': 'https://logo.clearbit.com/amazon.com',
+        'meta': 'https://logo.clearbit.com/meta.com',
+        'facebook': 'https://logo.clearbit.com/facebook.com',
+        'twitter': 'https://logo.clearbit.com/twitter.com',
+        'linkedin': 'https://logo.clearbit.com/linkedin.com',
+        'netflix': 'https://logo.clearbit.com/netflix.com',
+        'spotify': 'https://logo.clearbit.com/spotify.com',
+        'ibm': 'https://logo.clearbit.com/ibm.com',
+        'oracle': 'https://logo.clearbit.com/oracle.com',
+        'cisco': 'https://logo.clearbit.com/cisco.com',
+        'intel': 'https://logo.clearbit.com/intel.com',
+        'amd': 'https://logo.clearbit.com/amd.com',
+        'nvidia': 'https://logo.clearbit.com/nvidia.com',
+        'samsung': 'https://logo.clearbit.com/samsung.com',
+        'sony': 'https://logo.clearbit.com/sony.com',
+        'compass-group-india': 'https://logo.clearbit.com/compass-group.co.in',
+
+        # Consulting & Services
+        'accenture': 'https://logo.clearbit.com/accenture.com',
+        'deloitte': 'https://logo.clearbit.com/deloitte.com',
+        'pwc': 'https://logo.clearbit.com/pwc.com',
+        'ey': 'https://logo.clearbit.com/ey.com',
+        'kpmg': 'https://logo.clearbit.com/kpmg.com',
+        'capgemini': 'https://logo.clearbit.com/capgemini.com',
+        'cognizant': 'https://logo.clearbit.com/cognizant.com',
+
+        # Startups & Indian IT
+        'flipkart': 'https://logo.clearbit.com/flipkart.com',
+        'ola': 'https://logo.clearbit.com/olacabs.com',
+        'ola electric': 'https://logo.clearbit.com/olaelectric.com',
+        'paytm': 'https://logo.clearbit.com/paytm.com',
+        'zomato': 'https://logo.clearbit.com/zomato.com',
+        'swiggy': 'https://logo.clearbit.com/swiggy.com',
+        'byjus': 'https://logo.clearbit.com/byjus.com',
+        'unacademy': 'https://logo.clearbit.com/unacademy.com',
+        'upgrad': 'https://logo.clearbit.com/upgrad.com',
+        'razorpay': 'https://logo.clearbit.com/razorpay.com',
+        'freshworks': 'https://logo.clearbit.com/freshworks.com',
+        'zoho': 'https://logo.clearbit.com/zoho.com',
+    }
+
+
+def check_well_known_companies(normalized_name, well_known_logos):
+    """
+    Check if company name matches well-known companies with fuzzy matching
+    """
+    # Exact match first
+    if normalized_name in well_known_logos:
+        return well_known_logos[normalized_name]
+
+    # Fuzzy matching for close matches
+    for known_name, logo_url in well_known_logos.items():
+        similarity = fuzz.ratio(normalized_name, known_name)
+        if similarity > 85:  # 85% similarity threshold
+            logger.info(f"🎯 Fuzzy match: {normalized_name} ~ {known_name} ({similarity}%)")
+            return logo_url
+
+    return None
+
+
+def try_clearbit_api(company_name):
+    """
+    Try Clearbit API with multiple domain variations including Indian domains
+    """
+    # Expanded domain list with Indian domains prioritized
+    domains = ['co.in', 'in', 'com', 'org', 'net', 'io', 'co', 'ai', 'dev', 'tech', 'ac.in']
+    variations = generate_domain_variations(company_name)
+
+    # Prioritize Indian domains for Indian company names
+    if is_likely_indian_company(company_name):
+        domains = ['co.in', 'in', 'com', 'org', 'net']  # Indian domains first
+
+    for domain_variation in variations:
+        for domain in domains:
+            clearbit_url = f"https://logo.clearbit.com/{domain_variation}.{domain}?size=400"
+
+            try:
+                response = requests.get(clearbit_url, timeout=3, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                })
+
+                if response.status_code == 200:
+                    # Validate it's a real image (not placeholder)
+                    content_type = response.headers.get('content-type', '')
+                    content_length = len(response.content)
+
+                    if ('image' in content_type and
+                            content_length > 5000 and  # Clearbit placeholders are usually smaller
+                            not is_clearbit_placeholder(response.content)):
+                        return clearbit_url
+
+            except requests.RequestException:
+                continue
+
+    return None
+
+
+def try_google_favicon(company_name):
+    """
+    Try to find favicon via Google services with domain discovery including Indian domains
+    """
+    variations = generate_domain_variations(company_name)
+
+    # Domain priority based on company origin
+    if is_likely_indian_company(company_name):
+        domains = ['co.in', 'in', 'com', 'org']
+    else:
+        domains = ['com', 'co.in', 'in', 'org']
+
+    for domain_variation in variations:
+        for domain in domains:
+            # Try Google favicon API
+            favicon_url = f"https://www.google.com/s2/favicons?domain={domain_variation}.{domain}&sz=128"
+
+            try:
+                response = requests.get(favicon_url, timeout=2)
+                if response.status_code == 200 and len(response.content) > 100:
+                    # Verify it's not the default favicon
+                    if not is_default_favicon(response.content):
+                        return favicon_url
+            except:
+                continue
+
+    return None
+
+
+def try_domain_discovery(company_name):
+    """
+    Try to discover actual domain and fetch favicon with Indian domain priority
+    """
+    try:
+        # Domain priority based on company origin
+        if is_likely_indian_company(company_name):
+            domain_extensions = ['.co.in', '.in', '.com', '.org']
+        else:
+            domain_extensions = ['.com', '.co.in', '.in', '.org']
+
+        domains_to_try = []
+        base_name = company_name.replace(' ', '').lower()
+
+        for ext in domain_extensions:
+            domains_to_try.append(f"{base_name}{ext}")
+            domains_to_try.append(f"{base_name.replace(' ', '-')}{ext}")
+
+            # Try without common words for Indian companies
+            if is_likely_indian_company(company_name):
+                clean_name = remove_common_indian_suffixes(company_name).replace(' ', '').lower()
+                if clean_name != base_name:
+                    domains_to_try.append(f"{clean_name}{ext}")
+
+        # Add acronym-based domains for longer company names
+        if len(company_name.split()) > 2:
+            acronym = ''.join([word[0] for word in company_name.split()]).lower()
+            if len(acronym) > 1:
+                for ext in domain_extensions[:2]:  # Try only main extensions for acronyms
+                    domains_to_try.append(f"{acronym}{ext}")
+
+        for domain in domains_to_try:
+            # Try favicon for this domain
+            favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+            response = requests.get(favicon_url, timeout=2)
+
+            if response.status_code == 200 and len(response.content) > 100:
+                if not is_default_favicon(response.content):
+                    return favicon_url
+
+    except:
+        pass
+
+    return None
+
+
+def is_likely_indian_company(company_name):
+    """
+    Detect if company is likely Indian based on name patterns and keywords
+    """
+    name_lower = company_name.lower()
+
+    # Indian company name patterns
+    indian_keywords = [
+        'tata', 'reliance', 'adani', 'mahindra', 'bajaj', 'infosys', 'wipro',
+        'hcl', 'tech mahindra', 'icici', 'hdfc', 'sbi', 'axis bank', 'kotak',
+        'ongc', 'ioc', 'bhel', 'ntpc', 'coal india', 'itc', 'lt', 'dr reddy',
+        'sun pharma', 'cipla', 'britannia', 'nestle india', 'britannia',
+        'maruti', 'hero', 'bajaj auto', 'ashok leyland', 'eicher',
+        'indian oil', 'bharat petroleum', 'hindustan petroleum',
+        'airtel', 'jio', 'vodafone idea', 'bsnl', 'mtnl'
+    ]
+
+    # Check for Indian keywords
+    for keyword in indian_keywords:
+        if keyword in name_lower:
+            return True
+
+    # Check for Indian location names in company name
+    indian_locations = [
+        'india', 'indian', 'bharat', 'delhi', 'mumbai', 'bangalore', 'chennai',
+        'kolkata', 'hyderabad', 'pune', 'ahmedabad', 'surat', 'jaipur',
+        'lucknow', 'kanpur', 'nagpur', 'patna', 'indore', 'thane', 'bhopal'
+    ]
+
+    for location in indian_locations:
+        if location in name_lower:
+            return True
+
+    # Check for common Indian business suffixes
+    indian_suffixes = [
+        'limited', 'ltd', 'pvt ltd', 'private limited', 'india ltd',
+        'bharat', 'industries', 'enterprises', 'traders', 'company'
+    ]
+
+    words = name_lower.split()
+    if words and words[-1] in indian_suffixes:
+        return True
+
+    return False
+
+
+def remove_common_indian_suffixes(company_name):
+    """
+    Remove common Indian business suffixes for cleaner domain generation
+    """
+    suffixes = [
+        'limited', 'ltd', 'pvt ltd', 'private limited', 'india limited',
+        'india ltd', 'bharat', 'industries', 'enterprises', 'traders',
+        'company', 'corp', 'corporation', 'international', 'global'
+    ]
+
+    name = company_name.lower()
+    for suffix in suffixes:
+        # Remove suffix with various spacings
+        patterns = [
+            f' {suffix}',
+            f'-{suffix}',
+            f'{suffix}',
         ]
 
-        for logo_url in logo_sources:
+        for pattern in patterns:
+            if name.endswith(pattern):
+                name = name[:-len(pattern)].strip()
+
+    return name.title()  # Return with proper capitalization
+
+
+def generate_domain_variations(company_name):
+    """
+    Generate possible domain name variations with Indian domain preferences
+    """
+    variations = set()
+
+    # Original name variations
+    base_variations = [
+        company_name.replace(' ', '').lower(),
+        company_name.replace(' ', '-').lower(),
+        company_name.replace(' ', '').replace('.', '').lower(),
+        company_name.replace(' ', '').replace('&', 'and').lower(),
+    ]
+
+    variations.update(base_variations)
+
+    # For Indian companies, generate additional variations
+    if is_likely_indian_company(company_name):
+        clean_name = remove_common_indian_suffixes(company_name)
+        if clean_name.lower() != company_name.lower():
+            variations.add(clean_name.replace(' ', '').lower())
+            variations.add(clean_name.replace(' ', '-').lower())
+
+    # Common abbreviations and acronyms
+    if ' ' in company_name:
+        # Use first word
+        first_word = company_name.split(' ')[0].lower()
+        variations.add(first_word)
+
+        # Use acronym (only if meaningful)
+        words = company_name.split()
+        if len(words) > 1:
+            acronym = ''.join([word[0] for word in words]).lower()
+            if len(acronym) > 1 and len(acronym) <= 5:  # Reasonable acronym length
+                variations.add(acronym)
+
+            # Try first two words for longer names
+            if len(words) > 2:
+                first_two = ''.join(words[:2]).lower()
+                variations.add(first_two)
+                variations.add('-'.join(words[:2]).lower())
+
+    # Remove any empty variations
+    variations = {v for v in variations if v and len(v) > 1}
+
+    return list(variations)
+
+
+def try_duckduckgo(company_name):
+    """
+    Try DuckDuckGo icon service with Indian domains
+    """
+    domains = ['com', 'co.in', 'in', 'org']
+
+    for domain in domains:
+        try:
+            ddg_url = f"https://icons.duckduckgo.com/ip3/{company_name.replace(' ', '')}.{domain}.ico"
+            response = requests.get(ddg_url, timeout=3)
+
+            if response.status_code == 200 and len(response.content) > 100:
+                return ddg_url
+        except:
+            continue
+
+    return None
+
+
+def is_clearbit_placeholder(image_content):
+    """
+    Check if Clearbit returned a placeholder image
+    """
+    # Simple check based on content length (placeholders are usually smaller)
+    return len(image_content) < 5000
+
+
+def is_default_favicon(image_content):
+    """
+    Check if it's a default favicon (usually very small or generic)
+    """
+    return len(image_content) < 500  # Default favicons are usually very small
+
+
+# Add this new function for better company name extraction
+def extract_company_name_from_content(content_data):
+    """
+    Extract and clean company name from content data
+    """
+    company_name = content_data.get('company', '').strip()
+    if not company_name:
+        return None
+
+    # Clean and normalize the company name
+    company_name = re.sub(r'[^\w\s]', '', company_name)  # Remove special chars
+    company_name = re.sub(r'\s+', ' ', company_name).strip()  # Normalize spaces
+
+    return company_name
+
+
+def download_and_store_logo(logo_url, company_name, content_type, content_id):
+    """
+    Download logo and store it in Supabase Storage
+    """
+    try:
+        response = requests.get(logo_url, timeout=10)
+        if response.status_code != 200:
+            return None
+
+        # Validate image
+        try:
+            image = Image.open(io.BytesIO(response.content))
+            image.verify()  # Verify it's a valid image
+        except:
+            return None
+
+        # Generate unique filename
+        file_extension = logo_url.split('.')[-1].lower()
+        if file_extension not in ['png', 'jpg', 'jpeg', 'gif', 'ico']:
+            file_extension = 'png'
+
+        unique_filename = f"company-logos/{company_name.lower().replace(' ', '-')}-{content_id}.{file_extension}"
+
+        # Upload to Supabase Storage
+        upload_response = supabase_admin.storage.from_("company-logos").upload(
+            unique_filename,
+            response.content,
+            {"content-type": f"image/{file_extension}"}
+        )
+
+        if upload_response:
+            # Get public URL
+            public_url = supabase.storage.from_("company-logos").get_public_url(unique_filename)
+            return public_url
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Error storing logo for {company_name}: {str(e)}")
+        return None
+
+
+def get_or_fetch_logo(company_name, content_type, content_id):
+    """
+    Get existing logo from database or fetch new one - improved version
+    """
+    try:
+        if not company_name:
+            return None
+
+        # First, check if we already have a logo for this company
+        try:
+            existing_logo = supabase.table('company_logos') \
+                .select('*') \
+                .ilike('company_name', f"%{company_name.lower()}%") \
+                .maybe_single() \
+                .execute()
+
+            if existing_logo.data and existing_logo.data.get('logo_url'):
+                logger.info(f"✅ Found existing logo in DB for {company_name}")
+                return existing_logo.data['logo_url']
+        except Exception as db_error:
+            logger.warning(f"Database query failed for {company_name}: {str(db_error)}")
+            # Continue to fetch new logo
+
+        # If no existing logo, fetch new one
+        logo_url = fetch_company_logo(company_name)
+        if not logo_url:
+            logger.warning(f"❌ No logo found for {company_name}")
+            return None
+
+        # Download and store the logo
+        stored_logo_url = download_and_store_logo(logo_url, company_name, content_type, content_id)
+        if not stored_logo_url:
+            logger.warning(f"❌ Failed to store logo for {company_name}")
+            return None
+
+        # Store logo reference in database
+        try:
+            logo_data = {
+                'company_name': company_name.lower(),
+                'original_logo_url': logo_url,
+                'logo_url': stored_logo_url,
+                'content_type': content_type,
+                'content_id': content_id,
+                'created_at': get_current_time().isoformat()
+            }
+
+            supabase.table('company_logos').insert(logo_data).execute()
+            logger.info(f"✅ Logo stored in database for {company_name}")
+
+            return stored_logo_url
+
+        except Exception as e:
+            logger.error(f"Error storing logo in database for {company_name}: {str(e)}")
+            return stored_logo_url  # Still return the URL even if DB storage fails
+
+    except Exception as e:
+        logger.error(f"Error in get_or_fetch_logo for {company_name}: {str(e)}")
+        return None
+
+
+def enhance_content_with_logo(content_data, content_type, content_id):
+    """
+    Enhanced content data with company logo - optimized version
+    """
+    try:
+        if not content_data:
+            return content_data
+
+        # Extract and clean company name
+        company_name = extract_company_name_from_content(content_data)
+        if not company_name:
+            # No company name, use default logo
+            return apply_default_logo(content_data, content_type)
+
+        # If content already has a valid logo, use it
+        if content_data.get('company_logo') and is_valid_logo_url(content_data['company_logo']):
+            logger.info(f"✅ Using existing logo for {company_name}")
+            return content_data
+
+        logger.info(f"🔍 Optimized logo fetch for: {company_name} ({content_type})")
+
+        # Try to get logo with optimized method
+        logo_url = get_or_fetch_logo_optimized(company_name, content_type, content_id)
+
+        if logo_url:
+            content_data['company_logo'] = logo_url
+            logger.info(f"✅ Logo found for {company_name}: {logo_url}")
+        else:
+            # Use appropriate default logo
+            content_data = apply_default_logo(content_data, content_type)
+            logger.info(f"⚠️ Using default logo for {company_name}")
+
+        return content_data
+
+    except Exception as e:
+        logger.error(f"Error enhancing content with logo: {str(e)}")
+        return apply_default_logo(content_data, content_type)
+
+
+def get_or_fetch_logo_optimized(company_name, content_type, content_id):
+    """
+    Optimized version of logo fetching with better caching
+    """
+    try:
+        # First, check if we already have a logo for this company (fuzzy match)
+        existing_logo = find_similar_company_logo(company_name)
+        if existing_logo:
+            return existing_logo
+
+        # If no existing logo, fetch new one with optimized method
+        logo_url = fetch_company_logo(company_name)
+        if not logo_url:
+            return None
+
+        # Download and store the logo
+        stored_logo_url = download_and_store_logo(logo_url, company_name, content_type, content_id)
+        if not stored_logo_url:
+            return None
+
+        # Store logo reference in database
+        try:
+            logo_data = {
+                'company_name': company_name.lower(),
+                'original_logo_url': logo_url,
+                'logo_url': stored_logo_url,
+                'content_type': content_type,
+                'content_id': content_id,
+                'created_at': get_current_time().isoformat()
+            }
+
+            supabase.table('company_logos').insert(logo_data).execute()
+            logger.info(f"✅ Logo stored in database for {company_name}")
+
+            return stored_logo_url
+
+        except Exception as e:
+            logger.error(f"Error storing logo in database for {company_name}: {str(e)}")
+            return stored_logo_url  # Still return the URL even if DB storage fails
+
+    except Exception as e:
+        logger.error(f"Error in optimized logo fetch for {company_name}: {str(e)}")
+        return None
+
+
+def find_similar_company_logo(company_name):
+    """
+    Find similar company logo in database using fuzzy matching
+    """
+    try:
+        # Get all company logos from database
+        all_logos = supabase.table('company_logos').select('company_name, logo_url').execute()
+
+        if not all_logos.data:
+            return None
+
+        normalized_search = normalize_company_name(company_name)
+
+        best_match = None
+        highest_similarity = 0
+
+        for logo in all_logos.data:
+            db_company_name = logo['company_name']
+            normalized_db = normalize_company_name(db_company_name)
+
+            similarity = fuzz.ratio(normalized_search, normalized_db)
+
+            if similarity > 80 and similarity > highest_similarity:  # 80% similarity threshold
+                highest_similarity = similarity
+                best_match = logo['logo_url']
+                logger.info(f"🎯 Found similar company in DB: {db_company_name} ({similarity}% match)")
+
+        return best_match
+
+    except Exception as e:
+        logger.warning(f"Error in similar company search: {str(e)}")
+        return None
+
+
+def apply_default_logo(content_data, content_type):
+    """
+    Apply appropriate default logo based on content type
+    """
+    default_logos = {
+        'course': '/static/images/default-course.png',
+        'job': '/static/images/default-job.png',
+        'internship': '/static/images/default-internship.png'
+    }
+
+    content_data['company_logo'] = default_logos.get(content_type, '/static/images/default-company.png')
+    return content_data
+
+
+def is_valid_logo_url(url):
+    """
+    Check if logo URL is valid and not a default/placeholder
+    """
+    if not url or url.startswith('/static/images/default-'):
+        return False
+
+    # Check if it's a properly formatted URL
+    return url.startswith('http') and len(url) > 10
+
+
+def get_fallback_logo(company_name):
+    """
+    Get a fallback logo using better search techniques
+    """
+    try:
+        clean_name = company_name.lower().strip()
+
+        # Try to find logo using better search
+        search_queries = [
+            f"{clean_name} company logo",
+            f"{clean_name} logo",
+            clean_name
+        ]
+
+        for query in search_queries:
+            # Try Google Custom Search API (you'd need to set this up)
+            # For now, use a simple favicon approach
+            logo_url = f"https://www.google.com/s2/favicons?domain={clean_name.replace(' ', '')}.com&sz=128"
+
             try:
-                import requests
-                response = requests.head(logo_url, timeout=3)
-                if response.status_code == 200:
-                    # Store the logo URL in database if content_type and content_id provided
-                    if content_type in table_map and content_id:
-                        supabase.table(table_map[content_type]).update({'image': logo_url}).eq('id',
-                                                                                               content_id).execute()
+                response = requests.get(logo_url, timeout=2)
+                if response.status_code == 200 and len(response.content) > 100:
                     return logo_url
             except:
                 continue
 
-        # Return empty string if no logo found
-        return ""
+        return None
+    except Exception as e:
+        logger.error(f"Error in fallback logo: {str(e)}")
+        return None
+
+
+@app.route('/admin/update-content-logos')
+@admin_required
+def update_content_logos():
+    """Utility route to add logos to existing content"""
+    try:
+        # Update courses
+        courses = supabase.table('courses').select('id, company').execute().data or []
+        for course in courses:
+            if course.get('company') and not course.get('company_logo'):
+                enhanced = enhance_content_with_logo(course, 'course', course['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('courses').update({'company_logo': enhanced['company_logo']}).eq('id', course[
+                        'id']).execute()
+
+        # Update jobs
+        jobs = supabase.table('jobs').select('id, company').execute().data or []
+        for job in jobs:
+            if job.get('company') and not job.get('company_logo'):
+                enhanced = enhance_content_with_logo(job, 'job', job['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('jobs').update({'company_logo': enhanced['company_logo']}).eq('id',
+                                                                                                 job['id']).execute()
+
+        # Update internships
+        internships = supabase.table('internships').select('id, company').execute().data or []
+        for internship in internships:
+            if internship.get('company') and not internship.get('company_logo'):
+                enhanced = enhance_content_with_logo(internship, 'internship', internship['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('internships').update({'company_logo': enhanced['company_logo']}).eq('id',
+                                                                                                        internship[
+                                                                                                            'id']).execute()
+
+        return jsonify({'success': True, 'message': 'Content logos updated successfully'})
 
     except Exception as e:
-        logger.error(f"Error getting company logo: {str(e)}")
-        return ""
+        logger.error(f"Error updating content logos: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
+# Categories handle
 def handle_categories_data(data):
     """Handle categories data conversion from string to array"""
     if 'categories' in data:
@@ -331,28 +1114,27 @@ def index():
         username = session.get('username') if logged_in else None
 
         # Fetch featured content from database
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_published', True).limit(
-            4).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            4).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            4).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_published', True).limit(
-            3).execute().data or []
+        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_published', True).limit(4).execute().data or []
+        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_published', True).limit(3).execute().data or []
 
-        # Fetch testimonials (using blog posts as testimonials for now)
-        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured',
-                                                                                                       True).eq(
-            'is_published', True).limit(3).execute().data or []
+        # Enhance content with logos
+        enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
+        enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs]
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships]
+
+        # Fetch testimonials
+        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_published', True).limit(3).execute().data or []
 
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
-        courses, jobs, internships, blogs, testimonials = [], [], [], [], []
+        enhanced_courses, enhanced_jobs, enhanced_internships, blogs, testimonials = [], [], [], [], []
 
     return render_template('index.html',
-                           courses=courses,
-                           jobs=jobs,
-                           internships=internships,
+                           courses=enhanced_courses,
+                           jobs=enhanced_jobs,
+                           internships=enhanced_internships,
                            blogs=blogs,
                            testimonials=testimonials,
                            logged_in=logged_in,
@@ -901,6 +1683,96 @@ def get_user_bookmarks(user_id):
         logger.error(f"Error getting user bookmarks: {str(e)}")
         return []
 
+# Content logo routes
+@app.route('/api/company-logo/preview')
+def company_logo_preview():
+    """
+    Optimized API endpoint for real-time logo preview
+    """
+    company_name = request.args.get('company', '').strip()
+    if not company_name:
+        return jsonify({'success': False, 'error': 'Company name required'}), 400
+
+    try:
+        # Use the optimized logo fetching
+        logo_url = fetch_company_logo(company_name)
+
+        if logo_url:
+            return jsonify({
+                'success': True,
+                'company_name': company_name,
+                'logo_url': logo_url,
+                'is_preview': True,
+                'source': 'optimized'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No logo found for this company',
+                'company_name': company_name,
+                'suggestion': 'The company might not have a publicly available logo'
+            })
+
+    except Exception as e:
+        logger.error(f"Error in optimized logo preview for {company_name}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Error fetching logo',
+            'company_name': company_name
+        })
+
+
+@app.route('/api/company-logo/refresh/<string:content_type>/<string:content_id>')
+@admin_required
+def refresh_company_logo(content_type, content_id):
+    """
+    Force refresh of company logo for specific content
+    """
+    try:
+        # Get content to extract company name
+        table_map = {
+            'job': 'jobs',
+            'internship': 'internships',
+            'course': 'courses'
+        }
+
+        if content_type not in table_map:
+            return jsonify({'success': False, 'error': 'Invalid content type'})
+
+        content = supabase.table(table_map[content_type]) \
+            .select('company, title') \
+            .eq('id', content_id) \
+            .single() \
+            .execute()
+
+        if not content.data:
+            return jsonify({'success': False, 'error': 'Content not found'})
+
+        company_name = content.data.get('company')
+        if not company_name:
+            return jsonify({'success': False, 'error': 'No company name found'})
+
+        # Force fetch new logo
+        logo_url = get_or_fetch_logo(company_name, content_type, content_id)
+
+        if logo_url:
+            # Update content with new logo
+            supabase.table(table_map[content_type]) \
+                .update({'company_logo': logo_url}) \
+                .eq('id', content_id) \
+                .execute()
+
+            return jsonify({
+                'success': True,
+                'message': 'Logo refreshed successfully',
+                'logo_url': logo_url
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Could not fetch new logo'})
+
+    except Exception as e:
+        logger.error(f"Error refreshing logo: {str(e)}")
+        return jsonify({'success': False, 'error': 'Error refreshing logo'})
 
 # Content Routes
 @app.route('/courses')
@@ -914,13 +1786,17 @@ def courses():
             query = query.ilike('title', f'%{search}%')
         if category:
             query = query.eq('category', category)
-        courses = query.order('created_at', desc=True).execute().data or []
+        courses_data = query.order('created_at', desc=True).execute().data or []
+
+        # Enhance courses with logos
+        enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses_data]
+
     except Exception as e:
         logger.error(f"Error loading courses: {str(e)}")
-        courses = []
+        enhanced_courses = []
 
     return render_template('courses.html',
-                           courses=courses,
+                           courses=enhanced_courses,
                            search=search,
                            category=category,
                            course_categories=['Programming', 'Design', 'Business', 'Marketing'])
@@ -929,18 +1805,14 @@ def courses():
 @app.route('/courses/<course_id>')
 def course_detail(course_id):
     try:
-        course = supabase.table('courses').select('*').eq('id', course_id).eq('is_published', True).eq('is_active',
-                                                                                                       True).single().execute().data
+        course = supabase.table('courses').select('*').eq('id', course_id).eq('is_published', True).eq('is_active', True).single().execute().data
 
         if not course:
             flash('Course not found', 'danger')
             return redirect(url_for('courses'))
 
-        # Ensure we have a logo
-        if course.get('application_link') and not course.get('image'):
-            logo_url = get_company_logo(course['application_link'], 'course', course_id)
-            if logo_url:
-                course['image'] = logo_url
+        # Enhance course with logo
+        enhanced_course = enhance_content_with_logo(course, 'course', course_id)
 
         is_enrolled = False
         if 'user_id' in session:
@@ -953,7 +1825,7 @@ def course_detail(course_id):
             is_enrolled = bool(bookmark.data)
 
         return render_template('course-detail.html',
-                               course=course,
+                               course=enhanced_course,
                                is_enrolled=is_enrolled)
     except Exception as e:
         logger.error(f"Error loading course: {str(e)}")
@@ -1001,13 +1873,17 @@ def jobs():
             query = query.ilike('location', f'%{location}%')
         if job_type:
             query = query.eq('type', job_type)
-        jobs = query.order('created_at', desc=True).execute().data or []
+        jobs_data = query.order('created_at', desc=True).execute().data or []
+
+        # Enhance jobs with logos
+        enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs_data]
+
     except Exception as e:
         logger.error(f"Error loading jobs: {str(e)}")
-        jobs = []
+        enhanced_jobs = []
 
     return render_template('jobs.html',
-                           jobs=jobs,
+                           jobs=enhanced_jobs,
                            search=search,
                            location=location,
                            job_type=job_type)
@@ -1053,13 +1929,18 @@ def internships():
             query = query.ilike('location', f'%{location}%')
         if internship_type:
             query = query.eq('type', internship_type)
-        internships = query.order('created_at', desc=True).execute().data or []
+        internships_data = query.order('created_at', desc=True).execute().data or []
+
+        # Enhance internships with logos
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
+                                in internships_data]
+
     except Exception as e:
         logger.error(f"Error loading internships: {str(e)}")
-        internships = []
+        enhanced_internships = []
 
     return render_template('internships.html',
-                           internships=internships,
+                           internships=enhanced_internships,
                            search=search,
                            location=location,
                            internship_type=internship_type)
@@ -1803,11 +2684,46 @@ def create_admin_resource(resource):
             data['is_featured'] = data.get('is_featured', True)
             data['is_active'] = data.get('is_active', True)
 
+        # Enhance data with company logo for relevant resources
+        if resource in ['jobs', 'internships', 'courses'] and data.get('company'):
+            try:
+                enhanced_data = enhance_content_with_logo(data, resource, None)
+                if enhanced_data.get('company_logo'):
+                    data['company_logo'] = enhanced_data['company_logo']
+                    logger.info(f"Auto-fetched company logo for {data.get('company')}")
+            except Exception as logo_error:
+                logger.warning(f"Could not fetch company logo for {data.get('company')}: {str(logo_error)}")
+                # Continue without logo if fetching fails
+
         # Insert into database
         response = supabase_admin.table(table_name).insert(data).execute()
 
         if not response.data:
             return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
+
+        # If creation was successful and we have a company but no logo, try to fetch it asynchronously
+        if resource in ['jobs', 'internships', 'courses'] and data.get('company') and not data.get('company_logo'):
+            try:
+                content_id = response.data[0]['id']
+                # Run logo fetching in background
+                from threading import Thread
+                def fetch_logo_async():
+                    try:
+                        logo_url = get_or_fetch_logo(data['company'], resource, content_id)
+                        if logo_url:
+                            # Update the content with the fetched logo
+                            supabase_admin.table(table_name).update({
+                                'company_logo': logo_url,
+                                'updated_at': get_current_time().isoformat()
+                            }).eq('id', content_id).execute()
+                            logger.info(f"Successfully added logo to {resource} {content_id}")
+                    except Exception as e:
+                        logger.error(f"Background logo fetch failed: {str(e)}")
+
+                thread = Thread(target=fetch_logo_async)
+                thread.start()
+            except Exception as async_error:
+                logger.error(f"Failed to start background logo fetch: {str(async_error)}")
 
         return jsonify({
             'success': True,
@@ -1816,7 +2732,7 @@ def create_admin_resource(resource):
         })
 
     except Exception as e:
-        logger.error(f"Error creating {resource}: {str(e)}")
+        logger.error(f"Error creating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
 
 
@@ -1841,14 +2757,69 @@ def update_admin_resource(resource, id):
         }
         table_name = table_map.get(resource, resource)
 
+        # Check if resource exists
+        existing_response = supabase_admin.table(table_name).select('id, company, company_logo').eq('id', id).execute()
+        if not existing_response.data:
+            return jsonify({'success': False, 'message': f'{resource[:-1]} not found'}), 404
+
+        existing_data = existing_response.data[0]
+
         # Add updated_at timestamp
         data['updated_at'] = get_current_time().isoformat()
+
+        # Enhance data with company logo if company name changed
+        if resource in ['jobs', 'internships', 'courses']:
+            current_company = existing_data.get('company')
+            new_company = data.get('company')
+
+            # If company changed or no logo exists, try to fetch new logo
+            if new_company and (new_company != current_company or not existing_data.get('company_logo')):
+                try:
+                    enhanced_data = enhance_content_with_logo(data, resource, id)
+                    if enhanced_data.get('company_logo'):
+                        data['company_logo'] = enhanced_data['company_logo']
+                        logger.info(f"Auto-updated company logo for {new_company}")
+                    elif new_company != current_company:
+                        # Company changed but no logo found, clear existing logo
+                        data['company_logo'] = None
+                        logger.info(f"Cleared company logo for changed company: {new_company}")
+                except Exception as logo_error:
+                    logger.warning(f"Could not update company logo for {new_company}: {str(logo_error)}")
+                    # Keep existing logo if fetching fails
+                    if existing_data.get('company_logo') and new_company == current_company:
+                        data['company_logo'] = existing_data['company_logo']
 
         # Update in database
         response = supabase_admin.table(table_name).update(data).eq('id', id).execute()
 
         if not response.data:
-            return jsonify({'success': False, 'message': f'{resource[:-1]} not found'}), 404
+            return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
+
+        # If update was successful and company changed but no logo was fetched, try background fetch
+        if (resource in ['jobs', 'internships', 'courses'] and
+                data.get('company') and
+                data.get('company') != current_company and
+                not data.get('company_logo')):
+
+            try:
+                from threading import Thread
+                def fetch_logo_async():
+                    try:
+                        logo_url = get_or_fetch_logo(data['company'], resource, id)
+                        if logo_url:
+                            # Update the content with the fetched logo
+                            supabase_admin.table(table_name).update({
+                                'company_logo': logo_url,
+                                'updated_at': get_current_time().isoformat()
+                            }).eq('id', id).execute()
+                            logger.info(f"Successfully updated logo for {resource} {id}")
+                    except Exception as e:
+                        logger.error(f"Background logo update failed: {str(e)}")
+
+                thread = Thread(target=fetch_logo_async)
+                thread.start()
+            except Exception as async_error:
+                logger.error(f"Failed to start background logo update: {str(async_error)}")
 
         return jsonify({
             'success': True,
@@ -1857,7 +2828,7 @@ def update_admin_resource(resource, id):
         })
 
     except Exception as e:
-        logger.error(f"Error updating {resource}: {str(e)}")
+        logger.error(f"Error updating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
 
