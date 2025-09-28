@@ -2831,6 +2831,83 @@ def update_admin_resource(resource, id):
         logger.error(f"Error updating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
+# Filters for jobs and internhsips
+@app.route('/api/jobs/filters')
+def get_job_filters():
+    """API endpoint to get available job filters"""
+    try:
+        # Get unique locations
+        locations_result = supabase.table('jobs') \
+            .select('location') \
+            .eq('is_active', True) \
+            .execute()
+
+        # Get unique companies
+        companies_result = supabase.table('jobs') \
+            .select('company') \
+            .eq('is_active', True) \
+            .execute()
+
+        # Get unique job types
+        types_result = supabase.table('jobs') \
+            .select('type') \
+            .eq('is_active', True) \
+            .execute()
+
+        filters = {
+            'locations': sorted(set([item['location'] for item in locations_result.data if item.get('location')])),
+            'companies': sorted(set([item['company'] for item in companies_result.data if item.get('company')])),
+            'types': sorted(set([item['type'] for item in types_result.data if item.get('type')]))
+        }
+
+        return jsonify({'success': True, 'filters': filters})
+
+    except Exception as e:
+        logger.error(f"Error getting job filters: {str(e)}")
+        return jsonify({'success': False, 'filters': {}})
+
+
+@app.route('/api/internships/filters')
+def get_internship_filters():
+    """API endpoint to get available internship filters"""
+    try:
+        # Get unique locations
+        locations_result = supabase.table('internships') \
+            .select('location') \
+            .eq('is_active', True) \
+            .execute()
+
+        # Get unique companies
+        companies_result = supabase.table('internships') \
+            .select('company') \
+            .eq('is_active', True) \
+            .execute()
+
+        # Get unique types
+        types_result = supabase.table('internships') \
+            .select('type') \
+            .eq('is_active', True) \
+            .execute()
+
+        # Get unique durations
+        durations_result = supabase.table('internships') \
+            .select('duration') \
+            .eq('is_active', True) \
+            .execute()
+
+        filters = {
+            'locations': sorted(set([item['location'] for item in locations_result.data if item.get('location')])),
+            'companies': sorted(set([item['company'] for item in companies_result.data if item.get('company')])),
+            'types': sorted(set([item['type'] for item in types_result.data if item.get('type')])),
+            'durations': sorted(set([item['duration'] for item in durations_result.data if item.get('duration')]))
+        }
+
+        return jsonify({'success': True, 'filters': filters})
+
+    except Exception as e:
+        logger.error(f"Error getting internship filters: {str(e)}")
+        return jsonify({'success': False, 'filters': {}})
+
 
 # ===== STATUS TOGGLE ROUTES =====
 
@@ -2869,6 +2946,45 @@ def toggle_resource_status(resource, id):
     except Exception as e:
         logger.error(f"Error updating {resource} status: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+
+@app.route('/admin/update-content-logos')
+@admin_required
+def update_content_logos():
+    """Utility route to add logos to existing content"""
+    try:
+        # Update courses
+        courses = supabase.table('courses').select('id, company').execute().data or []
+        for course in courses:
+            if course.get('company') and not course.get('company_logo'):
+                enhanced = enhance_content_with_logo(course, 'course', course['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('courses').update({'company_logo': enhanced['company_logo']}).eq('id', course[
+                        'id']).execute()
+
+        # Update jobs
+        jobs = supabase.table('jobs').select('id, company').execute().data or []
+        for job in jobs:
+            if job.get('company') and not job.get('company_logo'):
+                enhanced = enhance_content_with_logo(job, 'job', job['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('jobs').update({'company_logo': enhanced['company_logo']}).eq('id',
+                                                                                                 job['id']).execute()
+
+        # Update internships
+        internships = supabase.table('internships').select('id, company').execute().data or []
+        for internship in internships:
+            if internship.get('company') and not internship.get('company_logo'):
+                enhanced = enhance_content_with_logo(internship, 'internship', internship['id'])
+                if enhanced.get('company_logo'):
+                    supabase.table('internships').update({'company_logo': enhanced['company_logo']}).eq('id',
+                                                                                                        internship[
+                                                                                                            'id']).execute()
+
+        return jsonify({'success': True, 'message': 'Content logos updated successfully'})
+
+    except Exception as e:
+        logger.error(f"Error updating content logos: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # ===== FEATURED TOGGLE ROUTES =====
