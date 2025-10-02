@@ -6,14 +6,14 @@
   <div class="hero-content">
     <div class="hero-text">
       <h1>Empower Your Career Journey</h1>
-      <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and professionals who have transformed their careers with CareerMaker.</p>
+      <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and professionals who have transformed their careers with CareerPath.</p>
       <div class="hero-buttons">
-        <a href="#courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
-        <a href="#jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
+        <a href="/courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
+        <a href="/jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
       </div>
     </div>
     <div class="hero-image">
-      <img src="/static/images/hero-image.jpg" alt="Career growth illustration">
+      <img src="/static/images/hero-image.jpg" alt="Career growth illustration" onerror="this.src='/static/images/default-hero.jpg'">
     </div>
   </div>
 </section>
@@ -22,7 +22,7 @@
 <section class="features" id="features">
   <div class="container">
     <div class="section-title">
-      <h2>Why Choose CareerMaker</h2>
+      <h2>Why Choose CareerPath</h2>
       <p>We provide high-quality content and career opportunities to help you succeed</p>
     </div>
     <div class="feature-grid">
@@ -68,25 +68,40 @@
     <div class="preview-grid" id="coursesGrid">
       {% for course in courses %}
       <div class="preview-card" data-id="{{ course.id }}" data-type="course">
-        <img src="{{ course.image if course.image else '/static/images/default-course.jpg' }}"
-             alt="{{ course.title }}" class="preview-img"
-             onerror="this.onerror=null;this.src='/static/images/default-course.jpg'">
+        <div class="preview-image-container">
+          {% if course.company_logo and course.company_logo != '/static/images/default-course.png' %}
+          <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="company-logo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          {% endif %}
+          <div class="default-logo course-logo" {% if course.company_logo and course.company_logo != '/static/images/default-course.png' %}style="display: none;"{% endif %}>
+            <i class="fas fa-book"></i>
+          </div>
+        </div>
         <div class="preview-content">
           <h3>{{ course.title }}</h3>
-          <p>{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
+          <p class="company">{{ course.company or course.instructor }}</p>
+          <p class="category">{{ course.category or 'General' }}</p>
+          <p class="description">{{ course.description|default('No description available', true)|truncate(120) }}</p>
           <div class="preview-meta">
-            <span class="price">${{ course.price }}</span>
-            <span class="level">{{ course.level if course.level else 'All Levels' }}</span>
+            <span class="price">
+              {% if course.price and course.price != 'Free' %}
+                ${{ course.price }}
+              {% else %}
+                Free
+              {% endif %}
+            </span>
+            <span class="level">{{ course.level or 'All Levels' }}</span>
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course" title="Bookmark">
             <i class="far fa-bookmark"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
+          <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
           </button>
-          <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}" {% if not course.application_link %}disabled{% endif %}>
+          <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
+                  {% if not course.application_link %}disabled{% endif %}>
             Enroll Now
           </button>
         </div>
@@ -99,15 +114,15 @@
       </div>
       {% endfor %}
     </div>
-    {% if courses %}
     <div class="view-all">
-      <a href="/courses" class="btn btn-outline">View All Courses</a>
+      <a href="/courses" class="btn btn-primary">
+        <i class="fas fa-arrow-right"></i> View All Courses
+      </a>
     </div>
-    {% endif %}
   </div>
 </section>
 
-<!-- Jobs Preview -->
+<!-- Jobs Preview Section -->
 <section class="preview-section" id="jobs">
   <div class="container">
     <div class="section-title">
@@ -117,27 +132,34 @@
     <div class="preview-grid" id="jobsGrid">
       {% for job in jobs %}
       <div class="preview-card" data-id="{{ job.id }}" data-type="job">
-        <img src="{{ job.image if job.image else '/static/images/default-job.jpg' }}"
-             alt="{{ job.title }}"
-             class="preview-img"
-             onerror="this.onerror=null;this.src='/static/images/default-job.jpg'">
+        <div class="preview-image-container">
+          {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}
+          <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          {% endif %}
+          <div class="default-logo job-logo" {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}style="display: none;"{% endif %}>
+            <i class="fas fa-briefcase"></i>
+          </div>
+        </div>
         <div class="preview-content">
           <h3>{{ job.title }}</h3>
-          <p class="company-location">{{ job.company }} • {{ job.location }}</p>
-          <p class="job-description">{{ job.description[:100] }}{% if job.description|length > 100 %}...{% endif %}</p>
+          <p class="company">{{ job.company }}</p>
+          <p class="location">{{ job.location or 'Location not specified' }}</p>
+          <p class="description">{{ job.description|default('No description available', true)|truncate(120) }}</p>
           <div class="preview-meta">
-            <span class="salary">{{ job.salary if job.salary else 'Salary not specified' }}</span>
-            <span class="job-type">{{ job.type if job.type else 'Full-time' }}</span>
+            <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
+            <span class="type">{{ job.type or 'Full-time' }}</span>
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job" title="Bookmark">
             <i class="far fa-bookmark"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}">
+          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
           </button>
-          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}" {% if not job.application_link %}disabled{% endif %}>
+          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
+                  {% if not job.application_link %}disabled{% endif %}>
             Apply Now
           </button>
         </div>
@@ -150,15 +172,15 @@
       </div>
       {% endfor %}
     </div>
-    {% if jobs %}
     <div class="view-all">
-      <a href="/jobs" class="btn btn-outline">View All Jobs</a>
+      <a href="/jobs" class="btn btn-primary">
+        <i class="fas fa-arrow-right"></i> View All Jobs
+      </a>
     </div>
-    {% endif %}
   </div>
 </section>
 
-<!-- Internships Preview -->
+<!-- Internships Preview Section -->
 <section class="preview-section" id="internships">
   <div class="container">
     <div class="section-title">
@@ -168,27 +190,41 @@
     <div class="preview-grid" id="internshipsGrid">
       {% for internship in internships %}
       <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
-        <img src="{{ internship.image if internship.image else '/static/images/default-internship.jpg' }}"
-             alt="{{ internship.title }}"
-             class="preview-img"
-             onerror="this.onerror=null;this.src='/static/images/default-internship.jpg'">
+        <div class="preview-image-container">
+          {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}
+          <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          {% endif %}
+          <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}style="display: none;"{% endif %}>
+            <i class="fas fa-user-graduate"></i>
+          </div>
+        </div>
         <div class="preview-content">
           <h3>{{ internship.title }}</h3>
-          <p class="company-duration">{{ internship.company }} • {{ internship.duration }}</p>
-          <p class="internship-description">{{ internship.description[:100] }}{% if internship.description|length > 100 %}...{% endif %}</p>
+          <p class="company">{{ internship.company }}</p>
+          <p class="location">{{ internship.location or 'Location not specified' }}</p>
+          <p class="duration">{{ internship.duration or 'Duration not specified' }}</p>
+          <p class="description">{{ internship.description|default('No description available', true)|truncate(120) }}</p>
           <div class="preview-meta">
-            <span class="stipend">{{ internship.stipend if internship.stipend else 'Unpaid' }}</span>
-            <span class="internship-type">{{ internship.type if internship.type else 'Internship' }}</span>
+            <span class="type">{{ internship.type or 'Internship' }}</span>
+            <span class="stipend">
+              {% if internship.type == 'Paid' %}
+                {{ internship.stipend or 'Stipend available' }}
+              {% else %}
+                Unpaid
+              {% endif %}
+            </span>
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship" title="Bookmark">
             <i class="far fa-bookmark"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}">
+          <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
           </button>
-          <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}" {% if not internship.application_link %}disabled{% endif %}>
+          <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
+                  {% if not internship.application_link %}disabled{% endif %}>
             Apply Now
           </button>
         </div>
@@ -201,11 +237,73 @@
       </div>
       {% endfor %}
     </div>
-    {% if internships %}
     <div class="view-all">
-      <a href="/internships" class="btn btn-outline">View All Internships</a>
+      <a href="/internships" class="btn btn-primary">
+        <i class="fas fa-arrow-right"></i> View All Internships
+      </a>
     </div>
-    {% endif %}
+  </div>
+</section>
+
+<!-- Blog Preview Section -->
+<section class="blog-section" id="blog">
+  <div class="container">
+    <div class="section-title">
+      <h2>Latest Career Tips</h2>
+      <p>Read our expert advice on career development and job searching</p>
+    </div>
+    <div class="preview-grid" id="blogGrid">
+      {% for post in blogs %}
+      <div class="preview-card" data-id="{{ post.id }}" data-type="blog">
+        <div class="preview-image-container">
+          {% if post.image and post.image != '/static/images/default-blog.jpg' %}
+          <img src="{{ post.image }}" alt="{{ post.title }}" class="company-logo"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          {% endif %}
+          <div class="default-logo course-logo" {% if post.image and post.image != '/static/images/default-blog.jpg' %}style="display: none;"{% endif %}>
+            <i class="fas fa-newspaper"></i>
+          </div>
+        </div>
+        <div class="preview-content">
+          <h3>{{ post.title }}</h3>
+          <p class="company">{{ post.author or 'CareerPath Team' }}</p>
+          <p class="description">{{ (post.description if post.description else post.content)|default('No description available', true)|truncate(120) }}</p>
+          <div class="preview-meta">
+            <span class="category">{{ post.categories[0] if post.categories else 'Career' }}</span>
+            <span class="level">
+              {% if post.published_at %}
+                {{ post.published_at.strftime('%b %d, %Y') if post.published_at is string else post.published_at }}
+              {% else %}
+                {{ post.created_at.strftime('%b %d, %Y') if post.created_at is string else post.created_at }}
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-icon bookmark-btn" data-id="{{ post.id }}" data-type="blog" title="Bookmark">
+            <i class="far fa-bookmark"></i>
+          </button>
+          <button class="btn btn-icon share-btn" data-type="blog" data-id="{{ post.id }}" title="Share">
+            <i class="fas fa-share-alt"></i>
+          </button>
+          <a href="/blog/{{ post.id }}" class="btn btn-primary">
+            Read More
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-newspaper"></i>
+        <h4>No blog posts available</h4>
+        <p>Check back later for new articles</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="view-all">
+      <a href="/blog" class="btn btn-primary">
+        <i class="fas fa-arrow-right"></i> View All Articles
+      </a>
+    </div>
   </div>
 </section>
 
@@ -228,7 +326,7 @@
             <img src="{{ testimonial.image if testimonial.image else '/static/images/default-avatar.jpg' }}"
                  alt="{{ testimonial.name if testimonial.name else testimonial.title }}"
                  class="author-img"
-                 onerror="this.onerror=null;this.src='/static/images/default-avatar.jpg'">
+                 onerror="this.src='/static/images/default-avatar.jpg'">
             <div class="author-info">
               <h4>{{ testimonial.name if testimonial.name else testimonial.title }}</h4>
               <p>{{ testimonial.position if testimonial.position else testimonial.author }}{% if testimonial.company %}, {{ testimonial.company }}{% endif %}</p>
@@ -249,52 +347,6 @@
         </div>
       {% endif %}
     </div>
-  </div>
-</section>
-
-<!-- Blog Preview -->
-<section class="blog-section" id="blog">
-  <div class="container">
-    <div class="section-title">
-      <h2>Latest Career Tips</h2>
-      <p>Read our expert advice on career development and job searching</p>
-    </div>
-    <div class="preview-grid" id="blogGrid">
-      {% for post in blogs %}
-      <div class="blog-card">
-        <img src="{{ post.image if post.image else '/static/images/default-blog.jpg' }}"
-             alt="{{ post.title }}"
-             class="blog-img"
-             onerror="this.onerror=null;this.src='/static/images/default-blog.jpg'">
-        <div class="blog-content">
-          <h3>{{ post.title }}</h3>
-          <p>{{ (post.description if post.description else post.content)[:100] }}...</p>
-          <div class="blog-meta">
-            <span><i class="fas fa-user"></i> {{ post.author }}</span>
-            <span><i class="fas fa-calendar-alt"></i>
-              {% if post.published_at %}
-                {{ post.published_at.strftime('%b %d, %Y') if post.published_at is string else post.published_at }}
-              {% else %}
-                {{ post.created_at.strftime('%b %d, %Y') if post.created_at is string else post.created_at }}
-              {% endif %}
-            </span>
-          </div>
-          <a href="/blog/{{ post.id }}" class="btn btn-primary">Read More</a>
-        </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-newspaper"></i>
-        <h4>No blog posts available</h4>
-        <p>Check back later for new articles</p>
-      </div>
-      {% endfor %}
-    </div>
-    {% if blogs %}
-    <div class="view-all">
-      <a href="/blog" class="btn btn-outline">View All Articles</a>
-    </div>
-    {% endif %}
   </div>
 </section>
 
@@ -323,7 +375,7 @@
           </div>
           <div class="info-content">
             <h3>Email Us</h3>
-            <p>info@careermaker.com<br>support@careermaker.com</p>
+            <p>info@CareerPath.com<br>support@CareerPath.com</p>
           </div>
         </div>
         <div class="info-card">
@@ -407,7 +459,7 @@
     <button class="close-modal"><i class="fas fa-times"></i></button>
     <div class="modal-header">
       <h2>Create Your Account</h2>
-      <p>Join CareerMaker to save content and track your progress</p>
+      <p>Join CareerPath to save content and track your progress</p>
     </div>
     <form id="registerForm" class="modal-form" method="POST" action="/register">
       <div id="registerResponse" class="form-response" style="display: none;"></div>

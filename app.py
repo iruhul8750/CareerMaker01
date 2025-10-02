@@ -1113,11 +1113,11 @@ def index():
         logged_in = 'user_id' in session
         username = session.get('username') if logged_in else None
 
-        # Fetch featured content from database
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_published', True).limit(4).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_published', True).limit(3).execute().data or []
+        # Fetch more content for 2 rows (8 items per section)
+        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(6).execute().data or []
 
         # Enhance content with logos
         enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
@@ -1125,7 +1125,7 @@ def index():
         enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships]
 
         # Fetch testimonials
-        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_published', True).limit(3).execute().data or []
+        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_active', True).limit(3).execute().data or []
 
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
@@ -1139,7 +1139,6 @@ def index():
                            testimonials=testimonials,
                            logged_in=logged_in,
                            username=username)
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1781,7 +1780,8 @@ def courses():
     category = request.args.get('category', '')
 
     try:
-        query = supabase.table('courses').select('*').eq('is_published', True).eq('is_active', True)
+        # FIXED: Use is_active instead of is_published for consistency
+        query = supabase.table('courses').select('*').eq('is_active', True)
         if search:
             query = query.ilike('title', f'%{search}%')
         if category:
@@ -1799,7 +1799,7 @@ def courses():
                            courses=enhanced_courses,
                            search=search,
                            category=category,
-                           course_categories=['Programming', 'Design', 'Business', 'Marketing'])
+                           course_categories=['Programming', 'Design', 'Business', 'Marketing', 'Data Science'])
 
 
 @app.route('/courses/<course_id>')
@@ -1888,7 +1888,6 @@ def jobs():
                            location=location,
                            job_type=job_type)
 
-
 @app.route('/jobs/<job_id>/apply')
 @login_required
 def apply_job(job_id):
@@ -1932,8 +1931,7 @@ def internships():
         internships_data = query.order('created_at', desc=True).execute().data or []
 
         # Enhance internships with logos
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
-                                in internships_data]
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships_data]
 
     except Exception as e:
         logger.error(f"Error loading internships: {str(e)}")
@@ -1975,8 +1973,8 @@ def apply_internship(internship_id):
 @app.route('/blog')
 def blog():
     try:
-        posts = supabase.table('blog_posts').select('*').eq('is_published', True).eq('is_active', True).order(
-            'published_at', desc=True).execute().data or []
+        # FIXED: Use is_active for consistency
+        posts = supabase.table('blog_posts').select('*').eq('is_active', True).order('published_at', desc=True).execute().data or []
     except Exception as e:
         logger.error(f"Error loading blog posts: {str(e)}")
         posts = []
@@ -2148,9 +2146,14 @@ def share_content(content_type, content_id):
             flash('Content not found', 'danger')
             return redirect(url_for(f'{content_type}s'))
 
-        share_url = request.host_url.rstrip('/') + url_for(
-            f'apply_{content_type}' if content_type != 'blog' else 'blog_detail',
-            **{f'{content_type}_id': content_id})
+        # FIX: Use the correct endpoint for courses
+        if content_type == 'course':
+            share_url = request.host_url.rstrip('/') + url_for('course_detail', course_id=content_id)
+        elif content_type == 'blog':
+            share_url = request.host_url.rstrip('/') + url_for('blog_detail', blog_id=content_id)
+        else:
+            share_url = request.host_url.rstrip('/') + url_for(
+                f'apply_{content_type}', **{f'{content_type}_id': content_id})
 
         # Social share links
         social_links = {
@@ -2168,6 +2171,11 @@ def share_content(content_type, content_id):
                                share_url=share_url,
                                social_links=social_links,
                                direct_link=content.get('application_link', share_url))
+
+    except Exception as e:
+        logger.error(f"Share error: {str(e)}")
+        flash('Failed to generate share link', 'danger')
+        return redirect(url_for(f'{content_type}s'))
 
     except Exception as e:
         logger.error(f"Share error: {str(e)}")
@@ -2679,10 +2687,10 @@ def create_admin_resource(resource):
         data['created_at'] = get_current_time().isoformat()
         data['updated_at'] = get_current_time().isoformat()
 
-        # Set default featured status for new items
+        # Set proper defaults for new content
         if resource in ['courses', 'jobs', 'internships', 'blog']:
-            data['is_featured'] = data.get('is_featured', True)
-            data['is_active'] = data.get('is_active', True)
+            data['is_featured'] = data.get('is_featured', False)  # Default to not featured
+            data['is_active'] = data.get('is_active', True)  # Default to active
 
         # Enhance data with company logo for relevant resources
         if resource in ['jobs', 'internships', 'courses'] and data.get('company'):
