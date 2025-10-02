@@ -2947,45 +2947,6 @@ def toggle_resource_status(resource, id):
         logger.error(f"Error updating {resource} status: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
 
-@app.route('/admin/update-content-logos')
-@admin_required
-def update_content_logos():
-    """Utility route to add logos to existing content"""
-    try:
-        # Update courses
-        courses = supabase.table('courses').select('id, company').execute().data or []
-        for course in courses:
-            if course.get('company') and not course.get('company_logo'):
-                enhanced = enhance_content_with_logo(course, 'course', course['id'])
-                if enhanced.get('company_logo'):
-                    supabase.table('courses').update({'company_logo': enhanced['company_logo']}).eq('id', course[
-                        'id']).execute()
-
-        # Update jobs
-        jobs = supabase.table('jobs').select('id, company').execute().data or []
-        for job in jobs:
-            if job.get('company') and not job.get('company_logo'):
-                enhanced = enhance_content_with_logo(job, 'job', job['id'])
-                if enhanced.get('company_logo'):
-                    supabase.table('jobs').update({'company_logo': enhanced['company_logo']}).eq('id',
-                                                                                                 job['id']).execute()
-
-        # Update internships
-        internships = supabase.table('internships').select('id, company').execute().data or []
-        for internship in internships:
-            if internship.get('company') and not internship.get('company_logo'):
-                enhanced = enhance_content_with_logo(internship, 'internship', internship['id'])
-                if enhanced.get('company_logo'):
-                    supabase.table('internships').update({'company_logo': enhanced['company_logo']}).eq('id',
-                                                                                                        internship[
-                                                                                                            'id']).execute()
-
-        return jsonify({'success': True, 'message': 'Content logos updated successfully'})
-
-    except Exception as e:
-        logger.error(f"Error updating content logos: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 
 # ===== FEATURED TOGGLE ROUTES =====
 
