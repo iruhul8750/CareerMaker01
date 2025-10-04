@@ -1890,3 +1890,319 @@ input:checked + .slider:before {
 .logo-error .fa-exclamation-triangle {
     color: #ffc107;
 }
+/* Greeting Message Styles */
+.admin-greeting {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    order: 1; /* Ensure it comes before notification */
+    transition: all 0.5s ease-in-out;
+}
+
+/* Removed the arrow */
+/* .admin-greeting::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid #764ba2;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+} */
+
+.admin-greeting .greeting-text {
+    margin-right: 5px;
+}
+
+.admin-greeting .admin-name {
+    font-weight: 600;
+}
+
+/* Fade out animation */
+.admin-greeting.fade-out {
+    opacity: 0;
+    transform: translateX(-10px);
+    pointer-events: none;
+}
+
+/* Updated Admin User Layout */
+.admin-user {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Reorder elements for proper layout */
+.admin-user .admin-greeting {
+    order: 1;
+}
+
+.admin-user .notification-dropdown {
+    order: 2;
+}
+
+.admin-user .admin-avatar-container {
+    order: 3;
+}
+
+.admin-user .admin-name:last-child {
+    order: 4;
+}
+
+/* Notification bell adjustments */
+.notification-dropdown {
+    position: relative;
+}
+
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.notification-bell:hover {
+    background-color: #f7fafc;
+}
+
+.notification-count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #e53e3e;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    border: 2px solid white;
+}
+
+/* Admin header adjustments */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background: white;
+    border-bottom: 1px solid #e0e6ed;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-title h1 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .admin-greeting {
+        display: none !important; /* Hide greeting on mobile */
+    }
+
+    .admin-user {
+        gap: 10px;
+    }
+
+    .admin-user .admin-name:last-child {
+        display: none; /* Hide duplicate name on mobile */
+    }
+}
+
+/* Animation for greeting */
+@keyframes slideInGreeting {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.admin-greeting.show {
+    display: flex !important;
+    animation: slideInGreeting 0.5s ease-out;
+}
+/* Notification List Styles */
+.notification-list {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 350px;
+    background: white;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: none;
+    max-height: 400px;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.notification-list.show {
+    display: flex;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e6ed;
+    background: #f8fafc;
+}
+
+.notification-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.mark-all-read {
+    background: none;
+    border: none;
+    color: #4a6cf7;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.mark-all-read:hover {
+    color: #3a56d4;
+    text-decoration: underline;
+}
+
+.notification-items {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item:hover {
+    background-color: #f8fafc;
+}
+
+.notification-item.unread {
+    background-color: #f0f9ff;
+}
+
+.notification-item.unread:hover {
+    background-color: #e0f2fe;
+}
+
+.notification-icon {
+    margin-right: 12px;
+    color: #4a6cf7;
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-content p {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #2d3748;
+}
+
+.notification-content small {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.no-notifications {
+    text-align: center;
+    padding: 30px 20px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.notification-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e0e6ed;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.view-toggle-btn {
+    background: none;
+    border: none;
+    color: #4a6cf7;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+    background-color: #e0e7ff;
+    color: #3a56d4;
+}
+
+/* Scrollbar styling for notification items */
+.notification-items::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notification-items::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.notification-items::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+.notification-items::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

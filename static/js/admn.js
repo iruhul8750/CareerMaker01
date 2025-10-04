@@ -155,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
         displayWelcomeMessage();
 
         setupNavigation();
-        setupNotificationEvents();
         loadDashboardStats();
         loadNotifications();
         setupModals();
@@ -164,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupSearchFilters();
         setupPagination();
         setupSelect2();
-        setupLogoPreview();
+        setupLogoPreview(); // Add this line
 
         // Load the last active section
         restoreCurrentSection();
@@ -447,23 +446,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
-    }
 
-    // NOTIFICATION FUNCTIONS - UPDATED
-    function setupNotificationEvents() {
         const notificationBell = document.querySelector('.notification-bell');
         const notificationList = document.getElementById('notificationList');
-        const viewToggleBtn = document.getElementById('viewToggleBtn');
-        const markAllReadBtn = document.querySelector('.mark-all-read');
 
         if (notificationBell && notificationList) {
             notificationBell.addEventListener('click', function(e) {
                 e.stopPropagation();
                 notificationList.classList.toggle('show');
 
-                // Reset to limited view when opening
                 if (notificationList.classList.contains('show')) {
-                    showAllNotifications = false;
+                    showAllNotifications = !showAllNotifications;
                     renderNotifications();
                 }
             });
@@ -475,22 +468,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderNotifications();
                 }
             });
-        }
 
-        if (viewToggleBtn) {
-            viewToggleBtn.addEventListener('click', function(e) {
+            const markAllReadBtn = document.querySelector('.mark-all-read');
+            if (markAllReadBtn) {
+                markAllReadBtn.addEventListener('click', function() {
+                    markAllNotificationsAsRead();
+                });
+            }
+
+            // Add view all toggle button
+            const viewAllBtn = document.createElement('button');
+            viewAllBtn.className = 'view-all-notifications';
+            viewAllBtn.innerHTML = '<i class="fas fa-chevron-down"></i> View All';
+            viewAllBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 showAllNotifications = !showAllNotifications;
                 renderNotifications();
             });
-        }
 
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                markAllNotificationsAsRead();
-            });
+            const notificationFooter = notificationList.querySelector('.notification-footer');
+            if (notificationFooter) {
+                notificationFooter.appendChild(viewAllBtn);
+            }
         }
+    }
+
+    function loadDashboardStats() {
+        fetch('/api/admin/dashboard-stats', {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('usersCount').textContent = data.users || 0;
+            document.getElementById('coursesCount').textContent = data.courses || 0;
+            document.getElementById('jobsCount').textContent = data.jobs || 0;
+            document.getElementById('internshipsCount').textContent = data.internships || 0;
+            document.getElementById('messagesCount').textContent = data.unread_messages || 0;
+            document.getElementById('subscribersCount').textContent = data.subscribers || 0;
+        })
+        .catch(error => {
+            console.error('Error loading dashboard stats:', error);
+            showNotification('Failed to load dashboard statistics', 'error');
+        });
     }
 
     function loadNotifications() {
@@ -513,36 +535,19 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderNotifications() {
         const notificationItems = document.querySelector('.notification-items');
         const notificationCount = document.getElementById('notificationCount');
-        const viewToggleBtn = document.getElementById('viewToggleBtn');
 
         if (!notificationItems) return;
 
         notificationItems.innerHTML = '';
 
-        // Determine which notifications to display
-        const displayedNotifications = showAllNotifications ?
-            allNotifications :
-            allNotifications.slice(0, 4);
+        // Limit displayed notifications based on showAllNotifications flag
+        const displayedNotifications = showAllNotifications ? allNotifications : allNotifications.slice(0, 4);
 
-        // Update notification count (show actual unread count, not limited to 4)
+        // Update notification count
         const unreadCount = allNotifications.filter(n => !n.is_read).length;
-        const displayCount = Math.min(unreadCount, 99); // Cap at 99 for display
+        const displayCount = Math.min(unreadCount, 4);
         notificationCount.textContent = displayCount > 0 ? displayCount : '';
         notificationCount.style.display = displayCount > 0 ? 'flex' : 'none';
-
-        // Update view toggle button
-        if (viewToggleBtn) {
-            if (allNotifications.length <= 4) {
-                // Hide button if 4 or fewer notifications
-                viewToggleBtn.style.display = 'none';
-            } else {
-                // Show button and update text based on current state
-                viewToggleBtn.style.display = 'flex';
-                viewToggleBtn.innerHTML = showAllNotifications ?
-                    '<i class="fas fa-chevron-up"></i> View Less' :
-                    '<i class="fas fa-chevron-down"></i> View More';
-            }
-        }
 
         if (allNotifications.length === 0) {
             notificationItems.innerHTML = '<div class="no-notifications">No notifications</div>';
@@ -554,6 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
             notificationItem.setAttribute('data-type', notification.type);
             notificationItem.setAttribute('data-id', notification.related_id);
+            notificationItem.style.cursor = 'pointer';
 
             const formattedDate = formatDate(notification.created_at, true);
 
@@ -595,6 +601,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             notificationItems.appendChild(notificationItem);
         });
+
+        // Update view all button text
+        const viewAllBtn = document.querySelector('.view-all-notifications');
+        if (viewAllBtn) {
+            viewAllBtn.innerHTML = showAllNotifications ?
+                '<i class="fas fa-chevron-up"></i> Show Less' :
+                '<i class="fas fa-chevron-down"></i> View All';
+        }
     }
 
     function getNotificationIcon(type) {
@@ -633,28 +647,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error marking notifications as read:', error);
             showNotification('Failed to mark notifications as read', 'error');
-        });
-    }
-
-    function loadDashboardStats() {
-        fetch('/api/admin/dashboard-stats', {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch dashboard stats');
-            return response.json();
-        })
-        .then(data => {
-            document.getElementById('usersCount').textContent = data.users || 0;
-            document.getElementById('coursesCount').textContent = data.courses || 0;
-            document.getElementById('jobsCount').textContent = data.jobs || 0;
-            document.getElementById('internshipsCount').textContent = data.internships || 0;
-            document.getElementById('messagesCount').textContent = data.unread_messages || 0;
-            document.getElementById('subscribersCount').textContent = data.subscribers || 0;
-        })
-        .catch(error => {
-            console.error('Error loading dashboard stats:', error);
-            showNotification('Failed to load dashboard statistics', 'error');
         });
     }
 
@@ -925,7 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-       const replyMessageBtn = row.querySelector('.reply-message');
+        const replyMessageBtn = row.querySelector('.reply-message');
         if (replyMessageBtn) {
             replyMessageBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1055,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h3 class="confirm-title">${title}</h3>
             <p class="confirm-message">${message || defaultMessage}</p>
             <div class="confirm-actions">
-                <button class="confirm-btn cancel" onclick="closeModal()">Cancel</button>
+                <button class="confirm-btn cancel">Cancel</button>
                 <button class="confirm-btn confirm">${type === 'logout' ? 'Logout' : 'Delete'}</button>
             </div>
         `;
@@ -1590,7 +1582,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-   // Enhanced form submission
+    // Fix the form submission handler
     function handleMessageReplySubmit(e) {
         e.preventDefault();
 
