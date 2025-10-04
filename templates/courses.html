@@ -44,14 +44,17 @@
             </div>
 
             <div class="action-buttons">
-                <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course">
-                    <i class="far fa-bookmark"></i>
+                <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
+                        data-id="{{ course.id }}"
+                        data-type="course"
+                        title="Bookmark">
+                    <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
                 </button>
-                <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}">
+                <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
                     <i class="fas fa-share-alt"></i>
                 </button>
-                <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}" {% if not
-                        course.application_link %}disabled{% endif %}>
+                <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
+                        {% if not course.application_link %}disabled{% endif %}>
                     Enroll Now
                 </button>
             </div>

@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ======================
-    // Bookmark Management
+    // Bookmark Management - UPDATED with Custom Modal
     // ======================
     function setupBookmarkRemoval() {
         document.addEventListener('click', async function(e) {
@@ -219,58 +219,198 @@ document.addEventListener('DOMContentLoaded', function() {
                 const itemType = btn.dataset.type;
                 const bookmarkItem = btn.closest('.bookmark-item');
 
-                if (!confirm('Are you sure you want to remove this bookmark?')) return;
-
-                try {
-                    showLoading();
-                    btn.disabled = true;
-
-                    const response = await fetch(`/bookmark/${itemType}/${itemId}`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.error || 'Failed to remove bookmark');
-
-                    // Animate removal
-                    bookmarkItem.style.transition = 'all 0.3s ease';
-                    bookmarkItem.style.opacity = '0';
-                    bookmarkItem.style.height = `${bookmarkItem.offsetHeight}px`;
-
-                    setTimeout(() => {
-                        bookmarkItem.remove();
-                        showToast('Bookmark removed', 'success');
-                        checkEmptyTabState();
-                    }, 300);
-                } catch (error) {
-                    showToast(error.message, 'error');
-                    btn.disabled = false;
-                } finally {
-                    hideLoading();
-                }
+                // Show custom modal instead of confirm()
+                showRemoveConfirmationModal(itemId, itemType, bookmarkItem);
             }
         });
+    }
+
+    function showRemoveConfirmationModal(itemId, itemType, bookmarkItem) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('removeBookmarkModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'removeBookmarkModal';
+            modal.className = 'confirmation-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-icon">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <h3 class="modal-title">Remove Bookmark</h3>
+                    <p class="modal-message">Are you sure you want to remove this bookmark? This action cannot be undone.</p>
+                    <div class="modal-actions">
+                        <button class="modal-btn modal-btn-cancel" id="cancelRemove">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </button>
+                        <button class="modal-btn modal-btn-confirm" id="confirmRemove">
+                            <i class="fas fa-check"></i>
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Setup event listeners
+        const cancelBtn = document.getElementById('cancelRemove');
+        const confirmBtn = document.getElementById('confirmRemove');
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            cancelBtn.removeEventListener('click', cancelHandler);
+            confirmBtn.removeEventListener('click', confirmHandler);
+        };
+
+        const cancelHandler = () => {
+            cleanup();
+        };
+
+        const confirmHandler = async () => {
+            cleanup();
+            await removeBookmark(itemId, itemType, bookmarkItem);
+        };
+
+        cancelBtn.addEventListener('click', cancelHandler);
+        confirmBtn.addEventListener('click', confirmHandler);
+
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                cleanup();
+            }
+        });
+    }
+
+    async function removeBookmark(itemId, itemType, bookmarkItem) {
+        try {
+            showLoading();
+            const btn = bookmarkItem.querySelector('.remove-bookmark');
+            if (btn) btn.disabled = true;
+
+            // Add removal animation class
+            bookmarkItem.classList.add('bookmark-removing');
+
+            const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned non-JSON response');
+            }
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to remove bookmark');
+            }
+
+            // Wait for animation to complete before removing
+            setTimeout(() => {
+                bookmarkItem.remove();
+                showToast('Bookmark removed successfully', 'success');
+
+                // Check and update empty state immediately after removal
+                checkEmptyTabState();
+
+            }, 700); // Match the CSS animation duration
+
+        } catch (error) {
+            console.error('Remove bookmark error:', error);
+            // Remove animation class on error
+            bookmarkItem.classList.remove('bookmark-removing');
+            showToast(error.message, 'error');
+            const btn = bookmarkItem.querySelector('.remove-bookmark');
+            if (btn) btn.disabled = false;
+        } finally {
+            hideLoading();
+        }
     }
 
     function checkEmptyTabState() {
         const activeTab = document.querySelector('.tab-content.active');
         if (!activeTab) return;
 
-        const items = activeTab.querySelectorAll('.bookmark-item');
-        const emptyState = activeTab.querySelector('.empty-state');
+        const dashboardCard = activeTab.querySelector('.dashboard-card');
+        if (!dashboardCard) return;
 
-        if (items.length === 0 && !emptyState) {
-            const tabName = activeTab.id;
-            const emptyHTML = `
-                <div class="empty-state">
-                    <i class="far fa-bookmark"></i>
-                    <h4>No ${tabName} saved yet</h4>
-                    <p>Browse ${tabName} to save items to your dashboard</p>
-                    <a href="/${tabName}" class="btn btn-primary">Browse ${tabName.charAt(0).toUpperCase() + tabName.slice(1)}</a>
-                </div>
-            `;
-            activeTab.querySelector('.dashboard-card').innerHTML = emptyHTML;
+        // Count only visible bookmark items (not ones being removed)
+        const items = Array.from(activeTab.querySelectorAll('.bookmark-item')).filter(item => {
+            return item.style.opacity !== '0' && !item.style.height.includes('0');
+        });
+
+        const emptyState = activeTab.querySelector('.empty-state');
+        const hasItems = items.length > 0;
+
+        if (!hasItems) {
+            // Only create empty state if it doesn't exist
+            if (!emptyState) {
+                const tabName = activeTab.id;
+                let browseText = '';
+                let browseUrl = '';
+                let description = '';
+
+                // Set appropriate text and URL based on tab type
+                switch(tabName) {
+                    case 'courses':
+                        browseText = 'Browse Courses';
+                        browseUrl = '/courses';
+                        description = 'Save courses from the courses page to view them here';
+                        break;
+                    case 'jobs':
+                        browseText = 'Browse Jobs';
+                        browseUrl = '/jobs';
+                        description = 'Save jobs from the jobs page to view them here';
+                        break;
+                    case 'internships':
+                        browseText = 'Browse Internships';
+                        browseUrl = '/internships';
+                        description = 'Save internships from the internships page to view them here';
+                        break;
+                    default:
+                        browseText = `Browse ${tabName}`;
+                        browseUrl = `/${tabName}`;
+                        description = `Save ${tabName} from the ${tabName} page to view them here`;
+                }
+
+                const emptyHTML = `
+                    <div class="empty-state">
+                        <i class="far fa-bookmark"></i>
+                        <h4>No ${tabName} saved yet</h4>
+                        <p>${description}</p>
+                        <a href="${browseUrl}" class="btn btn-primary">${browseText}</a>
+                    </div>
+                `;
+
+                dashboardCard.innerHTML = emptyHTML;
+            }
+        } else {
+            // If there are items but empty state exists, remove the empty state
+            if (emptyState) {
+                emptyState.remove();
+
+                // Restore the original dashboard card structure if needed
+                if (!dashboardCard.querySelector('h3')) {
+                    const tabName = activeTab.id;
+                    const title = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+                    dashboardCard.innerHTML = `
+                        <h3>Saved ${title}</h3>
+                        <!-- Bookmark items will be dynamically added here -->
+                    `;
+                }
+            }
         }
     }
 
@@ -352,30 +492,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ======================
-// Clear cache on logout
-// ======================
-function setupLogoutCacheClear() {
-    const logoutButtons = document.querySelectorAll('#logoutBtn, #dashboardLogoutBtn');
-    logoutButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // ✅ Store the current URL before clearing timestamp
-            const currentProfilePic = localStorage.getItem('profilePicUrl');
-            const currentTimestamp = localStorage.getItem('profilePicTimestamp');
+    // Clear cache on logout
+    // ======================
+    function setupLogoutCacheClear() {
+        const logoutButtons = document.querySelectorAll('#logoutBtn, #dashboardLogoutBtn');
+        logoutButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // ✅ Store the current URL before clearing timestamp
+                const currentProfilePic = localStorage.getItem('profilePicUrl');
+                const currentTimestamp = localStorage.getItem('profilePicTimestamp');
 
-            // Clear both URL and timestamp temporarily
-            localStorage.removeItem('profilePicUrl');
-            localStorage.removeItem('profilePicTimestamp');
+                // Clear both URL and timestamp temporarily
+                localStorage.removeItem('profilePicUrl');
+                localStorage.removeItem('profilePicTimestamp');
 
-            // Immediately restore the URL (but not the timestamp)
-            if (currentProfilePic) {
-                setTimeout(() => {
-                    localStorage.setItem('profilePicUrl', currentProfilePic);
-                    console.log('Logout: Profile URL restored after temporary clear');
-                }, 100);
-            }
+                // Immediately restore the URL (but not the timestamp)
+                if (currentProfilePic) {
+                    setTimeout(() => {
+                        localStorage.setItem('profilePicUrl', currentProfilePic);
+                        console.log('Logout: Profile URL restored after temporary clear');
+                    }, 100);
+                }
+            });
         });
-    });
-}
+    }
 
     // Initialize logout cache clearing
     setupLogoutCacheClear();

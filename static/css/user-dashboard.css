@@ -1,4 +1,4 @@
-/* User Dashboard Styles */
+/* User Dashboard Styles - Modern Redesign */
 :root {
   --primary-color: #4361ee;
   --primary-light: #e6e9ff;
@@ -26,17 +26,31 @@
   --dark-mode-card: #1e1e1e;
   --dark-mode-text: #e0e0e0;
   --dark-mode-border: #333;
+
+  /* Modern Additions */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.15);
+  --gradient-primary: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+  --gradient-success: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);
+  --gradient-danger: linear-gradient(135deg, #f72585 0%, #b5179e 100%);
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Base Styles */
 .dashboard {
   padding: 3rem 0;
-  background-color: #f8f9fa;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   min-height: 100vh;
 }
 
 .dark-mode .dashboard {
-  background-color: var(--dark-mode-bg);
+  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
 }
 
 .container {
@@ -45,7 +59,7 @@
   padding: 0 1.5rem;
 }
 
-/* Flash Messages */
+/* Modern Flash Messages */
 .flash-messages {
   position: fixed;
   top: 1rem;
@@ -60,35 +74,48 @@
 
 .flash-message {
   padding: 1rem 1.5rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   display: flex;
   align-items: center;
-  animation: slideIn 0.3s ease forwards;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  box-shadow: var(--shadow-lg);
   opacity: 0;
   transform: translateX(100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.flash-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
 }
 
 .flash-success {
-  background-color: var(--success-light);
+  background: rgba(76, 201, 240, 0.1);
   color: var(--success-dark);
   border-left: 4px solid var(--success-color);
 }
 
 .flash-error {
-  background-color: var(--danger-light);
+  background: rgba(247, 37, 133, 0.1);
   color: var(--danger-dark);
   border-left: 4px solid var(--danger-color);
 }
 
 .flash-warning {
-  background-color: var(--warning-light);
+  background: rgba(248, 150, 30, 0.1);
   color: var(--warning-dark);
   border-left: 4px solid var(--warning-color);
 }
 
 .flash-info {
-  background-color: var(--info-light);
+  background: rgba(72, 149, 239, 0.1);
   color: var(--info-dark);
   border-left: 4px solid var(--info-color);
 }
@@ -99,8 +126,19 @@
   border: none;
   cursor: pointer;
   color: inherit;
-  padding: 0;
+  padding: 0.25rem;
   margin-left: 1rem;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.flash-close:hover {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* Dashboard Header */
@@ -111,6 +149,7 @@
   margin-bottom: 2rem;
   flex-wrap: wrap;
   gap: 1.5rem;
+  position: relative;
 }
 
 .user-profile {
@@ -119,11 +158,11 @@
   gap: 1.5rem;
 }
 
-/* Avatar Styles */
+/* Modern Avatar Styles */
 .avatar-container {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
 }
 
 .avatar-wrapper {
@@ -132,6 +171,8 @@
   width: 100%;
   height: 100%;
   cursor: pointer;
+  border-radius: 50%;
+  transition: var(--transition);
 }
 
 .avatar-initials {
@@ -141,10 +182,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  font-weight: bold;
+  font-size: 2.5rem;
+  font-weight: 700;
   color: white;
-  background: linear-gradient(135deg, #4361ee, #3a0ca3);
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
 }
 
 .user-avatar {
@@ -152,13 +195,11 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--primary-color);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.dark-mode .user-avatar {
-  border-color: var(--secondary-color);
+  border: 3px solid transparent;
+  background: var(--gradient-primary) padding-box,
+              linear-gradient(135deg, #4361ee, #3a0ca3) border-box;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
 }
 
 .avatar-overlay {
@@ -168,38 +209,43 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, rgba(67, 97, 238, 0.9), rgba(58, 12, 163, 0.9));
   color: white;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: var(--transition);
+  backdrop-filter: blur(4px);
 }
 
 .avatar-overlay i {
-  font-size: 1.2rem;
-  margin-bottom: 0.2rem;
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .avatar-overlay span {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-align: center;
+  font-weight: 600;
 }
 
 .avatar-wrapper:hover .avatar-overlay {
   opacity: 1;
 }
 
-.avatar-wrapper:hover .user-avatar {
+.avatar-wrapper:hover .user-avatar,
+.avatar-wrapper:hover .avatar-initials {
   transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
 }
 
 .user-info h2 {
   margin-bottom: 0.5rem;
   color: var(--dark-color);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
 .dark-mode .user-info h2 {
@@ -209,31 +255,32 @@
 .user-info p {
   color: var(--gray-color);
   margin-bottom: 0;
+  font-size: 1.1rem;
 }
 
 .dark-mode .user-info p {
   color: #adb5bd;
 }
 
-/* Dashboard Tabs */
+/* Modern Dashboard Tabs */
 .dashboard-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-color);
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: 0.5rem;
   margin-bottom: 2rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.dashboard-tabs::-webkit-scrollbar {
-  display: none;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  gap: 0.5rem;
 }
 
 .dark-mode .dashboard-tabs {
-  border-bottom-color: var(--dark-mode-border);
+  background: var(--dark-mode-card);
+  border-color: var(--dark-mode-border);
 }
 
 .tab-btn {
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 1.5rem;
   background: none;
   border: none;
   cursor: pointer;
@@ -241,7 +288,13 @@
   color: var(--gray-color);
   position: relative;
   white-space: nowrap;
-  transition: all 0.3s ease;
+  transition: var(--transition);
+  border-radius: var(--border-radius-sm);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .dark-mode .tab-btn {
@@ -250,70 +303,83 @@
 
 .tab-btn:hover {
   color: var(--primary-color);
+  background: var(--primary-light);
 }
 
 .dark-mode .tab-btn:hover {
   color: var(--secondary-color);
+  background: rgba(58, 12, 163, 0.1);
 }
 
 .tab-btn.active {
-  color: var(--primary-color);
+  color: white;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-sm);
 }
 
-.dark-mode .tab-btn.active {
-  color: var(--secondary-color);
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background-color: var(--primary-color);
-  border-radius: 3px 3px 0 0;
-}
-
-.dark-mode .tab-btn.active::after {
-  background-color: var(--secondary-color);
+.tab-btn.active::before {
+  display: none;
 }
 
 /* Tab Content */
 .tab-content {
   display: none;
-  animation: fadeIn 0.3s ease;
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-content.active {
   display: block;
 }
 
-/* Dashboard Cards */
+/* Modern Dashboard Cards */
 .dashboard-card {
-  background-color: white;
-  border-radius: 10px;
-  padding: 1.5rem;
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--border-radius-lg);
+  padding: 2px;
+  background: var(--gradient-primary);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: subtract;
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.dashboard-card:hover::before {
+  opacity: 1;
 }
 
 .dashboard-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .dark-mode .dashboard-card {
-  background-color: var(--dark-mode-card);
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+  background: var(--dark-mode-card);
 }
 
 .dashboard-card h3 {
   margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--dark-color);
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .dark-mode .dashboard-card h3 {
@@ -321,38 +387,42 @@
   color: var(--dark-mode-text);
 }
 
-/* Bookmark Items */
+/* Modern Bookmark Items */
 .bookmark-item {
   display: flex;
   align-items: center;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid var(--border-color);
-  transition: all 0.3s ease;
+  padding: 1.5rem;
+  border-radius: var(--border-radius-md);
+  transition: var(--transition);
+  margin-bottom: 1rem;
+  background: white;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .bookmark-item:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
 }
 
 .dark-mode .bookmark-item {
-  border-bottom-color: var(--dark-mode-border);
-}
-
-.dark-mode .bookmark-item:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background: var(--dark-mode-card);
+  border-color: var(--dark-mode-border);
 }
 
 .bookmark-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .bookmark-img {
   width: 120px;
   height: 90px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   margin-right: 1.5rem;
-  transition: all 0.3s ease;
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .bookmark-img:hover {
@@ -366,6 +436,8 @@
 .bookmark-info h4 {
   margin-bottom: 0.5rem;
   color: var(--dark-color);
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .dark-mode .bookmark-info h4 {
@@ -376,6 +448,7 @@
   color: var(--gray-color);
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .dark-mode .bookmark-info p {
@@ -395,10 +468,15 @@
   align-items: center;
   font-size: 0.9rem;
   color: var(--gray-color);
+  background: var(--light-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 500;
 }
 
 .dark-mode .bookmark-meta span {
   color: #adb5bd;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .bookmark-meta i {
@@ -413,60 +491,41 @@
 .bookmark-actions {
   margin-left: auto;
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 3rem 0;
-}
-
-.empty-state i {
-  font-size: 3.5rem;
-  color: var(--gray-color);
-  margin-bottom: 1.5rem;
-  opacity: 0.7;
-}
-
-.dark-mode .empty-state i {
-  color: #adb5bd;
-}
-
-.empty-state h4 {
-  margin-bottom: 1rem;
-  color: var(--dark-color);
-}
-
-.dark-mode .empty-state h4 {
-  color: var(--dark-mode-text);
-}
-
-.empty-state p {
-  color: var(--gray-color);
-  margin-bottom: 1.5rem;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.dark-mode .empty-state p {
-  color: #adb5bd;
-}
-
-/* Buttons */
+/* Modern Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  transition: var(--transition);
+  border: none;
   gap: 0.5rem;
+  font-size: 0.95rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn i {
@@ -474,24 +533,28 @@
 }
 
 .btn-primary {
-  background-color: var(--primary-color);
+  background: var(--gradient-primary);
   color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-dark);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-outline {
-  background-color: transparent;
-  border-color: var(--primary-color);
+  background: transparent;
+  border: 2px solid var(--primary-color);
   color: var(--primary-color);
+  font-weight: 600;
 }
 
 .btn-outline:hover {
-  background-color: var(--primary-light);
+  background: var(--primary-color);
+  color: white;
   transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .dark-mode .btn-outline {
@@ -500,17 +563,100 @@
 }
 
 .dark-mode .btn-outline:hover {
-  background-color: rgba(58, 12, 163, 0.1);
+  background: var(--secondary-color);
+  color: white;
 }
 
-/* Loading Overlay */
+/* Modern Remove Button */
+.remove-bookmark {
+  background: transparent;
+  border: 2px solid var(--danger-color);
+  color: var(--danger-color);
+  padding: 0.5rem 1rem;
+}
+
+.remove-bookmark:hover {
+  background: var(--gradient-danger);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Modern Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+}
+
+.empty-state h4 {
+  margin-bottom: 1rem;
+  color: var(--dark-color);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.dark-mode .empty-state h4 {
+  color: var(--dark-mode-text);
+}
+
+.empty-state p {
+  color: var(--gray-color);
+  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.dark-mode .empty-state p {
+  color: #adb5bd;
+}
+
+/* Modern Dashboard Logout Button */
+.dashboard-logout-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  border-radius: var(--border-radius-md);
+  transition: var(--transition);
+  background: transparent;
+  border: 2px solid var(--danger-color);
+  color: var(--danger-color);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-logout-btn:hover {
+  background: var(--gradient-danger);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Modern Loading Overlay */
 .loading-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -518,24 +664,27 @@
 }
 
 .loading-spinner {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 10px;
+  background: white;
+  padding: 2.5rem;
+  border-radius: var(--border-radius-lg);
   text-align: center;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
 }
 
 .dark-mode .loading-spinner {
-  background-color: var(--dark-mode-card);
+  background: var(--dark-mode-card);
+  border-color: var(--dark-mode-border);
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--primary-light);
-  border-top-color: var(--primary-color);
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--primary-light);
+  border-top: 3px solid var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+  margin: 0 auto 1.5rem;
 }
 
 .dark-mode .spinner {
@@ -546,10 +695,113 @@
 .loading-spinner p {
   color: var(--dark-color);
   margin: 0;
+  font-weight: 600;
 }
 
 .dark-mode .loading-spinner p {
   color: var(--dark-mode-text);
+}
+
+/* Modern Confirmation Modal */
+.confirmation-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+  z-index: 1003;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--border-radius-lg);
+  padding: 2.5rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-mode .modal-content {
+  background: var(--dark-mode-card);
+  border-color: var(--dark-mode-border);
+}
+
+.modal-icon {
+  font-size: 3rem;
+  color: var(--danger-color);
+  margin-bottom: 1.5rem;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--dark-color);
+}
+
+.dark-mode .modal-title {
+  color: var(--dark-mode-text);
+}
+
+.modal-message {
+  color: var(--gray-color);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.dark-mode .modal-message {
+  color: #adb5bd;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.modal-btn {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.modal-btn-cancel {
+  background: var(--light-color);
+  color: var(--gray-color);
+  border: 2px solid var(--border-color);
+}
+
+.modal-btn-cancel:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.modal-btn-confirm {
+  background: var(--gradient-danger);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.modal-btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Animations */
@@ -558,13 +810,41 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Responsive Styles */
@@ -578,6 +858,12 @@
     width: 100%;
     margin-bottom: 1rem;
   }
+
+  .dashboard-logout-btn {
+    position: relative;
+    margin-top: 1rem;
+    align-self: flex-end;
+  }
 }
 
 @media (max-width: 768px) {
@@ -585,6 +871,7 @@
     flex-direction: column;
     align-items: flex-start;
     padding: 1.5rem;
+    text-align: center;
   }
 
   .bookmark-img {
@@ -599,16 +886,21 @@
     margin-left: 0;
     margin-top: 1.5rem;
     width: 100%;
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .dashboard-tabs {
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 0.25rem;
   }
 
   .tab-btn {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
   }
 }
 
@@ -623,7 +915,7 @@
 
   .bookmark-meta {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -634,201 +926,451 @@
 
   .btn {
     width: 100%;
-  }
-}
-/* Add this to your user-dashboard.css file */
-.dashboard-logout-btn {
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.dashboard-logout-btn:hover {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: white;
-}
-
-.user-info {
-  text-align: center;
-}
-
-.user-info h2 {
-  margin-bottom: 5px;
-}
-
-.user-info p {
-  margin-bottom: 15px;
-  color: #718096;
-}
-/* Logout button on the far right */
-.dashboard-logout-btn {
-  grid-column: 2;
-  justify-self: end;     /* stick to the right edge */
-  align-self: start;     /* top-right; remove if you want centered */
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  margin: 0 !important;  /* override inline margin-top if present */
-}
-
-.dashboard-logout-btn:hover {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: white;
-}
-
-/* Optional: mobile stacking */
-@media (max-width: 576px) {
-  .user-profile {
-    align-items: flex-start;
-  }
-  .user-info {
-    grid-template-columns: 1fr; /* stack text and button */
-  }
-  .dashboard-logout-btn {
-    justify-self: stretch; /* full width on mobile */
-    align-self: auto;
-    margin-top: 8px !important;
-  }
-}
-/* Make the header a positioning context */
-.dashboard-header {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-/* Force the logout button to top-right corner */
-.dashboard-logout-btn {
-  position: absolute;
-  top: 0;       /* align to top of header */
-  right: 0;     /* push to far right */
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  margin: 0 !important; /* override inline margin */
-}
-
-.dashboard-logout-btn:hover {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: white;
-}
-/* Add these styles to your user-dashboard.css file */
-
-.avatar-initials {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #4361ee, #3a0ca3);
-    color: white;
-    font-size: 2.5rem;
-    font-weight: bold;
-    border-radius: 50%;
-    text-transform: uppercase;
+  }
+
+  .dashboard-card {
+    padding: 1.5rem;
+  }
+
+  .modal-content {
+    padding: 2rem 1.5rem;
+  }
 }
 
-.avatar-container {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 1rem;
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .dashboard {
+    background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+  }
 }
 
-.avatar-wrapper {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    overflow: hidden;
-    position: relative;
-    cursor: pointer;
-    border: 3px solid #e2e8f0;
-    transition: all 0.3s ease;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --primary-color: #0044cc;
+    --secondary-color: #002266;
+    --border-color: #000000;
+  }
+
+  .btn {
+    border-width: 2px;
+  }
 }
 
-.avatar-wrapper:hover {
-    border-color: #4361ee;
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
-
-.avatar-wrapper:hover .avatar-overlay {
-    opacity: 1;
-}
-
-.user-avatar {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.avatar-overlay {
-    position: absolute;
+/* Confirmation Modal Styles */
+.confirmation-modal {
+    display: none;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
-    color: white;
-    display: flex;
-    flex-direction: column;
+    backdrop-filter: blur(12px);
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    z-index: 1003;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-out;
 }
 
-.avatar-overlay i {
-    font-size: 1.5rem;
-    margin-bottom: 0.25rem;
-}
-
-.avatar-overlay span {
-    font-size: 0.75rem;
+.confirmation-modal .modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+    border: 1px solid rgba(255, 255, 255, 0.8);
     text-align: center;
+    animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
-/* Dashboard logout button */
-.dashboard-logout-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    margin-top: 10px;
+.confirmation-modal .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #f72585, #4361ee, #4cc9f0);
 }
 
-.dashboard-logout-btn:hover {
-    background-color: #dc3545;
-    border-color: #dc3545;
+.dark-mode .confirmation-modal .modal-content {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.confirmation-modal .modal-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff6b9d 0%, #f72585 100%);
     color: white;
+    box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
+    margin: 0 auto 1.5rem;
+    font-size: 2.5rem;
 }
 
-.user-info {
-    text-align: center;
-}
-
-.user-info h2 {
-    margin-bottom: 5px;
+.confirmation-modal .modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
     color: #2d3748;
+    line-height: 1.3;
 }
 
-.user-info p {
-    margin-bottom: 15px;
+.dark-mode .confirmation-modal .modal-title {
+    color: #f7fafc;
+}
+
+.confirmation-modal .modal-message {
     color: #718096;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+    font-size: 1.1rem;
+    padding: 0 1rem;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .avatar-container {
-        width: 80px;
-        height: 80px;
+.dark-mode .confirmation-modal .modal-message {
+    color: #cbd5e0;
+}
+
+.confirmation-modal .modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.confirmation-modal .modal-btn {
+    padding: 0.875rem 2.5rem;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.confirmation-modal .modal-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
+}
+
+.confirmation-modal .modal-btn:hover::before {
+    left: 100%;
+}
+
+.confirmation-modal .modal-btn-cancel {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+}
+
+.confirmation-modal .modal-btn-cancel:hover {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    color: #475569;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(100, 116, 139, 0.15);
+}
+
+.dark-mode .confirmation-modal .modal-btn-cancel {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    color: #d1d5db;
+    border: 2px solid #4b5563;
+}
+
+.dark-mode .confirmation-modal .modal-btn-cancel:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+    color: #f3f4f6;
+}
+
+.confirmation-modal .modal-btn-confirm {
+    background: linear-gradient(135deg, #f72585 0%, #b5179e 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
+    border: 2px solid transparent;
+}
+
+.confirmation-modal .modal-btn-confirm:hover {
+    background: linear-gradient(135deg, #e11575 0%, #9c1485 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(247, 37, 133, 0.4);
+}
+
+.confirmation-modal .modal-btn-confirm:active {
+    transform: translateY(0);
+}
+
+/* Modal Animations */
+@keyframes modalSlideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Responsive Modal */
+@media (max-width: 480px) {
+    .confirmation-modal .modal-content {
+        padding: 2.5rem 1.5rem;
+        margin: 1rem;
+        width: calc(100% - 2rem);
     }
 
-    .avatar-initials {
-        font-size: 2rem;
+    .confirmation-modal .modal-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .confirmation-modal .modal-btn {
+        width: 100%;
+        padding: 1rem 2rem;
+    }
+
+    .confirmation-modal .modal-title {
+        font-size: 1.3rem;
+    }
+
+    .confirmation-modal .modal-message {
+        font-size: 1rem;
+        padding: 0;
+    }
+}
+
+/* Focus states for accessibility */
+.confirmation-modal .modal-btn:focus {
+    outline: 2px solid #4361ee;
+    outline-offset: 2px;
+}
+/* Bookmark Removal Animations - Slower and More Visible */
+.bookmark-item.removing {
+    opacity: 0;
+    transform: translateX(-100%);
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.bookmark-item {
+    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+/* Enhanced removal animation for better visibility */
+.bookmark-item.removing::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+        rgba(247, 37, 133, 0.1) 0%,
+        rgba(247, 37, 133, 0.05) 50%,
+        transparent 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Smooth dashboard card transitions */
+.dashboard-card {
+    transition: all 0.4s ease;
+    min-height: 200px;
+}
+
+/* Enhanced empty state animation */
+.empty-state {
+    animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Custom removal animation classes */
+.bookmark-removing {
+    animation: slideOutLeft 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    position: relative;
+}
+
+.bookmark-removing::after {
+    content: 'Removing...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(247, 37, 133, 0.9);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 2;
+    animation: pulse 1s infinite;
+}
+
+@keyframes slideOutLeft {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+        height: auto;
+        margin-bottom: 1rem;
+        padding: 1.5rem;
+    }
+    30% {
+        opacity: 0.7;
+        transform: translateX(-20px);
+        background: rgba(247, 37, 133, 0.05);
+    }
+    70% {
+        opacity: 0.3;
+        transform: translateX(-50px);
+        height: auto;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-100%);
+        height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+/* Alternative smooth fade-out animation */
+.bookmark-fade-out {
+    animation: smoothFadeOut 1.2s ease-in-out forwards;
+}
+
+@keyframes smoothFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        height: auto;
+        margin-bottom: 1rem;
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.95);
+        background: rgba(247, 37, 133, 0.1);
+    }
+    80% {
+        opacity: 0.2;
+        transform: scale(0.9);
+        height: auto;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8);
+        height: 0;
+        margin-bottom: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+}
+
+/* Enhanced visual feedback during removal */
+.bookmark-item.removing {
+    border-left: 4px solid #f72585;
+    background: linear-gradient(90deg,
+        rgba(247, 37, 133, 0.05) 0%,
+        rgba(247, 37, 133, 0.02) 100%);
+}
+
+/* Make sure transitions are smooth */
+* {
+    box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .bookmark-removing::after {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    @keyframes slideOutLeft {
+        0% {
+            opacity: 1;
+            transform: translateX(0);
+            height: auto;
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(-100%);
+            height: 0;
+            margin-bottom: 0;
+            padding: 0;
+        }
     }
 }

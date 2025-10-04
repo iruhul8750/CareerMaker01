@@ -45,13 +45,17 @@
         </div>
 
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job">
-            <i class="far fa-bookmark"></i>
+          <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
+                  data-id="{{ job.id }}"
+                  data-type="job"
+                  title="Bookmark">
+            <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}">
+          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
           </button>
-          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}" {% if not job.application_link %}disabled{% endif %}>
+          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
+                  {% if not job.application_link %}disabled{% endif %}>
             Apply Now
           </button>
         </div>

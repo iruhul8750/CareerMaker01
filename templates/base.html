@@ -1,186 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}CareerMaker - Empower Your Career{% endblock %}</title>
-  <meta name="description" content="{% block description %}Career development platform offering courses, jobs, and internships to boost your career{% endblock %}">
-  <meta name="csrf-token" content="{% if csrf_token %}{{ csrf_token() }}{% endif %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CareerMaker - Empower Your Career{% endblock %}</title>
+    <meta name="description"
+          content="{% block description %}Career development platform offering courses, jobs, and internships to boost your career{% endblock %}">
+    <meta name="csrf-token" content="{% if csrf_token %}{{ csrf_token() }}{% endif %}">
 
-  <!-- Favicon -->
-  <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <!-- Main CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
-  <!-- Theme Color Meta -->
-  <meta name="theme-color" content="#4e73df" id="themeColorMeta">
+    <!-- Theme Color Meta -->
+    <meta name="theme-color" content="#4e73df" id="themeColorMeta">
 
-  {% block extra_css %}{% endblock %}
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-  <!-- Header & Navbar -->
-  <header>
+<!-- Header & Navbar -->
+<header>
     <div class="container">
-      <nav class="navbar" aria-label="Main navigation">
-        <a href="/" class="logo" aria-label="CareerMaker Home"><i class="fas fa-graduation-cap"></i> CareerMaker</a>
+        <nav class="navbar" aria-label="Main navigation">
+            <a href="/" class="logo" aria-label="CareerMaker Home"><i class="fas fa-graduation-cap"></i> CareerMaker</a>
 
-        <!-- Mobile Menu Toggle -->
-        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
-          <span class="hamburger"></span>
-        </button>
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
+                <span class="hamburger"></span>
+            </button>
 
-        <div class="nav-container" id="navContainer">
-          <ul class="nav-links">
-            <li><a href="/" class="{{ 'active' if request.path == '/' else '' }}"><i class="fas fa-home"></i> Home</a></li>
-            <li><a href="#features"><i class="fas fa-star"></i> Features</a></li>
-            <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
-            <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
-            <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
-            <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
-            <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
-            <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
-          </ul>
+            <div class="nav-container" id="navContainer">
+                <ul class="nav-links">
+                    <li><a href="/" class="{{ 'active' if request.path == '/' else '' }}"><i class="fas fa-home"></i>
+                        Home</a></li>
+                    <li><a href="#features"><i class="fas fa-star"></i> Features</a></li>
+                    <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
+                    <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
+                    <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
+                    <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
+                    <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
+                    <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
+                </ul>
 
-          <div class="nav-right">
-            <div class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-              <i class="fas fa-moon toggle-icon"></i>
-              <span class="toggle-text">Dark Mode</span>
+                <div class="nav-right">
+                    <div class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                        <i class="fas fa-moon toggle-icon"></i>
+                        <span class="toggle-text">Dark Mode</span>
+                    </div>
+
+                    <div class="auth-buttons">
+                        {% if logged_in %}
+                        <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
+                        <button class="btn btn-outline" id="logoutBtn">Logout</button>
+                        {% else %}
+                        <button class="btn btn-outline login-btn" id="navLoginBtn"><i class="fas fa-sign-in-alt"></i>
+                            Login
+                        </button>
+                        <button class="btn btn-primary register-btn" id="navRegisterBtn"><i
+                                class="fas fa-user-plus"></i> Register
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-
-            <div class="auth-buttons">
-              {% if logged_in %}
-                <a href="/dashboard" class="btn btn-primary"><i class="fas fa-user"></i> My Profile</a>
-                <button class="btn btn-outline" id="logoutBtn">Logout</button>
-              {% else %}
-                <button class="btn btn-outline login-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <button class="btn btn-primary register-btn"><i class="fas fa-user-plus"></i> Register</button>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </nav>
+        </nav>
     </div>
-  </header>
+</header>
 
-  <!-- Main Content -->
-  <main>
+<!-- Main Content -->
+<main>
     <!-- Flash Messages Container -->
     <div class="flash-messages" id="flashMessages">
-      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          {% for category, message in messages %}
-            <div class="flash flash-{{ category }}" role="alert">
-              {{ message }}
-              <button class="flash-close" aria-label="Close message">&times;</button>
-            </div>
-          {% endfor %}
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}" role="alert">
+            {{ message }}
+            <button class="flash-close" aria-label="Close message">&times;</button>
+        </div>
+        {% endfor %}
         {% endif %}
-      {% endwith %}
+        {% endwith %}
     </div>
 
     {% block content %}{% endblock %}
-  </main>
+</main>
 
-  <!-- Footer -->
-  <footer class="footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div class="footer-col">
-        <h3>CareerMaker</h3>
-        <p>Empowering your career journey with quality education and job opportunities.</p>
-        <div class="social-links">
-          <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-          <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-          <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h3>CareerMaker</h3>
+                <p>Empowering your career journey with quality education and job opportunities.</p>
+                <div class="social-links">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="/"><i class="fas fa-chevron-right"></i> Home</a></li>
+                    <li><a href="#courses"><i class="fas fa-chevron-right"></i> Courses</a></li>
+                    <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
+                    <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
+                    <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Support</h3>
+                <ul class="footer-links">
+                    <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
+                    <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
+                    <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
+                    <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-col footer-newsletter">
+                <h3>Newsletter</h3>
+                <p class="newsletter-desc">Subscribe for career tips and opportunities</p>
+                <form id="newsletterForm" class="newsletter-form" novalidate>
+                    <div class="form-group floating-label-group">
+                        <input type="email" id="newsletterEmail" name="email" required placeholder=" ">
+                        <label for="newsletterEmail">Your email address</label>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <span class="btn-text">Subscribe</span>
+                        <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                    </button>
+                    <div id="newsletterResponse" class="form-response" style="display: none;"></div>
+                </form>
+            </div>
         </div>
-      </div>
-      <div class="footer-col">
-        <h3>Quick Links</h3>
-        <ul class="footer-links">
-          <li><a href="/"><i class="fas fa-chevron-right"></i> Home</a></li>
-          <li><a href="#courses"><i class="fas fa-chevron-right"></i> Courses</a></li>
-          <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
-          <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
-          <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h3>Support</h3>
-        <ul class="footer-links">
-          <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
-          <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
-          <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
-          <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
-        </ul>
-      </div>
-      <div class="footer-col footer-newsletter">
-        <h3>Newsletter</h3>
-        <p class="newsletter-desc">Subscribe for career tips and opportunities</p>
-        <form id="newsletterForm" class="newsletter-form" novalidate>
-          <div class="form-group floating-label-group">
-            <input type="email" id="newsletterEmail" name="email" required placeholder=" ">
-            <label for="newsletterEmail">Your email address</label>
-          </div>
-          <button type="submit" class="btn btn-success">
-            <span class="btn-text">Subscribe</span>
-            <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
-          </button>
-          <div id="newsletterResponse" class="form-response" style="display: none;"></div>
-        </form>
-      </div>
+        <div class="footer-bottom">
+            <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="/privacy">Privacy Policy</a>
+                <a href="/terms">Terms of Service</a>
+                <a href="/sitemap">Sitemap</a>
+            </div>
+        </div>
     </div>
-    <div class="footer-bottom">
-      <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
-      <div class="footer-links">
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/terms">Terms of Service</a>
-        <a href="/sitemap">Sitemap</a>
-      </div>
-    </div>
-  </div>
 </footer>
 
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
     <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p>Loading...</p>
+        <div class="spinner"></div>
+        <p>Loading...</p>
     </div>
-  </div>
+</div>
 
-  <!-- Logout Modal -->
-  <div class="modal" id="logoutModal">
+<!-- Login Modal -->
+<div class="modal" id="loginModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content medium">
+        <button class="close-modal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Login to Your Account</h2>
+            <p>Access your bookmarks and personalized content</p>
+        </div>
+        <form id="loginForm" class="modal-form" method="POST" action="/login">
+            <div class="form-group floating-label-group">
+                <input type="email" id="loginEmail" name="email" required placeholder=" ">
+                <label for="loginEmail">Email Address</label>
+            </div>
+            <div class="form-group floating-label-group">
+                <input type="password" id="loginPassword" name="password" required placeholder=" ">
+                <label for="loginPassword">Password</label>
+            </div>
+            <div class="form-footer">
+                <div class="login-links">
+                    <a href="/reset-password" class="forgot-password">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">Login</span>
+                    <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                </button>
+                <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+                <div id="loginResponse" class="form-response" style="display: none;"></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Register Modal -->
+<div class="modal" id="registerModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content medium">
+        <button class="close-modal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Create Your Account</h2>
+            <p>Join CareerPath to save content and track your progress</p>
+        </div>
+        <form id="registerForm" class="modal-form" method="POST" action="/register">
+            <div id="registerResponse" class="form-response" style="display: none;"></div>
+            <div class="form-group floating-label-group">
+                <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3"
+                       maxlength="30">
+                <label for="registerUsername">Username</label>
+                <div class="form-hint">3-30 characters, letters and numbers only</div>
+            </div>
+            <div class="form-group floating-label-group">
+                <input type="email" id="registerEmail" name="email" required placeholder=" ">
+                <label for="registerEmail">Email Address</label>
+            </div>
+            <div class="form-group floating-label-group">
+                <input type="password" id="registerPassword" name="password" required placeholder=" " minlength="8">
+                <label for="registerPassword">Password</label>
+            </div>
+            <div class="form-group floating-label-group">
+                <input type="password" id="registerConfirmPassword" name="confirm_password" required placeholder=" ">
+                <label for="registerConfirmPassword">Confirm Password</label>
+            </div>
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
+                    <span class="btn-text">Register</span>
+                    <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                </button>
+                <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+            </div>
+            <div class="form-terms">
+                <input type="checkbox" id="termsAgreement" name="terms" required>
+                <label for="termsAgreement">I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy
+                    Policy</a></label>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logout Modal -->
+<div class="modal" id="logoutModal">
     <div class="modal-overlay"></div>
     <div class="modal-content small">
-      <button class="close-modal" id="closeLogoutModal"><i class="fas fa-times"></i></button>
-      <div class="modal-header">
-        <h2>Confirm Logout</h2>
-        <p>Are you sure you want to log out?</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
-        <button class="btn btn-primary" id="confirmLogoutBtn">Logout</button>
-      </div>
+        <button class="close-modal" id="closeLogoutModal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Confirm Logout</h2>
+            <p>Are you sure you want to log out?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
+            <button class="btn btn-primary" id="confirmLogoutBtn">Logout</button>
+        </div>
     </div>
-  </div>
+</div>
 
-  <!-- Main JavaScript -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Main JavaScript -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
-// Add dashboard class to body when on dashboard pages
-if (window.location.pathname.startsWith('/dashboard')) {
-  document.body.classList.add('dashboard-page');
-}
+    // Add dashboard class to body when on dashboard pages
+    if (window.location.pathname.startsWith('/dashboard')) {
+      document.body.classList.add('dashboard-page');
+    }
 </script>
-  {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

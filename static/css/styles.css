@@ -3467,3 +3467,58 @@ footer .container {
   text-align: center;
   margin-top: 3rem;
 }
+/* Bookmark Button Styles */
+.bookmark-btn {
+    transition: all 0.3s ease;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+}
+
+.bookmark-btn:hover {
+    background: rgba(0, 123, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.bookmark-btn i {
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.bookmark-btn.bookmarked i {
+    color: #007bff !important;
+    transform: scale(1.1);
+}
+
+.bookmark-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Action buttons container */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid #dee2e6;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.btn-icon:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+}

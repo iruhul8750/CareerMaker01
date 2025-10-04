@@ -1110,22 +1110,50 @@ def handle_categories_data(data):
 @app.route('/')
 def index():
     try:
-        logged_in = 'user_id' in session
-        username = session.get('username') if logged_in else None
+        # Get user_id from session (logged_in is automatically available via context processor)
+        user_id = session.get('user_id')
 
         # Fetch more content for 2 rows (8 items per section)
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(6).execute().data or []
+        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(
+            8).execute().data or []
+        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(
+            8).execute().data or []
+        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(
+            8).execute().data or []
+        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(
+            6).execute().data or []
 
         # Enhance content with logos
         enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
         enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs]
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships]
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
+                                in internships]
+
+        # If user is logged in, get their bookmarks and add bookmark status to content
+        if user_id:
+            user_bookmarks = get_user_bookmarks(user_id)
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            # Add bookmark status to courses
+            for course in enhanced_courses:
+                course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
+
+            # Add bookmark status to jobs
+            for job in enhanced_jobs:
+                job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
+
+            # Add bookmark status to internships
+            for internship in enhanced_internships:
+                internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
+
+            # Add bookmark status to blogs
+            for blog in blogs:
+                blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
 
         # Fetch testimonials
-        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_active', True).limit(3).execute().data or []
+        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured',
+                                                                                                       True).eq(
+            'is_active', True).limit(3).execute().data or []
 
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
@@ -1136,9 +1164,7 @@ def index():
                            jobs=enhanced_jobs,
                            internships=enhanced_internships,
                            blogs=blogs,
-                           testimonials=testimonials,
-                           logged_in=logged_in,
-                           username=username)
+                           testimonials=testimonials)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1610,27 +1636,46 @@ def user_dashboard():
             flash(session.pop('logout_message'), 'success')
 
         user_id = session.get('user_id')
-        user = supabase.table('users').select('*').eq('id', user_id).single().execute().data
+        logger.info(f"Loading dashboard for user: {user_id}")
+
+        # Get user data
+        user_response = supabase_admin.table('users').select('*').eq('id', user_id).execute()
+        if not user_response.data:
+            flash('User not found', 'danger')
+            return redirect(url_for('index'))
+
+        user = user_response.data[0]
 
         # Get profile picture URL from Supabase storage
         avatar_url = None
         if user and user.get('profile_pic'):
             try:
                 avatar_url = supabase.storage.from_("profile-pictures").get_public_url(user['profile_pic'])
+                logger.info(f"Profile picture URL: {avatar_url}")
             except Exception as e:
                 logger.error(f"Error getting profile picture URL: {str(e)}")
                 avatar_url = None
 
-        # Get user bookmarks (existing helper)
+        # Get user bookmarks
         bookmarks = get_user_bookmarks(user_id)
+        logger.info(f"Retrieved {len(bookmarks)} bookmarks for dashboard")
+
+        # Separate bookmarks by type for the template
+        courses = [b for b in bookmarks if b.get('content_type') == 'course']
+        jobs = [b for b in bookmarks if b.get('content_type') == 'job']
+        internships = [b for b in bookmarks if b.get('content_type') == 'internship']
+
+        logger.info(
+            f"Dashboard breakdown - Courses: {len(courses)}, Jobs: {len(jobs)}, Internships: {len(internships)}")
 
         return render_template('user-dashboard.html',
                                username=user.get('username'),
                                email=user.get('email'),
                                avatar_url=avatar_url,
-                               courses=[b for b in bookmarks if b['item_type'] == 'course'],
-                               jobs=[b for b in bookmarks if b['item_type'] == 'job'],
-                               internships=[b for b in bookmarks if b['item_type'] == 'internship'])
+                               courses=courses,
+                               jobs=jobs,
+                               internships=internships)
+
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}", exc_info=True)
         flash('Error loading dashboard', 'danger')
@@ -1647,39 +1692,119 @@ def logout():
 
 
 def get_user_bookmarks(user_id):
-    """Get all bookmarks for a user with content details"""
+    """Get all bookmarks for a user with complete content details"""
     try:
-        bookmarks = supabase.table('bookmarks').select('*').eq('user_id', user_id).execute().data
-        if not bookmarks:
+        # Get all bookmarks for the user using admin client to bypass RLS
+        bookmarks_response = supabase_admin.table('bookmarks').select('*').eq('user_id', user_id).execute()
+
+        if not bookmarks_response.data:
             return []
 
+        bookmarks = bookmarks_response.data
+        logger.info(f"Found {len(bookmarks)} bookmarks for user {user_id}")
+
         # Group by content type
-        content_map = {'course': [], 'job': [], 'internship': [], 'blog': []}
+        content_map = {
+            'course': [],
+            'job': [],
+            'internship': [],
+            'blog': []
+        }
+
         for b in bookmarks:
-            content_map[b['item_type']].append(b['item_id'])
+            if b['item_type'] in content_map:
+                content_map[b['item_type']].append(b['item_id'])
 
-        # Fetch all content in batches
         results = []
-        for content_type, ids in content_map.items():
-            if not ids:
-                continue
 
-            if content_type == 'course':
-                content = supabase.table('courses').select('*').in_('id', ids).execute().data
-            elif content_type == 'job':
-                content = supabase.table('jobs').select('*').in_('id', ids).execute().data
-            elif content_type == 'internship':
-                content = supabase.table('internships').select('*').in_('id', ids).execute().data
-            elif content_type == 'blog':
-                content = supabase.table('blog_posts').select('*').in_('id', ids).execute().data
+        # Fetch course bookmarks
+        if content_map['course']:
+            try:
+                courses_response = supabase_admin.table('courses') \
+                    .select('*') \
+                    .in_('id', content_map['course']) \
+                    .execute()
 
-            for item in content:
-                item['content_type'] = content_type
-                results.append(item)
+                if courses_response.data:
+                    for course in courses_response.data:
+                        course['content_type'] = 'course'
+                        # Ensure all required fields are present
+                        course.setdefault('image', None)
+                        course.setdefault('description', 'No description available')
+                        course.setdefault('price', 'Free')
+                        course.setdefault('level', 'All Levels')
+                        results.append(course)
+                        logger.info(f"Added course: {course.get('title')}")
+            except Exception as e:
+                logger.error(f"Error fetching course bookmarks: {str(e)}")
 
+        # Fetch job bookmarks
+        if content_map['job']:
+            try:
+                jobs_response = supabase_admin.table('jobs') \
+                    .select('*') \
+                    .in_('id', content_map['job']) \
+                    .execute()
+
+                if jobs_response.data:
+                    for job in jobs_response.data:
+                        job['content_type'] = 'job'
+                        # Ensure all required fields are present
+                        job.setdefault('image', None)
+                        job.setdefault('description', 'No description available')
+                        job.setdefault('company', 'Unknown Company')
+                        job.setdefault('location', 'Location not specified')
+                        job.setdefault('salary', 'Not Specified')
+                        job.setdefault('type', 'Full-time')
+                        results.append(job)
+                        logger.info(f"Added job: {job.get('title')}")
+            except Exception as e:
+                logger.error(f"Error fetching job bookmarks: {str(e)}")
+
+        # Fetch internship bookmarks
+        if content_map['internship']:
+            try:
+                internships_response = supabase_admin.table('internships') \
+                    .select('*') \
+                    .in_('id', content_map['internship']) \
+                    .execute()
+
+                if internships_response.data:
+                    for internship in internships_response.data:
+                        internship['content_type'] = 'internship'
+                        # Ensure all required fields are present
+                        internship.setdefault('image', None)
+                        internship.setdefault('description', 'No description available')
+                        internship.setdefault('company', 'Unknown Company')
+                        internship.setdefault('location', 'Location not specified')
+                        internship.setdefault('stipend', 'Unpaid')
+                        internship.setdefault('duration', 'Flexible')
+                        results.append(internship)
+                        logger.info(f"Added internship: {internship.get('title')}")
+            except Exception as e:
+                logger.error(f"Error fetching internship bookmarks: {str(e)}")
+
+        # Fetch blog bookmarks (if you have blog functionality)
+        if content_map['blog']:
+            try:
+                blogs_response = supabase_admin.table('blog_posts') \
+                    .select('*') \
+                    .in_('id', content_map['blog']) \
+                    .execute()
+
+                if blogs_response.data:
+                    for blog in blogs_response.data:
+                        blog['content_type'] = 'blog'
+                        results.append(blog)
+                        logger.info(f"Added blog: {blog.get('title')}")
+            except Exception as e:
+                logger.error(f"Error fetching blog bookmarks: {str(e)}")
+
+        logger.info(f"Total results prepared for dashboard: {len(results)}")
         return sorted(results, key=lambda x: x.get('created_at', ''), reverse=True)
+
     except Exception as e:
-        logger.error(f"Error getting user bookmarks: {str(e)}")
+        logger.error(f"Error getting user bookmarks: {str(e)}", exc_info=True)
         return []
 
 # Content logo routes
@@ -1773,6 +1898,31 @@ def refresh_company_logo(content_type, content_id):
         logger.error(f"Error refreshing logo: {str(e)}")
         return jsonify({'success': False, 'error': 'Error refreshing logo'})
 
+
+# =============================================
+# Context Processor - Makes logged_in available to ALL templates
+# =============================================
+@app.context_processor
+def inject_user():
+    """Inject logged_in status and username into all templates automatically"""
+    try:
+        logged_in = 'user_id' in session
+        username = session.get('username') if logged_in else None
+        user_id = session.get('user_id') if logged_in else None
+
+        return {
+            'logged_in': logged_in,
+            'username': username,
+            'user_id': user_id
+        }
+    except Exception as e:
+        logger.error(f"Error in context processor: {str(e)}")
+        return {
+            'logged_in': False,
+            'username': None,
+            'user_id': None
+        }
+
 # Content Routes
 @app.route('/courses')
 def courses():
@@ -1780,7 +1930,9 @@ def courses():
     category = request.args.get('category', '')
 
     try:
-        # FIXED: Use is_active instead of is_published for consistency
+        # Get user_id from session (logged_in is automatically available via context processor)
+        user_id = session.get('user_id')
+
         query = supabase.table('courses').select('*').eq('is_active', True)
         if search:
             query = query.ilike('title', f'%{search}%')
@@ -1790,6 +1942,14 @@ def courses():
 
         # Enhance courses with logos
         enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses_data]
+
+        # Add bookmark status if user is logged in
+        if user_id:
+            user_bookmarks = get_user_bookmarks(user_id)
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            for course in enhanced_courses:
+                course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
 
     except Exception as e:
         logger.error(f"Error loading courses: {str(e)}")
@@ -1866,6 +2026,9 @@ def jobs():
     job_type = request.args.get('type', '')
 
     try:
+        # Get user_id from session (logged_in is automatically available via context processor)
+        user_id = session.get('user_id')
+
         query = supabase.table('jobs').select('*').eq('is_active', True)
         if search:
             query = query.ilike('title', f'%{search}%')
@@ -1877,6 +2040,14 @@ def jobs():
 
         # Enhance jobs with logos
         enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs_data]
+
+        # Add bookmark status if user is logged in
+        if user_id:
+            user_bookmarks = get_user_bookmarks(user_id)
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            for job in enhanced_jobs:
+                job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
 
     except Exception as e:
         logger.error(f"Error loading jobs: {str(e)}")
@@ -1921,6 +2092,9 @@ def internships():
     internship_type = request.args.get('type', '')
 
     try:
+        # Get user_id from session (logged_in is automatically available via context processor)
+        user_id = session.get('user_id')
+
         query = supabase.table('internships').select('*').eq('is_active', True)
         if search:
             query = query.ilike('title', f'%{search}%')
@@ -1931,7 +2105,16 @@ def internships():
         internships_data = query.order('created_at', desc=True).execute().data or []
 
         # Enhance internships with logos
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships_data]
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
+                                in internships_data]
+
+        # Add bookmark status if user is logged in
+        if user_id:
+            user_bookmarks = get_user_bookmarks(user_id)
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            for internship in enhanced_internships:
+                internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
 
     except Exception as e:
         logger.error(f"Error loading internships: {str(e)}")
@@ -1973,8 +2156,21 @@ def apply_internship(internship_id):
 @app.route('/blog')
 def blog():
     try:
+        # Get user_id from session (logged_in is automatically available via context processor)
+        user_id = session.get('user_id')
+
         # FIXED: Use is_active for consistency
-        posts = supabase.table('blog_posts').select('*').eq('is_active', True).order('published_at', desc=True).execute().data or []
+        posts = supabase.table('blog_posts').select('*').eq('is_active', True).order('published_at',
+                                                                                     desc=True).execute().data or []
+
+        # Add bookmark status if user is logged in
+        if user_id:
+            user_bookmarks = get_user_bookmarks(user_id)
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            for post in posts:
+                post['is_bookmarked'] = bookmark_map.get(('blog', post.get('id')), False)
+
     except Exception as e:
         logger.error(f"Error loading blog posts: {str(e)}")
         posts = []
@@ -1989,13 +2185,11 @@ def bookmark_content(content_type, content_id):
     try:
         valid_types = ['course', 'job', 'internship', 'blog']
         if content_type not in valid_types:
-            return jsonify({'error': 'Invalid content type'}), 400
+            return jsonify({'success': False, 'error': 'Invalid content type'}), 400
 
-        # Check if user is logged in (should be handled by @login_required, but double-check)
-        if 'user_id' not in session:
-            return jsonify({'error': 'Please login to bookmark items'}), 401
+        user_id = session['user_id']
 
-        # Use regular client (respects RLS)
+        # Check if content exists
         table_map = {
             'course': 'courses',
             'job': 'jobs',
@@ -2003,68 +2197,64 @@ def bookmark_content(content_type, content_id):
             'blog': 'blog_posts'
         }
 
-        # Check if content exists - handle potential errors
-        try:
-            content_response = supabase.table(table_map[content_type]).select('id').eq('id',
-                                                                                       content_id).maybe_single().execute()
-            if not content_response.data:
-                return jsonify({'error': 'Content not found'}), 404
-        except Exception as e:
-            logger.error(f"Error checking content existence: {str(e)}")
-            return jsonify({'error': 'Content not found'}), 404
+        content_check = supabase_admin.table(table_map[content_type]) \
+            .select('id') \
+            .eq('id', content_id) \
+            .execute()
 
-        # Check if already bookmarked
-        try:
-            existing_response = supabase.table('bookmarks').select('id') \
-                .eq('user_id', session['user_id']) \
-                .eq('item_type', content_type) \
-                .eq('item_id', content_id) \
-                .maybe_single().execute()
-        except Exception as e:
-            logger.error(f"Error checking existing bookmark: {str(e)}")
-            return jsonify({'error': 'Failed to check bookmark status'}), 500
+        if not content_check.data:
+            return jsonify({'success': False, 'error': 'Content not found'}), 404
 
-        if existing_response.data:
+        # Check for existing bookmark
+        existing_check = supabase_admin.table('bookmarks') \
+            .select('id') \
+            .eq('user_id', user_id) \
+            .eq('item_type', content_type) \
+            .eq('item_id', content_id) \
+            .execute()
+
+        existing_bookmarks = existing_check.data if hasattr(existing_check, 'data') else []
+
+        if existing_bookmarks:
             # Remove bookmark
-            try:
-                delete_response = supabase.table('bookmarks').delete() \
-                    .eq('id', existing_response.data['id']) \
-                    .execute()
+            delete_result = supabase_admin.table('bookmarks') \
+                .delete() \
+                .eq('id', existing_bookmarks[0]['id']) \
+                .execute()
 
-                if delete_response.data:
-                    return jsonify({
-                        'status': 'removed',
-                        'message': 'Bookmark removed successfully'
-                    })
-                else:
-                    return jsonify({'error': 'Failed to remove bookmark'}), 500
-            except Exception as e:
-                logger.error(f"Error removing bookmark: {str(e)}")
-                return jsonify({'error': 'Failed to remove bookmark'}), 500
+            if hasattr(delete_result, 'data') and delete_result.data:
+                return jsonify({
+                    'success': True,
+                    'status': 'removed',
+                    'message': 'Bookmark removed successfully'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Failed to remove bookmark'}), 500
         else:
             # Add bookmark
-            try:
-                insert_response = supabase.table('bookmarks').insert({
-                    'user_id': session['user_id'],
-                    'item_type': content_type,
-                    'item_id': content_id,
-                    'created_at': get_current_time().isoformat()
-                }).execute()
+            bookmark_data = {
+                'user_id': user_id,
+                'item_type': content_type,
+                'item_id': content_id,
+                'created_at': get_current_time().isoformat()
+            }
 
-                if insert_response.data:
-                    return jsonify({
-                        'status': 'added',
-                        'message': 'Bookmark added successfully'
-                    })
-                else:
-                    return jsonify({'error': 'Failed to add bookmark'}), 500
-            except Exception as e:
-                logger.error(f"Error adding bookmark: {str(e)}")
-                return jsonify({'error': 'Failed to add bookmark'}), 500
+            insert_result = supabase_admin.table('bookmarks') \
+                .insert(bookmark_data) \
+                .execute()
+
+            if hasattr(insert_result, 'data') and insert_result.data:
+                return jsonify({
+                    'success': True,
+                    'status': 'added',
+                    'message': 'Bookmark added successfully'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Failed to add bookmark'}), 500
 
     except Exception as e:
         logger.error(f"Bookmark error: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Failed to update bookmark'}), 500
+        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
 
 
 # Helper function to get bookmark count
@@ -2079,6 +2269,35 @@ def get_bookmark_count(content_type, content_id):
         logger.error(f"Error getting bookmark count: {str(e)}")
         return 0
 
+
+@app.route('/api/check-bookmark/<content_type>/<content_id>')
+@login_required
+def check_bookmark_status(content_type, content_id):
+    """Check if current user has bookmarked specific content"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'is_bookmarked': False})
+
+        user_id = session['user_id']
+
+        # Check if bookmark exists
+        existing_response = supabase_admin.table('bookmarks').select('id') \
+            .eq('user_id', user_id) \
+            .eq('item_type', content_type) \
+            .eq('item_id', content_id) \
+            .execute()
+
+        is_bookmarked = bool(existing_response.data and len(existing_response.data) > 0)
+
+        return jsonify({
+            'is_bookmarked': is_bookmarked,
+            'content_type': content_type,
+            'content_id': content_id
+        })
+
+    except Exception as e:
+        logger.error(f"Error checking bookmark status: {str(e)}")
+        return jsonify({'is_bookmarked': False})
 
 # ===== APPLICATION LINK ENDPOINT FIX =====
 @app.route('/get-application-link/<content_type>/<content_id>')

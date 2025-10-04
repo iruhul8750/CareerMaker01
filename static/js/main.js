@@ -192,55 +192,6 @@
     }
 
     // =============================================
-    // Enhanced Content Card Initialization
-    // =============================================
-    function initializeContentCards() {
-        // Bookmark buttons
-        document.querySelectorAll('.bookmark-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const contentId = this.dataset.id;
-                const contentType = this.dataset.type;
-                toggleBookmark(contentId, contentType, this);
-            });
-        });
-
-        // Apply buttons
-        document.querySelectorAll('.apply-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (this.disabled) return;
-
-                const contentId = this.dataset.id;
-                const contentType = this.dataset.type;
-                applyForContent(contentId, contentType, this);
-            });
-        });
-
-        // Share buttons - Fixed for all content types
-        document.querySelectorAll('.share-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const contentId = this.dataset.id;
-                const contentType = this.dataset.type;
-
-                console.log('Share button clicked:', contentType, contentId);
-
-                // Use the fixed share function
-                shareContent(contentId, contentType, this);
-            });
-        });
-    }
-
-
-
-    // =============================================
     // Logo Error Handling
     // =============================================
     function handleLogoErrors() {
@@ -286,21 +237,47 @@
     }
 
     // =============================================
-    // Initialize Home Page
+    // Initialize Application - UPDATED
     // =============================================
     function initializeHomePage() {
         handleLogoErrors();
+        initializeModals(); // Initialize modals first
+        initializeBookmarkButtons();
         initializeContentCards();
 
-        // Add loading states to buttons
-        document.querySelectorAll('.apply-btn, .bookmark-btn, .share-btn').forEach(btn => {
+        // Mobile navigation
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const navContainer = document.getElementById('navContainer');
+        if (mobileMenuToggle && navContainer) {
+            mobileMenuToggle.addEventListener('click', function() {
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                this.setAttribute('aria-expanded', !isExpanded);
+                navContainer.classList.toggle('active');
+                this.classList.toggle('active');
+                document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
+            });
+
+            // Close mobile menu when clicking on links
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (navContainer.classList.contains('active')) {
+                        navContainer.classList.remove('active');
+                        mobileMenuToggle.classList.remove('active');
+                        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                        document.body.style.overflow = 'auto';
+                    }
+                });
+            });
+        }
+
+        // Add loading states to other buttons
+        document.querySelectorAll('.apply-btn, .share-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 if (!this.disabled) {
                     const originalHTML = this.innerHTML;
                     this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                     this.disabled = true;
 
-                    // Reset after 3 seconds if something goes wrong
                     setTimeout(() => {
                         if (this.disabled) {
                             this.innerHTML = originalHTML;
@@ -312,127 +289,275 @@
         });
     }
 
-    // Initialize when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeHomePage();
-    });
+    // =============================================
+    // Modal Management - ENHANCED FOR NAVIGATION
+    // =============================================
+    function initializeModals() {
+        // Login modal triggers - handle both navigation and bookmark buttons
+        document.querySelectorAll('.login-btn, #navLoginBtn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openLoginModal();
+            });
+        });
 
-    // Also initialize when page is fully loaded
-    window.addEventListener('load', function() {
-        console.log('Window fully loaded');
-    });
+        // Register modal triggers - handle both navigation and other register buttons
+        document.querySelectorAll('.register-btn, #navRegisterBtn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openRegisterModal();
+            });
+        });
+
+        // Modal switching
+        document.getElementById('showRegister')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeLoginModal();
+            openRegisterModal();
+        });
+
+        document.getElementById('showLogin')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeRegisterModal();
+            openLoginModal();
+        });
+
+        // Close modal handlers
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                closeAllModals();
+            });
+        });
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function() {
+                closeAllModals();
+            });
+        });
+
+        // Logout modal handlers
+        document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('logoutModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        });
+
+        document.getElementById('cancelLogoutBtn')?.addEventListener('click', closeLogoutModal);
+        document.getElementById('closeLogoutModal')?.addEventListener('click', closeLogoutModal);
+        document.getElementById('confirmLogoutBtn')?.addEventListener('click', handleLogout);
+    }
+
+    function openLoginModal() {
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            // Close mobile menu if open
+            closeMobileMenu();
+            // Focus on email input
+            const emailInput = loginModal.querySelector('#loginEmail');
+            if (emailInput) {
+                setTimeout(() => emailInput.focus(), 100);
+            }
+        }
+    }
+
+    function openRegisterModal() {
+        const registerModal = document.getElementById('registerModal');
+        if (registerModal) {
+            registerModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            // Close mobile menu if open
+            closeMobileMenu();
+            // Focus on username input
+            const usernameInput = registerModal.querySelector('#registerUsername');
+            if (usernameInput) {
+                setTimeout(() => usernameInput.focus(), 100);
+            }
+        }
+    }
+
+    function closeMobileMenu() {
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const navContainer = document.getElementById('navContainer');
+        if (mobileMenuToggle && navContainer) {
+            mobileMenuToggle.setAttribute('aria-expanded', 'false');
+            navContainer.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    }
 
     // =============================================
-    // Bookmark Functionality
+    // Enhanced Bookmark Functionality - INSTANT UI UPDATES
     // =============================================
-    function toggleBookmark(contentId, contentType, button) {
-        // Check if user is logged in
-        fetch('/api/check-session', {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) {
+
+    // Store bookmark state for quick access
+    let bookmarkState = new Map();
+
+    function initializeBookmarkButtons() {
+        // Initialize from server-side data first
+        initializeBookmarkStatesFromServer();
+
+        // Then set up click handlers
+        document.addEventListener('click', function(e) {
+            const bookmarkBtn = e.target.closest('.bookmark-btn');
+            if (bookmarkBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleBookmarkAction(bookmarkBtn);
+            }
+        });
+    }
+
+    function initializeBookmarkStatesFromServer() {
+        // Initialize from server-side rendered data
+        const bookmarkButtons = document.querySelectorAll('.bookmark-btn');
+        bookmarkButtons.forEach(button => {
+            const itemId = button.dataset.id;
+            const itemType = button.dataset.type;
+            const isBookmarked = button.classList.contains('bookmarked');
+
+            // Store in memory for quick access
+            if (itemId && itemType) {
+                bookmarkState.set(`${itemType}-${itemId}`, isBookmarked);
+            }
+
+            // Ensure correct icon is displayed
+            updateBookmarkIcon(button, isBookmarked);
+        });
+    }
+
+    async function handleBookmarkAction(bookmarkBtn) {
+        const itemId = bookmarkBtn.dataset.id;
+        const itemType = bookmarkBtn.dataset.type;
+        const currentState = bookmarkBtn.classList.contains('bookmarked');
+
+        // Check if user is logged in first
+        try {
+            const sessionResponse = await fetch('/api/check-session', {
+                credentials: 'include'
+            });
+
+            if (!sessionResponse.ok) {
                 throw new Error('Failed to check session');
             }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.logged_in) {
+
+            const sessionData = await sessionResponse.json();
+
+            if (!sessionData.logged_in) {
                 showToast('Please login to bookmark items', 'warning');
-                document.getElementById('loginModal').style.display = 'flex';
+                openLoginModal();
                 return;
             }
 
-            // User is logged in, proceed with bookmarking
-            const isBookmarked = button.classList.contains('bookmarked');
-            const icon = button.querySelector('i');
+            // User is logged in - perform optimistic update
+            const newState = !currentState;
 
-            if (isBookmarked) {
-                removeBookmark(contentId, contentType, button, icon);
-            } else {
-                addBookmark(contentId, contentType, button, icon);
+            // INSTANT UI UPDATE - Optimistic update
+            bookmarkBtn.classList.toggle('bookmarked', newState);
+            updateBookmarkIcon(bookmarkBtn, newState);
+            bookmarkState.set(`${itemType}-${itemId}`, newState);
+
+            // Show loading state
+            const originalHTML = bookmarkBtn.innerHTML;
+            bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            bookmarkBtn.disabled = true;
+
+            // Make API call
+            try {
+                const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                if (data.success) {
+                    // Success - UI is already updated, just show message
+                    const action = newState ? 'added' : 'removed';
+                    showToast(data.message || `Bookmark ${action} successfully`, 'success');
+                } else {
+                    throw new Error(data.error || 'Bookmark operation failed');
+                }
+            } catch (error) {
+                console.error('Bookmark API error:', error);
+
+                // REVERT UI UPDATE on error
+                bookmarkBtn.classList.toggle('bookmarked', currentState);
+                updateBookmarkIcon(bookmarkBtn, currentState);
+                bookmarkState.set(`${itemType}-${itemId}`, currentState);
+
+                showToast(error.message || 'Failed to update bookmark', 'error');
+            } finally {
+                // Restore button state
+                bookmarkBtn.disabled = false;
+                const finalState = bookmarkBtn.classList.contains('bookmarked');
+                updateBookmarkIcon(bookmarkBtn, finalState);
             }
-        })
-        .catch(error => {
-            console.error('Session check error:', error);
+
+        } catch (error) {
+            console.error('Bookmark session check error:', error);
             showToast('Please login to bookmark items', 'warning');
-            document.getElementById('loginModal').style.display = 'flex';
-        });
+            openLoginModal();
+        }
     }
 
-    function addBookmark(contentId, contentType, button, icon) {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
-
-        fetch(`/api/bookmark/${contentType}/${contentId}`, {
-            method: 'POST',
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'added') {
-                button.classList.add('bookmarked');
+    function updateBookmarkIcon(element, isBookmarked) {
+        const icon = element.querySelector('i');
+        if (icon) {
+            if (isBookmarked) {
                 icon.className = 'fas fa-bookmark';
-                showToast('Added to bookmarks!', 'success');
-            } else if (data.error) {
-                throw new Error(data.error);
+                icon.style.color = '#007bff';
             } else {
-                throw new Error('Failed to bookmark item');
+                icon.className = 'far fa-bookmark';
+                icon.style.color = '';
             }
-        })
-        .catch(error => {
-            console.error('Bookmark error:', error);
-            showToast(error.message || 'Failed to bookmark item', 'error');
-        })
-        .finally(() => {
-            button.disabled = false;
-            button.innerHTML = originalHTML;
-        });
+        }
     }
 
-    function removeBookmark(contentId, contentType, button, icon) {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
+    // =============================================
+    // Enhanced Content Card Initialization
+    // =============================================
+    function initializeContentCards() {
+        // Initialize bookmark buttons
+        initializeBookmarkButtons();
 
-        fetch(`/api/bookmark/${contentType}/${contentId}`, {
-            method: 'POST',
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'removed') {
-                button.classList.remove('bookmarked');
-                icon.className = 'far fa-bookmark';
-                showToast('Removed from bookmarks!', 'success');
-            } else if (data.error) {
-                throw new Error(data.error);
-            } else {
-                throw new Error('Failed to remove bookmark');
-            }
-        })
-        .catch(error => {
-            console.error('Bookmark error:', error);
-            showToast(error.message || 'Failed to remove bookmark', 'error');
-        })
-        .finally(() => {
-            button.disabled = false;
-            button.innerHTML = originalHTML;
+        // Apply buttons
+        document.querySelectorAll('.apply-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (this.disabled) return;
+
+                const contentId = this.dataset.id;
+                const contentType = this.dataset.type;
+                applyForContent(contentId, contentType, this);
+            });
+        });
+
+        // Share buttons
+        document.querySelectorAll('.share-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const contentId = this.dataset.id;
+                const contentType = this.dataset.type;
+                shareContent(contentId, contentType, this);
+            });
         });
     }
 
@@ -974,162 +1099,6 @@
         document.body.style.overflow = 'auto';
       }
     });
-
-    // =============================================
-    // Bookmark Functionality - COMPLETE FIX
-    // =============================================
-    document.addEventListener('click', function(e) {
-      const bookmarkBtn = e.target.closest('.bookmark-btn');
-      if (bookmarkBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        handleBookmarkClick(bookmarkBtn);
-      }
-    });
-
-    function handleBookmarkClick(bookmarkBtn) {
-      // Check if user is logged in
-      fetch('/api/check-session', {
-        credentials: 'include'
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to check session');
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data.logged_in) {
-          showToast('Please login to bookmark items', 'warning');
-          document.getElementById('loginModal').style.display = 'flex';
-          return;
-        }
-
-        // User is logged in, proceed with bookmarking
-        const itemId = bookmarkBtn.dataset.id;
-        const itemType = bookmarkBtn.dataset.type;
-        const isBookmarked = bookmarkBtn.classList.contains('bookmarked');
-
-        if (isBookmarked) {
-          removeBookmark(itemId, itemType, bookmarkBtn);
-        } else {
-          addBookmark(itemId, itemType, bookmarkBtn);
-        }
-      })
-      .catch(error => {
-        console.error('Session check error:', error);
-        showToast('Please login to bookmark items', 'warning');
-        document.getElementById('loginModal').style.display = 'flex';
-      });
-    }
-
-    function addBookmark(itemId, itemType, element) {
-      // Show loading state on the specific button
-      const originalHTML = element.innerHTML;
-      element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      element.disabled = true;
-
-      fetch(`/api/bookmark/${itemType}/${itemId}`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(errorData => {
-            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.status === 'added') {
-          element.classList.add('bookmarked');
-          updateBookmarkButton(element, true);
-          showToast('Item bookmarked successfully', 'success');
-        } else if (data.error) {
-          throw new Error(data.error);
-        } else {
-          throw new Error('Failed to bookmark item');
-        }
-      })
-      .catch(error => {
-        console.error('Bookmark error:', error);
-
-        if (error.message.includes('login') || error.message.includes('401')) {
-          showToast('Please login to bookmark items', 'warning');
-          document.getElementById('loginModal').style.display = 'flex';
-        } else {
-          showToast(error.message || 'Failed to bookmark item', 'error');
-        }
-      })
-      .finally(() => {
-        element.disabled = false;
-        element.innerHTML = originalHTML;
-      });
-    }
-
-    function removeBookmark(itemId, itemType, element) {
-      // Show loading state on the specific button
-      const originalHTML = element.innerHTML;
-      element.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      element.disabled = true;
-
-      fetch(`/api/bookmark/${itemType}/${itemId}`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(errorData => {
-            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.status === 'removed') {
-          element.classList.remove('bookmarked');
-          updateBookmarkButton(element, false);
-          showToast('Bookmark removed successfully', 'success');
-        } else if (data.error) {
-          throw new Error(data.error);
-        } else {
-          throw new Error('Failed to remove bookmark');
-        }
-      })
-      .catch(error => {
-        console.error('Bookmark error:', error);
-
-        if (error.message.includes('login') || error.message.includes('401')) {
-          showToast('Please login to manage bookmarks', 'warning');
-          document.getElementById('loginModal').style.display = 'flex';
-        } else {
-          showToast(error.message || 'Failed to remove bookmark', 'error');
-        }
-      })
-      .finally(() => {
-        element.disabled = false;
-        element.innerHTML = originalHTML;
-      });
-    }
-
-    function updateBookmarkButton(element, isBookmarked) {
-      const icon = element.querySelector('i') || document.createElement('i');
-      const textSpan = element.querySelector('.btn-text') || document.createElement('span');
-
-      textSpan.className = 'btn-text';
-
-      if (isBookmarked) {
-        icon.className = 'fas fa-bookmark';
-        textSpan.textContent = 'Saved';
-      } else {
-        icon.className = 'far fa-bookmark';
-        textSpan.textContent = 'Save';
-      }
-
-      element.innerHTML = icon.outerHTML + ' ' + textSpan.outerHTML;
-    }
 
     // =============================================
     // Apply for Content Function

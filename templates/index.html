@@ -94,8 +94,11 @@
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ course.id }}" data-type="course" title="Bookmark">
-            <i class="far fa-bookmark"></i>
+          <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
+                  data-id="{{ course.id }}"
+                  data-type="course"
+                  title="Bookmark">
+            <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
           <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
@@ -152,8 +155,11 @@
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ job.id }}" data-type="job" title="Bookmark">
-            <i class="far fa-bookmark"></i>
+          <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
+                  data-id="{{ job.id }}"
+                  data-type="job"
+                  title="Bookmark">
+            <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
           <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
@@ -217,8 +223,11 @@
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ internship.id }}" data-type="internship" title="Bookmark">
-            <i class="far fa-bookmark"></i>
+          <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
+                  data-id="{{ internship.id }}"
+                  data-type="internship"
+                  title="Bookmark">
+            <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
           <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
@@ -280,8 +289,11 @@
           </div>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn" data-id="{{ post.id }}" data-type="blog" title="Bookmark">
-            <i class="far fa-bookmark"></i>
+          <button class="btn btn-icon bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
+                  data-id="{{ post.id }}"
+                  data-type="blog"
+                  title="Bookmark">
+            <i class="{% if post.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
           <button class="btn btn-icon share-btn" data-type="blog" data-id="{{ post.id }}" title="Share">
             <i class="fas fa-share-alt"></i>
@@ -418,98 +430,6 @@
     </div>
   </div>
 </section>
-
-<!-- Login Modal -->
-<div class="modal" id="loginModal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content medium">
-    <button class="close-modal"><i class="fas fa-times"></i></button>
-    <div class="modal-header">
-      <h2>Login to Your Account</h2>
-      <p>Access your bookmarks and personalized content</p>
-    </div>
-    <form id="loginForm" class="modal-form" method="POST" action="/login">
-      <div class="form-group floating-label-group">
-        <input type="email" id="loginEmail" name="email" required placeholder=" ">
-        <label for="loginEmail">Email Address</label>
-      </div>
-      <div class="form-group floating-label-group">
-        <input type="password" id="loginPassword" name="password" required placeholder=" ">
-        <label for="loginPassword">Password</label>
-      </div>
-      <div class="form-footer">
-        <div class="login-links">
-          <a href="/reset-password" class="forgot-password">Forgot password?</a>
-        </div>
-        <button type="submit" class="btn btn-primary">
-          <span class="btn-text">Login</span>
-          <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
-        </button>
-        <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
-        <div id="loginResponse" class="form-response" style="display: none;"></div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Register Modal -->
-<div class="modal" id="registerModal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content medium">
-    <button class="close-modal"><i class="fas fa-times"></i></button>
-    <div class="modal-header">
-      <h2>Create Your Account</h2>
-      <p>Join CareerPath to save content and track your progress</p>
-    </div>
-    <form id="registerForm" class="modal-form" method="POST" action="/register">
-      <div id="registerResponse" class="form-response" style="display: none;"></div>
-      <div class="form-group floating-label-group">
-        <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3" maxlength="30">
-        <label for="registerUsername">Username</label>
-        <div class="form-hint">3-30 characters, letters and numbers only</div>
-      </div>
-      <div class="form-group floating-label-group">
-        <input type="email" id="registerEmail" name="email" required placeholder=" ">
-        <label for="registerEmail">Email Address</label>
-      </div>
-      <div class="form-group floating-label-group">
-        <input type="password" id="registerPassword" name="password" required placeholder=" " minlength="8">
-        <label for="registerPassword">Password</label>
-      </div>
-      <div class="form-group floating-label-group">
-        <input type="password" id="registerConfirmPassword" name="confirm_password" required placeholder=" ">
-        <label for="registerConfirmPassword">Confirm Password</label>
-      </div>
-      <div class="form-footer">
-        <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
-          <span class="btn-text">Register</span>
-          <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
-        </button>
-        <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
-      </div>
-      <div class="form-terms">
-        <input type="checkbox" id="termsAgreement" name="terms" required>
-        <label for="termsAgreement">I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a></label>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Logout Modal -->
-<div class="modal" id="logoutModal">
-  <div class="modal-overlay"></div>
-  <div class="modal-content small">
-    <button class="close-modal" id="closeLogoutModal"><i class="fas fa-times"></i></button>
-    <div class="modal-header">
-      <h2>Confirm Logout</h2>
-      <p>Are you sure you want to log out?</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
-      <button class="btn btn-primary" id="confirmLogoutBtn">Logout</button>
-    </div>
-  </div>
-</div>
 
 {% endblock %}
 
