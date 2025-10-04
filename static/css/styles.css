@@ -68,9 +68,10 @@ header {
   align-items: center;
   padding: 1rem 0;
   position: relative;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  margin-left: -120px;
+  /* Remove margin-left and add transform instead */
+  transform: translateX(60px); /* Adjust this value to shift right */
 }
 
 .logo {
