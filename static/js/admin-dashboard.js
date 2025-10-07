@@ -1,4 +1,134 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // ===== DARK MODE FUNCTIONALITY =====
+    class DarkMode {
+        constructor() {
+            this.isDarkMode = localStorage.getItem('adminDarkMode') === 'true';
+            this.toggleButton = document.getElementById('darkModeToggle');
+            this.checkbox = document.getElementById('darkModeCheckbox');
+            this.init();
+        }
+
+        init() {
+            this.applyDarkMode();
+            this.bindEvents();
+            this.updateCheckbox();
+        }
+
+        applyDarkMode() {
+            const adminDashboard = document.querySelector('.admin-dashboard');
+            if (!adminDashboard) return;
+
+            if (this.isDarkMode) {
+                adminDashboard.classList.add('dark-mode');
+            } else {
+                adminDashboard.classList.remove('dark-mode');
+            }
+        }
+
+        bindEvents() {
+            // Handle toggle button click
+            if (this.toggleButton) {
+                this.toggleButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggle();
+                });
+            }
+
+            // Handle checkbox change
+            if (this.checkbox) {
+                this.checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the parent click
+                });
+
+                this.checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    this.toggle();
+                });
+            }
+
+            // Keyboard shortcut (Ctrl+Shift+D)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                    e.preventDefault();
+                    this.toggle();
+                }
+            });
+        }
+
+        updateCheckbox() {
+            if (this.checkbox) {
+                this.checkbox.checked = this.isDarkMode;
+            }
+        }
+
+        toggle() {
+            this.isDarkMode = !this.isDarkMode;
+            localStorage.setItem('adminDarkMode', this.isDarkMode);
+            this.applyDarkMode();
+            this.updateCheckbox();
+            this.showToggleNotification();
+        }
+
+        showToggleNotification() {
+            const message = this.isDarkMode ?
+                'Dark mode enabled' : 'Light mode enabled';
+            const type = this.isDarkMode ? 'info' : 'success';
+
+            // Use your existing notification system
+            if (typeof showNotification === 'function') {
+                showNotification(message, type);
+            } else {
+                // Fallback notification
+                console.log(message);
+            }
+        }
+
+        getCurrentMode() {
+            return this.isDarkMode ? 'dark' : 'light';
+        }
+
+        setMode(mode) {
+            this.isDarkMode = mode === 'dark';
+            localStorage.setItem('adminDarkMode', this.isDarkMode);
+            this.applyDarkMode();
+            this.updateCheckbox();
+        }
+    }
+
+    // Initialize dark mode
+    window.adminDarkMode = new DarkMode();
+
+    // Form submission
+    const replyForm = document.getElementById('messageReplyForm');
+    if (replyForm) {
+        replyForm.addEventListener('submit', handleMessageReplySubmit);
+    }
+
+    // Character count
+    const replyMessage = document.getElementById('replyMessage');
+    if (replyMessage) {
+        replyMessage.addEventListener('input', updateCharCount);
+    }
+
+    // Reply button in view modal - FIXED
+    const replyFromViewBtn = document.getElementById('replyFromView');
+    if (replyFromViewBtn) {
+        replyFromViewBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const viewModal = document.getElementById('messageViewModal');
+            if (viewModal && viewModal._messageData) {
+                const message = viewModal._messageData;
+                closeModal();
+                setTimeout(() => {
+                    openReplyModal(message.id, message.email, message.subject);
+                }, 300);
+            } else {
+                showNotification('Message data not available. Please close and reopen the message.', 'error');
+            }
+        });
+    }
+
     // Global variables
     let currentPage = {
         courses: 1,
@@ -392,6 +522,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         menuItems.forEach(item => {
             item.addEventListener('click', function(e) {
+                // Skip dark mode toggle (it's now handled separately)
+                if (this.id === 'darkModeToggle' || this.closest('#darkModeToggle')) {
+                    return;
+                }
+
                 if (this.getAttribute('href') === '/admin/logout') {
                     e.preventDefault();
                     showConfirmation('logout', 'Are you sure you want to logout?', () => {
@@ -778,7 +913,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${escapeHTML(item.company)}</td>
                     <td>${escapeHTML(item.location)}</td>
                     <td>${escapeHTML(item.type)}</td>
-                    <td>${escapeHTML(item.salary || 'N/A')}</td>
                     <td>${formatDate(item.created_at)}</td>
                     <td>
                         <div class="status-toggle">
@@ -925,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-       const replyMessageBtn = row.querySelector('.reply-message');
+        const replyMessageBtn = row.querySelector('.reply-message');
         if (replyMessageBtn) {
             replyMessageBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -933,6 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const id = replyMessageBtn.getAttribute('data-id');
                 const email = replyMessageBtn.getAttribute('data-email');
                 const subject = replyMessageBtn.getAttribute('data-subject');
+                console.log('Reply from table:', { id, email, subject });
                 openReplyModal(id, email, subject);
             });
         }
@@ -1032,53 +1167,91 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to show confirmation card
     function showConfirmation(type, message, confirmCallback) {
-        const overlay = document.createElement('div');
-        overlay.className = 'confirm-overlay';
+        // Use the existing confirmation modal instead of creating a new one
+        const modal = document.getElementById('confirmationModal');
+        const confirmCard = document.getElementById('confirmCard');
 
-        const card = document.createElement('div');
-        card.className = `confirm-card ${type} enhanced`;
+        if (!modal || !confirmCard) {
+            console.error('Confirmation modal elements not found');
+            return;
+        }
 
-        let iconClass, title, defaultMessage;
+        // Set up the confirmation content based on type
+        let iconClass, title, confirmText, confirmClass;
 
         if (type === 'logout') {
             iconClass = 'fa-sign-out-alt';
             title = 'Confirm Logout';
-            defaultMessage = 'Are you sure you want to logout? Any unsaved changes will be lost.';
+            confirmText = 'Logout';
+            confirmClass = 'logout';
         } else {
             iconClass = 'fa-trash-alt';
             title = 'Confirm Deletion';
-            defaultMessage = 'Are you sure you want to delete this item? This action cannot be undone.';
+            confirmText = 'Delete';
+            confirmClass = 'delete';
         }
 
-        card.innerHTML = `
+        // Update modal content
+        confirmCard.className = `confirm-card ${confirmClass}`;
+        confirmCard.innerHTML = `
             <i class="fas ${iconClass} confirm-icon"></i>
             <h3 class="confirm-title">${title}</h3>
-            <p class="confirm-message">${message || defaultMessage}</p>
+            <p class="confirm-message">${message}</p>
             <div class="confirm-actions">
-                <button class="confirm-btn cancel" onclick="closeModal()">Cancel</button>
-                <button class="confirm-btn confirm">${type === 'logout' ? 'Logout' : 'Delete'}</button>
+                <button class="confirm-btn cancel" id="cancelBtn">Cancel</button>
+                <button class="confirm-btn confirm" id="confirmBtn">${confirmText}</button>
             </div>
         `;
 
-        overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        // Show the modal
+        modal.style.display = 'block';
 
-        // Add event listeners
-        overlay.querySelector('.confirm-btn.cancel').addEventListener('click', () => {
-            document.body.removeChild(overlay);
-        });
+        // Set up event listeners - use setTimeout to ensure DOM is updated
+        setTimeout(() => {
+            const cancelBtn = document.getElementById('cancelBtn');
+            const confirmBtn = document.getElementById('confirmBtn');
 
-        overlay.querySelector('.confirm-btn.confirm').addEventListener('click', () => {
-            if (confirmCallback) confirmCallback();
-            document.body.removeChild(overlay);
-        });
-
-        // Close when clicking outside the card
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                document.body.removeChild(overlay);
+            if (!cancelBtn || !confirmBtn) {
+                console.error('Confirmation buttons not found');
+                return;
             }
-        });
+
+            // Remove any existing event listeners first
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            // Add new event listeners
+            newCancelBtn.addEventListener('click', closeModal);
+
+            newConfirmBtn.addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                closeModal();
+            });
+
+            // Focus on cancel button for accessibility
+            newCancelBtn.focus();
+        }, 10);
+
+        // Close when clicking outside the modal
+        const handleOutsideClick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+                modal.removeEventListener('click', handleOutsideClick);
+            }
+        };
+        modal.addEventListener('click', handleOutsideClick);
+
+        // Close with Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
     }
 
     // Perform actual delete operation
@@ -1289,13 +1462,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function openReplyModal(id, email, subject = '') {
+        console.log('Opening reply modal for:', { id, email, subject });
+
         const modal = document.getElementById('messageReplyModal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('Reply modal not found');
+            return;
+        }
 
-        // Show loading state
-        modal.classList.add('loading');
+        // Reset and set basic form values
+        document.getElementById('messageId').value = id;
+        document.getElementById('recipientEmail').value = email;
 
-        // First, fetch the full message details to get original subject and date
+        const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+        document.getElementById('replySubject').value = replySubject;
+
+        // Update display fields
+        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+        document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
+
+        // Clear reply message area
+        document.getElementById('replyMessage').value = '';
+        updateCharCount();
+
+        // Set loading state
+        document.getElementById('originalSender').textContent = 'Loading...';
+        document.getElementById('originalSubject').textContent = 'Loading...';
+        document.getElementById('originalDate').textContent = 'Loading...';
+        document.getElementById('originalMessageContent').innerHTML = '<div class="message-content-loading">Loading message content...</div>';
+
+        // Always fetch fresh message data to ensure we have the complete message
         fetch(`/api/admin/messages/${id}`, {
             credentials: 'include'
         })
@@ -1304,70 +1500,49 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(message => {
-            // Remove loading state
-            modal.classList.remove('loading');
+            console.log('Message data loaded:', message);
 
-            // Set the hidden fields
-            document.getElementById('recipientEmail').value = email;
-            document.getElementById('messageId').value = id;
-
-            // Use original subject with "Re:" prefix
-            const originalSubject = message.subject;
-            const replySubject = `Re: ${originalSubject}`;
-            document.getElementById('replySubject').value = replySubject;
-
-            // Display header information
+            // Update all fields with the message data
             document.getElementById('originalSender').textContent = `${message.name} <${message.email}>`;
-            document.getElementById('originalSubject').textContent = originalSubject;
+            document.getElementById('originalSubject').textContent = message.subject || 'No subject';
             document.getElementById('originalDate').textContent = formatDate(message.created_at, true);
 
-            // Display static fields with clear labels
-            document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
-            document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
-
-            // Clear and focus on message textarea
-            const messageTextarea = document.getElementById('replyMessage');
-            messageTextarea.value = '';
-
-            // Add character counter
-            messageTextarea.addEventListener('input', updateCharCount);
-
-            modal.style.display = 'block';
-
-            // Focus on the message textarea with slight delay
-            setTimeout(() => {
-                messageTextarea.focus();
-                updateCharCount(); // Initial character count
-            }, 100);
-
+            // Update message content
+            const messageContent = document.getElementById('originalMessageContent');
+            if (message.message) {
+                // Preserve line breaks and basic formatting
+                const formattedMessage = message.message
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+                messageContent.innerHTML = formattedMessage;
+            } else {
+                messageContent.innerHTML = '<em>No message content available</em>';
+            }
         })
         .catch(error => {
             console.error('Error loading message details:', error);
-            modal.classList.remove('loading');
-
-            // Fallback: use provided data if fetch fails
-            document.getElementById('recipientEmail').value = email;
-            document.getElementById('messageId').value = id;
-
-            const replySubject = subject ? `Re: ${subject}` : 'Re: Your message';
-            document.getElementById('replySubject').value = replySubject;
-
-            document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
-            document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
-
+            // Fallback values
             document.getElementById('originalSender').textContent = 'Unknown sender';
             document.getElementById('originalSubject').textContent = subject || 'No subject';
             document.getElementById('originalDate').textContent = 'Unknown date';
-
-            modal.style.display = 'block';
-            setTimeout(() => document.getElementById('replyMessage').focus(), 100);
+            document.getElementById('originalMessageContent').innerHTML = '<em>Failed to load message content</em>';
         });
+
+        // Show modal
+        modal.style.display = 'block';
+
+        // Focus on message area
+        setTimeout(() => {
+            document.getElementById('replyMessage').focus();
+        }, 100);
     }
 
-    // Enhanced character counter
     function updateCharCount() {
         const textarea = document.getElementById('replyMessage');
-        const charCount = document.querySelector('.char-count');
+        const charCount = document.querySelector('#messageReplyModal .char-count');
+
         if (textarea && charCount) {
             const count = textarea.value.length;
             charCount.textContent = `${count} characters`;
@@ -1384,6 +1559,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Make sure the form submission is properly bound
+    document.addEventListener('DOMContentLoaded', function() {
+        const replyForm = document.getElementById('messageReplyForm');
+        if (replyForm) {
+            replyForm.addEventListener('submit', handleMessageReplySubmit);
+        }
+
+        // Add input event listener for character count
+        const replyMessage = document.getElementById('replyMessage');
+        if (replyMessage) {
+            replyMessage.addEventListener('input', updateCharCount);
+        }
+
+    });
+
     function viewMessage(id) {
         fetch(`/api/admin/messages/${id}`, {
             credentials: 'include'
@@ -1396,18 +1586,38 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('messageViewModal');
             if (!modal) return;
 
-            document.getElementById('viewMessageName').textContent = message.name;
-            document.getElementById('viewMessageEmail').textContent = message.email;
-            document.getElementById('viewMessageSubject').textContent = message.subject;
+            // Store the complete message data for reply functionality
+            modal._messageData = {
+                id: message.id,
+                name: message.name,
+                email: message.email,
+                subject: message.subject,
+                message: message.message,
+                created_at: message.created_at,
+                status: message.status
+            };
+
+            console.log('Message data stored for reply:', modal._messageData);
+
+            // Update message details in view modal
+            document.getElementById('viewMessageName').textContent = message.name || 'Unknown';
+            document.getElementById('viewMessageEmail').textContent = message.email || 'No email';
+            document.getElementById('viewMessageSubject').textContent = message.subject || 'No subject';
             document.getElementById('viewMessageDate').textContent = formatDate(message.created_at, true);
-            document.getElementById('viewMessageStatus').textContent = message.status.charAt(0).toUpperCase() + message.status.slice(1);
-            document.getElementById('viewMessageContent').textContent = message.message;
 
-            // Fix: Set data-id attribute properly
-            modal.setAttribute('data-id', message.id);
+            // Status with proper styling
+            const statusElement = document.getElementById('viewMessageStatus');
+            statusElement.textContent = message.status ?
+                message.status.charAt(0).toUpperCase() + message.status.slice(1) : 'Unknown';
+            statusElement.className = 'message-value status-badge ' + (message.status || 'unknown');
 
+            // Message content
+            document.getElementById('viewMessageContent').textContent = message.message || 'No message content available';
+
+            // Show modal
             modal.style.display = 'block';
 
+            // Mark as read if unread
             if (message.status === 'unread') {
                 fetch(`/api/admin/messages/${id}/status`, {
                     method: 'PUT',
@@ -1426,12 +1636,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error loading message:', error);
             showNotification('Failed to load message', 'error');
-        });
-    }
-
-    function closeModal() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = 'none';
         });
     }
 
@@ -1672,18 +1876,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupBulkActions() {
+        // Select All functionality for each section
         document.querySelectorAll('thead input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
-                const section = this.id.replace('selectAll', '');
-                if (!section) return;
+                const sectionId = this.id.replace('selectAll', '');
+                if (!sectionId) return;
 
-                const sectionKey = section.toLowerCase();
-                const rowCheckboxes = document.querySelectorAll(`#${sectionKey}TableBody .row-checkbox`);
+                const sectionKey = sectionId.charAt(0).toLowerCase() + sectionId.slice(1);
+                const tableBody = document.getElementById(`${sectionKey}TableBody`);
+
+                if (!tableBody) return;
+
+                const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
 
                 rowCheckboxes.forEach(cb => {
                     cb.checked = this.checked;
-
                     const id = cb.getAttribute('data-id');
+
                     if (this.checked) {
                         if (!selectedItems[sectionKey].includes(id)) {
                             selectedItems[sectionKey].push(id);
@@ -1694,42 +1903,123 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 updateSelectAllCheckbox(sectionKey);
+                updateBulkActionButton(sectionKey);
             });
         });
 
+        // Individual row checkbox functionality
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-checkbox')) {
+                const checkbox = e.target;
+                const row = checkbox.closest('tr');
+                const section = row.closest('.admin-section').id;
+                const id = checkbox.getAttribute('data-id');
+
+                if (checkbox.checked) {
+                    if (!selectedItems[section].includes(id)) {
+                        selectedItems[section].push(id);
+                    }
+                } else {
+                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                }
+
+                updateSelectAllCheckbox(section);
+                updateBulkActionButton(section);
+            }
+        });
+
+        // Apply Bulk Actions
         document.querySelectorAll('[id^="apply"][id$="BulkAction"]').forEach(button => {
             button.addEventListener('click', function() {
-                const section = this.id.replace('apply', '').replace('BulkAction', '').toLowerCase();
-                const action = document.getElementById(`${section}BulkAction`).value;
+                const buttonId = this.id;
+                const section = buttonId.replace('apply', '').replace('BulkAction', '').toLowerCase();
+                const actionSelect = document.getElementById(`${section}BulkAction`);
+
+                if (!actionSelect) {
+                    console.error(`Bulk action select not found for section: ${section}`);
+                    return;
+                }
+
+                const action = actionSelect.value;
+
+                if (!action) {
+                    showNotification('Please select a bulk action first', 'warning');
+                    return;
+                }
 
                 if (selectedItems[section].length === 0) {
                     showNotification('Please select at least one item', 'warning');
                     return;
                 }
 
-                if (action === 'delete') {
-                    showConfirmation('delete', `Are you sure you want to delete ${selectedItems[section].length} items? This action cannot be undone.`, () => {
-                        performBulkDelete(section, selectedItems[section]);
-                    });
-                } else if (action === 'activate') {
-                    performBulkStatusUpdate(section, selectedItems[section], true);
-                } else if (action === 'deactivate') {
-                    performBulkStatusUpdate(section, selectedItems[section], false);
-                } else if (action === 'mark_read') {
-                    performBulkMessageStatusUpdate(section, selectedItems[section], 'read');
-                } else if (action === 'mark_unread') {
-                    performBulkMessageStatusUpdate(section, selectedItems[section], 'unread');
-                } else if (action === 'mark_replied') {
-                    performBulkMessageStatusUpdate(section, selectedItems[section], 'replied');
+                // Perform the bulk action based on type
+                switch(action) {
+                    case 'delete':
+                        showConfirmation('delete', `Are you sure you want to delete ${selectedItems[section].length} item(s)? This action cannot be undone.`, () => {
+                            performBulkDelete(section, selectedItems[section]);
+                        });
+                        break;
+                    case 'activate':
+                        performBulkStatusUpdate(section, selectedItems[section], true);
+                        break;
+                    case 'deactivate':
+                        performBulkStatusUpdate(section, selectedItems[section], false);
+                        break;
+                    case 'mark_read':
+                        performBulkMessageStatusUpdate(section, selectedItems[section], 'read');
+                        break;
+                    case 'mark_unread':
+                        performBulkMessageStatusUpdate(section, selectedItems[section], 'unread');
+                        break;
+                    case 'mark_replied':
+                        performBulkMessageStatusUpdate(section, selectedItems[section], 'replied');
+                        break;
+                    default:
+                        showNotification('Unknown bulk action', 'error');
                 }
             });
         });
     }
 
+    // Update the select all checkbox state
+    function updateSelectAllCheckbox(section) {
+        const sectionId = section.charAt(0).toUpperCase() + section.slice(1);
+        const selectAll = document.getElementById(`selectAll${sectionId}`);
+        if (!selectAll) return;
+
+        const tableBody = document.getElementById(`${section}TableBody`);
+        if (!tableBody) return;
+
+        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+        const checkedCount = selectedItems[section].length;
+
+        selectAll.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+    }
+
+    // Update bulk action button state
+    function updateBulkActionButton(section) {
+        const button = document.getElementById(`apply${section.charAt(0).toUpperCase() + section.slice(1)}BulkAction`);
+        if (button) {
+            button.disabled = selectedItems[section].length === 0;
+        }
+    }
+
+    // Enhanced bulk delete function
     function performBulkDelete(section, ids) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected for deletion', 'warning');
+            return;
+        }
+
         showLoading();
 
-        fetch(`/api/admin/${section}/bulk-delete`, {
+        // Fix section names for API endpoints
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog_posts';
+        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+
+        fetch(`/api/admin/${apiSection}/bulk-delete`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -1738,12 +2028,15 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({ ids: ids })
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to bulk delete ${section}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(result => {
             if (result.success) {
                 showNotification(`${ids.length} ${section} deleted successfully`, 'success');
+                // Clear selection and reload data
                 selectedItems[section] = [];
                 loadSectionData(section, currentPage[section]);
             } else {
@@ -1752,23 +2045,34 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error(`Error bulk deleting ${section}:`, error);
-            showNotification(`Failed to delete ${section}`, 'error');
+            showNotification(`Failed to delete ${section}. Please try again.`, 'error');
         })
         .finally(() => {
             hideLoading();
         });
     }
 
+    // Enhanced bulk status update function
     function performBulkStatusUpdate(section, ids, isActive) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
         showLoading();
 
-        // For courses, jobs, internships, and blog, active state also controls featured state
+        // Fix section names for API endpoints
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog_posts';
+        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+
+        // Prepare update data
         const updateData = { ids: ids, is_active: isActive };
         if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
             updateData.is_featured = isActive;
         }
 
-        fetch(`/api/admin/${section}/bulk-status`, {
+        fetch(`/api/admin/${apiSection}/bulk-status`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -1777,13 +2081,16 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(updateData)
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to bulk update ${section} status`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(result => {
             if (result.success) {
-                const statusText = isActive ? 'activated & featured' : 'deactivated';
+                const statusText = isActive ? 'activated' : 'deactivated';
                 showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
+                // Clear selection and reload data
                 selectedItems[section] = [];
                 loadSectionData(section, currentPage[section]);
             } else {
@@ -1792,14 +2099,20 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error(`Error bulk updating ${section} status:`, error);
-            showNotification(`Failed to update ${section} status`, 'error');
+            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
         })
         .finally(() => {
             hideLoading();
         });
     }
 
+    // Enhanced bulk message status update function
     function performBulkMessageStatusUpdate(section, ids, status) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
         showLoading();
 
         fetch(`/api/admin/${section}/bulk-status`, {
@@ -1811,12 +2124,15 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({ ids: ids, status: status })
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to bulk update ${section} status`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${ids.length} ${section} status updated successfully`, 'success');
+                showNotification(`${ids.length} ${section} status updated to ${status} successfully`, 'success');
+                // Clear selection and reload data
                 selectedItems[section] = [];
                 loadSectionData(section, currentPage[section]);
             } else {
@@ -1825,20 +2141,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error(`Error bulk updating ${section} status:`, error);
-            showNotification(`Failed to update ${section} status`, 'error');
+            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
         })
         .finally(() => {
             hideLoading();
         });
-    }
-
-    function updateSelectAllCheckbox(section) {
-        const selectAll = document.getElementById(`selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`);
-        if (!selectAll) return;
-
-        const rowCheckboxes = document.querySelectorAll(`#${section}TableBody .row-checkbox`);
-        selectAll.checked = rowCheckboxes.length > 0 && selectedItems[section].length === rowCheckboxes.length;
-        selectAll.indeterminate = selectedItems[section].length > 0 && selectedItems[section].length < rowCheckboxes.length;
     }
 
     // FIXED: Search and filter setup with proper event delegation
@@ -2001,5 +2308,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return date.toLocaleDateString('en-US', options);
+    }
+
+    // Add missing function for newsletter form submission
+    function handleNewsletterSubmit(e) {
+        e.preventDefault();
+        showNotification('Newsletter functionality would be implemented here', 'info');
+        closeModal();
     }
 });

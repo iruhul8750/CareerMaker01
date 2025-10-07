@@ -3673,6 +3673,15 @@ def toggle_newsletter_status(id):
         logger.error(f"Error updating newsletter status: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
 
+# Terms and condition routes
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
 # Error Handlers
 @app.errorhandler(404)
 def page_not_found(e):

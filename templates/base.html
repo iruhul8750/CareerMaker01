@@ -45,8 +45,8 @@
                     <li><a href="#courses"><i class="fas fa-book"></i> Courses</a></li>
                     <li><a href="#jobs"><i class="fas fa-briefcase"></i> Jobs</a></li>
                     <li><a href="#internships"><i class="fas fa-user-graduate"></i> Internships</a></li>
-                    <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
                     <li><a href="#blog"><i class="fas fa-blog"></i> Blog</a></li>
+                    <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
                     <li><a href="#contact"><i class="fas fa-envelope"></i> Contact</a></li>
                 </ul>
 
@@ -102,11 +102,26 @@
                 <h3>CareerMaker</h3>
                 <p>Empowering your career journey with quality education and job opportunities.</p>
                 <div class="social-links">
-                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                    <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer"
+                       aria-label="Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="https://twitter.com/yourhandle" target="_blank" rel="noopener noreferrer"
+                       aria-label="Twitter">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://www.linkedin.com/in/yourprofile/" target="_blank" rel="noopener noreferrer"
+                       aria-label="LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="https://www.instagram.com/yourprofile/" target="_blank" rel="noopener noreferrer"
+                       aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.youtube.com/@yourchannel" target="_blank" rel="noopener noreferrer"
+                       aria-label="YouTube">
+                        <i class="fab fa-youtube"></i>
+                    </a>
                 </div>
             </div>
             <div class="footer-col">
@@ -119,13 +134,13 @@
                     <li><a href="#blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
                 </ul>
             </div>
+            <!-- In the Support section of the footer -->
             <div class="footer-col">
                 <h3>Support</h3>
                 <ul class="footer-links">
-                    <li><a href="/faq"><i class="fas fa-chevron-right"></i> FAQ</a></li>
                     <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
                     <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
-                    <li><a href="/contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+                    <li><a href="#contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
                 </ul>
             </div>
             <div class="footer-col footer-newsletter">
@@ -203,7 +218,7 @@
         <button class="close-modal"><i class="fas fa-times"></i></button>
         <div class="modal-header">
             <h2>Create Your Account</h2>
-            <p>Join CareerPath to save content and track your progress</p>
+            <p>Join CareerMaker to save content and track your progress</p>
         </div>
         <form id="registerForm" class="modal-form" method="POST" action="/register">
             <div id="registerResponse" class="form-response" style="display: none;"></div>
@@ -232,10 +247,15 @@
                 </button>
                 <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
             </div>
+            <!-- In the register modal -->
             <div class="form-terms">
                 <input type="checkbox" id="termsAgreement" name="terms" required>
-                <label for="termsAgreement">I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy
-                    Policy</a></label>
+                <label for="termsAgreement">
+                    I agree to the
+                    <a href="/terms" target="_blank" class="terms-link">Terms of Service</a>
+                    and
+                    <a href="/privacy" target="_blank" class="privacy-link">Privacy Policy</a>
+                </label>
             </div>
         </form>
     </div>

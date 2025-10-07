@@ -1,25 +1,16 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerMaker Admin</title>
 
-{% block extra_css %}
-{{ super() }}
-<style>
-    footer {
-      display: none !important;
-    }
-</style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
-{% endblock %}
-
-{% block extra_js %}
-{{ super() }}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
-{% endblock %}
-
-{% block content %}
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+</head>
+<body>
 <div class="admin-dashboard">
     <!-- Sidebar -->
     <div class="sidebar">
@@ -31,13 +22,23 @@
             </li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-            <li class="menu-item"><a href="#internships"><i
-                    class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+            <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
+            <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
             <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
             <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </li>
+            <!-- Replace the dark mode toggle line with this -->
+            <li class="menu-item dark-mode-item">
+                <div class="dark-mode-toggle" id="darkModeToggle">
+                    <i class="fas fa-moon"></i>
+                    <span>Dark Mode</span>
+                    <div class="dark-mode-switch">
+                        <input type="checkbox" id="darkModeCheckbox">
+                        <span class="slider round"></span>
+                    </div>
+                </div>
             </li>
         </ul>
     </div>
@@ -706,7 +707,6 @@
         </div>
     </div>
 
-
     <!-- Internship Modal -->
     <div id="internshipModal" class="modal">
         <div class="modal-content medium">
@@ -881,128 +881,144 @@
     </div>
 
     <!-- Message View Modal -->
-    <div id="messageViewModal" class="modal">
-        <div class="modal-content medium">
-            <span class="close-modal">&times;</span>
-            <h2>Message Details</h2>
-            <div class="form-container">
-                <div class="message-details">
-                    <div class="form-group">
-                        <label>From:</label>
-                        <div id="viewMessageName" class="form-value"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Email:</label>
-                        <div id="viewMessageEmail" class="form-value"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Subject:</label>
-                        <div id="viewMessageSubject" class="form-value"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Date:</label>
-                        <div id="viewMessageDate" class="form-value"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Status:</label>
-                        <div id="viewMessageStatus" class="form-value"></div>
-                    </div>
-                    <div class="form-group">
-                        <label>Message:</label>
-                        <div id="viewMessageContent" class="form-value message-content"></div>
-                    </div>
+<div id="messageViewModal" class="modal">
+    <div class="modal-content medium">
+        <span class="close-modal">&times;</span>
+        <h2>Message Details</h2>
+
+        <div class="message-details">
+            <!-- Header info in grid -->
+            <div class="message-header">
+                <div class="message-field">
+                    <span class="message-label">From:</span>
+                    <span class="message-value" id="viewMessageName"></span>
                 </div>
-                <div class="form-actions">
-                    <button class="btn btn-primary" id="replyFromView">Reply</button>
-                    <button class="btn btn-outline" onclick="closeModal()">Close</button>
+                <div class="message-field">
+                    <span class="message-label">Email:</span>
+                    <span class="message-value" id="viewMessageEmail"></span>
+                </div>
+                <div class="message-field">
+                    <span class="message-label">Subject:</span>
+                    <span class="message-value" id="viewMessageSubject"></span>
+                </div>
+                <div class="message-field">
+                    <span class="message-label">Date:</span>
+                    <span class="message-value" id="viewMessageDate"></span>
+                </div>
+                <div class="message-field">
+                    <span class="message-label">Status:</span>
+                    <span class="message-value" id="viewMessageStatus"></span>
                 </div>
             </div>
+
+            <!-- Message content -->
+            <div class="message-content-container">
+                <span class="message-label">Message:</span>
+                <div class="message-content" id="viewMessageContent"></div>
+            </div>
+        </div>
+
+        <div class="message-actions">
+            <button class="btn btn-primary" id="replyFromView">
+                <i class="fas fa-reply"></i> Reply
+            </button>
+            <button class="btn btn-outline" onclick="closeModal()">
+                Close
+            </button>
         </div>
     </div>
+</div>
 
     <!-- Message Reply Modal -->
-    <div id="messageReplyModal" class="modal">
-        <div class="modal-content medium">
-            <span class="close-modal">&times;</span>
-            <h2 class="modal-title">
-                <i class="fas fa-reply"></i> Reply to Message
-            </h2>
+<div id="messageReplyModal" class="modal">
+    <div class="modal-content medium">
+        <span class="close-modal">&times;</span>
+        <h2 class="modal-title">
+            <i class="fas fa-reply"></i> Reply to Message
+        </h2>
 
-            <!-- Original Message Info Section -->
-            <div class="info-section">
-                <h3 class="section-title">Original Message</h3>
-                <div class="info-grid">
-                    <div class="info-row">
-                        <span class="info-label">From:</span>
-                        <span class="info-value" id="originalSender">Loading...</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Subject:</span>
-                        <span class="info-value" id="originalSubject">Loading...</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Date:</span>
-                        <span class="info-value" id="originalDate">Loading...</span>
+        <!-- Original Message Info Section -->
+        <div class="info-section">
+            <h3 class="section-title">Original Message</h3>
+            <div class="info-grid">
+                <div class="info-row">
+                    <span class="info-label">From:</span>
+                    <span class="info-value" id="originalSender">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Subject:</span>
+                    <span class="info-value" id="originalSubject">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Date:</span>
+                    <span class="info-value" id="originalDate">Loading...</span>
+                </div>
+                <!-- Add this new row for the message content -->
+                <div class="info-row message-content-row">
+                    <span class="info-label">Message:</span>
+                    <div class="info-value message-content" id="originalMessageContent">
+                        <div class="message-content-loading">Loading message content...</div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Reply Form Section -->
-            <div class="form-container">
-                <form id="messageReplyForm">
-                    <input type="hidden" name="message_id" id="messageId" value="">
+        <!-- Reply Form Section -->
+        <div class="form-container">
+            <form id="messageReplyForm">
+                <input type="hidden" name="message_id" id="messageId" value="">
 
-                    <h3 class="section-title">Your Reply</h3>
+                <h3 class="section-title">Your Reply</h3>
 
-                    <!-- Recipient Field -->
-                    <div class="form-field-group">
-                        <label class="field-label">To (Recipient)</label>
-                        <div class="field-container">
-                            <div class="static-field" id="recipientEmailDisplay">
-                                <i class="fas fa-envelope"></i>
-                                <span class="field-value">Loading recipient...</span>
-                            </div>
-                            <input type="hidden" name="email" id="recipientEmail">
+                <!-- Recipient Field -->
+                <div class="form-field-group">
+                    <label class="field-label">To (Recipient)</label>
+                    <div class="field-container">
+                        <div class="static-field" id="recipientEmailDisplay">
+                            <i class="fas fa-envelope"></i>
+                            <span class="field-value">Loading recipient...</span>
+                        </div>
+                        <input type="hidden" name="email" id="recipientEmail">
+                    </div>
+                </div>
+
+                <!-- Subject Field -->
+                <div class="form-field-group">
+                    <label class="field-label">Subject</label>
+                    <div class="field-container">
+                        <div class="static-field" id="replySubjectDisplay">
+                            <i class="fas fa-tag"></i>
+                            <span class="field-value">Loading subject...</span>
+                        </div>
+                        <input type="hidden" name="subject" id="replySubject">
+                    </div>
+                </div>
+
+                <!-- Message Field -->
+                <div class="form-field-group">
+                    <label class="field-label">Your Message <span class="required-star">*</span></label>
+                    <div class="field-container">
+                        <textarea id="replyMessage" name="message" rows="6" required
+                                placeholder="Type your reply message here..."></textarea>
+                        <div class="field-footer">
+                            <span class="char-count">0 characters</span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Subject Field -->
-                    <div class="form-field-group">
-                        <label class="field-label">Subject</label>
-                        <div class="field-container">
-                            <div class="static-field" id="replySubjectDisplay">
-                                <i class="fas fa-tag"></i>
-                                <span class="field-value">Loading subject...</span>
-                            </div>
-                            <input type="hidden" name="subject" id="replySubject">
-                        </div>
-                    </div>
-
-                    <!-- Message Field -->
-                    <div class="form-field-group">
-                        <label class="field-label">Your Message <span class="required-star">*</span></label>
-                        <div class="field-container">
-            <textarea id="replyMessage" name="message" rows="6" required
-                      placeholder="Type your reply message here..."></textarea>
-                            <div class="field-footer">
-                                <span class="char-count">0 characters</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Form Actions -->
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline" onclick="closeModal()">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary" id="sendReplyBtn">
-                            <i class="fas fa-paper-plane"></i> Send Reply
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="sendReplyBtn">
+                        <i class="fas fa-paper-plane"></i> Send Reply
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
     <!-- Confirmation Modal -->
     <div id="confirmationModal" class="modal">
@@ -1020,22 +1036,40 @@
     </div>
 </div>
 
+<!-- JavaScript Files -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 
 <script>
-    // Simple modal functions for the HTML
+    // Simple modal functions
     function closeModal() {
-      document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-      });
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
     }
 
     // Close modal when clicking outside
     document.querySelectorAll('.modal').forEach(modal => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          closeModal();
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    });
+
+    // Add any other essential JavaScript that was in base template
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Admin Dashboard Loaded');
+
+        // Initialize Select2
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#blogCategories').select2({
+                placeholder: "Select categories...",
+                allowClear: true
+            });
         }
-      });
     });
 </script>
-{% endblock %}
+</body>
+</html>
