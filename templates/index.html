@@ -333,118 +333,120 @@
 
 <!-- Enhanced Testimonials Section  -->
 <section class="testimonials" id="testimonials">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-title">
-        <h2>What Our Users Say</h2>
-        <p>Hear from our community of learners and professionals</p>
-      </div>
-      <button class="btn btn-primary" id="testimonialBtn">
-        <i class="fas fa-plus"></i> Share Your Experience
-      </button>
-    </div>
-
-    <div class="testimonial-carousel-container">
-      <div class="testimonial-carousel">
-        <button class="carousel-btn carousel-prev" onclick="testimonialSystem.prevSlide()">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-
-        <div class="testimonial-track" id="testimonialTrack">
-          <!-- Testimonials will be dynamically loaded here -->
-          <div class="loading-state">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading experiences...</p>
-          </div>
+    <div class="container">
+        <div class="section-header">
+            <div class="section-title">
+                <h2>What Our Users Say</h2>
+                <p>Hear from our community of learners and professionals</p>
+            </div>
+            <button class="btn btn-primary" id="testimonialBtn">
+                <i class="fas fa-plus"></i> Share Your Experience
+            </button>
         </div>
 
-        <button class="carousel-btn carousel-next" onclick="testimonialSystem.nextSlide()">
-          <i class="fas fa-chevron-right"></i>
-        </button>
+        <div class="testimonial-carousel-container">
+            <div class="testimonial-carousel">
+                <button class="carousel-btn carousel-prev" onclick="testimonialSystem.prevSlide()">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
 
-        <!-- Circular Progress Indicator -->
-        <div class="carousel-progress">
-          <div class="progress-track">
-            <div class="progress-fill" id="progressFill"></div>
-          </div>
+                <div class="testimonial-track" id="testimonialTrack">
+                    <!-- Testimonials will be dynamically loaded here -->
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading experiences...</p>
+                    </div>
+                </div>
+
+                <button class="carousel-btn carousel-next" onclick="testimonialSystem.nextSlide()">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+
+                <!-- Circular Progress Indicator -->
+                <div class="carousel-progress">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </section>
 
 <!-- Rest of your modals remain the same -->
 <div class="modal" id="testimonialModal" style="display: none;">
-  <div class="modal-overlay" onclick="testimonialSystem.closeModal()"></div>
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="modalTitle">Share Your Experience</h3>
-      <button class="close-btn" onclick="testimonialSystem.closeModal()">&times;</button>
+    <div class="modal-overlay" onclick="testimonialSystem.closeModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Share Your Experience</h3>
+            <button class="close-btn" onclick="testimonialSystem.closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="testimonialForm">
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" class="form-input" id="userName" disabled>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Rating</label>
+                    <div class="simple-rating" id="ratingStars">
+                        <button type="button" class="star-btn active" data-rating="1">★</button>
+                        <button type="button" class="star-btn active" data-rating="2">★</button>
+                        <button type="button" class="star-btn active" data-rating="3">★</button>
+                        <button type="button" class="star-btn active" data-rating="4">★</button>
+                        <button type="button" class="star-btn active" data-rating="5">★</button>
+                    </div>
+                    <input type="hidden" id="ratingValue" value="5">
+                </div>
+
+                <div class="form-group">
+                    <label>Your Experience *</label>
+                    <textarea
+                            id="testimonialText"
+                            class="form-textarea"
+                            placeholder="Tell us about your experience with CareerMaker..."
+                            required
+                            rows="4"
+                    ></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeModal()">Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Share Experience</span>
+                        <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+                    </button>
+                </div>
+            </form>
+            <div id="formMessage" style="display: none;"></div>
+        </div>
     </div>
-    <div class="modal-body">
-      <form id="testimonialForm">
-        <div class="form-group">
-          <label>Your Name</label>
-          <input type="text" class="form-input" id="userName" disabled>
-        </div>
-
-        <div class="form-group">
-          <label>Your Rating</label>
-          <div class="simple-rating" id="ratingStars">
-            <button type="button" class="star-btn active" data-rating="1">★</button>
-            <button type="button" class="star-btn active" data-rating="2">★</button>
-            <button type="button" class="star-btn active" data-rating="3">★</button>
-            <button type="button" class="star-btn active" data-rating="4">★</button>
-            <button type="button" class="star-btn active" data-rating="5">★</button>
-          </div>
-          <input type="hidden" id="ratingValue" value="5">
-        </div>
-
-        <div class="form-group">
-          <label>Your Experience *</label>
-          <textarea
-            id="testimonialText"
-            class="form-textarea"
-            placeholder="Tell us about your experience with CareerMaker..."
-            required
-            rows="4"
-          ></textarea>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">
-            <span class="btn-text">Share Experience</span>
-            <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
-          </button>
-        </div>
-      </form>
-      <div id="formMessage" style="display: none;"></div>
-    </div>
-  </div>
 </div>
 
 <div class="modal" id="deleteConfirmModal" style="display: none;">
-  <div class="modal-overlay" onclick="testimonialSystem.closeDeleteModal()"></div>
-  <div class="modal-content confirm-modal">
-    <div class="modal-header">
-      <h3>Delete Testimonial</h3>
-      <button class="close-btn" onclick="testimonialSystem.closeDeleteModal()">&times;</button>
+    <div class="modal-overlay" onclick="testimonialSystem.closeDeleteModal()"></div>
+    <div class="modal-content confirm-modal">
+        <div class="modal-header">
+            <h3>Delete Testimonial</h3>
+            <button class="close-btn" onclick="testimonialSystem.closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="confirm-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <p>Are you sure you want to delete your testimonial? This action cannot be undone.</p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeDeleteModal()">Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <span class="btn-text">Delete</span>
+                    <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+                </button>
+            </div>
+        </div>
     </div>
-    <div class="modal-body">
-      <div class="confirm-icon">
-        <i class="fas fa-exclamation-triangle"></i>
-      </div>
-      <p>Are you sure you want to delete your testimonial? This action cannot be undone.</p>
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeDeleteModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-          <span class="btn-text">Delete</span>
-          <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
-        </button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Contact Section -->
@@ -516,6 +518,62 @@
     </div>
 </section>
 
+<!-- Support Us Section - With Working PayPal -->
+<section class="support-section compact" id="support">
+    <div class="container">
+        <div class="support-header">
+            <h3>Support Our Mission</h3>
+            <p>Help us continue providing free career resources and opportunities</p>
+        </div>
+
+        <div class="support-row">
+            <!-- Description -->
+            <div class="support-item description-box">
+                <div class="support-icon">
+                    <i class="fas fa-hands-helping"></i>
+                </div>
+                <h4>Why Support Us?</h4>
+                <ul class="compact-list">
+                    <li><i class="fas fa-check"></i> Maintain platform</li>
+                    <li><i class="fas fa-check"></i> Add new courses</li>
+                    <li><i class="fas fa-check"></i> Keep resources free</li>
+                    <li><i class="fas fa-check"></i> Develop features</li>
+                </ul>
+            </div>
+
+                <!-- Simple PayPal.me Link -->
+                <div class="support-item payment-box">
+                    <div class="support-icon">
+                        <i class="fab fa-paypal"></i>
+                    </div>
+                    <h4>PayPal</h4>
+                    <p>Quick donation via PayPal.me</p>
+                    <a href="https://paypal.me/careermaker75" target="_blank" class="btn btn-paypal compact">
+                        <i class="fab fa-paypal"></i> Donate via PayPal.me
+                    </a>
+                </div>
+
+                <!-- QR Code -->
+                <div class="support-item qr-box">
+                    <div class="support-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h4>QR Code</h4>
+                    <p>Scan to pay</p>
+                    <div class="qr-compact">
+                        <img src="/static/images/payment-qr.png" alt="QR Code"
+                             onerror="this.src='/static/images/default-qr.png'">
+                    </div>
+                    <p class="qr-note">UPI, Google Pay, PhonePe</p>
+                </div>
+            </div>
+
+            <div class="support-footer compact">
+                <i class="fas fa-heart"></i>
+                <span>Thank you for your support!</span>
+            </div>
+        </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
