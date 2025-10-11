@@ -244,6 +244,8 @@
         initializeModals(); // Initialize modals first
         initializeBookmarkButtons();
         initializeContentCards();
+        initializeTestimonialModal(); // Add this line
+        loadTestimonials(); // Add this line
 
         // Mobile navigation
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -1227,6 +1229,598 @@
         }
       });
     }
+
+    // =============================================
+    // ENHANCED TESTIMONIAL SYSTEM WITH PROFILE PICTURE FIX
+    // =============================================
+
+    const testimonialSystem = {
+        isModalOpen: false,
+        currentTestimonials: [],
+        currentIndex: 0,
+        autoSlideInterval: null,
+        testimonialToDelete: null,
+
+        init() {
+            console.log('🌟 Enhanced testimonial system initialized');
+            this.loadTestimonials();
+
+            // Add click event to static button
+            const btn = document.getElementById('testimonialBtn');
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openTestimonialForm();
+                });
+            }
+
+            // Initialize carousel buttons event listeners
+            this.initCarouselButtons();
+
+            // Initialize modal close buttons
+            this.initModalCloseButtons();
+        },
+
+        initCarouselButtons() {
+            const prevBtn = document.querySelector('#testimonials .carousel-prev');
+            const nextBtn = document.querySelector('#testimonials .carousel-next');
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => this.prevSlide());
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => this.nextSlide());
+            }
+        },
+
+        initModalCloseButtons() {
+            // Testimonial modal close button
+            const testimonialCloseBtn = document.querySelector('#testimonialModal .close-btn');
+            if (testimonialCloseBtn) {
+                testimonialCloseBtn.addEventListener('click', () => this.closeModal());
+            }
+
+            // Delete confirmation modal close button
+            const deleteCloseBtn = document.querySelector('#deleteConfirmModal .close-btn');
+            if (deleteCloseBtn) {
+                deleteCloseBtn.addEventListener('click', () => this.closeDeleteModal());
+            }
+
+            // Delete modal cancel button
+            const cancelBtn = document.querySelector('#deleteConfirmModal .btn-secondary');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => this.closeDeleteModal());
+            }
+        },
+
+        async openTestimonialForm() {
+            console.log('🎯 Opening testimonial form');
+
+            if (this.isModalOpen) return;
+            this.isModalOpen = true;
+
+            try {
+                const response = await fetch('/api/testimonial/auth-check');
+                const data = await response.json();
+
+                if (data.can_post) {
+                    this.showModal(data.username);
+                } else {
+                    this.showLoginPrompt();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                this.showLoginPrompt();
+            }
+        },
+
+        showModal(username, testimonial = null) {
+            const isEdit = !!testimonial;
+            const modal = document.getElementById('testimonialModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const userName = document.getElementById('userName');
+            const testimonialText = document.getElementById('testimonialText');
+            const ratingValue = document.getElementById('ratingValue');
+            const submitBtn = document.querySelector('#testimonialForm button[type="submit"] .btn-text');
+            const messageDiv = document.getElementById('formMessage');
+
+            // Clear any previous messages
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+
+            modalTitle.textContent = isEdit ? 'Edit Your Experience' : 'Share Your Experience';
+            userName.value = username;
+            testimonialText.value = isEdit ? testimonial.content : '';
+            ratingValue.value = isEdit ? testimonial.rating : 5;
+            submitBtn.textContent = isEdit ? 'Update Experience' : 'Share Experience';
+
+            // Setup star rating
+            this.setupStarRating(isEdit ? testimonial.rating : 5);
+
+            // Setup form submission
+            const form = document.getElementById('testimonialForm');
+            form.onsubmit = isEdit ?
+                (e) => this.handleUpdate(e, testimonial.id) :
+                (e) => this.handleSubmit(e);
+
+            modal.style.display = 'flex';
+        },
+
+        setupStarRating(initialRating = 5) {
+            const stars = document.querySelectorAll('.star-btn');
+            const ratingInput = document.getElementById('ratingValue');
+
+            // Reset all stars
+            stars.forEach(star => {
+                star.classList.remove('active');
+                star.innerHTML = '☆';
+            });
+
+            // Set active stars based on initial rating
+            stars.forEach((star, index) => {
+                if (index < initialRating) {
+                    star.classList.add('active');
+                    star.innerHTML = '★';
+                }
+
+                star.onclick = () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+
+                    stars.forEach((s, i) => {
+                        if (i < rating) {
+                            s.classList.add('active');
+                            s.innerHTML = '★';
+                        } else {
+                            s.classList.remove('active');
+                            s.innerHTML = '☆';
+                        }
+                    });
+                };
+            });
+        },
+
+        async handleSubmit(event) {
+            event.preventDefault();
+            console.log('📤 Submitting testimonial...');
+
+            const form = event.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const spinner = submitBtn.querySelector('.loading-spinner');
+            const messageDiv = document.getElementById('formMessage');
+
+            const content = document.getElementById('testimonialText').value.trim();
+            const rating = parseInt(document.getElementById('ratingValue').value);
+
+            if (!content) {
+                this.showMessage('Please share your experience', 'error', messageDiv);
+                return;
+            }
+
+            // Show loading
+            btnText.style.display = 'none';
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+            messageDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/testimonial/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        rating: rating
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showMessage(data.message, 'success', messageDiv);
+                    setTimeout(() => {
+                        this.closeModal();
+                        this.loadTestimonials();
+                        if (typeof showToast === 'function') {
+                            showToast('Thank you for sharing your experience!', 'success');
+                        }
+                    }, 1500);
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                console.error('Submission error:', error);
+                this.showMessage(error.message, 'error', messageDiv);
+            } finally {
+                btnText.style.display = 'inline-block';
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        },
+
+        async handleUpdate(event, testimonialId) {
+            event.preventDefault();
+            console.log('📝 Updating testimonial...', testimonialId);
+
+            const form = event.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const spinner = submitBtn.querySelector('.loading-spinner');
+            const messageDiv = document.getElementById('formMessage');
+
+            const content = document.getElementById('testimonialText').value.trim();
+            const rating = parseInt(document.getElementById('ratingValue').value);
+
+            if (!content) {
+                this.showMessage('Please share your experience', 'error', messageDiv);
+                return;
+            }
+
+            // Show loading
+            btnText.style.display = 'none';
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+            messageDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/testimonial/update/${testimonialId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        rating: rating
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.showMessage(data.message, 'success', messageDiv);
+                    setTimeout(() => {
+                        this.closeModal();
+                        this.loadTestimonials();
+                        if (typeof showToast === 'function') {
+                            showToast('Testimonial updated successfully!', 'success');
+                        }
+                    }, 1500);
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                console.error('Update error:', error);
+                this.showMessage(error.message, 'error', messageDiv);
+            } finally {
+                btnText.style.display = 'inline-block';
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        },
+
+        showDeleteConfirmation(testimonialId) {
+            this.testimonialToDelete = testimonialId;
+            const modal = document.getElementById('deleteConfirmModal');
+            modal.style.display = 'flex';
+
+            // Setup delete button
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            deleteBtn.onclick = () => this.confirmDelete();
+        },
+
+        async confirmDelete() {
+            if (!this.testimonialToDelete) return;
+
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            const btnText = deleteBtn.querySelector('.btn-text');
+            const spinner = deleteBtn.querySelector('.loading-spinner');
+
+            // Show loading
+            btnText.style.display = 'none';
+            spinner.style.display = 'inline-block';
+            deleteBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('Testimonial deleted successfully!', 'success');
+                    }
+                    this.closeDeleteModal();
+                    this.loadTestimonials();
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                if (typeof showToast === 'function') {
+                    showToast(error.message, 'error');
+                }
+            } finally {
+                btnText.style.display = 'inline-block';
+                spinner.style.display = 'none';
+                deleteBtn.disabled = false;
+            }
+        },
+
+        deleteTestimonial(testimonialId) {
+            this.showDeleteConfirmation(testimonialId);
+        },
+
+        showMessage(message, type, element) {
+            element.textContent = message;
+            element.className = `form-message ${type}`;
+            element.style.display = 'block';
+        },
+
+        showLoginPrompt() {
+            if (typeof showToast === 'function') {
+                showToast('Please login to share your experience', 'warning');
+            }
+            if (typeof openLoginModal === 'function') {
+                openLoginModal();
+            }
+        },
+
+        closeModal() {
+            const modal = document.getElementById('testimonialModal');
+            if (modal) {
+                modal.style.display = 'none';
+
+                // Clear the form when closing modal
+                this.clearForm();
+            }
+            this.isModalOpen = false;
+        },
+
+        closeDeleteModal() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            this.testimonialToDelete = null;
+        },
+
+        clearForm() {
+            // Clear form fields and reset to default state
+            const testimonialText = document.getElementById('testimonialText');
+            const messageDiv = document.getElementById('formMessage');
+
+            if (testimonialText) testimonialText.value = '';
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+                messageDiv.textContent = '';
+            }
+
+            // Reset star rating to default
+            this.setupStarRating(5);
+        },
+
+        async loadTestimonials() {
+            try {
+                const track = document.getElementById('testimonialTrack');
+                if (!track) return;
+
+                // Show loading state
+                track.innerHTML = `
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading experiences...</p>
+                    </div>
+                `;
+
+                const response = await fetch('/api/testimonial/list');
+                const data = await response.json();
+
+                console.log('📊 Loaded testimonials:', data);
+
+                this.currentTestimonials = data.testimonials || [];
+
+                if (this.currentTestimonials.length === 0) {
+                    track.innerHTML = `
+                        <div class="empty-testimonials">
+                            <i class="fas fa-comments"></i>
+                            <h4>No Experiences Shared Yet</h4>
+                            <p>Be the first to share your journey!</p>
+                        </div>`;
+                    this.stopAutoSlide();
+                    this.updateCarouselButtonsVisibility(); // Hide buttons when no posts
+                    return;
+                }
+
+                this.renderTestimonials();
+                this.startAutoSlide();
+                this.updateCarouselButtonsVisibility(); // Show buttons when posts exist
+
+            } catch (error) {
+                console.error('❌ Failed to load testimonials:', error);
+                const track = document.getElementById('testimonialTrack');
+                if (track) {
+                    track.innerHTML = `
+                        <div class="empty-testimonials">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h4>Unable to Load Experiences</h4>
+                            <p>Please try again later</p>
+                        </div>`;
+                }
+                this.updateCarouselButtonsVisibility(); // Hide buttons on error
+            }
+        },
+
+        renderTestimonials() {
+            const track = document.getElementById('testimonialTrack');
+            if (!track) return;
+
+            // FIXED: Use only the original testimonials, no duplicates
+            track.innerHTML = this.currentTestimonials.map((testimonial, index) => `
+                <div class="testimonial-slide" data-index="${index}" data-testimonial-id="${testimonial.id}">
+                    <div class="testimonial-card-round">
+                        <div class="testimonial-content">
+                            <p>"${testimonial.content}"</p>
+                        </div>
+                        <div class="testimonial-author">
+                            <img src="${testimonial.profile_pic_url}"
+                                 alt="${testimonial.username}"
+                                 class="author-avatar-round"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=8B5FBF&color=fff&bold=true'">
+                            <div class="author-info">
+                                <h4>${testimonial.username}</h4>
+                                <div class="testimonial-rating">
+                                    ${'★'.repeat(testimonial.rating)}${'☆'.repeat(5 - testimonial.rating)}
+                                </div>
+                            </div>
+                        </div>
+                        ${testimonial.can_edit ? `
+                        <div class="testimonial-actions">
+                            <button class="btn-edit" onclick="testimonialSystem.editTestimonial('${testimonial.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" onclick="testimonialSystem.deleteTestimonial('${testimonial.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            this.currentIndex = 0;
+            this.updateCarousel();
+        },
+
+        editTestimonial(testimonialId) {
+            const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
+            if (testimonial) {
+                this.closeModal();
+                setTimeout(() => {
+                    this.showModal(testimonial.username, testimonial);
+                }, 300);
+            }
+        },
+
+        nextSlide() {
+            if (this.currentTestimonials.length <= 1) return; // Don't slide if only one testimonial
+
+            this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
+            this.updateCarousel();
+        },
+
+        prevSlide() {
+            if (this.currentTestimonials.length <= 1) return; // Don't slide if only one testimonial
+
+            this.currentIndex = (this.currentIndex - 1 + this.currentTestimonials.length) % this.currentTestimonials.length;
+            this.updateCarousel();
+        },
+
+        updateCarousel(instant = false) {
+            const track = document.getElementById('testimonialTrack');
+            const slides = document.querySelectorAll('.testimonial-slide');
+            const progressFill = document.getElementById('progressFill');
+
+            if (track && slides.length > 0) {
+                // Update transition for instant reset
+                track.style.transition = instant ? 'none' : 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+                // Calculate transform
+                const slideWidth = 280; // Fixed width for round cards
+                const gap = 32; // Gap between cards
+                const totalWidth = slideWidth + gap;
+                const centerOffset = (track.offsetWidth - slideWidth) / 2;
+                const translateX = centerOffset - (this.currentIndex * totalWidth);
+
+                track.style.transform = `translateX(${translateX}px)`;
+
+                // Apply 3D effects for circular appearance
+                slides.forEach((slide, index) => {
+                    const distance = Math.abs(index - this.currentIndex);
+                    const relativeDistance = (index - this.currentIndex);
+
+                    // Calculate scale and opacity based on distance from center
+                    const scale = Math.max(0.7, 1 - Math.abs(relativeDistance) * 0.15);
+                    const opacity = Math.max(0.3, 1 - Math.abs(relativeDistance) * 0.3);
+                    const rotation = relativeDistance * 15; // Rotation angle
+                    const zIndex = 10 - Math.abs(relativeDistance);
+
+                    slide.style.transform = `scale(${scale}) rotateY(${rotation}deg)`;
+                    slide.style.opacity = opacity;
+                    slide.style.zIndex = zIndex;
+
+                    // Add/remove active class
+                    if (Math.abs(relativeDistance) < 0.5) {
+                        slide.classList.add('active');
+                    } else {
+                        slide.classList.remove('active');
+                    }
+                });
+
+                // Update progress indicator
+                if (progressFill) {
+                    const progress = (this.currentIndex / this.currentTestimonials.length) * 100;
+                    progressFill.style.width = `${progress}%`;
+                }
+
+                // Reset transition after instant move
+                if (instant) {
+                    setTimeout(() => {
+                        track.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                    }, 50);
+                }
+            }
+        },
+
+        updateCarouselButtonsVisibility() {
+            const prevBtn = document.querySelector('#testimonials .carousel-prev');
+            const nextBtn = document.querySelector('#testimonials .carousel-next');
+
+            const hasPosts = this.currentTestimonials.length > 0;
+            const canScroll = this.currentTestimonials.length > 1; // Only show buttons if more than 1 testimonial
+
+            if (prevBtn && nextBtn) {
+                if (hasPosts && canScroll) {
+                    prevBtn.classList.add('visible');
+                    nextBtn.classList.add('visible');
+                } else {
+                    prevBtn.classList.remove('visible');
+                    nextBtn.classList.remove('visible');
+                }
+            }
+        },
+
+        startAutoSlide() {
+            this.stopAutoSlide(); // Clear any existing interval
+
+            // Only start auto-slide if there are multiple testimonials
+            if (this.currentTestimonials.length > 1) {
+                this.autoSlideInterval = setInterval(() => {
+                    this.nextSlide();
+                }, 4000); // Change slide every 4 seconds
+            }
+        },
+
+        stopAutoSlide() {
+            if (this.autoSlideInterval) {
+                clearInterval(this.autoSlideInterval);
+                this.autoSlideInterval = null;
+            }
+        }
+    };
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        testimonialSystem.init();
+    });
+
+
 
     // =============================================
     // Newsletter Form Handling

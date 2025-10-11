@@ -3,86 +3,90 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero">
-  <div class="hero-content">
-    <div class="hero-text">
-      <h1>Empower Your Career Journey</h1>
-      <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and professionals who have transformed their careers with CareerMaker.</p>
-      <div class="hero-buttons">
-        <a href="/courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
-        <a href="/jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
-      </div>
+    <div class="hero-content">
+        <div class="hero-text">
+            <h1>Empower Your Career Journey</h1>
+            <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and
+                professionals who have transformed their careers with CareerMaker.</p>
+            <div class="hero-buttons">
+                <a href="/courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
+                <a href="/jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="/static/images/hero-image.jpg" alt="Career growth illustration"
+                 onerror="this.src='/static/images/default-hero.jpg'">
+        </div>
     </div>
-    <div class="hero-image">
-      <img src="/static/images/hero-image.jpg" alt="Career growth illustration" onerror="this.src='/static/images/default-hero.jpg'">
-    </div>
-  </div>
 </section>
 
 <!-- Features Section -->
 <section class="features" id="features">
-  <div class="container">
-    <div class="section-title">
-      <h2>Why Choose CareerMaker</h2>
-      <p>We provide high-quality content and career opportunities to help you succeed</p>
+    <div class="container">
+        <div class="section-title">
+            <h2>Why Choose CareerMaker</h2>
+            <p>We provide high-quality content and career opportunities to help you succeed</p>
+        </div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>Verified Content</h3>
+                <p>All our courses and opportunities are thoroughly vetted to ensure quality and relevance.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Career Growth</h3>
+                <p>Our programs are designed to help you advance in your current career or switch to a new one.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <h3>Job Opportunities</h3>
+                <p>Get access to exclusive job listings from top companies in various industries.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <h3>24/7 Support</h3>
+                <p>Our dedicated support team is always ready to assist you with any questions or issues.</p>
+            </div>
+        </div>
     </div>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <h3>Verified Content</h3>
-        <p>All our courses and opportunities are thoroughly vetted to ensure quality and relevance.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i class="fas fa-chart-line"></i>
-        </div>
-        <h3>Career Growth</h3>
-        <p>Our programs are designed to help you advance in your current career or switch to a new one.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i class="fas fa-briefcase"></i>
-        </div>
-        <h3>Job Opportunities</h3>
-        <p>Get access to exclusive job listings from top companies in various industries.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i class="fas fa-headset"></i>
-        </div>
-        <h3>24/7 Support</h3>
-        <p>Our dedicated support team is always ready to assist you with any questions or issues.</p>
-      </div>
-    </div>
-  </div>
 </section>
 
 <!-- Courses Preview Section -->
 <section class="preview-section" id="courses">
-  <div class="container">
-    <div class="section-title">
-      <h2>Popular Courses</h2>
-      <p>Enhance your skills with our top-rated courses</p>
-    </div>
-    <div class="preview-grid" id="coursesGrid">
-      {% for course in courses %}
-      <div class="preview-card" data-id="{{ course.id }}" data-type="course">
-        <div class="preview-image-container">
-          {% if course.company_logo and course.company_logo != '/static/images/default-course.png' %}
-          <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="company-logo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          {% endif %}
-          <div class="default-logo course-logo" {% if course.company_logo and course.company_logo != '/static/images/default-course.png' %}style="display: none;"{% endif %}>
-            <i class="fas fa-book"></i>
-          </div>
+    <div class="container">
+        <div class="section-title">
+            <h2>Popular Courses</h2>
+            <p>Enhance your skills with our top-rated courses</p>
         </div>
-        <div class="preview-content">
-          <h3>{{ course.title }}</h3>
-          <p class="company">{{ course.company or course.instructor }}</p>
-          <p class="category">{{ course.category or 'General' }}</p>
-          <p class="description">{{ course.description|default('No description available', true)|truncate(120) }}</p>
-          <div class="preview-meta">
+        <div class="preview-grid" id="coursesGrid">
+            {% for course in courses %}
+            <div class="preview-card" data-id="{{ course.id }}" data-type="course">
+                <div class="preview-image-container">
+                    {% if course.company_logo and course.company_logo != '/static/images/default-course.png' %}
+                    <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="company-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    {% endif %}
+                    <div class="default-logo course-logo" {% if course.company_logo and course.company_logo
+                         !='/static/images/default-course.png' %}style="display: none;" {% endif %}>
+                        <i class="fas fa-book"></i>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <h3>{{ course.title }}</h3>
+                    <p class="company">{{ course.company or course.instructor }}</p>
+                    <p class="category">{{ course.category or 'General' }}</p>
+                    <p class="description">{{ course.description|default('No description available', true)|truncate(120)
+                        }}</p>
+                    <div class="preview-meta">
             <span class="price">
               {% if course.price and course.price != 'Free' %}
                 ${{ course.price }}
@@ -90,345 +94,426 @@
                 Free
               {% endif %}
             </span>
-            <span class="level">{{ course.level or 'All Levels' }}</span>
-          </div>
+                        <span class="level">{{ course.level or 'All Levels' }}</span>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
+                            data-id="{{ course.id }}"
+                            data-type="course"
+                            title="Bookmark">
+                        <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                    </button>
+                    <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
+                            {% if not course.application_link %}disabled{% endif %}>
+                        Enroll Now
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-book"></i>
+                <h4>No featured courses available</h4>
+                <p>Check back later for new courses</p>
+            </div>
+            {% endfor %}
         </div>
-        <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
-                  data-id="{{ course.id }}"
-                  data-type="course"
-                  title="Bookmark">
-            <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-          </button>
-          <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
-          <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
-                  {% if not course.application_link %}disabled{% endif %}>
-            Enroll Now
-          </button>
+        <div class="view-all">
+            <a href="/courses" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> View All Courses
+            </a>
         </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-book"></i>
-        <h4>No featured courses available</h4>
-        <p>Check back later for new courses</p>
-      </div>
-      {% endfor %}
     </div>
-    <div class="view-all">
-      <a href="/courses" class="btn btn-primary">
-        <i class="fas fa-arrow-right"></i> View All Courses
-      </a>
-    </div>
-  </div>
 </section>
 
 <!-- Jobs Preview Section -->
 <section class="preview-section" id="jobs">
-  <div class="container">
-    <div class="section-title">
-      <h2>Featured Jobs</h2>
-      <p>Find your dream job from our curated listings</p>
-    </div>
-    <div class="preview-grid" id="jobsGrid">
-      {% for job in jobs %}
-      <div class="preview-card" data-id="{{ job.id }}" data-type="job">
-        <div class="preview-image-container">
-          {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}
-          <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          {% endif %}
-          <div class="default-logo job-logo" {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}style="display: none;"{% endif %}>
-            <i class="fas fa-briefcase"></i>
-          </div>
+    <div class="container">
+        <div class="section-title">
+            <h2>Featured Jobs</h2>
+            <p>Find your dream job from our curated listings</p>
         </div>
-        <div class="preview-content">
-          <h3>{{ job.title }}</h3>
-          <p class="company">{{ job.company }}</p>
-          <p class="location">{{ job.location or 'Location not specified' }}</p>
-          <p class="description">{{ job.description|default('No description available', true)|truncate(120) }}</p>
-          <div class="preview-meta">
-            <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
-            <span class="type">{{ job.type or 'Full-time' }}</span>
-          </div>
+        <div class="preview-grid" id="jobsGrid">
+            {% for job in jobs %}
+            <div class="preview-card" data-id="{{ job.id }}" data-type="job">
+                <div class="preview-image-container">
+                    {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}
+                    <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    {% endif %}
+                    <div class="default-logo job-logo" {% if job.company_logo and job.company_logo
+                         !='/static/images/default-job.png' %}style="display: none;" {% endif %}>
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <h3>{{ job.title }}</h3>
+                    <p class="company">{{ job.company }}</p>
+                    <p class="location">{{ job.location or 'Location not specified' }}</p>
+                    <p class="description">{{ job.description|default('No description available', true)|truncate(120)
+                        }}</p>
+                    <div class="preview-meta">
+                        <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
+                        <span class="type">{{ job.type or 'Full-time' }}</span>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
+                            data-id="{{ job.id }}"
+                            data-type="job"
+                            title="Bookmark">
+                        <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                    </button>
+                    <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
+                            {% if not job.application_link %}disabled{% endif %}>
+                        Apply Now
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-briefcase"></i>
+                <h4>No featured jobs available</h4>
+                <p>Check back later for new opportunities</p>
+            </div>
+            {% endfor %}
         </div>
-        <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
-                  data-id="{{ job.id }}"
-                  data-type="job"
-                  title="Bookmark">
-            <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-          </button>
-          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
-          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
-                  {% if not job.application_link %}disabled{% endif %}>
-            Apply Now
-          </button>
+        <div class="view-all">
+            <a href="/jobs" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> View All Jobs
+            </a>
         </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-briefcase"></i>
-        <h4>No featured jobs available</h4>
-        <p>Check back later for new opportunities</p>
-      </div>
-      {% endfor %}
     </div>
-    <div class="view-all">
-      <a href="/jobs" class="btn btn-primary">
-        <i class="fas fa-arrow-right"></i> View All Jobs
-      </a>
-    </div>
-  </div>
 </section>
 
 <!-- Internships Preview Section -->
 <section class="preview-section" id="internships">
-  <div class="container">
-    <div class="section-title">
-      <h2>Featured Internships</h2>
-      <p>Gain valuable experience with top companies</p>
-    </div>
-    <div class="preview-grid" id="internshipsGrid">
-      {% for internship in internships %}
-      <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
-        <div class="preview-image-container">
-          {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}
-          <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          {% endif %}
-          <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}style="display: none;"{% endif %}>
-            <i class="fas fa-user-graduate"></i>
-          </div>
+    <div class="container">
+        <div class="section-title">
+            <h2>Featured Internships</h2>
+            <p>Gain valuable experience with top companies</p>
         </div>
-        <div class="preview-content">
-          <h3>{{ internship.title }}</h3>
-          <p class="company">{{ internship.company }}</p>
-          <p class="location">{{ internship.location or 'Location not specified' }}</p>
-          <p class="duration">{{ internship.duration or 'Duration not specified' }}</p>
-          <p class="description">{{ internship.description|default('No description available', true)|truncate(120) }}</p>
-          <div class="preview-meta">
-            <span class="type">{{ internship.type or 'Internship' }}</span>
-            <span class="stipend">
+        <div class="preview-grid" id="internshipsGrid">
+            {% for internship in internships %}
+            <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
+                <div class="preview-image-container">
+                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
+                    %}
+                    <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    {% endif %}
+                    <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo
+                         !='/static/images/default-internship.png' %}style="display: none;" {% endif %}>
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <h3>{{ internship.title }}</h3>
+                    <p class="company">{{ internship.company }}</p>
+                    <p class="location">{{ internship.location or 'Location not specified' }}</p>
+                    <p class="duration">{{ internship.duration or 'Duration not specified' }}</p>
+                    <p class="description">{{ internship.description|default('No description available',
+                        true)|truncate(120) }}</p>
+                    <div class="preview-meta">
+                        <span class="type">{{ internship.type or 'Internship' }}</span>
+                        <span class="stipend">
               {% if internship.type == 'Paid' %}
                 {{ internship.stipend or 'Stipend available' }}
               {% else %}
                 Unpaid
               {% endif %}
             </span>
-          </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
+                            data-id="{{ internship.id }}"
+                            data-type="internship"
+                            title="Bookmark">
+                        <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                    </button>
+                    <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}"
+                            title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
+                            {% if not internship.application_link %}disabled{% endif %}>
+                        Apply Now
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-graduate"></i>
+                <h4>No featured internships available</h4>
+                <p>Check back later for new opportunities</p>
+            </div>
+            {% endfor %}
         </div>
-        <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
-                  data-id="{{ internship.id }}"
-                  data-type="internship"
-                  title="Bookmark">
-            <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-          </button>
-          <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
-          <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
-                  {% if not internship.application_link %}disabled{% endif %}>
-            Apply Now
-          </button>
+        <div class="view-all">
+            <a href="/internships" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> View All Internships
+            </a>
         </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-user-graduate"></i>
-        <h4>No featured internships available</h4>
-        <p>Check back later for new opportunities</p>
-      </div>
-      {% endfor %}
     </div>
-    <div class="view-all">
-      <a href="/internships" class="btn btn-primary">
-        <i class="fas fa-arrow-right"></i> View All Internships
-      </a>
-    </div>
-  </div>
 </section>
 
 <!-- Blog Preview Section -->
 <section class="blog-section" id="blog">
-  <div class="container">
-    <div class="section-title">
-      <h2>Latest Career Tips</h2>
-      <p>Read our expert advice on career development and job searching</p>
-    </div>
-    <div class="preview-grid" id="blogGrid">
-      {% for post in blogs %}
-      <div class="preview-card" data-id="{{ post.id }}" data-type="blog">
-        <div class="preview-image-container">
-          {% if post.image and post.image != '/static/images/default-blog.jpg' %}
-          <img src="{{ post.image }}" alt="{{ post.title }}" class="company-logo"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          {% endif %}
-          <div class="default-logo course-logo" {% if post.image and post.image != '/static/images/default-blog.jpg' %}style="display: none;"{% endif %}>
-            <i class="fas fa-newspaper"></i>
-          </div>
+    <div class="container">
+        <div class="section-title">
+            <h2>Latest Career Tips</h2>
+            <p>Read our expert advice on career development and job searching</p>
         </div>
-        <div class="preview-content">
-          <h3>{{ post.title }}</h3>
-          <p class="company">{{ post.author or 'CareerMaker Team' }}</p>
-          <p class="description">{{ (post.description if post.description else post.content)|default('No description available', true)|truncate(120) }}</p>
-          <div class="preview-meta">
-            <span class="category">{{ post.categories[0] if post.categories else 'Career' }}</span>
-            <span class="level">
+        <div class="preview-grid" id="blogGrid">
+            {% for post in blogs %}
+            <div class="preview-card" data-id="{{ post.id }}" data-type="blog">
+                <div class="preview-image-container">
+                    {% if post.image and post.image != '/static/images/default-blog.jpg' %}
+                    <img src="{{ post.image }}" alt="{{ post.title }}" class="company-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    {% endif %}
+                    <div class="default-logo course-logo" {% if post.image and post.image
+                         !='/static/images/default-blog.jpg' %}style="display: none;" {% endif %}>
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <h3>{{ post.title }}</h3>
+                    <p class="company">{{ post.author or 'CareerMaker Team' }}</p>
+                    <p class="description">{{ (post.description if post.description else post.content)|default('No
+                        description available', true)|truncate(120) }}</p>
+                    <div class="preview-meta">
+                        <span class="category">{{ post.categories[0] if post.categories else 'Career' }}</span>
+                        <span class="level">
               {% if post.published_at %}
                 {{ post.published_at.strftime('%b %d, %Y') if post.published_at is string else post.published_at }}
               {% else %}
                 {{ post.created_at.strftime('%b %d, %Y') if post.created_at is string else post.created_at }}
               {% endif %}
             </span>
-          </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-icon bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
+                            data-id="{{ post.id }}"
+                            data-type="blog"
+                            title="Bookmark">
+                        <i class="{% if post.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                    </button>
+                    <button class="btn btn-icon share-btn" data-type="blog" data-id="{{ post.id }}" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <a href="/blog/{{ post.id }}" class="btn btn-primary">
+                        Read More
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-newspaper"></i>
+                <h4>No blog posts available</h4>
+                <p>Check back later for new articles</p>
+            </div>
+            {% endfor %}
         </div>
-        <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
-                  data-id="{{ post.id }}"
-                  data-type="blog"
-                  title="Bookmark">
-            <i class="{% if post.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-          </button>
-          <button class="btn btn-icon share-btn" data-type="blog" data-id="{{ post.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
-          <a href="/blog/{{ post.id }}" class="btn btn-primary">
-            Read More
-          </a>
+        <div class="view-all">
+            <a href="/blog" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> View All Articles
+            </a>
         </div>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <i class="fas fa-newspaper"></i>
-        <h4>No blog posts available</h4>
-        <p>Check back later for new articles</p>
-      </div>
-      {% endfor %}
     </div>
-    <div class="view-all">
-      <a href="/blog" class="btn btn-primary">
-        <i class="fas fa-arrow-right"></i> View All Articles
-      </a>
-    </div>
-  </div>
 </section>
 
-<!-- Testimonials Section -->
+<!-- Enhanced Testimonials Section  -->
 <section class="testimonials" id="testimonials">
   <div class="container">
-    <div class="section-title">
-      <h2>What Our Students Say</h2>
-      <p>Hear from our community of learners and professionals</p>
+    <div class="section-header">
+      <div class="section-title">
+        <h2>What Our Users Say</h2>
+        <p>Hear from our community of learners and professionals</p>
+      </div>
+      <button class="btn btn-primary" id="testimonialBtn">
+        <i class="fas fa-plus"></i> Share Your Experience
+      </button>
     </div>
 
-    <div class="testimonial-grid" id="testimonialsGrid">
-      {% if testimonials %}
-        {% for testimonial in testimonials %}
-        <div class="testimonial-card">
-          <div class="testimonial-content">
-            <p>"{{ testimonial.content if testimonial.content else testimonial.description }}"</p>
-          </div>
-          <div class="testimonial-author">
-            <img src="{{ testimonial.image if testimonial.image else '/static/images/default-avatar.jpg' }}"
-                 alt="{{ testimonial.name if testimonial.name else testimonial.title }}"
-                 class="author-img"
-                 onerror="this.src='/static/images/default-avatar.jpg'">
-            <div class="author-info">
-              <h4>{{ testimonial.name if testimonial.name else testimonial.title }}</h4>
-              <p>{{ testimonial.position if testimonial.position else testimonial.author }}{% if testimonial.company %}, {{ testimonial.company }}{% endif %}</p>
-              <div class="rating">
-                {% for i in range(testimonial.rating|int if testimonial.rating else 5) %}
-                <i class="fas fa-star"></i>
-                {% endfor %}
-              </div>
-            </div>
+    <div class="testimonial-carousel-container">
+      <div class="testimonial-carousel">
+        <button class="carousel-btn carousel-prev" onclick="testimonialSystem.prevSlide()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <div class="testimonial-track" id="testimonialTrack">
+          <!-- Testimonials will be dynamically loaded here -->
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading experiences...</p>
           </div>
         </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-state">
-          <i class="fas fa-comment-alt"></i>
-          <h4>No testimonials available</h4>
-          <p>Check back later for testimonials from our community</p>
+
+        <button class="carousel-btn carousel-next" onclick="testimonialSystem.nextSlide()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+
+        <!-- Circular Progress Indicator -->
+        <div class="carousel-progress">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
         </div>
-      {% endif %}
+      </div>
     </div>
   </div>
 </section>
+
+<!-- Rest of your modals remain the same -->
+<div class="modal" id="testimonialModal" style="display: none;">
+  <div class="modal-overlay" onclick="testimonialSystem.closeModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Share Your Experience</h3>
+      <button class="close-btn" onclick="testimonialSystem.closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="testimonialForm">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" class="form-input" id="userName" disabled>
+        </div>
+
+        <div class="form-group">
+          <label>Your Rating</label>
+          <div class="simple-rating" id="ratingStars">
+            <button type="button" class="star-btn active" data-rating="1">★</button>
+            <button type="button" class="star-btn active" data-rating="2">★</button>
+            <button type="button" class="star-btn active" data-rating="3">★</button>
+            <button type="button" class="star-btn active" data-rating="4">★</button>
+            <button type="button" class="star-btn active" data-rating="5">★</button>
+          </div>
+          <input type="hidden" id="ratingValue" value="5">
+        </div>
+
+        <div class="form-group">
+          <label>Your Experience *</label>
+          <textarea
+            id="testimonialText"
+            class="form-textarea"
+            placeholder="Tell us about your experience with CareerMaker..."
+            required
+            rows="4"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-text">Share Experience</span>
+            <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+          </button>
+        </div>
+      </form>
+      <div id="formMessage" style="display: none;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="deleteConfirmModal" style="display: none;">
+  <div class="modal-overlay" onclick="testimonialSystem.closeDeleteModal()"></div>
+  <div class="modal-content confirm-modal">
+    <div class="modal-header">
+      <h3>Delete Testimonial</h3>
+      <button class="close-btn" onclick="testimonialSystem.closeDeleteModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <p>Are you sure you want to delete your testimonial? This action cannot be undone.</p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+          <span class="btn-text">Delete</span>
+          <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Contact Section -->
 <section class="contact-section" id="contact">
-  <div class="container">
-    <div class="section-title">
-      <h2>Get In Touch</h2>
-      <p>Have questions? We're here to help you with your career journey</p>
-    </div>
-    <div class="contact-container">
-      <div class="contact-info">
-        <h2 class="box-heading">Contact Info</h2>
-        <div class="info-card">
-          <div class="info-icon">
-            <i class="fas fa-map-marker-alt"></i>
-          </div>
-          <div class="info-content">
-            <h3>Our Location</h3>
-            <p>123 Career Street, Tech City, TC 12345</p>
-          </div>
+    <div class="container">
+        <div class="section-title">
+            <h2>Get In Touch</h2>
+            <p>Have questions? We're here to help you with your career journey</p>
         </div>
-        <div class="info-card">
-          <div class="info-icon">
-            <i class="fas fa-envelope"></i>
-          </div>
-          <div class="info-content">
-            <h3>Email Us</h3>
-            <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
-          </div>
-        </div>
-        <div class="info-card">
-          <div class="info-icon">
-            <i class="fas fa-phone-alt"></i>
-          </div>
-          <div class="info-content">
-            <h3>Call Us</h3>
-            <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
-          </div>
-        </div>
-      </div>
+        <div class="contact-container">
+            <div class="contact-info">
+                <h2 class="box-heading">Contact Info</h2>
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Our Location</h3>
+                        <p>123 Career Street, Tech City, TC 12345</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Email Us</h3>
+                        <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-phone-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Call Us</h3>
+                        <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
+                    </div>
+                </div>
+            </div>
 
-      <div class="contact-form">
-        <h2 class="box-heading">Send a Message</h2>
-        <form id="contactForm" action="/api/contact" method="POST">
-          <div class="form-group floating-label-group">
-            <input type="text" id="name" name="name" required placeholder=" ">
-            <label for="name">Your Name</label>
-          </div>
-          <div class="form-group floating-label-group">
-            <input type="email" id="email" name="email" required placeholder=" ">
-            <label for="email">Your Email</label>
-          </div>
-          <div class="form-group floating-label-group">
-            <input type="text" id="subject" name="subject" required placeholder=" ">
-            <label for="subject">Subject</label>
-          </div>
-          <div class="form-group floating-label-group">
-            <textarea id="message" name="message" rows="4" required placeholder=" "></textarea>
-            <label for="message">Your Message</label>
-          </div>
-          <button type="submit" class="btn btn-primary">
-            <span class="btn-text">Send Message</span>
-            <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
-          </button>
-          <div id="formResponse" class="form-response" style="display: none;"></div>
-        </form>
-      </div>
+            <div class="contact-form">
+                <h2 class="box-heading">Send a Message</h2>
+                <form id="contactForm" action="/api/contact" method="POST">
+                    <div class="form-group floating-label-group">
+                        <input type="text" id="name" name="name" required placeholder=" ">
+                        <label for="name">Your Name</label>
+                    </div>
+                    <div class="form-group floating-label-group">
+                        <input type="email" id="email" name="email" required placeholder=" ">
+                        <label for="email">Your Email</label>
+                    </div>
+                    <div class="form-group floating-label-group">
+                        <input type="text" id="subject" name="subject" required placeholder=" ">
+                        <label for="subject">Subject</label>
+                    </div>
+                    <div class="form-group floating-label-group">
+                        <textarea id="message" name="message" rows="4" required placeholder=" "></textarea>
+                        <label for="message">Your Message</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Send Message</span>
+                        <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                    </button>
+                    <div id="formResponse" class="form-response" style="display: none;"></div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </section>
 
 {% endblock %}

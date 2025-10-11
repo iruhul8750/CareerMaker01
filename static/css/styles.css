@@ -815,107 +815,6 @@ section {
   gap: 0.5rem;
 }
 
-/* Testimonials */
-.testimonials {
-  background-color: #f8f9fa;
-  position: relative;
-  overflow: hidden;
-}
-
-.testimonials::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url('/static/images/testimonial-pattern.png') repeat;
-  opacity: 0.05;
-}
-
-.dark-mode .testimonials {
-  background-color: #1a1a2e;
-}
-
-.testimonial-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.testimonial-card {
-  background-color: white;
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-  position: relative;
-  transition: var(--transition);
-}
-
-.testimonial-card::before {
-  content: '"';
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  font-size: 4rem;
-  color: rgba(16, 185, 129, 0.1);
-  font-family: serif;
-  line-height: 1;
-}
-
-.dark-mode .testimonial-card {
-  background-color: var(--dark-mode-card);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-}
-
-.testimonial-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-.testimonial-content {
-  font-style: italic;
-  margin-bottom: 1.5rem;
-  color: #6c757d;
-  position: relative;
-  z-index: 1;
-}
-
-.dark-mode .testimonial-content {
-  color: #adb5bd;
-}
-
-.testimonial-author {
-  display: flex;
-  align-items: center;
-}
-
-.author-img {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 1rem;
-  border: 3px solid var(--primary-color);
-}
-
-.dark-mode .author-img {
-  border-color: var(--accent-color);
-}
-
-.author-info h4 {
-  margin-bottom: 0.3rem;
-  color: var(--dark-color);
-}
-
-.dark-mode .author-info h4 {
-  color: var(--dark-mode-text);
-}
-
-.rating {
-  color: var(--warning-color);
-}
-
 /* Blog Preview */
 .blog-card {
   background-color: white;
@@ -3601,4 +3500,920 @@ footer .container {
 
 .contact-info p {
     margin-bottom: 0.5rem;
+}
+/* ==========================
+   TESTIMONIALS SECTION (PROFESSIONAL SLIDE)
+   ========================== */
+
+/* SECTION BACKGROUND & CONTAINER */
+#testimonials {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  padding: 56px 0;
+  position: relative;
+  overflow: hidden;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Dark mode support */
+.dark-mode #testimonials {
+  background: linear-gradient(135deg, #4c63d2 0%, #5a3a8a 100%);
+}
+
+#testimonials .container {
+  width: 92%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* HEADER */
+#testimonials .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+#testimonials .section-title h2 {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+
+#testimonials .section-title p {
+  margin: 0;
+  color: rgba(255,255,255,0.9);
+  font-size: 0.98rem;
+}
+
+/* PRIMARY BUTTON (Scoped) */
+#testimonials #testimonialBtn,
+#testimonials .btn-primary {
+  background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  transition: transform .22s ease, box-shadow .22s ease, background .22s ease;
+  backdrop-filter: blur(6px);
+}
+
+#testimonials #testimonialBtn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+  background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+}
+
+/* CAROUSEL CONTAINER */
+#testimonials .testimonial-carousel-container {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* CAROUSEL LAYOUT */
+#testimonials .testimonial-carousel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+#testimonials #testimonialTrack,
+#testimonials .testimonial-track {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  transition: transform 0.6s ease-in-out;
+  padding: 18px 36px;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+/* each slide */
+#testimonials .testimonial-slide {
+  flex: 0 0 280px;
+  width: 280px;
+  opacity: 0.6;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+  display: flex;
+  justify-content: center;
+}
+
+#testimonials .testimonial-slide.active {
+  opacity: 1;
+  transform: scale(1.03);
+  z-index: 20;
+}
+
+/* CARD - IMPROVED LIGHT/DARK MODE */
+#testimonials .testimonial-card-round {
+  background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(250,250,255,0.97));
+  color: #2b1b5a;
+  border-radius: 18px;
+  padding: 20px;
+  width: 100%;
+  height: 220px;
+  box-shadow: 0 6px 20px rgba(15,12,40,0.1);
+  border: 1px solid rgba(107,84,210,0.08);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  box-sizing: border-box;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Dark mode card styles */
+.dark-mode #testimonials .testimonial-card-round {
+  background: linear-gradient(135deg, rgba(45,40,75,0.95), rgba(35,30,65,0.97));
+  color: #e2e0f0;
+  border: 1px solid rgba(107,84,210,0.15);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+#testimonials .testimonial-card-round:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(15,12,40,0.15);
+}
+
+.dark-mode #testimonials .testimonial-card-round:hover {
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+}
+
+#testimonials .testimonial-card-round::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ffd700, #ffed4e);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+}
+
+/* TEXT / QUOTE - IMPROVED CONTRAST */
+#testimonials .testimonial-content p {
+  margin: 0 0 8px 0;
+  font-style: italic;
+  line-height: 1.45;
+  color: #3c2e66;
+  font-size: 0.98rem;
+  position: relative;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dark-mode #testimonials .testimonial-content p {
+  color: #e2e0f0;
+}
+
+#testimonials .testimonial-content p::before {
+  content: "“";
+  position: absolute;
+  left: -6px;
+  top: -10px;
+  font-size: 36px;
+  color: rgba(107,84,210,0.08);
+  font-family: Georgia, serif;
+}
+
+.dark-mode #testimonials .testimonial-content p::before {
+  color: rgba(107,84,210,0.15);
+}
+
+/* AUTHOR ROW */
+#testimonials .testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#testimonials .author-avatar-round {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(139,95,191,0.18);
+  background: linear-gradient(135deg, rgba(139,95,191,0.08), rgba(101,78,163,0.04));
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(101,78,163,0.06);
+}
+
+.dark-mode #testimonials .author-avatar-round {
+  border: 2px solid rgba(139,95,191,0.25);
+  background: linear-gradient(135deg, rgba(139,95,191,0.12), rgba(101,78,163,0.08));
+  box-shadow: 0 6px 18px rgba(101,78,163,0.12);
+}
+
+#testimonials .author-info h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #23143f;
+  font-weight: 700;
+}
+
+.dark-mode #testimonials .author-info h4 {
+  color: #ffffff;
+}
+
+#testimonials .author-info p,
+#testimonials .testimonial-rating {
+  margin: 0;
+  color: #6b5b95;
+  font-size: 0.88rem;
+}
+
+.dark-mode #testimonials .author-info p,
+.dark-mode #testimonials .testimonial-rating {
+  color: #b8b0d0;
+}
+
+/* STAR RATING */
+#testimonials .simple-rating .star-btn {
+  font-size: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #cfc7e9; /* default inactive star */
+}
+
+.dark-mode #testimonials .simple-rating .star-btn {
+  color: #5a4a8a; /* darker inactive stars for dark mode */
+}
+
+#testimonials .simple-rating .star-btn.active {
+  color: #f4b400; /* yellow active star */
+}
+
+/* ACTIONS (edit/delete) inside cards */
+#testimonials .testimonial-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+#testimonials .testimonial-card-round:hover .testimonial-actions {
+  opacity: 1;
+}
+
+#testimonials .btn-edit,
+#testimonials .btn-delete {
+  background: rgba(255,255,255,0.85);
+  border: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b5b95;
+  box-shadow: 0 6px 14px rgba(15,12,40,0.06);
+  transition: all 0.2s ease;
+}
+
+.dark-mode #testimonials .btn-edit,
+.dark-mode #testimonials .btn-delete {
+  background: rgba(45,40,75,0.9);
+  color: #b8b0d0;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+}
+
+#testimonials .btn-edit:hover {
+  background: rgba(76,175,80,0.12);
+  color: #2c7a2c;
+}
+
+.dark-mode #testimonials .btn-edit:hover {
+  background: rgba(76,175,80,0.25);
+  color: #4ade80;
+}
+
+#testimonials .btn-delete:hover {
+  background: rgba(244,67,54,0.12);
+  color: #b91c1c;
+}
+
+.dark-mode #testimonials .btn-delete:hover {
+  background: rgba(244,67,54,0.25);
+  color: #f87171;
+}
+
+/* CAROUSEL NAV BUTTONS (scoped) */
+#testimonials .carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255,255,255,0.96);
+  color: #4a2f8d;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+  cursor: pointer;
+  z-index: 60;
+  transition: all 0.2s ease;
+  display: none; /* Hide by default */
+}
+
+/* Show buttons only when needed */
+#testimonials .carousel-btn.visible {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#testimonials .carousel-prev { left: 6px; }
+#testimonials .carousel-next { right: 6px; }
+
+#testimonials .carousel-btn:hover {
+  transform: translateY(-50%) scale(1.06);
+  background: linear-gradient(90deg, #fff, #f3f0ff);
+}
+
+.dark-mode #testimonials .carousel-btn {
+  background: rgba(45,40,75,0.95);
+  color: #e2e0f0;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.3);
+}
+
+.dark-mode #testimonials .carousel-btn:hover {
+  background: linear-gradient(90deg, rgba(65,60,105,0.95), rgba(55,50,95,0.95));
+}
+
+/* PROGRESS BAR */
+#testimonials .carousel-progress {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 6px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 40;
+}
+
+.dark-mode #testimonials .carousel-progress {
+  background: rgba(255,255,255,0.12);
+}
+
+#testimonials #progressFill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg,#ffd54a,#ff8a65);
+  transition: width .75s ease;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  #testimonials .section-header { align-items: center; text-align: center; }
+  #testimonials .testimonial-slide { flex: 0 0 240px; width: 240px; }
+  #testimonials .testimonial-card-round { height: 200px; padding: 16px; }
+  #testimonials .carousel-progress { width: 120px; }
+}
+
+@media (max-width: 520px) {
+  #testimonials .testimonial-slide { flex: 0 0 210px; width: 210px; }
+  #testimonials .testimonial-card-round { height: 190px; padding: 14px; }
+  #testimonials .carousel-btn { display: none; }
+}
+
+/* ==========================
+   TESTIMONIAL FORM IMPROVEMENTS
+   ========================== */
+
+#testimonialForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+#testimonialForm .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#testimonialForm label {
+  font-weight: 600;
+  color: #374151; /* Light mode label color */
+  font-size: 0.95rem;
+}
+
+.dark-mode #testimonialForm label {
+  color: #e0e0e0; /* Dark mode label color */
+}
+
+#testimonialForm input,
+#testimonialForm textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db; /* Light mode border */
+  background: #ffffff; /* Light mode background */
+  color: #1f2937; /* Light mode text color */
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dark-mode #testimonialForm input,
+.dark-mode #testimonialForm textarea {
+  border: 1px solid #555;
+  background: #2b263b;
+  color: #fff;
+}
+
+#testimonialForm input:focus,
+#testimonialForm textarea:focus {
+  border-color: #8b5fbf; /* Light mode focus color */
+  box-shadow: 0 0 6px rgba(139, 95, 191, 0.3);
+  outline: none;
+}
+
+.dark-mode #testimonialForm input:focus,
+.dark-mode #testimonialForm textarea:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+#testimonialForm textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* FORM ACTIONS */
+#testimonialForm .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+#testimonialForm button {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#testimonialForm button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+/* PRIMARY BUTTON */
+#testimonialForm .btn-primary {
+  background: linear-gradient(90deg, #8b5fbf, #654ea3);
+  color: #fff;
+}
+
+/* SECONDARY BUTTON */
+#testimonialForm .btn-secondary {
+  background: #9ca3af; /* Light mode secondary button */
+  color: #1f2937;
+}
+
+.dark-mode #testimonialForm .btn-secondary {
+  background: #6b7280;
+  color: #fff;
+}
+
+/* STAR RATING IN MODAL */
+#testimonialModal .simple-rating {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+#testimonialModal .star-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #d1d5db; /* Light mode inactive stars */
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+  padding: 4px;
+}
+
+.dark-mode #testimonialModal .star-btn {
+  color: #cfc7e9; /* Dark mode inactive stars */
+}
+
+#testimonialModal .star-btn.active {
+  color: #ffd700; /* Active stars (same for both modes) */
+  transform: scale(1.2);
+}
+
+#testimonialModal .star-btn:hover {
+  color: #ffda56;
+  transform: scale(1.1);
+}
+
+/* ==========================
+   MODAL & CLOSE BUTTON - FIXED POSITIONING
+   ========================== */
+
+#testimonialModal,
+#deleteConfirmModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* MODAL OVERLAY - PREVENT OUTSIDE CLICKS */
+#testimonialModal .modal-overlay,
+#deleteConfirmModal .modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Light mode overlay */
+  backdrop-filter: blur(4px);
+  /* Prevent clicks from closing modal */
+  pointer-events: none;
+}
+
+.dark-mode #testimonialModal .modal-overlay,
+.dark-mode #deleteConfirmModal .modal-overlay {
+  background: rgba(7, 7, 12, 0.7);
+}
+
+#testimonialModal .modal-content,
+#deleteConfirmModal .modal-content {
+  position: relative;
+  z-index: 10;
+  width: 94%;
+  max-width: 520px;
+  background: #ffffff; /* Light mode background */
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+  color: #1f2937; /* Light mode text color */
+  max-height: 90vh;
+  overflow-y: auto;
+  /* Allow clicks inside modal content */
+  pointer-events: auto;
+}
+
+.dark-mode #testimonialModal .modal-content,
+.dark-mode #deleteConfirmModal .modal-content {
+  background: #1f1b2e;
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* MODAL HEADER - FIXED CLOSE BUTTON POSITIONING */
+#testimonialModal .modal-header,
+#deleteConfirmModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  position: relative;
+  padding-right: 40px; /* Space for close button */
+}
+
+#testimonialModal .modal-header h3,
+#deleteConfirmModal .modal-header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+/* FIXED CLOSE BUTTON - No overlapping */
+#testimonialModal .close-btn,
+#deleteConfirmModal .close-btn {
+  position: absolute;
+  top: -8px; /* Adjusted to not overlap with content */
+  right: -8px; /* Adjusted to not overlap with content */
+  background: rgba(0, 0, 0, 0.1); /* Light mode background */
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  color: #4b5563; /* Light mode color */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 25;
+}
+
+.dark-mode #testimonialModal .close-btn,
+.dark-mode #deleteConfirmModal .close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+#testimonialModal .close-btn:hover,
+#deleteConfirmModal .close-btn:hover {
+  background: rgba(0, 0, 0, 0.15); /* Light mode hover */
+  transform: scale(1.1);
+}
+
+.dark-mode #testimonialModal .close-btn:hover,
+.dark-mode #deleteConfirmModal .close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* DELETE CONFIRM MODAL SPECIFIC STYLES */
+#deleteConfirmModal .modal-content {
+  text-align: center;
+  max-width: 400px;
+  background: #ffffff; /* Light mode background */
+  color: #1f2937; /* Light mode text color */
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+}
+
+.dark-mode #deleteConfirmModal .modal-content {
+  background: #1f1b2e;
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+#deleteConfirmModal .confirm-icon {
+  font-size: 3rem;
+  color: #ef4444; /* Red color for warning icon (same for both modes) */
+  margin-bottom: 16px;
+}
+
+#deleteConfirmModal .modal-body p {
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+  color: #6b7280; /* Light mode text color */
+}
+
+.dark-mode #deleteConfirmModal .modal-body p {
+  color: #e5e7eb; /* Dark mode text color */
+}
+
+/* Delete confirmation modal header */
+#deleteConfirmModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  position: relative;
+  padding-right: 40px;
+}
+
+#deleteConfirmModal .modal-header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  flex: 1;
+  color: #1f2937; /* Light mode heading color */
+}
+
+.dark-mode #deleteConfirmModal .modal-header h3 {
+  color: #ffffff; /* Dark mode heading color */
+}
+
+/* Form actions buttons */
+#deleteConfirmModal .form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 0;
+}
+
+/* Cancel button - light mode */
+#deleteConfirmModal .btn-secondary {
+  background: #9ca3af;
+  color: #1f2937;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dark-mode #deleteConfirmModal .btn-secondary {
+  background: #6b7280;
+  color: #fff;
+}
+
+/* Delete button - light mode */
+#deleteConfirmModal .btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dark-mode #deleteConfirmModal .btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+#deleteConfirmModal .btn-secondary:hover,
+#deleteConfirmModal .btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#deleteConfirmModal .btn-secondary:hover {
+  background: #6b7280;
+  color: #fff;
+}
+
+.dark-mode #deleteConfirmModal .btn-secondary:hover {
+  background: #9ca3af;
+}
+
+#deleteConfirmModal .btn-danger:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+.dark-mode #deleteConfirmModal .btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* Close button for delete modal */
+#deleteConfirmModal .close-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: rgba(0, 0, 0, 0.1); /* Light mode close button */
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  color: #4b5563; /* Light mode close button color */
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 25;
+}
+
+.dark-mode #deleteConfirmModal .close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+#deleteConfirmModal .close-btn:hover {
+  background: rgba(0, 0, 0, 0.15); /* Light mode hover */
+  transform: scale(1.1);
+}
+
+.dark-mode #deleteConfirmModal .close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* FORM MESSAGES */
+#formMessage {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  text-align: center;
+  font-weight: 500;
+  display: none;
+}
+
+#formMessage.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  display: block;
+}
+
+#formMessage.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  display: block;
+}
+
+.dark-mode #formMessage.success {
+  background: rgba(34, 197, 94, 0.05);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.dark-mode #formMessage.error {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* RESPONSIVE MODAL FIXES */
+@media (max-width: 600px) {
+  #testimonialModal .modal-content,
+  #deleteConfirmModal .modal-content {
+    width: 96%;
+    padding: 20px;
+    margin: 10px;
+  }
+
+  #testimonialModal .modal-header,
+  #deleteConfirmModal .modal-header {
+    padding-right: 35px;
+  }
+
+  #testimonialModal .close-btn,
+  #deleteConfirmModal .close-btn {
+    top: -6px;
+    right: -6px;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  #testimonialForm .form-actions {
+    flex-direction: column;
+  }
+
+  #deleteConfirmModal .form-actions {
+    flex-direction: column;
+  }
+
+  #deleteConfirmModal .btn-secondary,
+  #deleteConfirmModal .btn-danger {
+    width: 100%;
+  }
+}
+
+/* LOADING AND EMPTY STATES */
+.loading-state,
+.empty-testimonials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.loading-state i,
+.empty-testimonials i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.loading-state p,
+.empty-testimonials h4,
+.empty-testimonials p {
+  margin: 0.5rem 0;
+}
+
+.empty-testimonials h4 {
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.empty-testimonials p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
 }
