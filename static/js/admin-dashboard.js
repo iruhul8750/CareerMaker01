@@ -921,9 +921,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        data.data.forEach(item => {
+        data.data.forEach((item, index) => {
             const row = document.createElement('tr');
-            row.innerHTML = generateTableRowHTML(section, item);
+            row.innerHTML = generateTableRowHTML(section, item, index);
             tableBody.appendChild(row);
 
             addRowEventListeners(section, item.id, row);
@@ -933,8 +933,14 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelectAllCheckbox(section);
     }
 
-    function generateTableRowHTML(section, item) {
-        let html = `<td><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>`;
+    function generateTableRowHTML(section, item, index) {
+        // Calculate serial number based on current page and index
+        const serialNo = ((currentPage[section] - 1) * itemsPerPage) + index + 1;
+
+        let html = `
+            <td><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
+            <td class="serial-no">${serialNo}</td>
+        `;
 
         switch(section) {
             case 'courses':
@@ -953,8 +959,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon edit-item" data-id="${item.id}" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -976,8 +985,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon edit-item" data-id="${item.id}" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -999,8 +1011,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon edit-item" data-id="${item.id}" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -1021,8 +1036,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon edit-item" data-id="${item.id}" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -1043,8 +1061,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </td>
                     <td>
-                        <button class="btn-icon edit-item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -1057,9 +1077,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${formatDate(item.created_at)}</td>
                     <td><span class="status-badge ${item.status}">${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span></td>
                     <td>
-                        <button class="btn-icon view-message" data-id="${item.id}" title="View Message"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon reply-message" data-id="${item.id}" data-email="${escapeHTML(item.email)}" data-subject="${escapeHTML(item.subject)}" title="Reply"><i class="fas fa-reply"></i></button>
-                        <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Message"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon reply-message" data-id="${item.id}" data-email="${escapeHTML(item.email)}" data-subject="${escapeHTML(item.subject)}" title="Reply"><i class="fas fa-reply"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
                 `;
                 break;
@@ -1078,8 +1100,343 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td>${formatDate(item.subscribed_at)}</td>
                     <td>
-                        <button class="btn-icon delete-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
                     </td>
+                `;
+                break;
+        }
+
+        return html;
+    }
+
+    // View modal function
+    function openViewModal(section, id) {
+        fetch(`/api/admin/${section}/${id}`, {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to fetch ${section} item`);
+            return response.json();
+        })
+        .then(item => {
+            const modal = document.getElementById('contentViewModal');
+            if (!modal) return;
+
+            // Set modal title
+            const modalTitle = modal.querySelector('.modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = `${section.charAt(0).toUpperCase() + section.slice(1, -1)} Details`;
+            }
+
+            // Populate content based on section type
+            const contentBody = modal.querySelector('#contentViewBody');
+            if (contentBody) {
+                contentBody.innerHTML = generateViewContentHTML(section, item);
+            }
+
+            modal.style.display = 'block';
+        })
+        .catch(error => {
+            console.error(`Error loading ${section} item:`, error);
+            showNotification(`Failed to load ${section} item`, 'error');
+        });
+    }
+
+    function generateViewContentHTML(section, item) {
+        let html = '';
+
+        switch(section) {
+            case 'courses':
+                html = `
+                    <div class="view-field">
+                        <label>Title:</label>
+                        <span>${escapeHTML(item.title)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Category:</label>
+                        <span>${escapeHTML(item.category)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Instructor:</label>
+                        <span>${escapeHTML(item.instructor || 'N/A')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Level:</label>
+                        <span>${escapeHTML(item.level || 'N/A')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Price:</label>
+                        <span>${escapeHTML(item.price || 'Free')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Duration:</label>
+                        <span>${escapeHTML(item.duration || 'N/A')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Rating:</label>
+                        <span>${item.rating || '0'}/5</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Application Link:</label>
+                        <a href="${item.application_link}" target="_blank">${item.application_link}</a>
+                    </div>
+                    <div class="view-field">
+                        <label>Expiration Date:</label>
+                        <span>${item.expiration_date ? formatDate(item.expiration_date, true) : 'No expiration'}</span>
+                    </div>
+                    <div class="view-field full-width">
+                        <label>Description:</label>
+                        <div class="view-content">${escapeHTML(item.description || 'No description')}</div>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active & Featured' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Created:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                `;
+                break;
+
+            case 'jobs':
+                html = `
+                    <div class="view-field">
+                        <label>Title:</label>
+                        <span>${escapeHTML(item.title)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Company:</label>
+                        <span>${escapeHTML(item.company)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Location:</label>
+                        <span>${escapeHTML(item.location)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Type:</label>
+                        <span>${escapeHTML(item.type)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Salary:</label>
+                        <span>${escapeHTML(item.salary || 'Not specified')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Application Link:</label>
+                        <a href="${item.application_link}" target="_blank">${item.application_link}</a>
+                    </div>
+                    <div class="view-field">
+                        <label>Expiration Date:</label>
+                        <span>${item.expiration_date ? formatDate(item.expiration_date, true) : 'No expiration'}</span>
+                    </div>
+                    <div class="view-field full-width">
+                        <label>Description:</label>
+                        <div class="view-content">${escapeHTML(item.description || 'No description')}</div>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active & Featured' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Created:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                `;
+                break;
+
+            case 'internships':
+                html = `
+                    <div class="view-field">
+                        <label>Title:</label>
+                        <span>${escapeHTML(item.title)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Company:</label>
+                        <span>${escapeHTML(item.company)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Location:</label>
+                        <span>${escapeHTML(item.location)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Type:</label>
+                        <span>${escapeHTML(item.type)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Duration:</label>
+                        <span>${escapeHTML(item.duration)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Application Link:</label>
+                        <a href="${item.application_link}" target="_blank">${item.application_link}</a>
+                    </div>
+                    <div class="view-field">
+                        <label>Expiration Date:</label>
+                        <span>${item.expiration_date ? formatDate(item.expiration_date, true) : 'No expiration'}</span>
+                    </div>
+                    <div class="view-field full-width">
+                        <label>Description:</label>
+                        <div class="view-content">${escapeHTML(item.description || 'No description')}</div>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active & Featured' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Created:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                `;
+                break;
+
+            case 'blog':
+                html = `
+                    <div class="view-field">
+                        <label>Title:</label>
+                        <span>${escapeHTML(item.title)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Author:</label>
+                        <span>${escapeHTML(item.author)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Categories:</label>
+                        <span>${Array.isArray(item.categories) ? item.categories.join(', ') : item.categories}</span>
+                    </div>
+                    ${item.image ? `
+                    <div class="view-field">
+                        <label>Image:</label>
+                        <img src="${item.image}" alt="${item.title}" style="max-width: 200px; max-height: 150px;">
+                    </div>
+                    ` : ''}
+                    <div class="view-field full-width">
+                        <label>Content:</label>
+                        <div class="view-content">${escapeHTML(item.content || 'No content')}</div>
+                    </div>
+                    <div class="view-field">
+                        <label>Featured:</label>
+                        <span class="status-badge ${item.is_featured ? 'active' : 'inactive'}">
+                            ${item.is_featured ? 'Yes' : 'No'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Published:</label>
+                        <span class="status-badge ${item.is_published ? 'active' : 'inactive'}">
+                            ${item.is_published ? 'Yes' : 'No'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Created:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                `;
+                break;
+
+            case 'users':
+                html = `
+                    <div class="view-field">
+                        <label>Username:</label>
+                        <span>${escapeHTML(item.username)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Email:</label>
+                        <span>${escapeHTML(item.email)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Role:</label>
+                        <span class="role-badge ${item.role}">${escapeHTML(item.role)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Joined:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                `;
+                break;
+
+            case 'messages':
+                html = `
+                    <div class="view-field">
+                        <label>Name:</label>
+                        <span>${escapeHTML(item.name || 'N/A')}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Email:</label>
+                        <span>${escapeHTML(item.email)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Subject:</label>
+                        <span>${escapeHTML(item.subject || 'No subject')}</span>
+                    </div>
+                    <div class="view-field full-width">
+                        <label>Message:</label>
+                        <div class="view-content">${escapeHTML(item.message || 'No message content')}</div>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.status}">${item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Unknown'}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Received:</label>
+                        <span>${formatDate(item.created_at, true)}</span>
+                    </div>
+                    ${item.replied_at ? `
+                    <div class="view-field">
+                        <label>Replied:</label>
+                        <span>${formatDate(item.replied_at, true)}</span>
+                    </div>
+                    ` : ''}
+                `;
+                break;
+
+            case 'newsletter':
+                html = `
+                    <div class="view-field">
+                        <label>Email:</label>
+                        <span>${escapeHTML(item.email)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Subscribed:</label>
+                        <span>${formatDate(item.subscribed_at, true)}</span>
+                    </div>
+                    ${item.unsubscribed_at ? `
+                    <div class="view-field">
+                        <label>Unsubscribed:</label>
+                        <span>${formatDate(item.unsubscribed_at, true)}</span>
+                    </div>
+                    ` : ''}
+                    ${item.last_sent ? `
+                    <div class="view-field">
+                        <label>Last Newsletter Sent:</label>
+                        <span>${formatDate(item.last_sent, true)}</span>
+                    </div>
+                    ` : ''}
                 `;
                 break;
         }
@@ -1089,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addRowEventListeners(section, id, row) {
         const editBtn = row.querySelector('.edit-item');
-        if (editBtn) {
+        if (editBtn && section !== 'users') { // Skip edit button for users section
             editBtn.addEventListener('click', () => {
                 openEditModal(section, id);
             });
@@ -1108,6 +1465,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (viewMessageBtn) {
             viewMessageBtn.addEventListener('click', () => {
                 viewMessage(id);
+            });
+        }
+
+        const viewBtn = row.querySelector('.view-item');
+        if (viewBtn) {
+            viewBtn.addEventListener('click', () => {
+                openViewModal(section, id);
             });
         }
 
@@ -1877,7 +2241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!expiredContent || expiredContent.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px;">
+                    <td colspan="9" style="text-align: center; padding: 40px;">
                         <i class="fas fa-check-circle" style="color: #28a745; font-size: 48px; margin-bottom: 15px;"></i>
                         <h3 style="color: #6c757d; margin: 0;">No Expired Content Found</h3>
                         <p style="color: #6c757d; margin: 10px 0 0 0;">All content is up to date and properly managed.</p>
@@ -1887,7 +2251,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        tableBody.innerHTML = expiredContent.map(item => {
+        tableBody.innerHTML = expiredContent.map((item, index) => {
+            // Calculate serial number
+            const serialNo = ((currentExpiredPage - 1) * expiredItemsPerPage) + index + 1;
+
             // Determine status based on both expiration and active state
             let statusBadge = '';
             let statusText = '';
@@ -1903,6 +2270,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return `
                 <tr>
                     <td><input type="checkbox" class="expired-item-checkbox" data-type="${item.content_type}" data-id="${item.id}"></td>
+                    <td class="serial-no">${serialNo}</td>
                     <td>
                         <span class="content-type-badge ${item.content_type}">
                             <i class="fas ${getContentTypeIcon(item.content_type)}"></i>
@@ -1923,6 +2291,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td>
                         <div class="action-buttons">
+                            <button class="btn-icon view-item" data-type="${item.content_type}" data-id="${item.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
                             <button class="btn-icon edit-expired-item" data-type="${item.content_type}" data-id="${item.id}" title="Edit & Update Date">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -1959,6 +2330,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSelectedExpiredItems();
                 updateExpiredBulkActionButton();
                 updateSelectAllExpiredCheckbox();
+            });
+        });
+
+        // View buttons
+        document.querySelectorAll('.view-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                openViewModal(contentType, contentId);
             });
         });
 

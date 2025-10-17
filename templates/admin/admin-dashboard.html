@@ -141,11 +141,12 @@
                 </div>
 
                 <!-- New Expired Content Card -->
-<div class="stat-card warning" id="expiredContentCard">
-    <h3>Expired Content</h3>
-    <p id="expiredContentCount">0</p>
-    <a href="#expired-content" id="viewExpiredLink" class="view-link">View All <i class="fas fa-arrow-right"></i></a>
-</div>
+                <div class="stat-card warning" id="expiredContentCard">
+                    <h3>Expired Content</h3>
+                    <p id="expiredContentCount">0</p>
+                    <a href="#expired-content" id="viewExpiredLink" class="view-link">View All <i
+                            class="fas fa-arrow-right"></i></a>
+                </div>
             </div>
 
             <div class="recent-activity">
@@ -189,6 +190,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllCourses"></th>
+                        <th>S.No</th>
                         <th>Title</th>
                         <th>Category</th>
                         <th>Instructor</th>
@@ -248,6 +250,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllJobs"></th>
+                        <th>S.No</th>
                         <th>Title</th>
                         <th>Company</th>
                         <th>Location</th>
@@ -309,6 +312,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllInternships"></th>
+                        <th>S.No</th>
                         <th>Title</th>
                         <th>Company</th>
                         <th>Location</th>
@@ -370,6 +374,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllBlog"></th>
+                        <th>S.No</th>
                         <th>Title</th>
                         <th>Author</th>
                         <th>Categories</th>
@@ -428,6 +433,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllNewsletter"></th>
+                        <th>S.No</th>
                         <th>Email</th>
                         <th>Status</th>
                         <th>Subscribed</th>
@@ -492,6 +498,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllExpired"></th>
+                        <th>S.No</th>
                         <th>Type</th>
                         <th>Title</th>
                         <th>Company</th>
@@ -552,6 +559,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllUsers"></th>
+                        <th>S.No</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
@@ -608,6 +616,7 @@
                     <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAllMessages"></th>
+                        <th>S.No</th>
                         <th>Name</th>
                         <th>Email</th>
                         <th>Subject</th>
@@ -1130,6 +1139,24 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content View Modal -->
+        <div id="contentViewModal" class="modal">
+            <div class="modal-content large">
+                <span class="close-modal">&times;</span>
+                <h2 class="modal-title" id="contentViewTitle">Content Details</h2>
+                <div class="view-container">
+                    <div class="view-content-body" id="contentViewBody">
+                        <!-- Content will be loaded here -->
+                    </div>
+                    <div class="view-actions">
+                        <button class="btn btn-outline" onclick="closeModal()">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
