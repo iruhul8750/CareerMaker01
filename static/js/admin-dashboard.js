@@ -282,8 +282,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update the initDashboard function to include logo preview setup
     function initDashboard() {
         // Display time-based welcome message
-        displayWelcomeMessage();
 
+        displayWelcomeMessage();
         setupNavigation();
         setupNotificationEvents();
         loadDashboardStats();
@@ -291,10 +291,17 @@ document.addEventListener('DOMContentLoaded', function() {
         setupModals();
         setupForms();
         setupBulkActions();
+        setupBulkActionButtons(); // Add this line
         setupSearchFilters();
         setupPagination();
         setupSelect2();
         setupLogoPreview();
+        setupExpirationDates(); // Add this line
+        setupExpirationDateFields(); // Add this
+        loadExpiredContentStats(); // Add this line
+        setupExpiredContentSection(); // Add this line
+
+
 
         // Load the last active section
         restoreCurrentSection();
@@ -478,6 +485,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
 
+    // Content expiration function
+    // Handle expiration date in forms
+    function setupExpirationDates() {
+        // Set minimum date to today for expiration date fields
+        const today = new Date().toISOString().slice(0, 16);
+        document.querySelectorAll('input[type="datetime-local"][name="expiration_date"]').forEach(input => {
+            input.min = today;
+        });
+    }
+    // Add this to check for expired content every minute
+    function startExpirationChecker() {
+        setInterval(() => {
+            // This would call your backend API to check expired content
+            fetch('/api/admin/check-expired-content', {
+                method: 'POST',
+                credentials: 'include'
+            }).catch(error => {
+                console.error('Error checking expired content:', error);
+            });
+        }, 60000); // Check every minute
+    }
+
     // Enhanced greeting function
     function displayWelcomeMessage() {
         const hour = new Date().getHours();
@@ -584,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // NOTIFICATION FUNCTIONS - UPDATED
+    // Enhanced notification functionality
     function setupNotificationEvents() {
         const notificationBell = document.querySelector('.notification-bell');
         const notificationList = document.getElementById('notificationList');
@@ -594,15 +623,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (notificationBell && notificationList) {
             notificationBell.addEventListener('click', function(e) {
                 e.stopPropagation();
-                notificationList.classList.toggle('show');
+                const isShowing = notificationList.classList.contains('show');
 
-                // Reset to limited view when opening
-                if (notificationList.classList.contains('show')) {
+                if (!isShowing) {
+                    // Reset to limited view when opening
                     showAllNotifications = false;
                     renderNotifications();
                 }
+
+                notificationList.classList.toggle('show');
+
+                // Update toggle button state
+                if (viewToggleBtn) {
+                    viewToggleBtn.classList.toggle('expanded', showAllNotifications);
+                }
             });
 
+            // Close when clicking outside
             document.addEventListener('click', function(e) {
                 if (!notificationBell.contains(e.target) && !notificationList.contains(e.target)) {
                     notificationList.classList.remove('show');
@@ -616,7 +653,16 @@ document.addEventListener('DOMContentLoaded', function() {
             viewToggleBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 showAllNotifications = !showAllNotifications;
+                this.classList.toggle('expanded', showAllNotifications);
                 renderNotifications();
+
+                // Smooth scroll to show new items
+                if (showAllNotifications) {
+                    const notificationItems = document.querySelector('.notification-items');
+                    if (notificationItems) {
+                        notificationItems.scrollTop = notificationItems.scrollHeight;
+                    }
+                }
             });
         }
 
@@ -645,6 +691,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Enhanced notification rendering
     function renderNotifications() {
         const notificationItems = document.querySelector('.notification-items');
         const notificationCount = document.getElementById('notificationCount');
@@ -659,34 +706,38 @@ document.addEventListener('DOMContentLoaded', function() {
             allNotifications :
             allNotifications.slice(0, 4);
 
-        // Update notification count (show actual unread count, not limited to 4)
+        // Update notification count
         const unreadCount = allNotifications.filter(n => !n.is_read).length;
-        const displayCount = Math.min(unreadCount, 99); // Cap at 99 for display
+        const displayCount = Math.min(unreadCount, 99);
         notificationCount.textContent = displayCount > 0 ? displayCount : '';
         notificationCount.style.display = displayCount > 0 ? 'flex' : 'none';
 
-        // Update view toggle button
+        // Update view toggle button visibility and text
         if (viewToggleBtn) {
             if (allNotifications.length <= 4) {
-                // Hide button if 4 or fewer notifications
                 viewToggleBtn.style.display = 'none';
             } else {
-                // Show button and update text based on current state
                 viewToggleBtn.style.display = 'flex';
                 viewToggleBtn.innerHTML = showAllNotifications ?
-                    '<i class="fas fa-chevron-up"></i> View Less' :
-                    '<i class="fas fa-chevron-down"></i> View More';
+                    '<i class="fas fa-chevron-up"></i> Show Less' :
+                    '<i class="fas fa-chevron-down"></i> View More (' + (allNotifications.length - 4) + ')';
             }
         }
 
         if (allNotifications.length === 0) {
-            notificationItems.innerHTML = '<div class="no-notifications">No notifications</div>';
+            notificationItems.innerHTML = `
+                <div class="no-notifications">
+                    <i class="fas fa-bell-slash"></i>
+                    <div>No notifications</div>
+                    <small>You're all caught up!</small>
+                </div>
+            `;
             return;
         }
 
-        displayedNotifications.forEach(notification => {
+        displayedNotifications.forEach((notification, index) => {
             const notificationItem = document.createElement('div');
-            notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'}`;
+            notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'} ${index < 2 ? 'new' : ''}`;
             notificationItem.setAttribute('data-type', notification.type);
             notificationItem.setAttribute('data-id', notification.related_id);
 
@@ -700,6 +751,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>${notification.message}</p>
                     <small>${formattedDate}</small>
                 </div>
+                <span class="notification-type-badge">${notification.type}</span>
             `;
 
             // Add click event to navigate to relevant section
@@ -1167,7 +1219,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to show confirmation card
     function showConfirmation(type, message, confirmCallback) {
-        // Use the existing confirmation modal instead of creating a new one
         const modal = document.getElementById('confirmationModal');
         const confirmCard = document.getElementById('confirmCard');
 
@@ -1176,19 +1227,44 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Set up the confirmation content based on type
-        let iconClass, title, confirmText, confirmClass;
+        // Define defaults
+        let iconClass = 'fa-question-circle';
+        let title = 'Confirm Action';
+        let confirmText = 'Confirm';
+        let confirmClass = 'default';
 
-        if (type === 'logout') {
-            iconClass = 'fa-sign-out-alt';
-            title = 'Confirm Logout';
-            confirmText = 'Logout';
-            confirmClass = 'logout';
-        } else {
-            iconClass = 'fa-trash-alt';
-            title = 'Confirm Deletion';
-            confirmText = 'Delete';
-            confirmClass = 'delete';
+        // Customize by type
+        switch (type) {
+            case 'logout':
+                iconClass = 'fa-sign-out-alt';
+                title = 'Confirm Logout';
+                confirmText = 'Logout';
+                confirmClass = 'logout';
+                break;
+            case 'delete':
+            case 'bulk_delete':
+                iconClass = 'fa-trash-alt';
+                title = 'Confirm Deletion';
+                confirmText = 'Delete';
+                confirmClass = 'delete';
+                break;
+            case 'reactivate':
+                iconClass = 'fa-undo';
+                title = 'Confirm Reactivation';
+                confirmText = 'Reactivate';
+                confirmClass = 'reactivate';
+                break;
+            case 'bulk_action':
+                iconClass = 'fa-tasks';
+                title = 'Confirm Bulk Action';
+                confirmText = 'Proceed';
+                confirmClass = 'bulk';
+                break;
+            default:
+                iconClass = 'fa-question-circle';
+                title = 'Confirm Action';
+                confirmText = 'Confirm';
+                confirmClass = 'default';
         }
 
         // Update modal content
@@ -1203,56 +1279,27 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
 
-        // Show the modal
         modal.style.display = 'block';
 
-        // Set up event listeners - use setTimeout to ensure DOM is updated
+        // Re-bind buttons
         setTimeout(() => {
             const cancelBtn = document.getElementById('cancelBtn');
             const confirmBtn = document.getElementById('confirmBtn');
+            if (!cancelBtn || !confirmBtn) return;
 
-            if (!cancelBtn || !confirmBtn) {
-                console.error('Confirmation buttons not found');
-                return;
-            }
+            const newCancel = cancelBtn.cloneNode(true);
+            const newConfirm = confirmBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
 
-            // Remove any existing event listeners first
-            const newCancelBtn = cancelBtn.cloneNode(true);
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-            // Add new event listeners
-            newCancelBtn.addEventListener('click', closeModal);
-
-            newConfirmBtn.addEventListener('click', () => {
+            newCancel.addEventListener('click', closeModal);
+            newConfirm.addEventListener('click', () => {
                 if (confirmCallback) confirmCallback();
                 closeModal();
             });
-
-            // Focus on cancel button for accessibility
-            newCancelBtn.focus();
         }, 10);
-
-        // Close when clicking outside the modal
-        const handleOutsideClick = (e) => {
-            if (e.target === modal) {
-                closeModal();
-                modal.removeEventListener('click', handleOutsideClick);
-            }
-        };
-        modal.addEventListener('click', handleOutsideClick);
-
-        // Close with Escape key
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-                document.removeEventListener('keydown', handleEscape);
-            }
-        };
-        document.addEventListener('keydown', handleEscape);
     }
+
 
     // Perform actual delete operation
     function performDelete(section, id) {
@@ -1339,6 +1386,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Enhanced form handling with expiration dates
+    function setupExpirationDateFields() {
+        // Set up expiration date fields in modals
+        const modals = ['courseModal', 'jobModal', 'internshipModal'];
+
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                const form = modal.querySelector('form');
+                const expirationField = form.querySelector('[name="expiration_date"]');
+
+                if (expirationField) {
+                    // Set minimum date to today
+                    const today = new Date().toISOString().slice(0, 16);
+                    expirationField.min = today;
+
+                    // Format existing expiration date for display
+                    const existingExpiration = expirationField.value;
+                    if (existingExpiration) {
+                        try {
+                            const date = new Date(existingExpiration);
+                            if (!isNaN(date.getTime())) {
+                                expirationField.value = date.toISOString().slice(0, 16);
+                            }
+                        } catch (e) {
+                            console.error('Error formatting expiration date:', e);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Update your openAddModal function to include expiration date setup
     function openAddModal(type) {
         const modalId = `${type}Modal`;
         const modal = document.getElementById(modalId);
@@ -1368,6 +1449,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     featuredField.parentNode.style.display = 'none';
                 }
             }
+
+            // Setup expiration date field for relevant types
+            if (['course', 'job', 'internship'].includes(type)) {
+                const expirationField = form.querySelector('[name="expiration_date"]');
+                if (expirationField) {
+                    const today = new Date().toISOString().slice(0, 16);
+                    expirationField.min = today;
+                    expirationField.value = ''; // Clear for new items
+                }
+            }
         }
 
         modal.style.display = 'block';
@@ -1385,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Update your openEditModal function to handle expiration dates for expired content
     function openEditModal(section, id) {
         fetch(`/api/admin/${section}/${id}`, {
             credentials: 'include'
@@ -1411,17 +1503,39 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else if (key === 'categories' && Array.isArray(item[key])) {
                             // Handle categories array for blog posts
                             field.value = item[key].join(', ');
+                        } else if (key === 'expiration_date' && item[key]) {
+                            // Format expiration date for datetime-local input
+                            try {
+                                const date = new Date(item[key]);
+                                if (!isNaN(date.getTime())) {
+                                    field.value = date.toISOString().slice(0, 16);
+                                } else {
+                                    field.value = '';
+                                }
+                            } catch (e) {
+                                field.value = '';
+                            }
                         } else {
                             field.value = item[key] || '';
                         }
                     }
                 });
 
-                // Hide featured field since it's now controlled by active state
+                // For expired content, show featured field and set it appropriately
                 if (['course', 'job', 'internship', 'blog'].includes(section)) {
                     const featuredField = form.querySelector('[name="is_featured"]');
                     if (featuredField) {
-                        featuredField.parentNode.style.display = 'none';
+                        featuredField.parentNode.style.display = 'block';
+                        featuredField.checked = item.is_featured || false;
+                    }
+                }
+
+                // Setup expiration date field
+                if (['courses', 'jobs', 'internships'].includes(section)) {
+                    const expirationField = form.querySelector('[name="expiration_date"]');
+                    if (expirationField) {
+                        const today = new Date().toISOString().slice(0, 16);
+                        expirationField.min = today;
                     }
                 }
 
@@ -1450,6 +1564,759 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification(`Failed to load ${section} item`, 'error');
         });
     }
+
+    // Expired Content Management
+    let currentExpiredPage = 1;
+    const expiredItemsPerPage = 10;
+    let selectedExpiredItems = [];
+
+    // Initialize expired content section
+    function setupExpiredContentSection() {
+        // Load expired content when section is activated
+        const expiredContentSection = document.getElementById('expired-content');
+        if (expiredContentSection) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (expiredContentSection.classList.contains('active')) {
+                            loadExpiredContentData(currentExpiredPage);
+                        }
+                    }
+                });
+            });
+
+            observer.observe(expiredContentSection, { attributes: true });
+        }
+
+        // Navigation
+        const expiredContentLink = document.querySelector('a[href="#expired-content"]');
+        if (expiredContentLink) {
+            expiredContentLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadExpiredContentSection();
+            });
+        }
+
+        // Setup event listeners
+        setupExpiredContentEvents();
+
+        // Load stats
+        loadExpiredContentStats();
+    }
+
+    function setupExpiredContentEvents() {
+        // Refresh button
+        document.getElementById('refreshExpiredContentBtn')?.addEventListener('click', function() {
+            loadExpiredContentData(currentExpiredPage);
+        });
+
+        // Reactivate all button
+        document.getElementById('reactivateAllExpiredBtn')?.addEventListener('click', function() {
+            reactivateAllExpiredContent();
+        });
+
+        // Search functionality
+        const searchInput = document.getElementById('expiredContentSearch');
+        let searchTimeout;
+        searchInput?.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadExpiredContentData(1, this.value);
+            }, 500);
+        });
+
+        // Filter functionality
+        document.getElementById('expiredContentTypeFilter')?.addEventListener('change', function() {
+            loadExpiredContentData(1);
+        });
+
+        // Bulk actions
+        document.getElementById('applyExpiredContentBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('expiredContentBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performExpiredBulkAction(action);
+        });
+
+        // Select all checkbox
+        const selectAllCheckbox = document.getElementById('selectAllExpired');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateExpiredBulkActionButton();
+                updateSelectedExpiredItems();
+            });
+        }
+
+        // Pagination
+        document.getElementById('prevExpiredContentPage')?.addEventListener('click', function() {
+            if (currentExpiredPage > 1) {
+                currentExpiredPage--;
+                loadExpiredContentData(currentExpiredPage);
+            }
+        });
+
+        document.getElementById('nextExpiredContentPage')?.addEventListener('click', function() {
+            currentExpiredPage++;
+            loadExpiredContentData(currentExpiredPage);
+        });
+
+        // Manual expiration check button
+        setupExpiredContentCheckButton();
+
+        // View Expired Content Button
+        document.getElementById('viewExpiredContentBtn')?.addEventListener('click', function() {
+            loadExpiredContentSection();
+        });
+        // Add this to your setupExpiredContentEvents function or similar
+        document.getElementById('viewExpiredLink')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            loadExpiredContentSection();
+        });
+    }
+
+    function setupExpiredContentCheckButton() {
+        const button = document.getElementById('checkExpiredContentBtn');
+        if (!button) return;
+
+        // Remove any existing event listeners by cloning the element
+        button.replaceWith(button.cloneNode(true));
+        const freshButton = document.getElementById('checkExpiredContentBtn');
+
+        freshButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent event bubbling
+
+            // Check if already processing
+            if (this.disabled) return;
+
+            const button = this;
+            const originalText = button.innerHTML;
+
+            // Disable button immediately with visual feedback
+            button.disabled = true;
+            button.style.opacity = '0.7';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+            fetch('/api/admin/check-expired-content', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    // Show specific success message with count
+                    const count = result.deactivated_count || 0;
+                    const message = count > 0
+                        ? `Expired content check completed. ${count} items were deactivated.`
+                        : 'Expired content check completed. No items needed deactivation.';
+
+                    showNotification(message, 'success');
+
+                    // Update stats and refresh data
+                    loadExpiredContentStats();
+                    loadDashboardStats();
+
+                    // Reload the expired content data if we're in the expired content section
+                    if (document.getElementById('expired-content')?.classList.contains('active')) {
+                        loadExpiredContentData(currentExpiredPage);
+                    }
+                } else {
+                    showNotification(result.message || 'Failed to check expired content', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking expired content:', error);
+                showNotification('Failed to check expired content. Please try again.', 'error');
+            })
+            .finally(() => {
+                // Re-enable button after a short delay to prevent rapid successive clicks
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.style.opacity = '1';
+                    button.innerHTML = originalText;
+                }, 1000);
+            });
+        });
+    }
+
+    // Load expired content stats
+    // Load expired content stats - Always show View All link
+    function loadExpiredContentStats() {
+        fetch('/api/admin/expired-content-stats', {
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const expiredCount = data.total_expired || 0;
+                const expiredCountElement = document.getElementById('expiredContentCount');
+                const viewLink = document.getElementById('viewExpiredLink');
+                const expiredCard = document.getElementById('expiredContentCard');
+
+                if (expiredCountElement) {
+                    expiredCountElement.textContent = expiredCount;
+                }
+
+                // ALWAYS show the view link, regardless of count
+                if (viewLink) {
+                    viewLink.style.display = 'block';
+                    viewLink.style.pointerEvents = 'auto';
+                    viewLink.style.opacity = '1';
+
+                    // Make it more prominent when there are expired items
+                    if (expiredCount > 0) {
+                        viewLink.style.fontWeight = 'bold';
+                        viewLink.style.color = '#dc3545'; // Red color for urgency
+                    } else {
+                        viewLink.style.fontWeight = 'normal';
+                        viewLink.style.color = ''; // Reset to default
+                    }
+                }
+
+                // Update card appearance based on count
+                if (expiredCard) {
+                    if (expiredCount > 0) {
+                        expiredCard.classList.remove('stat-card', 'info');
+                        expiredCard.classList.add('stat-card', 'warning');
+                    } else {
+                        expiredCard.classList.remove('stat-card', 'warning');
+                        expiredCard.classList.add('stat-card', 'info');
+                    }
+                }
+            } else {
+                console.error('Failed to load expired content stats:', data.error);
+                // Still show the view link even on error
+                const viewLink = document.getElementById('viewExpiredLink');
+                if (viewLink) {
+                    viewLink.style.display = 'block';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading expired content stats:', error);
+            const expiredCountElement = document.getElementById('expiredContentCount');
+            const viewLink = document.getElementById('viewExpiredLink');
+
+            if (expiredCountElement) {
+                expiredCountElement.textContent = '0';
+            }
+            // Still show the view link even on error
+            if (viewLink) {
+                viewLink.style.display = 'block';
+            }
+        });
+    }
+
+    // Load expired content section
+    function loadExpiredContentSection() {
+        // Update active states
+        document.querySelectorAll('.sidebar-menu a').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
+
+        document.querySelector('a[href="#expired-content"]').classList.add('active');
+        document.getElementById('expired-content').classList.add('active');
+        document.getElementById('pageTitle').textContent = 'Expired Content Management';
+
+        // Load data
+        loadExpiredContentData(1);
+    }
+
+    // Load expired content data
+    function loadExpiredContentData(page = 1, search = '') {
+        showLoading();
+
+        const searchValue = search || document.getElementById('expiredContentSearch')?.value || '';
+        const typeFilter = document.getElementById('expiredContentTypeFilter')?.value || '';
+
+        let url = `/api/admin/expired-content?page=${page}`;
+        if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
+        if (typeFilter) url += `&type=${encodeURIComponent(typeFilter)}`;
+
+        fetch(url, {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch expired content');
+            return response.json();
+        })
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                renderExpiredContentTable(data.data || data.expired_content);
+                updateExpiredPaginationInfo(data.count, page, data.per_page);
+                updateExpiredContentStats(data.count);
+            } else {
+                showNotification('Failed to load expired content', 'error');
+                document.getElementById('expiredContentTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Error loading expired content</td></tr>';
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error loading expired content:', error);
+            showNotification('Failed to load expired content', 'error');
+            document.getElementById('expiredContentTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Error loading expired content</td></tr>';
+        });
+    }
+
+    // Render expired content table
+    function renderExpiredContentTable(expiredContent) {
+        const tableBody = document.getElementById('expiredContentTableBody');
+        if (!tableBody) return;
+
+        if (!expiredContent || expiredContent.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-check-circle" style="color: #28a745; font-size: 48px; margin-bottom: 15px;"></i>
+                        <h3 style="color: #6c757d; margin: 0;">No Expired Content Found</h3>
+                        <p style="color: #6c757d; margin: 10px 0 0 0;">All content is up to date and properly managed.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = expiredContent.map(item => {
+            // Determine status based on both expiration and active state
+            let statusBadge = '';
+            let statusText = '';
+
+            if (item.is_active) {
+                statusBadge = 'warning';
+                statusText = 'Expired but Active';
+            } else {
+                statusBadge = 'danger';
+                statusText = 'Expired & Inactive';
+            }
+
+            return `
+                <tr>
+                    <td><input type="checkbox" class="expired-item-checkbox" data-type="${item.content_type}" data-id="${item.id}"></td>
+                    <td>
+                        <span class="content-type-badge ${item.content_type}">
+                            <i class="fas ${getContentTypeIcon(item.content_type)}"></i>
+                            ${item.content_type.replace('s', '').toUpperCase()}
+                        </span>
+                    </td>
+                    <td>${escapeHTML(item.title || 'No Title')}</td>
+                    <td>${escapeHTML(item.company || 'N/A')}</td>
+                    <td>
+                        <span class="text-danger">
+                            <i class="fas fa-clock"></i> ${formatDate(item.expiration_date, true)}
+                        </span>
+                    </td>
+                    <td>${formatDate(item.created_at)}</td>
+                    <td>
+                        <span class="status-badge ${statusBadge}">${statusText}</span>
+                        ${item.is_featured ? '<br><small class="text-success"><i class="fas fa-star"></i> Featured</small>' : ''}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon edit-expired-item" data-type="${item.content_type}" data-id="${item.id}" title="Edit & Update Date">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${!item.is_active ? `
+                            <button class="btn-icon reactivate-single-item" data-type="${item.content_type}" data-id="${item.id}" title="Reactivate as Featured">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            ` : `
+                            <button class="btn-icon" style="opacity: 0.5;" title="Already Active" disabled>
+                                <i class="fas fa-check"></i>
+                            </button>
+                            `}
+                            <button class="btn-icon delete-expired-item" data-type="${item.content_type}" data-id="${item.id}" title="Delete Permanently">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Add event listeners to action buttons
+        addExpiredContentRowEventListeners();
+
+        // Update bulk action button state
+        updateExpiredBulkActionButton();
+        updateSelectAllExpiredCheckbox();
+    }
+
+    function addExpiredContentRowEventListeners() {
+        // Individual checkbox events
+        document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateSelectedExpiredItems();
+                updateExpiredBulkActionButton();
+                updateSelectAllExpiredCheckbox();
+            });
+        });
+
+        // Edit buttons
+        document.querySelectorAll('.edit-expired-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                openEditModal(contentType, contentId);
+            });
+        });
+
+        // Reactivate single item buttons
+        document.querySelectorAll('.reactivate-single-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                reactivateSingleExpiredContent(contentType, contentId);
+            });
+        });
+
+        // Delete single item buttons
+        document.querySelectorAll('.delete-expired-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                deleteSingleExpiredContent(contentType, contentId);
+            });
+        });
+    }
+
+    // Helper function to get content type icon
+    function getContentTypeIcon(contentType) {
+        const icons = {
+            'courses': 'fa-book',
+            'jobs': 'fa-briefcase',
+            'internships': 'fa-user-graduate'
+        };
+        return icons[contentType] || 'fa-file';
+    }
+
+    // Update selected items array
+    function updateSelectedExpiredItems() {
+        selectedExpiredItems = [];
+        document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(checkbox => {
+            selectedExpiredItems.push({
+                content_type: checkbox.getAttribute('data-type'),
+                content_id: checkbox.getAttribute('data-id')
+            });
+        });
+    }
+
+    // Update pagination info
+    function updateExpiredPaginationInfo(totalItems, currentPage, perPage = expiredItemsPerPage) {
+        const pageInfo = document.getElementById('expiredContentPageInfo');
+        const prevBtn = document.getElementById('prevExpiredContentPage');
+        const nextBtn = document.getElementById('nextExpiredContentPage');
+
+        if (!pageInfo) return;
+
+        const totalPages = Math.ceil(totalItems / perPage);
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+        if (prevBtn) prevBtn.disabled = currentPage === 1;
+        if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    // Update expired content stats in the UI
+    function updateExpiredContentStats(totalCount) {
+        // Update the dashboard expired content count
+        const expiredCountElement = document.getElementById('expiredContentCount');
+        if (expiredCountElement) {
+            expiredCountElement.textContent = totalCount;
+        }
+    }
+
+    // Update bulk action button state
+    function updateExpiredBulkActionButton() {
+        const selectedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
+        const bulkActionBtn = document.getElementById('applyExpiredContentBulkAction');
+
+        if (bulkActionBtn) {
+            bulkActionBtn.disabled = selectedCount === 0;
+        }
+    }
+
+    // Update select all checkbox
+    function updateSelectAllExpiredCheckbox() {
+        const selectAll = document.getElementById('selectAllExpired');
+        const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
+        const checkedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
+
+        if (selectAll && checkboxes.length > 0) {
+            selectAll.checked = checkedCount === checkboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+    }
+
+    // Perform bulk actions
+    function performExpiredBulkAction(action) {
+        const selectedItems = getSelectedExpiredItems();
+
+        if (selectedItems.length === 0) {
+            showNotification('Please select at least one item to perform bulk action', 'warning');
+            return;
+        }
+
+        if (action === 'reactivate') {
+            showConfirmation('bulk_reactivate',
+                `Are you sure you want to reactivate ${selectedItems.length} item(s)? This will set them as active and featured.`,
+                () => {
+                    bulkReactivateExpiredContent(selectedItems);
+                }
+            );
+        } else if (action === 'delete') {
+            showConfirmation('bulk_delete',
+                `Are you sure you want to permanently delete ${selectedItems.length} expired item(s)? This action cannot be undone.`,
+                () => {
+                    bulkDeleteExpiredContent(selectedItems);
+                }
+            );
+        }
+    }
+
+    function getSelectedExpiredItems() {
+        const selectedItems = [];
+        document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(checkbox => {
+            selectedItems.push({
+                content_type: checkbox.getAttribute('data-type'),
+                content_id: checkbox.getAttribute('data-id')
+            });
+        });
+        return selectedItems;
+    }
+
+    function bulkReactivateExpiredContent(items) {
+        showLoading();
+
+        fetch('/api/admin/expired-content/bulk-reactivate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ items: items })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success || result.results?.successful?.length > 0) {
+                const successCount = result.results?.successful?.length || result.reactivated_count || 0;
+                const failCount = result.results?.failed?.length || 0;
+
+                let message = `Successfully reactivated ${successCount} item(s) as featured`;
+                if (failCount > 0) {
+                    message += `. ${failCount} item(s) failed - they still have past expiration dates.`;
+                    showNotification(message, 'warning');
+
+                    // Show detailed errors for failed items
+                    if (failCount > 0) {
+                        setTimeout(() => {
+                            showNotification('Some items failed to reactivate. Please update their expiration dates first.', 'error', 8000);
+                        }, 2000);
+                    }
+                } else {
+                    showNotification(message, 'success');
+                }
+
+                // Refresh the expired content list
+                loadExpiredContentData(currentExpiredPage);
+                loadDashboardStats();
+                loadExpiredContentStats();
+
+            } else {
+                showNotification('Failed to reactivate any items. Please check expiration dates.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error in bulk reactivate:', error);
+            showNotification('Failed to reactivate items', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    function bulkDeleteExpiredContent(items) {
+        showLoading();
+
+        fetch('/api/admin/expired-content/bulk-delete', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ items: items })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showNotification(`Permanently deleted ${result.deleted_count} expired item(s)`, 'success');
+                loadExpiredContentData(currentExpiredPage);
+                loadDashboardStats();
+                loadExpiredContentStats();
+            } else {
+                showNotification(result.message || 'Failed to delete some items', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error in bulk delete:', error);
+            showNotification('Failed to delete items', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    function reactivateAllExpiredContent() {
+        showConfirmation('reactivate_all',
+            'Are you sure you want to reactivate ALL expired content? This will set all items as active and featured (only those with future expiration dates will succeed).',
+            () => {
+                showLoading();
+
+                // Get all expired content first
+                fetch('/api/admin/expired-content?per_page=1000', {
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        const allItems = data.data.map(item => ({
+                            content_type: item.content_type,
+                            content_id: item.id
+                        }));
+
+                        bulkReactivateExpiredContent(allItems);
+                    } else {
+                        showNotification('No expired content found to reactivate', 'info');
+                        hideLoading();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error getting all expired content:', error);
+                    showNotification('Failed to load expired content', 'error');
+                    hideLoading();
+                });
+            }
+        );
+    }
+
+    function reactivateSingleExpiredContent(contentType, contentId) {
+        showConfirmation('reactivate_single',
+            `Reactivate this ${contentType.replace('s', '')}? This will set it as active and featured.`,
+            () => {
+                showLoading();
+
+                fetch(`/api/admin/${contentType}/${contentId}/reactivate`, {
+                    method: 'PUT',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showNotification(result.message || 'Content reactivated successfully as featured', 'success');
+                        loadExpiredContentData(currentExpiredPage);
+                        loadDashboardStats();
+                        loadExpiredContentStats();
+                    } else {
+                        if (result.requires_date_update) {
+                            showNotification(result.message, 'error');
+                            // Optionally open edit modal after a delay
+                            setTimeout(() => {
+                                openEditModal(contentType, contentId);
+                            }, 2000);
+                        } else {
+                            showNotification(result.message || 'Failed to reactivate', 'error');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error reactivating content:', error);
+                    showNotification('Failed to reactivate content', 'error');
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+            }
+        );
+    }
+
+    function deleteSingleExpiredContent(contentType, contentId) {
+        showConfirmation('delete_single',
+            `Permanently delete this expired ${contentType.replace('s', '')}? This action cannot be undone.`,
+            () => {
+                showLoading();
+
+                const items = [{ content_type: contentType, content_id: contentId }];
+
+                fetch('/api/admin/expired-content/bulk-delete', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ items: items })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showNotification('Expired content permanently deleted', 'success');
+                        loadExpiredContentData(currentExpiredPage);
+                        loadDashboardStats();
+                        loadExpiredContentStats();
+                    } else {
+                        showNotification(result.message || 'Failed to delete content', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting content:', error);
+                    showNotification('Failed to delete content', 'error');
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+            }
+        );
+    }
+
+    // Add manual expiration check button
+    document.getElementById('checkExpiredContentBtn')?.addEventListener('click', function() {
+        const button = this;
+        const originalText = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+        fetch('/api/admin/check-expired-content', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showNotification('Expired content check completed', 'success');
+                loadExpiredContentStats();
+                loadDashboardStats();
+            } else {
+                showNotification(result.message || 'Failed to check expired content', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking expired content:', error);
+            showNotification('Failed to check expired content', 'error');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
+    });
 
     function openNewsletterModal() {
         const modal = document.getElementById('newsletterModal');
@@ -1731,9 +2598,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // For courses, jobs, internships, and blog, sync featured state with active state
-        if (['courses', 'jobs', 'internships', 'blog'].includes(type)) {
-            data.is_featured = data.is_active;
+        // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
+        // Keep is_active as false until manual reactivation
+        if (id && currentSection === 'expired-content') {
+            // If we're editing from expired section, preserve the inactive state
+            // unless explicitly changing it
+            if (typeof data.is_active === 'undefined') {
+                data.is_active = false;
+            }
+        } else {
+            // For normal edits, sync featured state with active state for new items
+            if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
+                data.is_featured = data.is_active;
+            }
         }
 
         // For new items, remove the ID field completely
@@ -1782,8 +2659,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
                 closeModal();
                 form.reset();
-                // Reload the current section to show the new item immediately
-                loadSectionData(type, currentPage[type]);
+
+                // Reload the appropriate section
+                if (currentSection === 'expired-content') {
+                    // If we're in expired section, reload expired content
+                    loadExpiredContentData(currentExpiredPage);
+                } else {
+                    // Otherwise reload the current section
+                    loadSectionData(type, currentPage[type]);
+                }
             } else {
                 showNotification(result.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
             }
@@ -1981,6 +2865,155 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Add this function to fix bulk actions
+    function setupBulkActionButtons() {
+        // Course bulk actions
+        document.getElementById('applyCourseBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('courseBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('courses', action);
+        });
+
+        // Job bulk actions
+        document.getElementById('applyJobBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('jobBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('jobs', action);
+        });
+
+        // Internship bulk actions
+        document.getElementById('applyInternshipBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('internshipBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('internships', action);
+        });
+
+        // Blog bulk actions
+        document.getElementById('applyBlogBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('blogBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('blog', action);
+        });
+
+        // User bulk actions
+        document.getElementById('applyUserBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('userBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('users', action);
+        });
+
+        // Message bulk actions
+        document.getElementById('applyMessageBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('messageBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('messages', action);
+        });
+
+        // Newsletter bulk actions
+        document.getElementById('applyNewsletterBulkAction')?.addEventListener('click', function() {
+            const action = document.getElementById('newsletterBulkAction').value;
+            if (!action) {
+                showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+            performBulkAction('newsletter', action);
+        });
+    }
+
+    // Enhanced bulk action function
+    function performBulkAction(section, action) {
+        const selectedIds = selectedItems[section];
+
+        if (selectedIds.length === 0) {
+            showNotification('Please select at least one item', 'warning');
+            return;
+        }
+
+        const actionMessages = {
+            'activate': `activate ${selectedIds.length} ${section}`,
+            'deactivate': `deactivate ${selectedIds.length} ${section}`,
+            'delete': `delete ${selectedIds.length} ${section}`,
+            'mark_read': `mark ${selectedIds.length} messages as read`,
+            'mark_unread': `mark ${selectedIds.length} messages as unread`,
+            'mark_replied': `mark ${selectedIds.length} messages as replied`
+        };
+
+        const message = `Are you sure you want to ${actionMessages[action]}?`;
+
+        showConfirmation('bulk_action', message, () => {
+            showLoading();
+
+            let endpoint = '';
+            let method = 'POST';
+            let body = { ids: selectedIds };
+
+            switch(action) {
+                case 'activate':
+                case 'deactivate':
+                    endpoint = `/api/admin/${section}/bulk-status`;
+                    body.is_active = action === 'activate';
+                    break;
+                case 'delete':
+                    endpoint = `/api/admin/${section}/bulk-delete`;
+                    break;
+                case 'mark_read':
+                case 'mark_unread':
+                case 'mark_replied':
+                    endpoint = `/api/admin/messages/bulk-status`;
+                    body.status = action.replace('mark_', '');
+                    break;
+            }
+
+            fetch(endpoint, {
+                method: method,
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to perform bulk action');
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    showNotification(result.message || 'Bulk action completed successfully', 'success');
+                    // Clear selection and reload data
+                    selectedItems[section] = [];
+                    loadSectionData(section, currentPage[section]);
+                } else {
+                    showNotification(result.message || 'Failed to perform bulk action', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Bulk action error:', error);
+                showNotification('Failed to perform bulk action', 'error');
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        });
+    }
+
     // Update the select all checkbox state
     function updateSelectAllCheckbox(section) {
         const sectionId = section.charAt(0).toUpperCase() + section.slice(1);
@@ -2148,36 +3181,93 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // FIXED: Search and filter setup with proper event delegation
+    // Enhanced filter setup
     function setupSearchFilters() {
-        // Add clear buttons to search boxes
-        document.querySelectorAll('.search-box').forEach(box => {
-            // Check if clear button already exists
-            if (!box.querySelector('.search-clear')) {
-                const clearBtn = document.createElement('button');
-                clearBtn.type = 'button';
-                clearBtn.className = 'search-clear';
-                clearBtn.innerHTML = '<i class="fas fa-times"></i>';
-                clearBtn.style.cssText = 'position: absolute; right: 35px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6c757d; display: none;';
+        // Search functionality
+        document.querySelectorAll('.search-box input').forEach(input => {
+            let searchTimeout;
 
-                box.appendChild(clearBtn);
+            input.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const section = this.closest('.admin-section').id;
+                const searchTerm = this.value.trim();
 
-                const input = box.querySelector('input');
-
-                // Show/hide clear button based on input value
-                input.addEventListener('input', function() {
-                    clearBtn.style.display = this.value ? 'block' : 'none';
-                });
-
-                // Clear input when clear button is clicked
-                clearBtn.addEventListener('click', function() {
-                    input.value = '';
-                    this.style.display = 'none';
-                    const section = input.closest('.admin-section').id;
-                    loadSectionData(section, 1);
-                });
-            }
+                searchTimeout = setTimeout(() => {
+                    loadSectionDataWithFilters(section, 1, searchTerm);
+                }, 500);
+            });
         });
+
+        // Filter functionality
+        document.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', function() {
+                const section = this.closest('.admin-section').id;
+                loadSectionDataWithFilters(section, 1);
+            });
+        });
+    }
+
+    // Enhanced data loading with filters
+    function loadSectionDataWithFilters(section, page = 1, search = '') {
+        const filters = getCurrentFilters(section);
+        loadSectionData(section, page, search, filters);
+    }
+
+    function getCurrentFilters(section) {
+        const filters = {};
+
+        switch(section) {
+            case 'courses':
+                const categoryFilter = document.getElementById('courseCategoryFilter');
+                if (categoryFilter && categoryFilter.value) {
+                    filters.category = categoryFilter.value;
+                }
+                break;
+
+            case 'jobs':
+                const jobTypeFilter = document.getElementById('jobTypeFilter');
+                if (jobTypeFilter && jobTypeFilter.value) {
+                    filters.type = jobTypeFilter.value;
+                }
+                break;
+
+            case 'internships':
+                const internshipTypeFilter = document.getElementById('internshipTypeFilter');
+                if (internshipTypeFilter && internshipTypeFilter.value) {
+                    filters.type = internshipTypeFilter.value;
+                }
+                break;
+
+            case 'blog':
+                const blogCategoryFilter = document.getElementById('blogCategoryFilter');
+                if (blogCategoryFilter && blogCategoryFilter.value) {
+                    filters.category = blogCategoryFilter.value;
+                }
+                break;
+
+            case 'users':
+                const userRoleFilter = document.getElementById('userRoleFilter');
+                if (userRoleFilter && userRoleFilter.value) {
+                    filters.role = userRoleFilter.value;
+                }
+                break;
+
+            case 'messages':
+                const messageStatusFilter = document.getElementById('messageStatusFilter');
+                if (messageStatusFilter && messageStatusFilter.value) {
+                    filters.status = messageStatusFilter.value;
+                }
+                break;
+
+            case 'newsletter':
+                const newsletterStatusFilter = document.getElementById('newsletterStatusFilter');
+                if (newsletterStatusFilter && newsletterStatusFilter.value) {
+                    filters.status = newsletterStatusFilter.value;
+                }
+                break;
+        }
+
+        return filters;
     }
 
     function setupPagination() {

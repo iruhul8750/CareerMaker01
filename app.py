@@ -8,6 +8,7 @@ import smtplib
 import hashlib
 import binascii
 import smtplib
+import atexit
 import re
 import requests
 from fuzzywuzzy import fuzz
@@ -41,6 +42,9 @@ from PIL import Image
 import io
 import base64
 import re
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+import atexit
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -97,8 +101,9 @@ except Exception as e:
     logger.error(f"Supabase connection failed: {str(e)}")
 
 # Helper Functions
-def get_current_time():
-    return datetime.now(ZoneInfo("Asia/Kolkata"))
+def get_current_utc_time():
+    """Get current time in UTC for consistent expiration checks"""
+    return datetime.now(timezone.utc)
 
 
 def parse_db_timestamp(timestamp_str):
@@ -161,7 +166,7 @@ def hash_password(password):
 def generate_otp():
     """Generate a 6-digit OTP and return it with expiration time"""
     otp = str(secrets.randbelow(900000) + 100000)
-    expires_at = get_current_time() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    expires_at = get_current_utc_time() + timedelta(minutes=OTP_EXPIRY_MINUTES)
     return otp, expires_at.isoformat()
 
 
@@ -862,7 +867,7 @@ def get_or_fetch_logo(company_name, content_type, content_id):
                 'logo_url': stored_logo_url,
                 'content_type': content_type,
                 'content_id': content_id,
-                'created_at': get_current_time().isoformat()
+                'created_at': get_current_utc_time().isoformat()
             }
 
             supabase.table('company_logos').insert(logo_data).execute()
@@ -946,7 +951,7 @@ def get_or_fetch_logo_optimized(company_name, content_type, content_id):
                 'logo_url': stored_logo_url,
                 'content_type': content_type,
                 'content_id': content_id,
-                'created_at': get_current_time().isoformat()
+                'created_at': get_current_utc_time().isoformat()
             }
 
             supabase.table('company_logos').insert(logo_data).execute()
@@ -1106,54 +1111,227 @@ def handle_categories_data(data):
             data['categories'] = [cat for cat in data['categories'] if cat]
     return data
 
+# function to check and auto-deactivate expired content
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+
+def check_expired_content():
+    """Check and deactivate expired content - ENHANCED VERSION"""
+    try:
+        current_time = get_current_utc_time()
+        current_time_iso = current_time.isoformat()
+        logger.info(f"🔍 Checking expired content at {current_time_iso}")
+
+        total_deactivated = 0
+        deactivated_items = []
+
+        # Find expired but still active courses and deactivate them
+        expired_courses = supabase_admin.table('courses').select(
+            'id, title, expiration_date, is_active, company'
+        ).lt('expiration_date', current_time_iso).eq('is_active', True).execute().data or []
+
+        logger.info(f"📚 Found {len(expired_courses)} expired active courses to deactivate")
+
+        for course in expired_courses:
+            try:
+                result = supabase_admin.table('courses').update({
+                    'is_active': False,
+                    'is_featured': False,  # Also remove from featured when expired
+                    'updated_at': current_time_iso
+                }).eq('id', course['id']).execute()
+
+                if result.data:
+                    logger.info(f"✅ Auto-deactivated expired course: {course['title']} (ID: {course['id']})")
+                    total_deactivated += 1
+                    deactivated_items.append({
+                        'type': 'course',
+                        'title': course['title'],
+                        'id': course['id'],
+                        'company': course.get('company', 'N/A')
+                    })
+                else:
+                    logger.error(f"❌ Failed to deactivate course: {course['title']} (ID: {course['id']})")
+            except Exception as course_error:
+                logger.error(f"❌ Error deactivating course {course['id']}: {str(course_error)}")
+
+        # Find expired but still active jobs and deactivate them
+        expired_jobs = supabase_admin.table('jobs').select(
+            'id, title, expiration_date, is_active, company, location'
+        ).lt('expiration_date', current_time_iso).eq('is_active', True).execute().data or []
+
+        logger.info(f"💼 Found {len(expired_jobs)} expired active jobs to deactivate")
+
+        for job in expired_jobs:
+            try:
+                result = supabase_admin.table('jobs').update({
+                    'is_active': False,
+                    'is_featured': False,  # Also remove from featured when expired
+                    'updated_at': current_time_iso
+                }).eq('id', job['id']).execute()
+
+                if result.data:
+                    logger.info(f"✅ Auto-deactivated expired job: {job['title']} (ID: {job['id']})")
+                    total_deactivated += 1
+                    deactivated_items.append({
+                        'type': 'job',
+                        'title': job['title'],
+                        'id': job['id'],
+                        'company': job.get('company', 'N/A')
+                    })
+                else:
+                    logger.error(f"❌ Failed to deactivate job: {job['title']} (ID: {job['id']})")
+            except Exception as job_error:
+                logger.error(f"❌ Error deactivating job {job['id']}: {str(job_error)}")
+
+        # Find expired but still active internships and deactivate them
+        expired_internships = supabase_admin.table('internships').select(
+            'id, title, expiration_date, is_active, company, location'
+        ).lt('expiration_date', current_time_iso).eq('is_active', True).execute().data or []
+
+        logger.info(f"🎓 Found {len(expired_internships)} expired active internships to deactivate")
+
+        for internship in expired_internships:
+            try:
+                result = supabase_admin.table('internships').update({
+                    'is_active': False,
+                    'is_featured': False,  # Also remove from featured when expired
+                    'updated_at': current_time_iso
+                }).eq('id', internship['id']).execute()
+
+                if result.data:
+                    logger.info(
+                        f"✅ Auto-deactivated expired internship: {internship['title']} (ID: {internship['id']})")
+                    total_deactivated += 1
+                    deactivated_items.append({
+                        'type': 'internship',
+                        'title': internship['title'],
+                        'id': internship['id'],
+                        'company': internship.get('company', 'N/A')
+                    })
+                else:
+                    logger.error(f"❌ Failed to deactivate internship: {internship['title']} (ID: {internship['id']})")
+            except Exception as internship_error:
+                logger.error(f"❌ Error deactivating internship {internship['id']}: {str(internship_error)}")
+
+        # Log detailed summary
+        if total_deactivated > 0:
+            logger.info(f"🎯 Total auto-deactivated: {total_deactivated} items")
+
+            # Create detailed admin notification
+            notification_message = f"Automatically deactivated {total_deactivated} expired content items:\n"
+
+            for item in deactivated_items:
+                notification_message += f"- {item['type'].title()}: {item['title']} ({item['company']})\n"
+
+            # Create admin notification
+            notification_data = {
+                'type': 'system',
+                'title': 'Expired Content Auto-Deactivated',
+                'message': notification_message,
+                'created_at': current_time_iso
+            }
+
+            try:
+                supabase_admin.table('admin_notifications').insert(notification_data).execute()
+                logger.info("📢 Admin notification created for expired content")
+            except Exception as notif_error:
+                logger.error(f"❌ Failed to create admin notification: {str(notif_error)}")
+
+        else:
+            logger.info("✅ No expired content found to deactivate")
+
+        return {
+            'success': True,
+            'total_deactivated': total_deactivated,
+            'deactivated_items': deactivated_items,
+            'timestamp': current_time_iso
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error checking expired content: {str(e)}", exc_info=True)
+        return {
+            'success': False,
+            'error': str(e),
+            'timestamp': get_current_utc_time().isoformat()
+        }
+
+
+def start_scheduler():
+    """Start the background scheduler"""
+    try:
+        # Add the expiration check job - run every 30 seconds
+        scheduler.add_job(
+            check_expired_content,
+            'interval',
+            seconds=30,
+            id='expiration_check',
+            name='Check and deactivate expired content'
+        )
+
+        scheduler.start()
+        logger.info("🚀 APScheduler started - Expiration checks running every 30 seconds")
+
+        # Run immediate check on startup
+        check_expired_content()
+
+    except Exception as e:
+        logger.error(f"❌ Failed to start scheduler: {str(e)}")
+
+
+def shutdown_scheduler():
+    """Shutdown scheduler gracefully"""
+    try:
+        if scheduler.running:
+            scheduler.shutdown()
+            logger.info("🛑 Scheduler shut down gracefully")
+    except Exception as e:
+        logger.error(f"Error shutting down scheduler: {str(e)}")
+
+
+# Register shutdown function
+atexit.register(shutdown_scheduler)
+
+# Start scheduler immediately
+start_scheduler()
+
 # Routes
 @app.route('/')
 def index():
     try:
-        # Get user_id from session (logged_in is automatically available via context processor)
         user_id = session.get('user_id')
 
-        # Fetch more content for 2 rows (8 items per section)
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            8).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            8).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            8).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(
-            6).execute().data or []
+        # Fetch only ACTIVE content (expired content is automatically deactivated)
+        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
+        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(6).execute().data or []
 
         # Enhance content with logos
         enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
         enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs]
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
-                                in internships]
+        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships]
 
         # If user is logged in, get their bookmarks and add bookmark status to content
         if user_id:
             user_bookmarks = get_user_bookmarks(user_id)
             bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
 
-            # Add bookmark status to courses
             for course in enhanced_courses:
                 course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
 
-            # Add bookmark status to jobs
             for job in enhanced_jobs:
                 job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
 
-            # Add bookmark status to internships
             for internship in enhanced_internships:
                 internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
 
-            # Add bookmark status to blogs
             for blog in blogs:
                 blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
 
         # Fetch testimonials
-        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured',
-                                                                                                       True).eq(
-            'is_active', True).limit(3).execute().data or []
+        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_active', True).limit(3).execute().data or []
+
+        logger.info(f"Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}")
 
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
@@ -1309,7 +1487,7 @@ def verify_otp():
 
         # Check expiration
         expires_at = parse_db_timestamp(otp_record.data['expires_at'])
-        current_time = get_current_time()
+        current_time = get_current_utc_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
             if purpose == 'registration':
@@ -1506,7 +1684,7 @@ def reset_password_otp():
 
         # Timezone-aware expiration check
         expires_at = parse_db_timestamp(otp_record.data['expires_at'])
-        current_time = get_current_time()
+        current_time = get_current_utc_time()
 
         if otp_record.data['otp'] == otp and expires_at > current_time:
             # Update password in user table
@@ -1930,14 +2108,16 @@ def courses():
     category = request.args.get('category', '')
 
     try:
-        # Get user_id from session (logged_in is automatically available via context processor)
         user_id = session.get('user_id')
 
+        # Only fetch ACTIVE courses (expired ones are auto-deactivated)
         query = supabase.table('courses').select('*').eq('is_active', True)
+
         if search:
             query = query.ilike('title', f'%{search}%')
         if category:
             query = query.eq('category', category)
+
         courses_data = query.order('created_at', desc=True).execute().data or []
 
         # Enhance courses with logos
@@ -1951,6 +2131,8 @@ def courses():
             for course in enhanced_courses:
                 course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
 
+        logger.info(f"Courses page - Active courses: {len(enhanced_courses)}")
+
     except Exception as e:
         logger.error(f"Error loading courses: {str(e)}")
         enhanced_courses = []
@@ -1962,46 +2144,16 @@ def courses():
                            course_categories=['Programming', 'Design', 'Business', 'Marketing', 'Data Science'])
 
 
-@app.route('/courses/<course_id>')
-def course_detail(course_id):
-    try:
-        course = supabase.table('courses').select('*').eq('id', course_id).eq('is_published', True).eq('is_active', True).single().execute().data
-
-        if not course:
-            flash('Course not found', 'danger')
-            return redirect(url_for('courses'))
-
-        # Enhance course with logo
-        enhanced_course = enhance_content_with_logo(course, 'course', course_id)
-
-        is_enrolled = False
-        if 'user_id' in session:
-            # Check if user has bookmarked this course
-            bookmark = supabase.table('bookmarks').select('id') \
-                .eq('user_id', session['user_id']) \
-                .eq('item_type', 'course') \
-                .eq('item_id', course_id) \
-                .maybe_single().execute()
-            is_enrolled = bool(bookmark.data)
-
-        return render_template('course-detail.html',
-                               course=enhanced_course,
-                               is_enrolled=is_enrolled)
-    except Exception as e:
-        logger.error(f"Error loading course: {str(e)}")
-        flash('Course not found', 'danger')
-        return redirect(url_for('courses'))
-
-
 @app.route('/courses/<course_id>/enroll', methods=['POST'])
 @login_required
 def enroll_course(course_id):
     try:
-        course = supabase.table('courses').select('application_link').eq('id', course_id).eq('is_published', True).eq(
-            'is_active', True).single().execute().data
+        # Check if course is active and not expired using UTC
+        current_time = get_current_utc_time().isoformat()
+        course = supabase.table('courses').select('application_link').eq('id', course_id).eq('is_published', True).eq('is_active', True).or_(f'expiration_date.is.null,expiration_date.gt.{current_time}').single().execute().data
 
         if not course or not course.get('application_link'):
-            flash('This course is not currently available for enrollment', 'danger')
+            flash('This course is not currently available for enrollment or has expired', 'danger')
             return redirect(url_for('course_detail', course_id=course_id))
 
         # Add to bookmarks
@@ -2026,16 +2178,18 @@ def jobs():
     job_type = request.args.get('type', '')
 
     try:
-        # Get user_id from session (logged_in is automatically available via context processor)
         user_id = session.get('user_id')
 
+        # Only fetch ACTIVE jobs (expired ones are auto-deactivated)
         query = supabase.table('jobs').select('*').eq('is_active', True)
+
         if search:
             query = query.ilike('title', f'%{search}%')
         if location:
             query = query.ilike('location', f'%{location}%')
         if job_type:
             query = query.eq('type', job_type)
+
         jobs_data = query.order('created_at', desc=True).execute().data or []
 
         # Enhance jobs with logos
@@ -2049,6 +2203,8 @@ def jobs():
             for job in enhanced_jobs:
                 job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
 
+        logger.info(f"Jobs page - Active jobs: {len(enhanced_jobs)}")
+
     except Exception as e:
         logger.error(f"Error loading jobs: {str(e)}")
         enhanced_jobs = []
@@ -2059,15 +2215,16 @@ def jobs():
                            location=location,
                            job_type=job_type)
 
+
 @app.route('/jobs/<job_id>/apply')
 @login_required
 def apply_job(job_id):
     try:
-        job = supabase.table('jobs').select('application_link').eq('id', job_id).eq('is_active',
-                                                                                    True).single().execute().data
+        # Check if job is active (expired jobs are auto-deactivated)
+        job = supabase.table('jobs').select('application_link').eq('id', job_id).eq('is_active', True).single().execute().data
 
         if not job or not job.get('application_link'):
-            flash('Application link not available', 'danger')
+            flash('Job not found or has expired', 'danger')
             return redirect(url_for('jobs'))
 
         # Add to bookmarks
@@ -2092,16 +2249,18 @@ def internships():
     internship_type = request.args.get('type', '')
 
     try:
-        # Get user_id from session (logged_in is automatically available via context processor)
         user_id = session.get('user_id')
 
+        # Only fetch ACTIVE internships (expired ones are auto-deactivated)
         query = supabase.table('internships').select('*').eq('is_active', True)
+
         if search:
             query = query.ilike('title', f'%{search}%')
         if location:
             query = query.ilike('location', f'%{location}%')
         if internship_type:
             query = query.eq('type', internship_type)
+
         internships_data = query.order('created_at', desc=True).execute().data or []
 
         # Enhance internships with logos
@@ -2115,6 +2274,8 @@ def internships():
 
             for internship in enhanced_internships:
                 internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
+
+        logger.info(f"Internships page - Active internships: {len(enhanced_internships)}")
 
     except Exception as e:
         logger.error(f"Error loading internships: {str(e)}")
@@ -2131,11 +2292,11 @@ def internships():
 @login_required
 def apply_internship(internship_id):
     try:
-        internship = supabase.table('internships').select('application_link').eq('id', internship_id).eq('is_active',
-                                                                                                         True).single().execute().data
+        # Check if internship is active (expired internships are auto-deactivated)
+        internship = supabase.table('internships').select('application_link').eq('id', internship_id).eq('is_active', True).single().execute().data
 
         if not internship or not internship.get('application_link'):
-            flash('Application link not available', 'danger')
+            flash('Internship not found or has expired', 'danger')
             return redirect(url_for('internships'))
 
         # Add to bookmarks
@@ -2236,7 +2397,7 @@ def bookmark_content(content_type, content_id):
                 'user_id': user_id,
                 'item_type': content_type,
                 'item_id': content_id,
-                'created_at': get_current_time().isoformat()
+                'created_at': get_current_utc_time().isoformat()
             }
 
             insert_result = supabase_admin.table('bookmarks') \
@@ -2311,16 +2472,18 @@ def get_application_link(content_type, content_id):
         if not content_id or content_id == 'null':
             return jsonify({'error': 'Invalid content ID'}), 400
 
-        if content_type == 'course':
-            item_response = supabase.table('courses').select('application_link').eq('id', content_id).single().execute()
-        elif content_type == 'job':
-            item_response = supabase.table('jobs').select('application_link').eq('id', content_id).single().execute()
-        elif content_type == 'internship':
-            item_response = supabase.table('internships').select('application_link').eq('id',
-                                                                                        content_id).single().execute()
+        # Check if content is active (expired content is auto-deactivated)
+        table_map = {
+            'course': 'courses',
+            'job': 'jobs',
+            'internship': 'internships'
+        }
+
+        item_response = supabase.table(table_map[content_type]).select('application_link').eq('id', content_id).eq(
+            'is_active', True).single().execute()
 
         if not item_response.data or not item_response.data.get('application_link'):
-            return jsonify({'error': 'Application link not available'}), 404
+            return jsonify({'error': 'Content not found or has expired'}), 404
 
         # Track application in database only if user is logged in
         if 'user_id' in session:
@@ -2332,7 +2495,6 @@ def get_application_link(content_type, content_id):
                 }).execute()
             except Exception as e:
                 logger.warning(f"Could not add bookmark for tracking: {str(e)}")
-                # Continue even if bookmarking fails
 
         return jsonify({'application_link': item_response.data['application_link']})
 
@@ -2419,8 +2581,8 @@ def contact():
             'email': data['email'],
             'subject': data['subject'],
             'message': data['message'],
-            'created_at': get_current_time().isoformat(),
-            'updated_at': get_current_time().isoformat()
+            'created_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
         }
 
         # Use admin client for both operations
@@ -2435,7 +2597,7 @@ def contact():
             'title': 'New Contact Message',
             'message': f'New message from {data["name"]} ({data["email"]}) about {data["subject"]}',
             'related_id': response.data[0]['id'],
-            'created_at': get_current_time().isoformat()
+            'created_at': get_current_utc_time().isoformat()
         }
 
         supabase_admin.table('admin_notifications').insert(notification_data).execute()
@@ -2542,7 +2704,7 @@ def subscribe_newsletter():
         # Insert new subscriber
         subscriber_data = {
             "email": email,
-            "subscribed_at": get_current_time().isoformat(),
+            "subscribed_at": get_current_utc_time().isoformat(),
             "is_active": True
         }
         supabase_admin.table("newsletter_subscribers").insert(subscriber_data).execute()
@@ -2586,7 +2748,7 @@ def unsubscribe_newsletter():
 
         # Mark as unsubscribed
         supabase_admin.table("newsletter_subscribers") \
-            .update({"is_active": False, "unsubscribed_at": get_current_time().isoformat()}) \
+            .update({"is_active": False, "unsubscribed_at": get_current_utc_time().isoformat()}) \
             .eq("email", email).execute()
 
         send_newsletter_goodbye(email)
@@ -2883,6 +3045,23 @@ def create_admin_resource(resource):
         if resource == 'blog' and 'categories' in data:
             data = handle_categories_data(data)
 
+        # Handle expiration date conversion for courses, jobs, and internships
+        if resource in ['courses', 'jobs', 'internships'] and 'expiration_date' in data:
+            if data['expiration_date']:
+                try:
+                    # Convert datetime-local string to ISO format
+                    expiration_date = datetime.fromisoformat(data['expiration_date'].replace('Z', '+00:00'))
+                    data['expiration_date'] = expiration_date.isoformat()
+                    logger.info(f"Set expiration date for {resource}: {data['expiration_date']}")
+                except ValueError as e:
+                    # If invalid date, set to None
+                    data['expiration_date'] = None
+                    logger.warning(f"Invalid expiration date format for {resource}: {str(e)}")
+            else:
+                # If empty string, set to None
+                data['expiration_date'] = None
+                logger.info(f"No expiration date set for {resource}")
+
         # Validate required fields
         required_fields = {
             'courses': ['title', 'category', 'instructor', 'application_link'],
@@ -2894,7 +3073,7 @@ def create_admin_resource(resource):
         if resource in required_fields:
             for field in required_fields[resource]:
                 if not data.get(field):
-                    return jsonify({'success': False, 'message': f'{field.replace("_", " ")} is required'}), 400
+                    return jsonify({'success': False, 'message': f'{field.replace("_", " ").title()} is required'}), 400
 
         # Determine the correct table name
         table_map = {
@@ -2903,13 +3082,17 @@ def create_admin_resource(resource):
         table_name = table_map.get(resource, resource)
 
         # Add created_at timestamp
-        data['created_at'] = get_current_time().isoformat()
-        data['updated_at'] = get_current_time().isoformat()
+        data['created_at'] = get_current_utc_time().isoformat()
+        data['updated_at'] = get_current_utc_time().isoformat()
 
         # Set proper defaults for new content
         if resource in ['courses', 'jobs', 'internships', 'blog']:
             data['is_featured'] = data.get('is_featured', False)  # Default to not featured
             data['is_active'] = data.get('is_active', True)  # Default to active
+
+        # For courses, jobs, internships, and blog, sync featured state with active state
+        if resource in ['courses', 'jobs', 'internships', 'blog']:
+            data['is_featured'] = data.get('is_active', True)
 
         # Enhance data with company logo for relevant resources
         if resource in ['jobs', 'internships', 'courses'] and data.get('company'):
@@ -2928,10 +3111,13 @@ def create_admin_resource(resource):
         if not response.data:
             return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
 
+        created_item = response.data[0]
+        logger.info(f"✅ Successfully created {resource[:-1]}: {created_item.get('title', 'Unknown')}")
+
         # If creation was successful and we have a company but no logo, try to fetch it asynchronously
         if resource in ['jobs', 'internships', 'courses'] and data.get('company') and not data.get('company_logo'):
             try:
-                content_id = response.data[0]['id']
+                content_id = created_item['id']
                 # Run logo fetching in background
                 from threading import Thread
                 def fetch_logo_async():
@@ -2941,9 +3127,9 @@ def create_admin_resource(resource):
                             # Update the content with the fetched logo
                             supabase_admin.table(table_name).update({
                                 'company_logo': logo_url,
-                                'updated_at': get_current_time().isoformat()
+                                'updated_at': get_current_utc_time().isoformat()
                             }).eq('id', content_id).execute()
-                            logger.info(f"Successfully added logo to {resource} {content_id}")
+                            logger.info(f"✅ Successfully added logo to {resource} {content_id}")
                     except Exception as e:
                         logger.error(f"Background logo fetch failed: {str(e)}")
 
@@ -2954,12 +3140,12 @@ def create_admin_resource(resource):
 
         return jsonify({
             'success': True,
-            'message': f'{resource[:-1]} created successfully',
-            'data': response.data[0]
+            'message': f'{resource[:-1].title()} created successfully',
+            'data': created_item
         })
 
     except Exception as e:
-        logger.error(f"Error creating {resource}: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error creating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to create {resource[:-1]}'}), 500
 
 
@@ -2978,6 +3164,23 @@ def update_admin_resource(resource, id):
         if resource == 'blog' and 'categories' in data:
             data = handle_categories_data(data)
 
+        # Handle expiration date conversion for courses, jobs, and internships
+        if resource in ['courses', 'jobs', 'internships'] and 'expiration_date' in data:
+            if data['expiration_date']:
+                try:
+                    # Convert datetime-local string to ISO format
+                    expiration_date = datetime.fromisoformat(data['expiration_date'].replace('Z', '+00:00'))
+                    data['expiration_date'] = expiration_date.isoformat()
+                    logger.info(f"Updated expiration date for {resource} {id}: {data['expiration_date']}")
+                except ValueError as e:
+                    # If invalid date, set to None
+                    data['expiration_date'] = None
+                    logger.warning(f"Invalid expiration date format for {resource} {id}: {str(e)}")
+            else:
+                # If empty string, set to None
+                data['expiration_date'] = None
+                logger.info(f"Cleared expiration date for {resource} {id}")
+
         # Determine the correct table name
         table_map = {
             'blog': 'blog_posts'
@@ -2985,14 +3188,15 @@ def update_admin_resource(resource, id):
         table_name = table_map.get(resource, resource)
 
         # Check if resource exists
-        existing_response = supabase_admin.table(table_name).select('id, company, company_logo').eq('id', id).execute()
+        existing_response = supabase_admin.table(table_name).select('id, company, company_logo, expiration_date, is_active').eq('id', id).execute()
         if not existing_response.data:
-            return jsonify({'success': False, 'message': f'{resource[:-1]} not found'}), 404
+            return jsonify({'success': False, 'message': f'{resource[:-1].title()} not found'}), 404
 
         existing_data = existing_response.data[0]
+        logger.info(f"Updating {resource} {id}: {existing_data.get('title', 'Unknown')}")
 
         # Add updated_at timestamp
-        data['updated_at'] = get_current_time().isoformat()
+        data['updated_at'] = get_current_utc_time().isoformat()
 
         # Enhance data with company logo if company name changed
         if resource in ['jobs', 'internships', 'courses']:
@@ -3005,7 +3209,7 @@ def update_admin_resource(resource, id):
                     enhanced_data = enhance_content_with_logo(data, resource, id)
                     if enhanced_data.get('company_logo'):
                         data['company_logo'] = enhanced_data['company_logo']
-                        logger.info(f"Auto-updated company logo for {new_company}")
+                        logger.info(f"✅ Auto-updated company logo for {new_company}")
                     elif new_company != current_company:
                         # Company changed but no logo found, clear existing logo
                         data['company_logo'] = None
@@ -3016,16 +3220,25 @@ def update_admin_resource(resource, id):
                     if existing_data.get('company_logo') and new_company == current_company:
                         data['company_logo'] = existing_data['company_logo']
 
+        # For courses, jobs, internships, and blog, sync featured state with active state
+        if resource in ['courses', 'jobs', 'internships', 'blog']:
+            if 'is_active' in data:
+                data['is_featured'] = data['is_active']
+                logger.info(f"Synced featured status with active status for {resource} {id}")
+
         # Update in database
         response = supabase_admin.table(table_name).update(data).eq('id', id).execute()
 
         if not response.data:
             return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
+        updated_item = response.data[0]
+        logger.info(f"✅ Successfully updated {resource[:-1]}: {updated_item.get('title', 'Unknown')}")
+
         # If update was successful and company changed but no logo was fetched, try background fetch
         if (resource in ['jobs', 'internships', 'courses'] and
                 data.get('company') and
-                data.get('company') != current_company and
+                data.get('company') != existing_data.get('company') and
                 not data.get('company_logo')):
 
             try:
@@ -3037,9 +3250,9 @@ def update_admin_resource(resource, id):
                             # Update the content with the fetched logo
                             supabase_admin.table(table_name).update({
                                 'company_logo': logo_url,
-                                'updated_at': get_current_time().isoformat()
+                                'updated_at': get_current_utc_time().isoformat()
                             }).eq('id', id).execute()
-                            logger.info(f"Successfully updated logo for {resource} {id}")
+                            logger.info(f"✅ Successfully updated logo for {resource} {id}")
                     except Exception as e:
                         logger.error(f"Background logo update failed: {str(e)}")
 
@@ -3050,12 +3263,12 @@ def update_admin_resource(resource, id):
 
         return jsonify({
             'success': True,
-            'message': f'{resource[:-1]} updated successfully',
-            'data': response.data[0]
+            'message': f'{resource[:-1].title()} updated successfully',
+            'data': updated_item
         })
 
     except Exception as e:
-        logger.error(f"Error updating {resource}: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error updating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
 # Filters for jobs and internhsips
@@ -3161,7 +3374,7 @@ def toggle_resource_status(resource, id):
         table_name = table_map.get(resource, resource)
 
         # Update status in database
-        update_data = {'is_active': is_active, 'updated_at': get_current_time().isoformat()}
+        update_data = {'is_active': is_active, 'updated_at': get_current_utc_time().isoformat()}
 
         response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
 
@@ -3199,7 +3412,7 @@ def toggle_resource_featured(resource, id):
         table_name = table_map.get(resource, resource)
 
         # Update featured status in database
-        update_data = {'is_featured': is_featured, 'updated_at': get_current_time().isoformat()}
+        update_data = {'is_featured': is_featured, 'updated_at': get_current_utc_time().isoformat()}
 
         response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
 
@@ -3278,7 +3491,7 @@ def bulk_update_resource_status(resource):
         table_name = table_map.get(resource, resource)
 
         # Update status in database
-        update_data = {'is_active': is_active, 'updated_at': get_current_time().isoformat()}
+        update_data = {'is_active': is_active, 'updated_at': get_current_utc_time().isoformat()}
 
         response = supabase_admin.table(table_name).update(update_data).in_('id', ids).execute()
 
@@ -3315,7 +3528,7 @@ def get_admin_resources(resource):
         }
         table_name = table_map.get(resource, resource)
 
-        # Build base query
+        # Build base query - NO EXPIRATION FILTER for admin
         query = supabase_admin.table(table_name).select('*')
 
         # Apply search filters
@@ -3335,7 +3548,7 @@ def get_admin_resources(resource):
             elif resource == 'newsletter':
                 query = query.ilike('email', f'%{search}%')
 
-        # Apply ordering
+        # Apply ordering - NO EXPIRATION FILTER for admin
         if resource == 'messages':
             query = query.order('created_at', desc=True)
         elif resource == 'newsletter':
@@ -3348,7 +3561,7 @@ def get_admin_resources(resource):
         end_idx = start_idx + per_page - 1
         data_response = query.range(start_idx, end_idx).execute()
 
-        # Count query
+        # Count query - NO EXPIRATION FILTER for admin
         count_query = supabase_admin.table(table_name).select('id', count='exact')
         if search:
             if resource == 'courses':
@@ -3458,7 +3671,7 @@ def update_message_status(id):
         # Update message status
         response = supabase_admin.table('contact_messages').update({
             'status': status,
-            'updated_at': get_current_time().isoformat()
+            'updated_at': get_current_utc_time().isoformat()
         }).eq('id', id).execute()
 
         if not response.data:
@@ -3486,7 +3699,7 @@ def bulk_update_message_status():
             return jsonify({'success': False, 'message': 'Invalid status'}), 400
 
         # Update status in database
-        update_data = {'status': status, 'updated_at': get_current_time().isoformat()}
+        update_data = {'status': status, 'updated_at': get_current_utc_time().isoformat()}
         response = supabase_admin.table('contact_messages').update(update_data).in_('id', ids).execute()
 
         return jsonify({
@@ -3521,7 +3734,7 @@ def admin_message_reply():
             # Update message status to replied
             supabase_admin.table('contact_messages').update({
                 'status': 'replied',
-                'updated_at': get_current_time().isoformat()
+                'updated_at': get_current_utc_time().isoformat()
             }).eq('id', data['message_id']).execute()
 
             return jsonify({'success': True, 'message': 'Reply sent successfully'})
@@ -3661,7 +3874,7 @@ def toggle_newsletter_status(id):
         # Update status in database
         response = supabase_admin.table('newsletter_subscribers').update({
             'is_active': is_active,
-            'updated_at': get_current_time().isoformat()
+            'updated_at': get_current_utc_time().isoformat()
         }).eq('id', id).execute()
 
         if not response.data:
@@ -3818,7 +4031,7 @@ def testimonial_submit():
             'content': content,
             'rating': rating,
             'is_active': True,
-            'created_at': get_current_time().isoformat()
+            'created_at': get_current_utc_time().isoformat()
         }
 
         result = supabase_admin.table('testimonials').insert(testimonial_data).execute()
@@ -3869,7 +4082,7 @@ def update_testimonial(testimonial_id):
             .update({
             'content': content,
             'rating': rating,
-            'updated_at': get_current_time().isoformat()
+            'updated_at': get_current_utc_time().isoformat()
         }) \
             .eq('id', testimonial_id) \
             .execute()
@@ -3918,6 +4131,436 @@ def delete_testimonial(testimonial_id):
     except Exception as e:
         logger.error(f"Delete testimonial error: {str(e)}")
         return jsonify({'success': False, 'message': 'Server error'}), 500
+
+# Content expiration routes
+@app.route('/api/admin/expired-content-stats')
+@admin_required
+def expired_content_stats():
+    """Get count of content that has been marked as expired (either by scheduler or manually)"""
+    try:
+        # Count content that is marked as expired (is_active=False due to expiration)
+        expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active', False).execute()
+        expired_jobs = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', False).execute()
+        expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active', False).execute()
+
+        total_expired = (expired_courses.count or 0) + (expired_jobs.count or 0) + (expired_internships.count or 0)
+
+        return jsonify({
+            'success': True,
+            'total_expired': total_expired,
+            'courses': expired_courses.count or 0,
+            'jobs': expired_jobs.count or 0,
+            'internships': expired_internships.count or 0
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting expired content stats: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/expired-content')
+@admin_required
+def get_expired_content():
+    """Get all inactive content (content that needs manual reactivation)"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        search = request.args.get('search', '')
+        content_type = request.args.get('type', '')
+
+        # Build queries for each content type - ALL inactive content
+        all_expired_content = []
+
+        # Courses
+        if not content_type or content_type == 'courses':
+            courses_query = supabase_admin.table('courses').select(
+                'id, title, company, expiration_date, created_at, is_active, is_featured')
+            courses_query = courses_query.eq('is_active', False)  # Only inactive content
+            if search:
+                courses_query = courses_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
+            expired_courses = courses_query.execute().data or []
+            for course in expired_courses:
+                all_expired_content.append({
+                    'id': course['id'],
+                    'content_type': 'courses',
+                    'title': course['title'],
+                    'company': course.get('company', 'N/A'),
+                    'expiration_date': course['expiration_date'],
+                    'created_at': course['created_at'],
+                    'is_active': course['is_active'],
+                    'is_featured': course.get('is_featured', False)
+                })
+
+        # Jobs
+        if not content_type or content_type == 'jobs':
+            jobs_query = supabase_admin.table('jobs').select(
+                'id, title, company, expiration_date, created_at, is_active, is_featured')
+            jobs_query = jobs_query.eq('is_active', False)  # Only inactive content
+            if search:
+                jobs_query = jobs_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
+            expired_jobs = jobs_query.execute().data or []
+            for job in expired_jobs:
+                all_expired_content.append({
+                    'id': job['id'],
+                    'content_type': 'jobs',
+                    'title': job['title'],
+                    'company': job.get('company', 'N/A'),
+                    'expiration_date': job['expiration_date'],
+                    'created_at': job['created_at'],
+                    'is_active': job['is_active'],
+                    'is_featured': job.get('is_featured', False)
+                })
+
+        # Internships
+        if not content_type or content_type == 'internships':
+            internships_query = supabase_admin.table('internships').select(
+                'id, title, company, expiration_date, created_at, is_active, is_featured')
+            internships_query = internships_query.eq('is_active', False)  # Only inactive content
+            if search:
+                internships_query = internships_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
+            expired_internships = internships_query.execute().data or []
+            for internship in expired_internships:
+                all_expired_content.append({
+                    'id': internship['id'],
+                    'content_type': 'internships',
+                    'title': internship['title'],
+                    'company': internship.get('company', 'N/A'),
+                    'expiration_date': internship['expiration_date'],
+                    'created_at': internship['created_at'],
+                    'is_active': internship['is_active'],
+                    'is_featured': internship.get('is_featured', False)
+                })
+
+        # Sort by creation date (most recent first)
+        all_expired_content.sort(key=lambda x: x['created_at'], reverse=True)
+
+        # Pagination
+        total_count = len(all_expired_content)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_content = all_expired_content[start_idx:end_idx]
+
+        logger.info(f"Found {total_count} inactive content items (showing {len(paginated_content)})")
+
+        return jsonify({
+            'success': True,
+            'data': paginated_content,
+            'count': total_count,
+            'per_page': per_page,
+            'page': page
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting expired content: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/expired-content/reactivate-all', methods=['POST'])
+@admin_required
+def reactivate_all_expired_content():
+    """Reactivate all expired content"""
+    try:
+        current_time = get_current_utc_time().isoformat()
+        reactivated_count = 0
+
+        # Reactivate expired courses
+        courses_result = supabase_admin.table('courses').update({
+            'is_active': True,
+            'expiration_date': None,
+            'updated_at': get_current_utc_time().isoformat()
+        }).lt('expiration_date', current_time).eq('is_active', False).execute()
+        reactivated_count += len(courses_result.data) if courses_result.data else 0
+
+        # Reactivate expired jobs
+        jobs_result = supabase_admin.table('jobs').update({
+            'is_active': True,
+            'expiration_date': None,
+            'updated_at': get_current_utc_time().isoformat()
+        }).lt('expiration_date', current_time).eq('is_active', False).execute()
+        reactivated_count += len(jobs_result.data) if jobs_result.data else 0
+
+        # Reactivate expired internships
+        internships_result = supabase_admin.table('internships').update({
+            'is_active': True,
+            'expiration_date': None,
+            'updated_at': get_current_utc_time().isoformat()
+        }).lt('expiration_date', current_time).eq('is_active', False).execute()
+        reactivated_count += len(internships_result.data) if internships_result.data else 0
+
+        logger.info(f"Reactivated all expired content: {reactivated_count} items")
+
+        return jsonify({
+            'success': True,
+            'reactivated_count': reactivated_count,
+            'message': f'Reactivated {reactivated_count} expired items'
+        })
+
+    except Exception as e:
+        logger.error(f"Error reactivating all expired content: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reactivate all content'}), 500
+
+
+@app.route('/api/admin/<string:content_type>/<string:content_id>', methods=['PUT'])
+@admin_required
+def update_content(content_type, content_id):
+    """Update content - don't auto-reactivate when updating expiration date"""
+    try:
+        data = request.get_json()
+
+        # Remove fields that shouldn't be updated directly
+        update_data = {k: v for k, v in data.items() if k not in ['id', 'created_at']}
+
+        # Add updated timestamp
+        update_data['updated_at'] = get_current_utc_time().isoformat()
+
+        # Update the content
+        response = supabase_admin.table(content_type).update(update_data).eq('id', content_id).execute()
+
+        if response.data:
+            logger.info(f"✅ Updated {content_type} {content_id}")
+            return jsonify({
+                'success': True,
+                'message': f'{content_type[:-1].title()} updated successfully'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update content'}), 500
+
+    except Exception as e:
+        logger.error(f"Error updating {content_type}: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to update {content_type}'}), 500
+
+
+@app.route('/api/admin/<string:content_type>/<string:content_id>/reactivate', methods=['PUT'])
+@admin_required
+def reactivate_content(content_type, content_id):
+    """Reactivate expired content - set as active and featured"""
+    try:
+        current_time = get_current_utc_time().isoformat()
+
+        # Get current content data
+        content_response = supabase_admin.table(content_type).select('expiration_date, is_active').eq('id', content_id).execute()
+
+        if not content_response.data:
+            return jsonify({'success': False, 'message': 'Content not found'}), 404
+
+        content = content_response.data[0]
+        expiration_date = content.get('expiration_date')
+
+        # Check if expiration date is still in past
+        if expiration_date and expiration_date <= current_time:
+            return jsonify({
+                'success': False,
+                'message': 'Cannot reactivate content with past expiration date. Please update the expiration date first.',
+                'requires_date_update': True
+            }), 400
+
+        # Reactivate and set as featured
+        update_data = {
+            'is_active': True,
+            'is_featured': True,  # Set as featured when reactivating
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table(content_type).update(update_data).eq('id', content_id).execute()
+
+        if response.data:
+            logger.info(f"✅ Reactivated {content_type} {content_id} with featured status")
+            return jsonify({
+                'success': True,
+                'message': 'Content reactivated successfully and set as featured'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to reactivate content'}), 500
+
+    except Exception as e:
+        logger.error(f"Error reactivating content: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reactivate content'}), 500
+
+
+@app.route('/api/admin/check-expired-content', methods=['POST'])
+@admin_required
+def check_expired_content_api():
+    """API endpoint to manually check and deactivate expired content - ENHANCED"""
+    try:
+        result = check_expired_content()
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f"Expired content check completed. Deactivated {result['total_deactivated']} items.",
+                'deactivated_count': result['total_deactivated'],
+                'timestamp': result['timestamp']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f"Error checking expired content: {result['error']}"
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error in expired content check API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error checking expired content'
+        }), 500
+
+
+@app.route('/api/admin/expired-content/bulk-reactivate', methods=['POST'])
+@admin_required
+def bulk_reactivate_expired_content():
+    """Bulk reactivate expired content with validation"""
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+
+        if not items:
+            return jsonify({'success': False, 'message': 'No items selected for reactivation'}), 400
+
+        current_time = get_current_utc_time().isoformat()
+        results = {
+            'successful': [],
+            'failed': []
+        }
+
+        for item in items:
+            content_type = item.get('content_type')
+            content_id = item.get('content_id')
+
+            if not content_type or not content_id:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': 'Missing content type or ID'
+                })
+                continue
+
+            # Check expiration date
+            content_response = supabase_admin.table(content_type).select('expiration_date, title, company, is_active').eq('id', content_id).execute()
+
+            if not content_response.data:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': 'Content not found'
+                })
+                continue
+
+            content = content_response.data[0]
+            expiration_date = content.get('expiration_date')
+
+            # Validate expiration date is in future
+            if expiration_date and expiration_date <= current_time:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'title': content.get('title', 'Unknown'),
+                    'company': content.get('company', 'N/A'),
+                    'reason': 'Expiration date is still in past. Please update the date first.'
+                })
+                continue
+
+            # Reactivate with featured status
+            update_data = {
+                'is_active': True,
+                'is_featured': True,  # Set as featured when reactivating
+                'updated_at': get_current_utc_time().isoformat()
+            }
+
+            response = supabase_admin.table(content_type).update(update_data).eq('id', content_id).execute()
+
+            if response.data:
+                results['successful'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'title': content.get('title', 'Unknown'),
+                    'company': content.get('company', 'N/A')
+                })
+                logger.info(f"✅ Reactivated {content_type} {content_id} as featured")
+            else:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'title': content.get('title', 'Unknown'),
+                    'company': content.get('company', 'N/A'),
+                    'reason': 'Update failed'
+                })
+
+        total_successful = len(results['successful'])
+        total_failed = len(results['failed'])
+
+        message = f"Reactivated {total_successful} items successfully as featured"
+        if total_failed > 0:
+            message += f", {total_failed} items failed (update expiration dates first)"
+
+        return jsonify({
+            'success': total_failed == 0 or total_successful > 0,
+            'message': message,
+            'results': results
+        })
+
+    except Exception as e:
+        logger.error(f"Error in bulk reactivate: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to reactivate items'}), 500
+
+
+@app.route('/api/admin/expired-content/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_expired_content():
+    """Bulk delete expired content permanently"""
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+
+        if not items:
+            return jsonify({'success': False, 'message': 'No items selected for deletion'}), 400
+
+        deleted_count = 0
+        failed_items = []
+
+        for item in items:
+            content_type = item.get('content_type')
+            content_id = item.get('content_id')
+
+            if not content_type or not content_id:
+                failed_items.append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': 'Missing content type or ID'
+                })
+                continue
+
+            try:
+                # Delete the content permanently
+                response = supabase_admin.table(content_type).delete().eq('id', content_id).execute()
+                if response.data:
+                    deleted_count += 1
+                    logger.info(f"✅ Deleted expired {content_type} {content_id}")
+                else:
+                    failed_items.append({
+                        'content_type': content_type,
+                        'content_id': content_id,
+                        'reason': 'Delete failed'
+                    })
+            except Exception as e:
+                failed_items.append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': str(e)
+                })
+
+        message = f"Permanently deleted {deleted_count} expired items"
+        if failed_items:
+            message += f", {len(failed_items)} items failed to delete"
+
+        return jsonify({
+            'success': len(failed_items) == 0,
+            'message': message,
+            'deleted_count': deleted_count,
+            'failed_items': failed_items
+        })
+
+    except Exception as e:
+        logger.error(f"Error in bulk delete expired content: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete items'}), 500
 
 # Terms and condition routes
 @app.route('/privacy')
