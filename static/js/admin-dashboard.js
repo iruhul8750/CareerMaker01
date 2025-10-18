@@ -279,74 +279,74 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Update the initDashboard function to include logo preview setup
+    // Updated the initDashboard function
     function initDashboard() {
         // Display time-based welcome message
-
         displayWelcomeMessage();
+
+        // Setup all navigation and UI components
         setupNavigation();
         setupNotificationEvents();
-        loadDashboardStats();
-        loadNotifications();
         setupModals();
         setupForms();
         setupBulkActions();
-        setupBulkActionButtons(); // Add this line
+        setupBulkActionButtons();
         setupSearchFilters();
         setupPagination();
         setupSelect2();
         setupLogoPreview();
-        setupExpirationDates(); // Add this line
-        setupExpirationDateFields(); // Add this
-        loadExpiredContentStats(); // Add this line
-        setupExpiredContentSection(); // Add this line
+        setupExpirationDateFields();
+        setupExpirationDates();
 
+        // Load data and content
+        loadDashboardStats();
+        loadNotifications();
+        loadExpiredContentStats();
+        setupExpiredContentSection();
 
-
-        // Load the last active section
+        // Enhanced section restoration with history support
         restoreCurrentSection();
+        initializeHistory();
 
-        // Check session every 5 minutes
+        // Check session every 5 minutes (less intrusive)
         setInterval(checkAdminSession, 5 * 60 * 1000);
 
         // Setup global AJAX error handling
         setupGlobalErrorHandling();
     }
 
-    // Setup global AJAX error handling
-    function setupGlobalErrorHandling() {
-        // Store original fetch function
-        const originalFetch = window.fetch;
+     function initializeHistory() {
+        // Set initial history state if none exists
+        if (!history.state) {
+            const initialSection = currentSection || 'dashboard';
+            const state = { section: initialSection };
+            const title = document.title;
+            const url = `#${initialSection}`;
 
-        // Override fetch to handle session errors globally
-        window.fetch = function(...args) {
-            return originalFetch.apply(this, args)
-                .then(response => {
-                    if (response.status === 401) {
-                        return response.json().then(data => {
-                            if (data.requires_login) {
-                                showSessionExpiredMessage();
-                                throw new Error('Session expired');
-                            }
-                            return response;
-                        });
-                    }
-                    return response;
-                })
-                .catch(error => {
-                    if (error.message.includes('Session expired')) {
-                        // Already handled by showSessionExpiredMessage
-                        throw error;
-                    }
-                    // For other errors, show a generic notification
-                    showNotification('An error occurred. Please try again.', 'error');
-                    throw error;
-                });
-        };
+            history.replaceState(state, title, url);
+        }
     }
 
-    // FIXED: Properly restore current section on page refresh
+     // Enhanced section restoration
     function restoreCurrentSection() {
+        // Check if this is a fresh login (no previous session)
+        const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
+
+        // If fresh login, always start with dashboard and set session flag
+        if (isFreshLogin) {
+            sessionStorage.setItem('adminSessionStarted', 'true');
+            sessionStorage.setItem('currentSection', 'dashboard');
+            currentSection = 'dashboard';
+
+            // Initialize history for fresh login
+            const initialState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isInitial: true
+            };
+            history.replaceState(initialState, '', '#dashboard');
+        }
+
         // First, remove active class from all menu items and sections
         document.querySelectorAll('.sidebar-menu a').forEach(item => {
             item.classList.remove('active');
@@ -355,33 +355,117 @@ document.addEventListener('DOMContentLoaded', function() {
             section.classList.remove('active');
         });
 
-        // If we have a stored section and it's not dashboard, try to activate it
+        // For fresh login, force dashboard regardless of URL/history
+        if (isFreshLogin) {
+            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+            const dashboardSection = document.getElementById('dashboard');
+
+            if (dashboardItem && dashboardSection) {
+                navigateToSection('dashboard', dashboardItem, true);
+                return;
+            }
+        }
+
+        // Priority 1: Check browser history state
+        if (history.state && history.state.section) {
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${history.state.section}"]`);
+            const targetSection = document.getElementById(history.state.section);
+
+            if (menuItem && targetSection) {
+                navigateToSection(history.state.section, menuItem, true);
+                return;
+            }
+        }
+
+        // Priority 2: Check URL hash (user manually entered URL or bookmark)
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
+            const targetSection = document.getElementById(hash);
+
+            if (menuItem && targetSection) {
+                navigateToSection(hash, menuItem, true);
+                return;
+            }
+        }
+
+        // Priority 3: Check session storage
         if (currentSection && currentSection !== 'dashboard') {
             const menuItem = document.querySelector(`.sidebar-menu a[href="#${currentSection}"]`);
             const targetSection = document.getElementById(currentSection);
 
             if (menuItem && targetSection) {
-                menuItem.classList.add('active');
-                targetSection.classList.add('active');
-
-                // Update page title
-                const sectionName = menuItem.querySelector('span').textContent;
-                document.getElementById('pageTitle').textContent = sectionName + ' Management';
-
-                // Load section data
-                loadSectionData(currentSection);
+                navigateToSection(currentSection, menuItem, true);
                 return;
             }
         }
 
-        // Default to dashboard if no valid section found
+        // Default: Dashboard
         const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
         const dashboardSection = document.getElementById('dashboard');
 
         if (dashboardItem && dashboardSection) {
-            dashboardItem.classList.add('active');
-            dashboardSection.classList.add('active');
-            document.getElementById('pageTitle').textContent = 'Admin Dashboard';
+            navigateToSection('dashboard', dashboardItem, true);
+        }
+    }
+
+     // Navigate to specific section with history management
+    function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
+        // Update menu active state
+        const menuItems = document.querySelectorAll('.sidebar-menu a');
+        menuItems.forEach(i => i.classList.remove('active'));
+
+        if (menuItem) {
+            menuItem.classList.add('active');
+        } else {
+            // Find the corresponding menu item for the section
+            const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
+            if (correspondingMenuItem) {
+                correspondingMenuItem.classList.add('active');
+            }
+        }
+
+        // Hide all sections and show target section
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        const sectionElement = document.getElementById(targetSection);
+        if (sectionElement) {
+            sectionElement.classList.add('active');
+
+            // Update page title
+            let sectionName = 'Dashboard';
+            if (menuItem) {
+                sectionName = menuItem.querySelector('span').textContent;
+            } else {
+                const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
+                if (correspondingMenuItem) {
+                    sectionName = correspondingMenuItem.querySelector('span').textContent;
+                }
+            }
+            document.getElementById('pageTitle').textContent = sectionName + ' Management';
+
+            // Update current section and session storage
+            currentSection = targetSection;
+            sessionStorage.setItem('currentSection', targetSection);
+
+            // Load section data if not dashboard
+            if (targetSection !== 'dashboard') {
+                loadSectionData(targetSection);
+            }
+
+            // Update browser history if not from popstate event
+            if (!fromPopState) {
+                const state = {
+                    section: targetSection,
+                    timestamp: Date.now()
+                };
+                const title = `${sectionName} Management`;
+                const url = `#${targetSection}`;
+
+                history.pushState(state, title, url);
+            }
         }
     }
 
@@ -546,8 +630,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Enhanced navigation with back button handling - No logout on back button
     function setupNavigation() {
         const menuItems = document.querySelectorAll('.sidebar-menu a');
+
+        // Initialize history state to prevent back button logout
+        if (history.state === null) {
+            const initialState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isInitial: true
+            };
+            history.replaceState(initialState, '', '#dashboard');
+
+            // Push another state to create a buffer
+            const secondState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isBuffer: true
+            };
+            history.pushState(secondState, '', '#dashboard');
+        }
 
         menuItems.forEach(item => {
             item.addEventListener('click', function(e) {
@@ -559,8 +662,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (this.getAttribute('href') === '/admin/logout') {
                     e.preventDefault();
                     showConfirmation('logout', 'Are you sure you want to logout?', () => {
-                        // Clear any existing logout messages to prevent duplication
-                        sessionStorage.removeItem('logoutMessage');
+                        // Clear all session data
+                        sessionStorage.removeItem('adminSessionStarted');
+                        sessionStorage.removeItem('currentSection');
 
                         // Set a flag to indicate we're logging out programmatically
                         sessionStorage.setItem('logoutInitiated', 'true');
@@ -573,33 +677,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (this.getAttribute('href').startsWith('#')) {
                     e.preventDefault();
 
-                    menuItems.forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-
+                    // Use history API to update URL without page reload
                     const targetSection = this.getAttribute('href').substring(1);
-
-                    document.querySelectorAll('.admin-section').forEach(section => {
-                        section.classList.remove('active');
-                    });
-
-                    const sectionElement = document.getElementById(targetSection);
-                    if (sectionElement) {
-                        sectionElement.classList.add('active');
-
-                        const sectionName = this.querySelector('span').textContent;
-                        document.getElementById('pageTitle').textContent = sectionName + ' Management';
-
-                        currentSection = targetSection;
-                        sessionStorage.setItem('currentSection', targetSection);
-
-                        if (targetSection !== 'dashboard') {
-                            loadSectionData(targetSection);
-                        }
-                    }
+                    navigateToSection(targetSection, this);
                 }
             });
         });
 
+        // Enhanced browser back/forward button handling - No logout allowed
+        window.addEventListener('popstate', function(event) {
+            // If we're at the initial state and user tries to go back further
+            if (history.state && history.state.isInitial) {
+                // We're at the beginning - prevent going back to login
+                // Push current state again to stay in the dashboard
+                const currentState = {
+                    section: currentSection || 'dashboard',
+                    timestamp: Date.now(),
+                    isInitial: true
+                };
+                history.pushState(currentState, '', `#${currentSection || 'dashboard'}`);
+
+                showNotification('You are already at the beginning of the dashboard navigation', 'info', 3000);
+                return;
+            }
+
+            // If no state (shouldn't happen with our setup), go to dashboard
+            if (!event.state) {
+                navigateToSection('dashboard', null, true);
+                return;
+            }
+
+            // Normal navigation between sections
+            if (event.state.section) {
+                navigateToSection(event.state.section, null, true);
+            } else {
+                navigateToSection('dashboard', null, true);
+            }
+        });
+
+        // Remove beforeunload warning for internal navigation
+        window.addEventListener('beforeunload', function(e) {
+            // Only show warning if not logging out intentionally
+            if (!sessionStorage.getItem('logoutInitiated')) {
+                // Don't show warning for internal navigation
+                return;
+            }
+        });
+
+        // Handle stat card links
         document.querySelectorAll('.stat-card a').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -1581,7 +1706,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Function to show confirmation card
+    // Update the showConfirmation function to handle back button logout
     function showConfirmation(type, message, confirmCallback) {
         const modal = document.getElementById('confirmationModal');
         const confirmCard = document.getElementById('confirmCard');
@@ -1602,8 +1727,22 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'logout':
                 iconClass = 'fa-sign-out-alt';
                 title = 'Confirm Logout';
-                confirmText = 'Logout';
+                confirmText = 'Yes, Logout';
                 confirmClass = 'logout';
+                message = 'Are you sure you want to logout? You will need to log in again to access the admin dashboard.';
+                break;
+            case 'back_button_logout':
+                iconClass = 'fa-exclamation-triangle';
+                title = 'Leave Admin Dashboard?';
+                confirmText = 'Yes, Leave';
+                confirmClass = 'warning';
+                message = message || 'You are about to leave the admin dashboard. This will log you out. Do you want to continue?';
+                break;
+            case 'external_navigation':
+                iconClass = 'fa-external-link-alt';
+                title = 'Leave Admin Dashboard?';
+                confirmText = 'Continue';
+                confirmClass = 'warning';
                 break;
             case 'delete':
             case 'bulk_delete':
@@ -1645,7 +1784,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         modal.style.display = 'block';
 
-        // Re-bind buttons
+        // Re-bind buttons with enhanced logout handling
         setTimeout(() => {
             const cancelBtn = document.getElementById('cancelBtn');
             const confirmBtn = document.getElementById('confirmBtn');
@@ -1656,14 +1795,38 @@ document.addEventListener('DOMContentLoaded', function() {
             cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
             confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
 
-            newCancel.addEventListener('click', closeModal);
+            newCancel.addEventListener('click', () => {
+                closeModal();
+            });
+
             newConfirm.addEventListener('click', () => {
+                // Enhanced logout handling
+                if (type === 'logout' || type === 'back_button_logout') {
+                    // Clear all session data
+                    sessionStorage.removeItem('adminSessionStarted');
+                    sessionStorage.removeItem('currentSection');
+                    sessionStorage.removeItem('logoutMessage');
+
+                    // Set logout flag to prevent back button issues
+                    sessionStorage.setItem('logoutInitiated', 'true');
+                }
+
                 if (confirmCallback) confirmCallback();
                 closeModal();
             });
+
+            // Focus on cancel button for accessibility
+            newCancel.focus();
         }, 10);
     }
 
+    // Function to close modal
+    function closeModal() {
+        const modal = document.getElementById('confirmationModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
 
     // Perform actual delete operation
     function performDelete(section, id) {
@@ -3688,7 +3851,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nextBtn) nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
     }
 
-    function showNotification(message, type = 'info') {
+    function showNotification(message, type = 'info', duration = 5000) {
         const notificationContainer = document.getElementById('notificationContainer');
         if (!notificationContainer) return;
 
@@ -3714,26 +3877,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
         notificationContainer.appendChild(notification);
 
-        // Auto-hide after 5 seconds
-        const timeout = setTimeout(() => {
-            notification.classList.add('fade-out');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 500);
-        }, 5000);
+        // Auto-hide after duration (except for warnings which stay longer)
+        if (type !== 'warning' || duration > 0) {
+            const timeout = setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            }, duration);
 
-        // Add click to dismiss
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            clearTimeout(timeout);
-            notification.classList.add('fade-out');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 500);
-        });
+            // Add click to dismiss
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                clearTimeout(timeout);
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            });
+        } else {
+            // For warnings with duration 0 (persistent), only add click dismiss
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            });
+        }
     }
 
     function showLoading() {
@@ -3778,6 +3953,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return date.toLocaleDateString('en-US', options);
+    }
+
+    function setupGlobalErrorHandling() {
+        // Store original fetch function
+        const originalFetch = window.fetch;
+
+        // Override fetch to handle session errors globally
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    if (response.status === 401) {
+                        return response.json().then(data => {
+                            if (data.requires_login) {
+                                // Don't redirect immediately, just return the response
+                                return response;
+                            }
+                            return response;
+                        });
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    if (error.message.includes('Failed to fetch')) {
+                        showNotification('Network error. Please check your connection.', 'error');
+                    }
+                    throw error;
+                });
+        };
     }
 
     // Add missing function for newsletter form submission

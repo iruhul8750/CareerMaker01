@@ -3386,3 +3386,35 @@ body {
         max-height: 150px;
     }
 }
+/* Enhanced notification styles */
+.notification.warning {
+    background: linear-gradient(135deg, #ffa726, #fb8c00);
+    border-left: 4px solid #f57c00;
+}
+
+.notification.warning .notification-close {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.notification.warning .notification-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Smooth transitions for section changes */
+.admin-section {
+    transition: opacity 0.3s ease;
+}
+
+.admin-section:not(.active) {
+    display: none;
+}
+
+.admin-section.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
