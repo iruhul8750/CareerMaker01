@@ -264,72 +264,163 @@
     </div>
 </section>
 
-<!-- Blog Preview Section -->
-<section class="blog-section" id="blog">
+<!-- Professional Blog Section -->
+<section class="professional-blog-section" id="blog">
     <div class="container">
-        <div class="section-title">
-            <h2>Latest Career Tips</h2>
-            <p>Read our expert advice on career development and job searching</p>
+        <div class="section-header">
+            <h2 class="section-title">Latest Career Insights</h2>
+            <p class="section-subtitle">Expert advice to boost your career journey</p>
         </div>
-        <div class="preview-grid" id="blogGrid">
+
+        <div class="blog-grid-vertical" id="blogGrid">
             {% for post in blogs %}
-            <div class="preview-card" data-id="{{ post.id }}" data-type="blog">
-                <div class="preview-image-container">
-                    {% if post.image and post.image != '/static/images/default-blog.jpg' %}
-                    <img src="{{ post.image }}" alt="{{ post.title }}" class="company-logo"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    {% endif %}
-                    <div class="default-logo course-logo" {% if post.image and post.image
-                         !='/static/images/default-blog.jpg' %}style="display: none;" {% endif %}>
-                        <i class="fas fa-newspaper"></i>
+            <article class="blog-card-vertical" data-id="{{ post.id }}">
+                <div class="blog-card-inner-vertical">
+                    <!-- Blog Image (Top Half) -->
+                    <div class="blog-image-container-vertical">
+                        {% if post.image %}
+                        <img src="{{ post.image }}" alt="{{ post.title }}" class="blog-image-vertical"
+                             onerror="this.src='/static/images/default-blog.jpg'">
+                        {% else %}
+                        <img src="/static/images/default-blog.jpg" alt="{{ post.title }}" class="blog-image-vertical">
+                        {% endif %}
+                        <div class="blog-category-badge-vertical">
+                            {{ post.categories[0] if post.categories else 'Career' }}
+                        </div>
+
+                        <!-- Views Counter Badge - LIVE DATA -->
+                        <div class="blog-views-badge-vertical">
+                            <i class="fas fa-eye"></i>
+                            <span class="views-count">{{ post.views or 0 }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Blog Content (Lower Half) -->
+                    <div class="blog-content-vertical">
+                        <div class="blog-meta-vertical">
+                            <span class="blog-date-vertical">{{ (post.published_at or post.created_at) | format_date }}</span>
+                            <span class="blog-read-time-vertical">
+                                <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
+                            </span>
+                        </div>
+
+                        <h3 class="blog-title-vertical">{{ post.title }}</h3>
+                        <p class="blog-excerpt-vertical">
+                            {{ (post.description or post.content or 'No content available')|truncate(120) }}
+                        </p>
+
+                        <!-- Blog Footer with Author and Actions -->
+                        <div class="blog-footer-vertical">
+                            <div class="blog-author-vertical">
+                                <div class="author-avatar-vertical">
+                                    {% if post.author_avatar %}
+                                    <img src="{{ post.author_avatar }}" alt="{{ post.author }}"
+                                         onerror="this.src='https://ui-avatars.com/api/?name={{ post.author|urlencode }}&background=8B5FBF&color=fff&bold=true'">
+                                    {% else %}
+                                    <img src="https://ui-avatars.com/api/?name={{ post.author|urlencode }}&background=8B5FBF&color=fff&bold=true"
+                                         alt="{{ post.author }}">
+                                    {% endif %}
+                                </div>
+                                <span class="author-name-vertical">{{ post.author or 'CareerMaker Team' }}</span>
+                            </div>
+
+                            <div class="blog-actions-vertical">
+                                <!-- Like Button - REQUIRES LOGIN -->
+                                <button class="btn-like-vertical {% if post.is_liked %}liked{% endif %}"
+                                        data-id="{{ post.id }}">
+                                    <i class="{% if post.is_liked %}fas{% else %}far{% endif %} fa-heart"></i>
+                                    <span class="like-count">{{ post.like_count or 0 }}</span>
+                                </button>
+
+                                <!-- Bookmark Button - REQUIRES LOGIN -->
+                                <button class="btn-bookmark-vertical {% if post.is_bookmarked %}bookmarked{% endif %}"
+                                        data-id="{{ post.id }}">
+                                    <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Read More Button -->
+                        <button class="read-more-btn-vertical" data-id="{{ post.id }}">
+                            Read More
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="preview-content">
-                    <h3>{{ post.title }}</h3>
-                    <p class="company">{{ post.author or 'CareerMaker Team' }}</p>
-                    <p class="description">{{ (post.description if post.description else post.content)|default('No
-                        description available', true)|truncate(120) }}</p>
-                    <div class="preview-meta">
-                        <span class="category">{{ post.categories[0] if post.categories else 'Career' }}</span>
-                        <span class="level">
-              {% if post.published_at %}
-                {{ post.published_at.strftime('%b %d, %Y') if post.published_at is string else post.published_at }}
-              {% else %}
-                {{ post.created_at.strftime('%b %d, %Y') if post.created_at is string else post.created_at }}
-              {% endif %}
-            </span>
-                    </div>
-                </div>
-                <div class="action-buttons">
-                    <button class="btn btn-icon bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
-                            data-id="{{ post.id }}"
-                            data-type="blog"
-                            title="Bookmark">
-                        <i class="{% if post.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-                    </button>
-                    <button class="btn btn-icon share-btn" data-type="blog" data-id="{{ post.id }}" title="Share">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
-                    <a href="/blog/{{ post.id }}" class="btn btn-primary">
-                        Read More
-                    </a>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-newspaper"></i>
-                <h4>No blog posts available</h4>
-                <p>Check back later for new articles</p>
-            </div>
+            </article>
             {% endfor %}
         </div>
-        <div class="view-all">
-            <a href="/blog" class="btn btn-primary">
-                <i class="fas fa-arrow-right"></i> View All Articles
+
+        <!-- View All Blogs Button - Always show if there are any blogs -->
+        {% if blogs and blogs|length > 0 %}
+        <div class="blog-section-footer" style="display: block; text-align: center; margin-top: 40px;">
+            <a href="/blogs.html" class="btn btn-primary view-all-blogs">
+                View All Articles
+                <i class="fas fa-arrow-right"></i>
             </a>
         </div>
+        {% endif %}
     </div>
 </section>
+
+<!-- Blog Detail Modal -->
+<div class="modal" id="blogDetailModal" style="display: none;">
+    <div class="modal-overlay"></div> <!-- Removed onclick handler -->
+    <div class="modal-content blog-modal-content">
+        <!-- Enhanced Close Button -->
+        <button class="close-modal" onclick="blogModal.closeModal()" title="Close">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="blog-modal-header">
+            <div class="blog-modal-category" id="modalCategory">Career</div>
+            <h2 id="modalTitle">Blog Title</h2>
+            <div class="blog-modal-meta">
+                <div class="modal-author">
+                    <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">
+                    <div>
+                        <span id="modalAuthorName">Author Name</span>
+                        <span class="modal-date" id="modalDate">January 1, 2024</span>
+                    </div>
+                </div>
+                <div class="modal-stats">
+                    <!-- Like Button in Modal - NO LOGIN REQUIRED -->
+                    <button class="btn-like-modal" id="modalLikeBtn" data-id="">
+                        <i class="far fa-heart"></i>
+                        <span class="like-count" id="modalLikeCount">0</span>
+                    </button>
+                    <span class="read-time" id="modalReadTime">
+                        <i class="far fa-clock"></i> 5 min read
+                    </span>
+                    <!-- Views Counter in Modal -->
+                    <span class="views-count-modal" id="modalViewsCount">
+                        <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="blog-modal-body">
+            <div class="blog-modal-image">
+                <img id="modalImage" src="" alt="Blog Image">
+            </div>
+            <div class="blog-modal-content-text" id="modalContent">
+                <!-- Blog content will be loaded here -->
+            </div>
+        </div>
+
+        <div class="blog-modal-footer">
+            <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
+                <i class="far fa-bookmark"></i>
+                <span class="bookmark-text">Bookmark</span>
+            </button>
+            <button class="btn btn-primary share-modal-btn" onclick="blogModal.shareBlog()">
+                <i class="fas fa-share-alt"></i>
+                Share Article
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Enhanced Testimonials Section  -->
 <section class="testimonials" id="testimonials">
@@ -541,38 +632,38 @@
                 </ul>
             </div>
 
-                <!-- Simple PayPal.me Link -->
-                <div class="support-item payment-box">
-                    <div class="support-icon">
-                        <i class="fab fa-paypal"></i>
-                    </div>
-                    <h4>PayPal</h4>
-                    <p>Quick donation via PayPal.me</p>
-                    <a href="https://paypal.me/careermaker75" target="_blank" class="btn btn-paypal compact">
-                        <i class="fab fa-paypal"></i> Donate via PayPal.me
-                    </a>
+            <!-- Simple PayPal.me Link -->
+            <div class="support-item payment-box">
+                <div class="support-icon">
+                    <i class="fab fa-paypal"></i>
                 </div>
-
-                <!-- QR Code -->
-                <div class="support-item qr-box">
-                    <div class="support-icon">
-                        <i class="fas fa-qrcode"></i>
-                    </div>
-                    <h4>QR Code</h4>
-                    <p>Scan to pay</p>
-                    <div class="qr-compact">
-                        <img src="/static/images/payment-qr.png" alt="QR Code"
-                             onerror="this.src='/static/images/default-qr.png'">
-                    </div>
-                    <p class="qr-note">UPI, Google Pay, PhonePe</p>
-                </div>
+                <h4>PayPal</h4>
+                <p>Quick donation via PayPal.me</p>
+                <a href="https://paypal.me/careermaker75" target="_blank" class="btn btn-paypal compact">
+                    <i class="fab fa-paypal"></i> Donate via PayPal.me
+                </a>
             </div>
 
-            <div class="support-footer compact">
-                <i class="fas fa-heart"></i>
-                <span>Thank you for your support!</span>
+            <!-- QR Code -->
+            <div class="support-item qr-box">
+                <div class="support-icon">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <h4>QR Code</h4>
+                <p>Scan to pay</p>
+                <div class="qr-compact">
+                    <img src="/static/images/payment-qr.png" alt="QR Code"
+                         onerror="this.src='/static/images/default-qr.png'">
+                </div>
+                <p class="qr-note">UPI, Google Pay, PhonePe</p>
             </div>
         </div>
+
+        <div class="support-footer compact">
+            <i class="fas fa-heart"></i>
+            <span>Thank you for your support!</span>
+        </div>
+    </div>
 </section>
 {% endblock %}
 

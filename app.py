@@ -233,6 +233,74 @@ def login_required(f):
 
     return decorated_function
 
+def handle_otp_resend(data):
+    """Handle OTP resend requests"""
+    try:
+        email = data.get('email')
+        purpose = data.get('purpose', 'registration')
+
+        if not email:
+            return jsonify({'status': 'error', 'message': 'Email is required'}), 400
+
+        # For registration, check if email is already registered
+        if purpose == 'registration':
+            existing_user = supabase.table('users').select('email').eq('email', email).execute()
+            if existing_user.data:
+                return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
+
+        # Delete any existing OTPs
+        supabase.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
+
+        # Generate and store new OTP
+        otp, expires_at = generate_otp()
+        supabase.table('otp_verification').insert({
+            'email': email,
+            'otp': otp,
+            'expires_at': expires_at,
+            'purpose': purpose
+        }).execute()
+
+        # Send OTP email
+        username = data.get('username', 'User')
+        email_sent = send_otp_email(email, username, otp)
+
+        return jsonify({
+            'status': 'success',
+            'message': 'New OTP sent successfully',
+            'otp': otp if not email_sent else None  # For development
+        })
+
+    except Exception as e:
+        logger.error(f"OTP resend error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+def initialize_blog_modals():
+    """Initialize blog modal functionality"""
+    try:
+        # This function will be called from the frontend JavaScript
+        # to set up event listeners for blog modals
+        pass
+    except Exception as e:
+        logger.error(f"Error initializing blog modals: {str(e)}")
+
+
+def close_blog_modal():
+    """Close blog detail modal"""
+    try:
+        # This function will be called from the frontend JavaScript
+        pass
+    except Exception as e:
+        logger.error(f"Error closing blog modal: {str(e)}")
+
+
+def share_blog():
+    """Share blog post functionality"""
+    try:
+        # This function will be called from the frontend JavaScript
+        pass
+    except Exception as e:
+        logger.error(f"Error sharing blog: {str(e)}")
 
 def admin_required(f):
     @wraps(f)
@@ -2315,29 +2383,127 @@ def apply_internship(internship_id):
 
 
 @app.route('/blog')
+@app.route('/blogs.html')
 def blog():
+    """Main blog page - show all blogs"""
     try:
-        # Get user_id from session (logged_in is automatically available via context processor)
+        # Get user_id from session
         user_id = session.get('user_id')
 
-        # FIXED: Use is_active for consistency
-        posts = supabase.table('blog_posts').select('*').eq('is_active', True).order('published_at',
-                                                                                     desc=True).execute().data or []
+        # Get ALL active blog posts for the view all page
+        posts_response = supabase.table('blog_posts') \
+            .select('*') \
+            .eq('is_active', True) \
+            .order('published_at', desc=True) \
+            .execute()
 
-        # Add bookmark status if user is logged in
+        posts = posts_response.data or []
+
+        # Debug logging
+        print(f"📝 Found {len(posts)} blog posts")
+        for post in posts:
+            print(f"  - {post.get('title')} (ID: {post.get('id')})")
+
+        # Early return if no posts
+        if not posts:
+            print("ℹ️ No blog posts found")
+            return render_template('blogs.html', posts=[])
+
+        # Get all blog IDs for batch operations
+        blog_ids = [post['id'] for post in posts]
+
+        # Batch get bookmarks for logged-in users
         if user_id:
-            user_bookmarks = get_user_bookmarks(user_id)
-            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            try:
+                user_bookmarks_response = supabase_admin.table('bookmarks') \
+                    .select('item_type, item_id') \
+                    .eq('user_id', user_id) \
+                    .eq('item_type', 'blog') \
+                    .in_('item_id', blog_ids) \
+                    .execute()
 
-            for post in posts:
-                post['is_bookmarked'] = bookmark_map.get(('blog', post.get('id')), False)
+                bookmarked_blog_ids = {bookmark['item_id'] for bookmark in (user_bookmarks_response.data or [])}
+
+                # Batch get user likes
+                user_likes_response = supabase_admin.table('blog_likes') \
+                    .select('blog_id') \
+                    .eq('user_id', user_id) \
+                    .in_('blog_id', blog_ids) \
+                    .execute()
+
+                liked_blog_ids = {like['blog_id'] for like in (user_likes_response.data or [])}
+
+            except Exception as e:
+                print(f"❌ Error loading user data: {str(e)}")
+                bookmarked_blog_ids = set()
+                liked_blog_ids = set()
+        else:
+            bookmarked_blog_ids = set()
+            liked_blog_ids = set()
+
+        # Batch get like counts for all posts
+        try:
+            like_counts_response = supabase_admin.table('blog_likes') \
+                .select('blog_id, id') \
+                .in_('blog_id', blog_ids) \
+                .execute()
+
+            # Count likes per blog
+            like_counts = {}
+            for like in (like_counts_response.data or []):
+                blog_id = like['blog_id']
+                like_counts[blog_id] = like_counts.get(blog_id, 0) + 1
+
+        except Exception as e:
+            print(f"❌ Error loading like counts: {str(e)}")
+            like_counts = {}
+
+        # Batch get view counts for all posts
+        try:
+            view_counts_response = supabase_admin.table('blog_views') \
+                .select('blog_id, id') \
+                .in_('blog_id', blog_ids) \
+                .execute()
+
+            # Count views per blog
+            view_counts = {}
+            for view in (view_counts_response.data or []):
+                blog_id = view['blog_id']
+                view_counts[blog_id] = view_counts.get(blog_id, 0) + 1
+
+        except Exception as e:
+            print(f"❌ Error loading view counts: {str(e)}")
+            view_counts = {}
+
+        # Add all computed data to posts
+        for post in posts:
+            post_id = post['id']
+
+            # Bookmark status
+            post['is_bookmarked'] = post_id in bookmarked_blog_ids
+
+            # Like status and count
+            post['like_count'] = like_counts.get(post_id, 0)
+            post['is_liked'] = post_id in liked_blog_ids
+
+            # View count
+            post['views'] = view_counts.get(post_id, 0)
+
+            # Ensure required fields have defaults
+            post.setdefault('read_time', '5 min read')
+            post.setdefault('author_avatar', None)
+            post.setdefault('categories', ['Career'])
+            post.setdefault('description', '')
+            post.setdefault('content', '')
+
+        print(f"✅ Successfully loaded {len(posts)} blog posts with all metadata")
 
     except Exception as e:
         logger.error(f"Error loading blog posts: {str(e)}")
+        print(f"❌ Critical error loading blog posts: {str(e)}")
         posts = []
 
     return render_template('blogs.html', posts=posts)
-
 
 # ===== BOOKMARK ENDPOINT FIX =====
 @app.route('/api/bookmark/<content_type>/<content_id>', methods=['POST'])
@@ -3655,6 +3821,711 @@ def delete_admin_resource(resource, id):
         logger.error(f"Error deleting {resource}: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+# ===== BLOG ROUTES =====
+
+@app.route('/api/blog/<blog_id>')
+def get_blog_detail(blog_id):
+    """Get detailed blog post for modal"""
+    try:
+        # Get blog post with admin client to bypass RLS
+        blog_response = supabase_admin.table('blog_posts') \
+            .select('*') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .single() \
+            .execute()
+
+        if not blog_response.data:
+            return jsonify({'success': False, 'error': 'Blog post not found'}), 404
+
+        blog = blog_response.data
+
+        # Add bookmark status if user is logged in
+        if 'user_id' in session:
+            user_bookmarks = get_user_bookmarks(session['user_id'])
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
+        else:
+            blog['is_bookmarked'] = False
+
+        # Add like status and count
+        like_count_response = supabase_admin.table('blog_likes') \
+            .select('id', count='exact') \
+            .eq('blog_id', blog_id) \
+            .execute()
+
+        blog['like_count'] = like_count_response.count or 0
+
+        # Check if user liked this post (REQUIRES LOGIN)
+        if 'user_id' in session:
+            user_like_response = supabase_admin.table('blog_likes') \
+                .select('id') \
+                .eq('user_id', session['user_id']) \
+                .eq('blog_id', blog_id) \
+                .execute()
+            blog['is_liked'] = len(user_like_response.data or []) > 0
+        else:
+            blog['is_liked'] = False
+
+        # Get view count from database
+        view_count_response = supabase_admin.table('blog_views') \
+            .select('id', count='exact') \
+            .eq('blog_id', blog_id) \
+            .execute()
+
+        blog['views'] = view_count_response.count or 0
+
+        # Ensure all required fields are present
+        blog.setdefault('read_time', '5 min read')
+        blog.setdefault('author_avatar', None)
+        blog.setdefault('categories', ['Career'])
+        blog.setdefault('views', 0)
+
+        return jsonify({
+            'success': True,
+            'blog': blog
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting blog detail: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to load blog post'}), 500
+
+
+@app.route('/blog/<blog_id>')
+def blog_detail(blog_id):
+    """Blog detail page"""
+    try:
+        # Get blog post
+        blog_response = supabase.table('blog_posts') \
+            .select('*') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .single() \
+            .execute()
+
+        if not blog_response.data:
+            flash('Blog post not found', 'danger')
+            return redirect(url_for('blog'))
+
+        blog = blog_response.data
+
+        # Add bookmark status if user is logged in
+        if 'user_id' in session:
+            user_bookmarks = get_user_bookmarks(session['user_id'])
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
+        else:
+            blog['is_bookmarked'] = False
+
+        # Get view count
+        view_count_response = supabase_admin.table('blog_views') \
+            .select('id', count='exact') \
+            .eq('blog_id', blog_id) \
+            .execute()
+
+        blog['views'] = view_count_response.count or 0
+
+        # Get related posts (same category)
+        categories = blog.get('categories', [])
+        related_posts = []
+
+        if categories:
+            related_response = supabase.table('blog_posts') \
+                .select('*') \
+                .eq('is_active', True) \
+                .neq('id', blog_id) \
+                .overlaps('categories', categories) \
+                .limit(3) \
+                .execute()
+
+            related_posts = related_response.data or []
+
+        return render_template('blog-detail.html',
+                               blog=blog,
+                               related_posts=related_posts)
+
+    except Exception as e:
+        logger.error(f"Error loading blog detail: {str(e)}")
+        flash('Error loading blog post', 'danger')
+        return redirect(url_for('blog'))
+
+
+@app.route('/api/blog/<blog_id>/bookmark', methods=['POST'])
+@login_required
+def bookmark_blog(blog_id):
+    """Bookmark a blog post"""
+    try:
+        # Check if blog exists
+        blog_check = supabase_admin.table('blog_posts') \
+            .select('id') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .execute()
+
+        if not blog_check.data:
+            return jsonify({'success': False, 'error': 'Blog post not found'}), 404
+
+        user_id = session['user_id']
+
+        # Check for existing bookmark
+        existing_check = supabase_admin.table('bookmarks') \
+            .select('id') \
+            .eq('user_id', user_id) \
+            .eq('item_type', 'blog') \
+            .eq('item_id', blog_id) \
+            .execute()
+
+        existing_bookmarks = existing_check.data if hasattr(existing_check, 'data') else []
+
+        if existing_bookmarks:
+            # Remove bookmark
+            delete_result = supabase_admin.table('bookmarks') \
+                .delete() \
+                .eq('id', existing_bookmarks[0]['id']) \
+                .execute()
+
+            if hasattr(delete_result, 'data') and delete_result.data:
+                return jsonify({
+                    'success': True,
+                    'status': 'removed',
+                    'message': 'Blog removed from bookmarks'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Failed to remove bookmark'}), 500
+        else:
+            # Add bookmark
+            bookmark_data = {
+                'user_id': user_id,
+                'item_type': 'blog',
+                'item_id': blog_id,
+                'created_at': get_current_utc_time().isoformat()
+            }
+
+            insert_result = supabase_admin.table('bookmarks') \
+                .insert(bookmark_data) \
+                .execute()
+
+            if hasattr(insert_result, 'data') and insert_result.data:
+                return jsonify({
+                    'success': True,
+                    'status': 'added',
+                    'message': 'Blog added to bookmarks'
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Failed to add bookmark'}), 500
+
+    except Exception as e:
+        logger.error(f"Blog bookmark error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+
+
+
+@app.route('/api/blog/categories')
+def get_blog_categories():
+    """Get all blog categories"""
+    try:
+        # Get all blog posts and extract categories
+        blogs_response = supabase.table('blog_posts') \
+            .select('categories') \
+            .eq('is_active', True) \
+            .execute()
+
+        categories = set()
+        for blog in blogs_response.data or []:
+            if blog.get('categories'):
+                for category in blog['categories']:
+                    categories.add(category)
+
+        return jsonify({
+            'success': True,
+            'categories': sorted(list(categories))
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting blog categories: {str(e)}")
+        return jsonify({'success': False, 'categories': []})
+
+
+@app.route('/api/blog/search')
+def search_blogs():
+    """Search blogs by query"""
+    try:
+        query = request.args.get('q', '')
+        category = request.args.get('category', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = 12
+
+        # Build query
+        blog_query = supabase.table('blog_posts') \
+            .select('*') \
+            .eq('is_active', True)
+
+        if query:
+            blog_query = blog_query.or_(f"title.ilike.%{query}%,content.ilike.%{query}%,author.ilike.%{query}%")
+
+        if category:
+            blog_query = blog_query.overlaps('categories', [category])
+
+        # Paginate
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page - 1
+        blogs_response = blog_query.order('published_at', desc=True).range(start_idx, end_idx).execute()
+
+        # Count
+        count_query = supabase.table('blog_posts').select('id', count='exact').eq('is_active', True)
+        if query:
+            count_query = count_query.or_(f"title.ilike.%{query}%,content.ilike.%{query}%,author.ilike.%{query}%")
+        if category:
+            count_query = count_query.overlaps('categories', [category])
+
+        count_response = count_query.execute()
+        total_count = count_response.count or 0
+
+        # Add bookmark status if user is logged in
+        blogs = blogs_response.data or []
+        if 'user_id' in session:
+            user_bookmarks = get_user_bookmarks(session['user_id'])
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+
+            for blog in blogs:
+                blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
+
+        return jsonify({
+            'success': True,
+            'blogs': blogs,
+            'total_count': total_count,
+            'per_page': per_page,
+            'page': page
+        })
+
+    except Exception as e:
+        logger.error(f"Error searching blogs: {str(e)}")
+        return jsonify({'success': False, 'blogs': [], 'total_count': 0})
+
+
+# ===== BLOG ADMIN ROUTES =====
+
+@app.route('/admin/blog')
+@admin_required
+def admin_blog():
+    """Admin blog management page"""
+    return render_template('admin/admin-blog.html')
+
+
+@app.route('/api/admin/blog/stats')
+@admin_required
+def admin_blog_stats():
+    """Get blog statistics for admin"""
+    try:
+        # Total blog posts
+        total_response = supabase_admin.table('blog_posts').select('id', count='exact').execute()
+
+        # Active blog posts
+        active_response = supabase_admin.table('blog_posts').select('id', count='exact').eq('is_active', True).execute()
+
+        # Featured blog posts
+        featured_response = supabase_admin.table('blog_posts').select('id', count='exact').eq('is_featured',
+                                                                                              True).execute()
+
+        # Recent blog posts (last 7 days)
+        week_ago = (get_current_utc_time() - timedelta(days=7)).isoformat()
+        recent_response = supabase_admin.table('blog_posts').select('id', count='exact').gte('created_at',
+                                                                                             week_ago).execute()
+
+        stats = {
+            'total': total_response.count or 0,
+            'active': active_response.count or 0,
+            'featured': featured_response.count or 0,
+            'recent': recent_response.count or 0
+        }
+
+        return jsonify({'success': True, 'stats': stats})
+
+    except Exception as e:
+        logger.error(f"Error getting blog stats: {str(e)}")
+        return jsonify({'success': False, 'stats': {}})
+
+
+@app.route('/api/admin/blog/upload-image', methods=['POST'])
+@admin_required
+def upload_blog_image():
+    """Upload blog post image"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({'success': False, 'error': 'Invalid file type. Only JPG, PNG, GIF allowed.'}), 400
+
+        # Read file data
+        file_data = file.read()
+
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_name = f"blog-images/{uuid.uuid4().hex}.{ext}"
+
+        # Upload to Supabase Storage
+        upload_response = supabase_admin.storage.from_("blog-images").upload(
+            unique_name,
+            file_data,
+            {"content-type": file.content_type}
+        )
+
+        if not upload_response:
+            return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
+
+        # Get public URL
+        image_url = supabase.storage.from_("blog-images").get_public_url(unique_name)
+
+        return jsonify({
+            'success': True,
+            'image_url': image_url,
+            'message': 'Image uploaded successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error uploading blog image: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
+
+
+@app.route('/api/admin/blog/generate-slug', methods=['POST'])
+@admin_required
+def generate_blog_slug():
+    """Generate URL slug from blog title"""
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+
+        if not title:
+            return jsonify({'success': False, 'error': 'Title is required'}), 400
+
+        # Generate slug from title
+        slug = generate_slug(title)
+
+        # Check if slug already exists
+        existing_response = supabase_admin.table('blog_posts') \
+            .select('id') \
+            .eq('slug', slug) \
+            .execute()
+
+        # If slug exists, add counter
+        counter = 1
+        original_slug = slug
+        while existing_response.data:
+            slug = f"{original_slug}-{counter}"
+            existing_response = supabase_admin.table('blog_posts') \
+                .select('id') \
+                .eq('slug', slug) \
+                .execute()
+            counter += 1
+
+        return jsonify({
+            'success': True,
+            'slug': slug
+        })
+
+    except Exception as e:
+        logger.error(f"Error generating slug: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to generate slug'}), 500
+
+
+# ===== HELPER FUNCTIONS =====
+
+def generate_slug(title):
+    """Generate URL-friendly slug from title"""
+    # Convert to lowercase
+    slug = title.lower()
+
+    # Remove special characters
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+
+    # Replace spaces with hyphens
+    slug = re.sub(r'[\s]+', '-', slug)
+
+    # Remove consecutive hyphens
+    slug = re.sub(r'-+', '-', slug)
+
+    # Trim hyphens from start and end
+    slug = slug.strip('-')
+
+    return slug
+
+
+def calculate_read_time(content):
+    """Calculate estimated read time for blog content"""
+    # Average reading speed (words per minute)
+    WORDS_PER_MINUTE = 200
+
+    # Count words in content
+    words = len(content.split())
+
+    # Calculate minutes
+    minutes = max(1, round(words / WORDS_PER_MINUTE))
+
+    return f"{minutes} min read"
+
+
+def validate_blog_data(data):
+    """Validate blog post data"""
+    errors = []
+
+    if not data.get('title', '').strip():
+        errors.append('Title is required')
+
+    if not data.get('content', '').strip():
+        errors.append('Content is required')
+
+    if not data.get('author', '').strip():
+        errors.append('Author is required')
+
+    if not data.get('categories') or not isinstance(data['categories'], list):
+        errors.append('At least one category is required')
+
+    return errors
+
+
+# ===== BLOG CONTEXT PROCESSOR =====
+
+@app.context_processor
+def inject_blog_categories():
+    """Inject blog categories into all templates"""
+    try:
+        categories_response = supabase.table('blog_posts') \
+            .select('categories') \
+            .eq('is_active', True) \
+            .execute()
+
+        categories = set()
+        for blog in categories_response.data or []:
+            if blog.get('categories'):
+                for category in blog['categories']:
+                    categories.add(category)
+
+        return {
+            'blog_categories': sorted(list(categories))
+        }
+    except Exception as e:
+        logger.error(f"Error loading blog categories: {str(e)}")
+        return {'blog_categories': []}
+
+
+# ===== BLOG MODAL ROUTES =====
+
+@app.route('/api/blog/modal/<blog_id>')
+def get_blog_modal_data(blog_id):
+    """Get blog data specifically for modal display"""
+    try:
+        # Get blog post with admin client
+        blog_response = supabase_admin.table('blog_posts') \
+            .select('*') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .single() \
+            .execute()
+
+        if not blog_response.data:
+            return jsonify({'success': False, 'error': 'Blog post not found'}), 404
+
+        blog = blog_response.data
+
+        # Add bookmark status
+        if 'user_id' in session:
+            user_bookmarks = get_user_bookmarks(session['user_id'])
+            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
+        else:
+            blog['is_bookmarked'] = False
+
+        # Format data for modal
+        modal_data = {
+            'id': blog['id'],
+            'title': blog.get('title', ''),
+            'content': blog.get('content', ''),
+            'author': blog.get('author', 'CareerMaker Team'),
+            'author_avatar': blog.get('author_avatar'),
+            'published_at': blog.get('published_at') or blog.get('created_at'),
+            'categories': blog.get('categories', ['Career']),
+            'read_time': blog.get('read_time', '5 min read'),
+            'image': blog.get('image', '/static/images/default-blog.jpg'),
+            'is_bookmarked': blog.get('is_bookmarked', False)
+        }
+
+        return jsonify({
+            'success': True,
+            'blog': modal_data
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting blog modal data: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to load blog data'}), 500
+
+
+@app.route('/api/blog/<blog_id>/view', methods=['POST'])
+def track_blog_view(blog_id):
+    """Track blog post views - NO LOGIN REQUIRED"""
+    try:
+        # Check if blog exists
+        blog_check = supabase_admin.table('blog_posts') \
+            .select('id') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .execute()
+
+        if not blog_check.data:
+            return jsonify({'success': False, 'error': 'Blog post not found'}), 404
+
+        # Use session ID for anonymous tracking
+        session_id = session.get('session_id')
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            session['session_id'] = session_id
+
+        # Check if this session already viewed this post (to avoid duplicate counts)
+        existing_view = supabase_admin.table('blog_views') \
+            .select('id') \
+            .eq('blog_id', blog_id) \
+            .eq('session_id', session_id) \
+            .execute()
+
+        if not existing_view.data:
+            # Record the view
+            view_data = {
+                'blog_id': blog_id,
+                'session_id': session_id,
+                'user_id': session.get('user_id'),  # Include user_id if logged in
+                'created_at': get_current_utc_time().isoformat()
+            }
+
+            supabase_admin.table('blog_views') \
+                .insert(view_data) \
+                .execute()
+
+        # Get updated view count
+        view_count_response = supabase_admin.table('blog_views') \
+            .select('id', count='exact') \
+            .eq('blog_id', blog_id) \
+            .execute()
+
+        total_views = view_count_response.count or 0
+
+        return jsonify({
+            'success': True,
+            'views': total_views
+        })
+
+    except Exception as e:
+        logger.error(f"Error tracking blog view: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to track view'}), 500
+
+
+@app.route('/api/blog/<blog_id>/like', methods=['POST'])
+def like_blog(blog_id):
+    """Like/unlike a blog post - REQUIRES LOGIN"""
+    try:
+        # Check if user is logged in
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'Please login to like articles'}), 401
+
+        # Check if blog exists
+        blog_check = supabase_admin.table('blog_posts') \
+            .select('id') \
+            .eq('id', blog_id) \
+            .eq('is_active', True) \
+            .execute()
+
+        if not blog_check.data:
+            return jsonify({'success': False, 'error': 'Blog post not found'}), 404
+
+        user_id = session['user_id']
+
+        # Check if already liked
+        existing_like = supabase_admin.table('blog_likes') \
+            .select('id') \
+            .eq('user_id', user_id) \
+            .eq('blog_id', blog_id) \
+            .execute()
+
+        if existing_like.data:
+            # Unlike
+            supabase_admin.table('blog_likes') \
+                .delete() \
+                .eq('user_id', user_id) \
+                .eq('blog_id', blog_id) \
+                .execute()
+
+            # Get updated like count
+            like_count_response = supabase_admin.table('blog_likes') \
+                .select('id', count='exact') \
+                .eq('blog_id', blog_id) \
+                .execute()
+
+            like_count = like_count_response.count or 0
+
+            return jsonify({
+                'success': True,
+                'action': 'unliked',
+                'like_count': like_count,
+                'message': 'Blog unliked'
+            })
+        else:
+            # Like
+            like_data = {
+                'user_id': user_id,
+                'blog_id': blog_id,
+                'created_at': get_current_utc_time().isoformat()
+            }
+
+            supabase_admin.table('blog_likes') \
+                .insert(like_data) \
+                .execute()
+
+            # Get updated like count
+            like_count_response = supabase_admin.table('blog_likes') \
+                .select('id', count='exact') \
+                .eq('blog_id', blog_id) \
+                .execute()
+
+            like_count = like_count_response.count or 0
+
+            return jsonify({
+                'success': True,
+                'action': 'liked',
+                'like_count': like_count,
+                'message': 'Blog liked'
+            })
+
+    except Exception as e:
+        logger.error(f"Error liking blog: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to like blog'}), 500
+
+@app.template_filter('format_date')
+def format_date_filter(value, format='%b %d, %Y'):
+    """Custom filter to format dates safely"""
+    if not value:
+        return 'Unknown date'
+
+    # If it's already a datetime object
+    if isinstance(value, datetime):
+        return value.strftime(format)
+
+    # If it's a string, try to parse it
+    try:
+        # Handle ISO format strings (from Supabase)
+        if 'T' in str(value):
+            dt = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+            return dt.strftime(format)
+        else:
+            # Try other common formats
+            dt = datetime.strptime(str(value), '%Y-%m-%d %H:%M:%S')
+            return dt.strftime(format)
+    except (ValueError, TypeError, AttributeError):
+        # If parsing fails, return the original value truncated
+        return str(value)[:10] if value else 'Unknown date'
 
 # ===== MESSAGE SPECIFIC ROUTES =====
 
