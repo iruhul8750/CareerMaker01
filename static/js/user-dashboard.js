@@ -1,68 +1,426 @@
-document.addEventListener('DOMContentLoaded', function() {
+   // ======================
+    // GLOBAL BLOG MODAL FUNCTIONS (outside DOMContentLoaded)
     // ======================
-    // DOM Elements
-    // ======================
-    const avatarInitials = document.getElementById('userAvatarInitials');
-    const avatarImg = document.getElementById('userAvatarImage');
-    const profilePicUpload = document.getElementById('profilePicUpload');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-    const flashMessages = document.querySelector('.flash-messages');
+
+    // These need to be global for the onclick handlers to work
+    function closeBlogModal() {
+        const modal = document.getElementById('blogDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    function shareBlog() {
+        const modal = document.getElementById('blogDetailModal');
+        if (!modal) return;
+
+        const title = document.getElementById('modalTitle').textContent;
+        const url = window.location.href;
+
+        if (navigator.share) {
+            navigator.share({
+                title: title,
+                url: url
+            });
+        } else {
+            navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
+                // Use the existing showToast function if available, otherwise alert
+                if (typeof showToast === 'function') {
+                    showToast('Link copied to clipboard!', 'success');
+                } else {
+                    alert('Link copied to clipboard!');
+                }
+            });
+        }
+    }
 
     // ======================
-    // Initialization
+    // MAIN DASHBOARD FUNCTIONALITY
     // ======================
-    initProfilePicture();
-    setupTabs();
-    setupBookmarkRemoval();
-    setupAvatarUpload();
-    setupFlashMessages();
+    document.addEventListener('DOMContentLoaded', function() {
+        // ======================
+        // DOM Elements
+        // ======================
+        const avatarInitials = document.getElementById('userAvatarInitials');
+        const avatarImg = document.getElementById('userAvatarImage');
+        const profilePicUpload = document.getElementById('profilePicUpload');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const flashMessages = document.querySelector('.flash-messages');
+
+        // ======================
+        // Initialization
+        // ======================
+        initProfilePicture();
+        setupTabs();
+        setupBookmarkRemoval();
+        setupAvatarUpload();
+        setupFlashMessages();
+        setupBlogReading();
+
+    // ======================
+    // Blog Reading Functionality
+    // ======================
+    function setupBlogReading() {
+        document.addEventListener('click', function(e) {
+            const readBlogBtn = e.target.closest('.read-blog-btn');
+            if (readBlogBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const blogId = readBlogBtn.dataset.id;
+                console.log('📖 Reading blog from dashboard:', blogId);
+
+                openBlogModal(blogId);
+            }
+        });
+    }
+
+    async function openBlogModal(blogId) {
+        try {
+            console.log('Opening blog modal for:', blogId);
+
+            showLoading();
+
+            const response = await fetch(`/api/blog/${blogId}`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load blog post');
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Blog post not found');
+            }
+
+            const blog = data.blog;
+            showBlogModal(blog);
+            trackBlogView(blogId);
+
+        } catch (error) {
+            console.error('❌ Error loading blog:', error);
+            showToast('Failed to load blog post', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function showBlogModal(blog) {
+        // Create modal HTML if it doesn't exist
+        let modal = document.getElementById('blogDetailModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'blogDetailModal';
+            modal.className = 'modal';
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <div class="modal-overlay" onclick="closeBlogModal()"></div>
+                <div class="modal-content blog-modal-content">
+                    <button class="close-modal" onclick="closeBlogModal()" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="blog-modal-header">
+                        <div class="blog-modal-category" id="modalCategory">Career</div>
+                        <h2 id="modalTitle">Blog Title</h2>
+                        <div class="blog-modal-meta">
+                            <div class="modal-author">
+                                <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">
+                                <div>
+                                    <span id="modalAuthorName">Author Name</span>
+                                    <span class="modal-date" id="modalDate">January 1, 2024</span>
+                                </div>
+                            </div>
+                            <div class="modal-stats">
+                                <button class="btn-like-modal" id="modalLikeBtn" data-id="">
+                                    <i class="far fa-heart"></i>
+                                    <span class="like-count" id="modalLikeCount">0</span>
+                                </button>
+                                <span class="read-time" id="modalReadTime">
+                                    <i class="far fa-clock"></i> 5 min read
+                                </span>
+                                <span class="views-count-modal" id="modalViewsCount">
+                                    <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blog-modal-body">
+                        <div class="blog-modal-image">
+                            <img id="modalImage" src="" alt="Blog Image">
+                        </div>
+                        <div class="blog-modal-content-text" id="modalContent">
+                            <!-- Blog content will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="blog-modal-footer">
+                        <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
+                            <i class="far fa-bookmark"></i>
+                            <span class="bookmark-text">Bookmark</span>
+                        </button>
+                        <button class="btn btn-primary share-modal-btn" onclick="shareBlog()">
+                            <i class="fas fa-share-alt"></i>
+                            Share Article
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Add event listeners for dynamically created modal buttons
+            setTimeout(() => {
+                setupModalEventListeners();
+            }, 100);
+        } else {
+            // If modal exists, just update the content
+            updateBlogModalContent(blog);
+            setupModalEventListeners();
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function updateBlogModalContent(blog) {
+        // Populate modal with blog data
+        document.getElementById('modalCategory').textContent = blog.categories?.[0] || 'Career';
+        document.getElementById('modalTitle').textContent = blog.title;
+        document.getElementById('modalAuthorName').textContent = blog.author || 'CareerMaker Team';
+        document.getElementById('modalDate').textContent = formatDate(blog.published_at || blog.created_at);
+        document.getElementById('modalReadTime').innerHTML = `<i class="far fa-clock"></i> ${blog.read_time || '5 min read'}`;
+        document.getElementById('viewsCount').textContent = blog.views || 0;
+
+        const modalImage = document.getElementById('modalImage');
+        modalImage.src = blog.image || '/static/images/default-blog.jpg';
+        modalImage.alt = blog.title;
+
+        const authorAvatar = document.getElementById('modalAuthorAvatar');
+        authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
+        authorAvatar.alt = blog.author || 'CareerMaker Team';
+
+        // Set content
+        const contentElement = document.getElementById('modalContent');
+        contentElement.innerHTML = formatBlogContent(blog.content || blog.description || 'No content available.');
+
+        // Setup bookmark button
+        const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+        bookmarkBtn.dataset.id = blog.id;
+        bookmarkBtn.classList.toggle('bookmarked', blog.is_bookmarked);
+
+        const bookmarkIcon = bookmarkBtn.querySelector('i');
+        const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
+
+        if (blog.is_bookmarked) {
+            bookmarkIcon.className = 'fas fa-bookmark';
+            bookmarkText.textContent = 'Bookmarked';
+        } else {
+            bookmarkIcon.className = 'far fa-bookmark';
+            bookmarkText.textContent = 'Bookmark';
+        }
+
+        // Setup like button
+        const likeBtn = document.getElementById('modalLikeBtn');
+        likeBtn.dataset.id = blog.id;
+        const likeCount = blog.like_count || 0;
+        const isLiked = blog.is_liked || false;
+
+        updateLikeUI(likeBtn, likeCount, isLiked);
+    }
+
+    function setupModalEventListeners() {
+        const likeBtn = document.getElementById('modalLikeBtn');
+        const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+
+        if (likeBtn) {
+            likeBtn.onclick = () => handleBlogLike(likeBtn.dataset.id, likeBtn);
+        }
+
+        if (bookmarkBtn) {
+            bookmarkBtn.onclick = () => handleBlogBookmark(bookmarkBtn.dataset.id, bookmarkBtn);
+        }
+
+        // Close modal on overlay click
+        const overlay = document.querySelector('#blogDetailModal .modal-overlay');
+        if (overlay) {
+            overlay.onclick = closeBlogModal;
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeBlogModal();
+            }
+        });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Unknown date';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return dateString;
+        }
+    }
+
+    function formatBlogContent(content) {
+        if (!content.includes('<')) {
+            return content.split('\n').filter(para => para.trim()).map(para =>
+                `<p>${para.trim()}</p>`
+            ).join('');
+        }
+        return content;
+    }
+
+    function updateLikeUI(button, count, isLiked) {
+        const icon = button.querySelector('i');
+        const countElement = button.querySelector('.like-count');
+
+        button.classList.toggle('liked', isLiked);
+
+        if (icon) {
+            icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+        }
+
+        if (countElement) {
+            countElement.textContent = count;
+        }
+    }
+
+    async function handleBlogLike(blogId, button) {
+        try {
+            const response = await fetch(`/api/blog/${blogId}/like`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                updateLikeUI(button, data.like_count, data.action === 'liked');
+                showToast(`Article ${data.action}`, 'success');
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Like error:', error);
+            showToast(error.message || 'Failed to update like', 'error');
+        }
+    }
+
+    async function handleBlogBookmark(blogId, button) {
+        try {
+            const response = await fetch(`/api/bookmark/blog/${blogId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const isBookmarked = data.status === 'added';
+                button.classList.toggle('bookmarked', isBookmarked);
+
+                const icon = button.querySelector('i');
+                const text = button.querySelector('.bookmark-text');
+
+                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+
+                showToast(`Article ${data.status} bookmarks`, 'success');
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            showToast(error.message || 'Failed to update bookmark', 'error');
+        }
+    }
+
+    async function trackBlogView(blogId) {
+        try {
+            await fetch(`/api/blog/${blogId}/view`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('View tracking error:', error);
+        }
+    }
+
+
+    function shareBlog() {
+        const modal = document.getElementById('blogDetailModal');
+        if (!modal) return;
+
+        const title = document.getElementById('modalTitle').textContent;
+        const url = window.location.href; // Current page URL
+
+        if (navigator.share) {
+            navigator.share({
+                title: title,
+                url: url
+            });
+        } else {
+            navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
+                showToast('Link copied to clipboard!', 'success');
+            });
+        }
+    }
+
 
     // ======================
     // Profile Picture Functions
     // ======================
     function initProfilePicture() {
-    if (!avatarInitials) return;
+        if (!avatarInitials) return;
 
-    // Set initial
-    const usernameElement = document.querySelector('.user-info h2');
-    const username = usernameElement ? usernameElement.textContent.trim() : '';
-    const userInitial = username ? username[0].toUpperCase() : '?';
-    avatarInitials.textContent = userInitial;
+        // Set initial
+        const usernameElement = document.querySelector('.user-info h2');
+        const username = usernameElement ? usernameElement.textContent.trim() : '';
+        const userInitial = username ? username[0].toUpperCase() : '?';
+        avatarInitials.textContent = userInitial;
 
-    const cachedProfilePic = localStorage.getItem('profilePicUrl');
-    const cachedTimestamp = localStorage.getItem('profilePicTimestamp');
-    const currentTime = new Date().getTime();
-    const oneDay = 24 * 60 * 60 * 1000;
+        const cachedProfilePic = localStorage.getItem('profilePicUrl');
+        const cachedTimestamp = localStorage.getItem('profilePicTimestamp');
+        const currentTime = new Date().getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
 
-    // 1) Always try to use cached image first (even if timestamp is missing/expired)
-    if (cachedProfilePic) {
-        const testImage = new Image();
-        testImage.onload = function() {
-            // Add cache busting parameter to ensure fresh image
-            const timestamp = new Date().getTime();
-            const imageUrl = cachedProfilePic + '?t=' + timestamp;
+        // 1) Always try to use cached image first (even if timestamp is missing/expired)
+        if (cachedProfilePic) {
+            const testImage = new Image();
+            testImage.onload = function() {
+                // Add cache busting parameter to ensure fresh image
+                const timestamp = new Date().getTime();
+                const imageUrl = cachedProfilePic + '?t=' + timestamp;
 
-            avatarImg.src = imageUrl;
-            avatarImg.style.display = 'block';
-            avatarInitials.style.display = 'none';
-            console.log('Using cached profile picture (bypassing timestamp check)');
+                avatarImg.src = imageUrl;
+                avatarImg.style.display = 'block';
+                avatarInitials.style.display = 'none';
+                console.log('Using cached profile picture (bypassing timestamp check)');
 
-            // Update timestamp for future use
-            localStorage.setItem('profilePicTimestamp', timestamp);
-        };
-        testImage.onerror = function() {
-            // If cached image fails, try to load from server
-            console.log('Cached image failed to load, trying server');
-            loadProfilePicture();
-        };
-        testImage.src = cachedProfilePic;
-        return;
+                // Update timestamp for future use
+                localStorage.setItem('profilePicTimestamp', timestamp);
+            };
+            testImage.onerror = function() {
+                // If cached image fails, try to load from server
+                console.log('Cached image failed to load, trying server');
+                loadProfilePicture();
+            };
+            testImage.src = cachedProfilePic;
+            return;
+        }
+
+        // 2) If no cached image, fetch from API
+        loadProfilePicture();
     }
-
-    // 2) If no cached image, fetch from API
-    loadProfilePicture();
-}
 
     function showInitialAvatar() {
         avatarInitials.style.display = 'flex';
@@ -378,6 +736,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         browseText = 'Browse Internships';
                         browseUrl = '/internships';
                         description = 'Save internships from the internships page to view them here';
+                        break;
+                    case 'blogs':
+                        browseText = 'Browse Articles';
+                        browseUrl = '/blogs.html';
+                        description = 'Save articles from the blog page to view them here';
                         break;
                     default:
                         browseText = `Browse ${tabName}`;

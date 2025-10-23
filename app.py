@@ -1910,9 +1910,80 @@ def user_dashboard():
         courses = [b for b in bookmarks if b.get('content_type') == 'course']
         jobs = [b for b in bookmarks if b.get('content_type') == 'job']
         internships = [b for b in bookmarks if b.get('content_type') == 'internship']
+        blogs = [b for b in bookmarks if b.get('content_type') == 'blog']
+
+        # Enhance blog bookmarks with additional data (views, likes, etc.)
+        enhanced_blogs = []
+        if blogs:
+            blog_ids = [blog['id'] for blog in blogs]
+
+            try:
+                # Get additional blog data from blog_posts table
+                blogs_data_response = supabase_admin.table('blog_posts') \
+                    .select('*') \
+                    .in_('id', blog_ids) \
+                    .execute()
+
+                blogs_data = {blog['id']: blog for blog in (blogs_data_response.data or [])}
+
+                # Get view counts
+                view_counts_response = supabase_admin.table('blog_views') \
+                    .select('blog_id, id') \
+                    .in_('blog_id', blog_ids) \
+                    .execute()
+
+                view_counts = {}
+                for view in (view_counts_response.data or []):
+                    blog_id = view['blog_id']
+                    view_counts[blog_id] = view_counts.get(blog_id, 0) + 1
+
+                # Get like counts
+                like_counts_response = supabase_admin.table('blog_likes') \
+                    .select('blog_id, id') \
+                    .in_('blog_id', blog_ids) \
+                    .execute()
+
+                like_counts = {}
+                for like in (like_counts_response.data or []):
+                    blog_id = like['blog_id']
+                    like_counts[blog_id] = like_counts.get(blog_id, 0) + 1
+
+                # Enhance each blog bookmark with additional data
+                for blog in blogs:
+                    blog_id = blog['id']
+                    blog_data = blogs_data.get(blog_id, {})
+
+                    enhanced_blog = blog.copy()
+
+                    # Add data from blog_posts table
+                    enhanced_blog['title'] = blog_data.get('title', blog.get('title', 'Untitled Article'))
+                    enhanced_blog['description'] = blog_data.get('description', blog.get('description', ''))
+                    enhanced_blog['content'] = blog_data.get('content', '')
+                    enhanced_blog['image'] = blog_data.get('image', '/static/images/default-blog.jpg')
+                    enhanced_blog['author'] = blog_data.get('author', 'CareerMaker Team')
+                    enhanced_blog['read_time'] = blog_data.get('read_time', '5 min read')
+                    enhanced_blog['categories'] = blog_data.get('categories', ['Career'])
+
+                    # Add view and like counts
+                    enhanced_blog['views'] = view_counts.get(blog_id, 0)
+                    enhanced_blog['like_count'] = like_counts.get(blog_id, 0)
+
+                    enhanced_blogs.append(enhanced_blog)
+
+            except Exception as e:
+                logger.error(f"Error enhancing blog data: {str(e)}")
+                # If enhancement fails, use basic blog data
+                enhanced_blogs = blogs
+                for blog in enhanced_blogs:
+                    blog.setdefault('views', 0)
+                    blog.setdefault('like_count', 0)
+                    blog.setdefault('read_time', '5 min read')
+                    blog.setdefault('categories', ['Career'])
+        else:
+            enhanced_blogs = []
 
         logger.info(
-            f"Dashboard breakdown - Courses: {len(courses)}, Jobs: {len(jobs)}, Internships: {len(internships)}")
+            f"Dashboard breakdown - Courses: {len(courses)}, Jobs: {len(jobs)}, Internships: {len(internships)}, Blogs: {len(enhanced_blogs)}")
 
         return render_template('user-dashboard.html',
                                username=user.get('username'),
@@ -1920,7 +1991,8 @@ def user_dashboard():
                                avatar_url=avatar_url,
                                courses=courses,
                                jobs=jobs,
-                               internships=internships)
+                               internships=internships,
+                               blogs=enhanced_blogs)
 
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}", exc_info=True)
