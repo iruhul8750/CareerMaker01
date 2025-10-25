@@ -954,13 +954,37 @@ def get_or_fetch_logo(company_name, content_type, content_id):
 
 def enhance_content_with_logo(content_data, content_type, content_id):
     """
-    Enhanced content data with company logo - optimized version
+    Enhanced content data with company logo - optimized version with course fix
     """
     try:
         if not content_data:
             return content_data
 
-        # Extract and clean company name
+        # For courses, always ensure there's a logo
+        if content_type == 'course':
+            # Extract and clean company name
+            company_name = extract_company_name_from_content(content_data)
+
+            if company_name:
+                logger.info(f"🔍 Course logo fetch for: {company_name} ({content_type})")
+                # Try to get logo with optimized method
+                logo_url = get_or_fetch_logo_optimized(company_name, content_type, content_id)
+
+                if logo_url:
+                    content_data['company_logo'] = logo_url
+                    logger.info(f"✅ Course logo found for {company_name}: {logo_url}")
+                else:
+                    # Use course default logo
+                    content_data = apply_default_logo(content_data, content_type)
+                    logger.info(f"⚠️ Using default course logo for {company_name}")
+            else:
+                # No company name, use default course logo
+                content_data = apply_default_logo(content_data, content_type)
+                logger.info(f"⚠️ Using default course logo (no company name)")
+
+            return content_data
+
+        # Original logic for jobs and internships
         company_name = extract_company_name_from_content(content_data)
         if not company_name:
             # No company name, use default logo
@@ -989,7 +1013,6 @@ def enhance_content_with_logo(content_data, content_type, content_id):
     except Exception as e:
         logger.error(f"Error enhancing content with logo: {str(e)}")
         return apply_default_logo(content_data, content_type)
-
 
 def get_or_fetch_logo_optimized(company_name, content_type, content_id):
     """
@@ -2010,7 +2033,7 @@ def logout():
 
 
 def get_user_bookmarks(user_id):
-    """Get all bookmarks for a user with complete content details"""
+    """Get all bookmarks for a user with complete content details - FIXED VERSION"""
     try:
         # Get all bookmarks for the user using admin client to bypass RLS
         bookmarks_response = supabase_admin.table('bookmarks').select('*').eq('user_id', user_id).execute()
@@ -2035,7 +2058,7 @@ def get_user_bookmarks(user_id):
 
         results = []
 
-        # Fetch course bookmarks
+        # Fetch course bookmarks with enhanced data
         if content_map['course']:
             try:
                 courses_response = supabase_admin.table('courses') \
@@ -2046,17 +2069,43 @@ def get_user_bookmarks(user_id):
                 if courses_response.data:
                     for course in courses_response.data:
                         course['content_type'] = 'course'
-                        # Ensure all required fields are present
+                        # Ensure all required fields are present with proper fallbacks
                         course.setdefault('image', None)
-                        course.setdefault('description', 'No description available')
-                        course.setdefault('price', 'Free')
-                        course.setdefault('level', 'All Levels')
+                        course.setdefault('company_logo', None)
+                        course.setdefault('description', course.get('description') or 'No description available')
+                        course.setdefault('price', course.get('price') or 'Free')
+                        course.setdefault('level', course.get('level') or 'All Levels')
+                        course.setdefault('company', course.get('company') or 'Unknown Provider')
+                        course.setdefault('category', course.get('category') or 'General')
+                        course.setdefault('instructor', course.get('instructor') or 'Unknown Instructor')
+
+                        # COURSE-SPECIFIC LOGO FIX: Use the same logic as main page
+                        # If course has company data, try to get logo, otherwise use default course image
+                        if course.get('company'):
+                            try:
+                                enhanced_course = enhance_content_with_logo(course, 'course', course['id'])
+                                if enhanced_course.get('company_logo'):
+                                    course['company_logo'] = enhanced_course['company_logo']
+                                else:
+                                    # If no company logo found, use default course image
+                                    course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+                            except Exception as logo_error:
+                                logger.warning(f"Could not enhance course logo: {str(logo_error)}")
+                                course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+                        else:
+                            # No company, use default course image
+                            course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+
+                        # Ensure the image field also has a proper value for backward compatibility
+                        if not course.get('image'):
+                            course['image'] = course['company_logo']
+
                         results.append(course)
-                        logger.info(f"Added course: {course.get('title')}")
+                        logger.info(f"Added course: {course.get('title')} with logo: {course.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching course bookmarks: {str(e)}")
 
-        # Fetch job bookmarks
+        # Fetch job bookmarks with enhanced data
         if content_map['job']:
             try:
                 jobs_response = supabase_admin.table('jobs') \
@@ -2067,19 +2116,31 @@ def get_user_bookmarks(user_id):
                 if jobs_response.data:
                     for job in jobs_response.data:
                         job['content_type'] = 'job'
-                        # Ensure all required fields are present
+                        # Ensure all required fields are present with proper fallbacks
                         job.setdefault('image', None)
-                        job.setdefault('description', 'No description available')
-                        job.setdefault('company', 'Unknown Company')
-                        job.setdefault('location', 'Location not specified')
-                        job.setdefault('salary', 'Not Specified')
-                        job.setdefault('type', 'Full-time')
+                        job.setdefault('company_logo', None)
+                        job.setdefault('description', job.get('description') or 'No description available')
+                        job.setdefault('company', job.get('company') or 'Unknown Company')
+                        job.setdefault('location', job.get('location') or 'Location not specified')
+                        job.setdefault('salary', job.get('salary') or 'Not Specified')
+                        job.setdefault('type', job.get('type') or 'Full-time')
+                        job.setdefault('application_link', job.get('application_link') or '#')
+
+                        # Enhance with logo if company exists but no logo
+                        if job.get('company') and not job.get('company_logo'):
+                            try:
+                                enhanced_job = enhance_content_with_logo(job, 'job', job['id'])
+                                if enhanced_job.get('company_logo'):
+                                    job['company_logo'] = enhanced_job['company_logo']
+                            except Exception as logo_error:
+                                logger.warning(f"Could not enhance job logo: {str(logo_error)}")
+
                         results.append(job)
-                        logger.info(f"Added job: {job.get('title')}")
+                        logger.info(f"Added job: {job.get('title')} with logo: {job.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching job bookmarks: {str(e)}")
 
-        # Fetch internship bookmarks
+        # Fetch internship bookmarks with enhanced data
         if content_map['internship']:
             try:
                 internships_response = supabase_admin.table('internships') \
@@ -2090,19 +2151,34 @@ def get_user_bookmarks(user_id):
                 if internships_response.data:
                     for internship in internships_response.data:
                         internship['content_type'] = 'internship'
-                        # Ensure all required fields are present
+                        # Ensure all required fields are present with proper fallbacks
                         internship.setdefault('image', None)
-                        internship.setdefault('description', 'No description available')
-                        internship.setdefault('company', 'Unknown Company')
-                        internship.setdefault('location', 'Location not specified')
-                        internship.setdefault('stipend', 'Unpaid')
-                        internship.setdefault('duration', 'Flexible')
+                        internship.setdefault('company_logo', None)
+                        internship.setdefault('description',
+                                              internship.get('description') or 'No description available')
+                        internship.setdefault('company', internship.get('company') or 'Unknown Company')
+                        internship.setdefault('location', internship.get('location') or 'Location not specified')
+                        internship.setdefault('stipend', internship.get('stipend') or 'Unpaid')
+                        internship.setdefault('duration', internship.get('duration') or 'Flexible')
+                        internship.setdefault('application_link', internship.get('application_link') or '#')
+
+                        # Enhance with logo if company exists but no logo
+                        if internship.get('company') and not internship.get('company_logo'):
+                            try:
+                                enhanced_internship = enhance_content_with_logo(internship, 'internship',
+                                                                                internship['id'])
+                                if enhanced_internship.get('company_logo'):
+                                    internship['company_logo'] = enhanced_internship['company_logo']
+                            except Exception as logo_error:
+                                logger.warning(f"Could not enhance internship logo: {str(logo_error)}")
+
                         results.append(internship)
-                        logger.info(f"Added internship: {internship.get('title')}")
+                        logger.info(
+                            f"Added internship: {internship.get('title')} with logo: {internship.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching internship bookmarks: {str(e)}")
 
-        # Fetch blog bookmarks (if you have blog functionality)
+        # Fetch blog bookmarks with enhanced data
         if content_map['blog']:
             try:
                 blogs_response = supabase_admin.table('blog_posts') \
@@ -2113,12 +2189,57 @@ def get_user_bookmarks(user_id):
                 if blogs_response.data:
                     for blog in blogs_response.data:
                         blog['content_type'] = 'blog'
+                        # Ensure all required fields are present with proper fallbacks
+                        blog.setdefault('image', blog.get('image') or '/static/images/default-blog.jpg')
+                        blog.setdefault('description', blog.get('description') or 'No description available')
+                        blog.setdefault('content', blog.get('content') or '')
+                        blog.setdefault('author', blog.get('author') or 'CareerMaker Team')
+                        blog.setdefault('read_time', blog.get('read_time') or '5 min read')
+                        blog.setdefault('categories', blog.get('categories') or ['Career'])
+                        blog.setdefault('published_at', blog.get('published_at') or blog.get('created_at'))
+
+                        # Get view counts for blogs
+                        try:
+                            view_counts_response = supabase_admin.table('blog_views') \
+                                .select('id', count='exact') \
+                                .eq('blog_id', blog['id']) \
+                                .execute()
+                            blog['views'] = view_counts_response.count or 0
+                        except Exception as view_error:
+                            logger.warning(f"Could not get view count for blog {blog['id']}: {str(view_error)}")
+                            blog['views'] = 0
+
+                        # Get like counts for blogs
+                        try:
+                            like_counts_response = supabase_admin.table('blog_likes') \
+                                .select('id', count='exact') \
+                                .eq('blog_id', blog['id']) \
+                                .execute()
+                            blog['like_count'] = like_counts_response.count or 0
+                        except Exception as like_error:
+                            logger.warning(f"Could not get like count for blog {blog['id']}: {str(like_error)}")
+                            blog['like_count'] = 0
+
+                        # Check if user liked this blog
+                        try:
+                            user_like_response = supabase_admin.table('blog_likes') \
+                                .select('id') \
+                                .eq('user_id', user_id) \
+                                .eq('blog_id', blog['id']) \
+                                .execute()
+                            blog['is_liked'] = len(user_like_response.data or []) > 0
+                        except Exception as user_like_error:
+                            logger.warning(f"Could not check user like for blog {blog['id']}: {str(user_like_error)}")
+                            blog['is_liked'] = False
+
                         results.append(blog)
-                        logger.info(f"Added blog: {blog.get('title')}")
+                        logger.info(f"Added blog: {blog.get('title')} with {blog.get('views')} views")
             except Exception as e:
                 logger.error(f"Error fetching blog bookmarks: {str(e)}")
 
         logger.info(f"Total results prepared for dashboard: {len(results)}")
+
+        # Sort by creation date (most recent first) with proper fallback
         return sorted(results, key=lambda x: x.get('created_at', ''), reverse=True)
 
     except Exception as e:
