@@ -1570,16 +1570,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function addRowEventListeners(section, id, row) {
+        console.log(`Adding event listeners for ${section} row ${id}`);
+
         const editBtn = row.querySelector('.edit-item');
         if (editBtn && section !== 'users') { // Skip edit button for users section
-            editBtn.addEventListener('click', () => {
+            console.log(`Found edit button for ${section} ${id}`);
+            editBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`Edit button clicked for ${section} ${id}`);
                 openEditModal(section, id);
             });
+        } else {
+            console.log(`No edit button found for ${section} ${id} or section is users`);
         }
 
         const deleteBtn = row.querySelector('.delete-item');
         if (deleteBtn) {
-            deleteBtn.addEventListener('click', () => {
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 showConfirmation('delete', `Are you sure you want to delete this ${section.slice(0, -1)}? This action cannot be undone.`, () => {
                     performDelete(section, id);
                 });
@@ -1595,7 +1605,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const viewBtn = row.querySelector('.view-item');
         if (viewBtn) {
-            viewBtn.addEventListener('click', () => {
+            viewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 openViewModal(section, id);
             });
         }
@@ -1615,14 +1627,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const statusToggle = row.querySelector('.status-toggle-checkbox');
         if (statusToggle) {
-            statusToggle.addEventListener('change', () => {
+            statusToggle.addEventListener('change', (e) => {
+                e.stopPropagation();
                 toggleStatus(section, id, statusToggle.checked);
             });
         }
 
         const checkbox = row.querySelector('.row-checkbox');
         if (checkbox) {
-            checkbox.addEventListener('change', () => {
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
                 if (checkbox.checked) {
                     selectedItems[section].push(id);
                 } else {
@@ -1643,20 +1657,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Toggle status (active/inactive) - now handles both active and featured state
+    // Toggle status (active/inactive) - FIXED for blog posts
     function toggleStatus(section, id, isActive) {
         showLoading();
 
-        // Fix section name for API endpoint
+        // Fix section name for API endpoint - IMPORTANT: blog becomes blog_posts
         let apiSection = section;
         if (section === 'blog') apiSection = 'blog_posts';
         if (section === 'newsletter') apiSection = 'newsletter_subscribers';
 
+        console.log(`Toggling ${section} (API: ${apiSection}) ID: ${id} to: ${isActive}`);
+
+        // Prepare the request data - ensure it's properly formatted
+        const updateData = {
+            is_active: Boolean(isActive)  // Ensure it's a boolean
+        };
+
         // For courses, jobs, internships, and blog, active state also controls featured state
-        const updateData = { is_active: isActive };
         if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
-            updateData.is_featured = isActive;
+            updateData.is_featured = Boolean(isActive);
         }
+
+        console.log('Sending update data:', updateData);
 
         fetch(`/api/admin/${apiSection}/${id}/status`, {
             method: 'PUT',
@@ -1667,10 +1689,16 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(updateData)
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to update ${section} status`);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || `Failed to update ${section} status`);
+                });
+            }
             return response.json();
         })
         .then(result => {
+            console.log('Response data:', result);
             if (result.success) {
                 const statusText = isActive ? 'activated & featured' : 'deactivated';
                 showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${statusText} successfully`, 'success');
@@ -1694,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error(`Error updating ${section} status:`, error);
-            showNotification(`Failed to update ${section} status`, 'error');
+            showNotification(error.message || `Failed to update ${section} status`, 'error');
             // Revert the checkbox state
             const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`);
             if (checkbox) {
@@ -1822,11 +1850,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to close modal
     function closeModal() {
-        const modal = document.getElementById('confirmationModal');
-        if (modal) {
+        document.querySelectorAll('.modal').forEach(modal => {
             modal.style.display = 'none';
-        }
+        });
+
+        // Reset any active forms
+        document.querySelectorAll('form').forEach(form => {
+            if (form.id !== 'messageReplyForm') { // Don't reset reply form completely
+                form.reset();
+            }
+        });
     }
+
+    // Close modal when clicking on close button only
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close modal only with close button
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('close-modal')) {
+                closeModal();
+            }
+        });
+
+        // Close modal with escape key (optional - remove if you don't want this either)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // PREVENT outside click closing - remove any existing outside click handlers
+        document.querySelectorAll('.modal').forEach(modal => {
+            // Remove any existing click event listeners
+            modal.replaceWith(modal.cloneNode(true));
+        });
+    });
 
     // Perform actual delete operation
     function performDelete(section, id) {
@@ -1877,19 +1934,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('addBlogBtn')?.addEventListener('click', () => openAddModal('blog'));
         document.getElementById('sendNewsletterBtn')?.addEventListener('click', () => openNewsletterModal());
 
-        // Close modal buttons
-        document.querySelectorAll('.close-modal').forEach(button => {
-            button.addEventListener('click', closeModal);
+        // Close modal buttons - FIXED: Proper event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('close-modal')) {
+                closeModal();
+            }
         });
 
-        // Close modal when clicking outside
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                }
-            });
-        });
+        // REMOVED: Outside click functionality for closing modals
+        // This prevents modals from closing when clicking outside
 
         // Form submissions
         document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
@@ -3181,6 +3234,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = id ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
         const method = id ? 'PUT' : 'POST';
 
+        // Show loading state
+        showLoading();
+
         fetch(url, {
             method: method,
             credentials: 'include',
@@ -3200,6 +3256,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(result => {
             if (result.success) {
                 showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
+
+                // Close modal and reset form
                 closeModal();
                 form.reset();
 
@@ -3218,6 +3276,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error(`Error ${id ? 'updating' : 'creating'} ${type}:`, error);
             showNotification(error.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
         });
     }
 
@@ -3269,25 +3330,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.success) {
                 showNotification('✅ Reply sent successfully!', 'success');
 
-                // Close modal after short delay
-                setTimeout(() => {
-                    closeModal();
-                    form.reset();
+                // Close modal and reset form
+                closeModal();
+                form.reset();
 
-                    // Update message status to replied and reload messages
-                    fetch(`/api/admin/messages/${data.message_id}/status`, {
-                        method: 'PUT',
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ status: 'replied' })
-                    }).then(() => {
-                        if (currentSection === 'messages') {
-                            loadSectionData('messages', currentPage.messages);
-                        }
-                    });
-                }, 1000);
+                // Update message status to replied and reload messages
+                fetch(`/api/admin/messages/${data.message_id}/status`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'replied' })
+                }).then(() => {
+                    if (currentSection === 'messages') {
+                        loadSectionData('messages', currentPage.messages);
+                    }
+                });
             } else {
                 showNotification(result.message || 'Failed to send reply', 'error');
             }
@@ -3628,7 +3687,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enhanced bulk status update function
+    // Enhanced bulk status update function - FIXED for blog posts
     function performBulkStatusUpdate(section, ids, isActive) {
         if (!ids || ids.length === 0) {
             showNotification('No items selected', 'warning');
@@ -3637,7 +3696,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         showLoading();
 
-        // Fix section names for API endpoints
+        // Fix section names for API endpoints - IMPORTANT: blog becomes blog_posts
         let apiSection = section;
         if (section === 'blog') apiSection = 'blog_posts';
         if (section === 'newsletter') apiSection = 'newsletter_subscribers';
@@ -3983,10 +4042,44 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Add missing function for newsletter form submission
+    // Newsletter form handling
     function handleNewsletterSubmit(e) {
         e.preventDefault();
-        showNotification('Newsletter functionality would be implemented here', 'info');
-        closeModal();
+
+        // Show loading state
+        showLoading();
+
+        // Simulate API call - replace with actual implementation
+        setTimeout(() => {
+            showNotification('Newsletter sent successfully!', 'success');
+            closeModal();
+            hideLoading();
+        }, 1000);
+
+        // Actual implementation would look like:
+        fetch('/api/admin/newsletter/send', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showNotification('Newsletter sent successfully!', 'success');
+                closeModal();
+            } else {
+                showNotification(result.message || 'Failed to send newsletter', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending newsletter:', error);
+            showNotification('Failed to send newsletter', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
     }
 });

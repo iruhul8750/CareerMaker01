@@ -2698,6 +2698,252 @@ def blog():
 
     return render_template('blogs.html', posts=posts)
 
+# =============================================
+# FIXED TESTIMONIAL ROUTES - PROPER PROFILE PICTURES
+# =============================================
+
+@app.route('/api/testimonial/auth-check')
+def testimonial_auth_check():
+    """Check if user can post testimonial"""
+    try:
+        if 'user_id' in session:
+            user = supabase_admin.table('users').select('username, profile_pic').eq('id', session[
+                'user_id']).single().execute()
+            if user.data:
+                return jsonify({
+                    'can_post': True,
+                    'username': user.data['username'],
+                    'user_id': session['user_id']
+                })
+        return jsonify({'can_post': False})
+    except Exception as e:
+        logger.error(f"Auth check error: {str(e)}")
+        return jsonify({'can_post': False})
+
+
+@app.route('/api/testimonial/list')
+def testimonial_list():
+    """Get all testimonials with profile pictures - FIXED VERSION"""
+    try:
+        # Get testimonials
+        response = supabase_admin.table('testimonials') \
+            .select('*') \
+            .eq('is_active', True) \
+            .order('created_at', desc=True) \
+            .limit(12) \
+            .execute()
+
+        current_user_id = session.get('user_id')
+        testimonials_data = []
+
+        for testimonial in response.data:
+            item = dict(testimonial)
+
+            # Check if current user owns this testimonial
+            item['can_edit'] = current_user_id and str(current_user_id) == str(item.get('user_id'))
+
+            # Get username
+            username = item.get('username', 'Anonymous')
+
+            # Get profile picture - FIXED: Use the profile_pic stored in testimonials table
+            profile_pic_path = item.get('profile_pic')
+
+            if profile_pic_path:
+                # Generate URL for profile-pictures bucket
+                item['profile_pic_url'] = generate_profile_pic_url(profile_pic_path)
+            else:
+                # If no profile pic in testimonials, try to get from users table
+                user_id = item.get('user_id')
+                if user_id:
+                    user_profile_pic = get_user_profile_pic_from_users_table(user_id)
+                    if user_profile_pic:
+                        item['profile_pic_url'] = generate_profile_pic_url(user_profile_pic)
+                    else:
+                        item[
+                            'profile_pic_url'] = f"https://ui-avatars.com/api/?name={username}&background=10b981&color=fff&bold=true"
+                else:
+                    item[
+                        'profile_pic_url'] = f"https://ui-avatars.com/api/?name={username}&background=10b981&color=fff&bold=true"
+
+            testimonials_data.append(item)
+
+        return jsonify({
+            'testimonials': testimonials_data,
+            'current_user_id': current_user_id
+        })
+
+    except Exception as e:
+        logger.error(f"Testimonial list error: {str(e)}")
+        return jsonify({'testimonials': [], 'current_user_id': None})
+
+
+def generate_profile_pic_url(profile_pic_path):
+    """Generate profile picture URL for profile-pictures bucket"""
+    try:
+        # Extract project reference from your supabase_url
+        project_ref = supabase_url.split('//')[1].split('.')[0]
+
+        # Construct the direct URL to the profile-pictures bucket
+        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}"
+
+        # Optional: Verify the image exists (remove if too slow)
+        # response = requests.head(profile_pic_url, timeout=2)
+        # if response.status_code != 200:
+        #     return None
+
+        return profile_pic_url
+    except Exception as e:
+        logger.error(f"Error generating profile pic URL: {str(e)}")
+        return None
+
+
+def get_user_profile_pic_from_users_table(user_id):
+    """Get profile picture path from users table"""
+    try:
+        user_response = supabase_admin.table('users') \
+            .select('profile_pic') \
+            .eq('id', user_id) \
+            .execute()
+
+        if user_response.data and len(user_response.data) > 0:
+            return user_response.data[0].get('profile_pic')
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user profile pic: {str(e)}")
+        return None
+
+
+@app.route('/api/testimonial/submit', methods=['POST'])
+def testimonial_submit():
+    """Submit a testimonial - FIXED to store current profile picture"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+        data = request.get_json()
+        content = data.get('content', '').strip()
+        rating = data.get('rating', 5)
+
+        if not content:
+            return jsonify({'success': False, 'message': 'Please share your experience'}), 400
+
+        # Get user info with CURRENT profile picture
+        user_id = session['user_id']
+        user = supabase_admin.table('users').select('username, profile_pic').eq('id', user_id).single().execute()
+
+        if not user.data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Save testimonial with CURRENT profile picture path
+        testimonial_data = {
+            'user_id': user_id,
+            'username': user.data['username'],
+            'profile_pic': user.data.get('profile_pic'),  # Store the current profile picture path
+            'content': content,
+            'rating': rating,
+            'is_active': True,
+            'created_at': get_current_utc_time().isoformat()
+        }
+
+        result = supabase_admin.table('testimonials').insert(testimonial_data).execute()
+
+        if result.data:
+            return jsonify({
+                'success': True,
+                'message': 'Thank you for sharing your experience!'
+            })
+        else:
+            logger.error(f"Testimonial insert failed: {result}")
+            return jsonify({'success': False, 'message': 'Failed to save testimonial'}), 500
+
+    except Exception as e:
+        logger.error(f"Testimonial submit error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+
+@app.route('/api/testimonial/update/<testimonial_id>', methods=['PUT'])
+def update_testimonial(testimonial_id):
+    """Update a testimonial"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+        data = request.get_json()
+        content = data.get('content', '').strip()
+        rating = data.get('rating', 5)
+
+        if not content:
+            return jsonify({'success': False, 'message': 'Content is required'}), 400
+
+        # Verify ownership
+        testimonial = supabase_admin.table('testimonials') \
+            .select('user_id') \
+            .eq('id', testimonial_id) \
+            .single() \
+            .execute()
+
+        if not testimonial.data:
+            return jsonify({'success': False, 'message': 'Testimonial not found'}), 404
+
+        if str(testimonial.data['user_id']) != str(session['user_id']):
+            return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+        # Update testimonial
+        result = supabase_admin.table('testimonials') \
+            .update({
+            'content': content,
+            'rating': rating,
+            'updated_at': get_current_utc_time().isoformat()
+        }) \
+            .eq('id', testimonial_id) \
+            .execute()
+
+        if result.data:
+            return jsonify({'success': True, 'message': 'Testimonial updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update testimonial'}), 500
+
+    except Exception as e:
+        logger.error(f"Update testimonial error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+
+@app.route('/api/testimonial/delete/<testimonial_id>', methods=['DELETE'])
+def delete_testimonial(testimonial_id):
+    """Delete a testimonial"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+        # Verify ownership
+        testimonial = supabase_admin.table('testimonials') \
+            .select('user_id') \
+            .eq('id', testimonial_id) \
+            .single() \
+            .execute()
+
+        if not testimonial.data:
+            return jsonify({'success': False, 'message': 'Testimonial not found'}), 404
+
+        if str(testimonial.data['user_id']) != str(session['user_id']):
+            return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+        # Delete testimonial
+        result = supabase_admin.table('testimonials') \
+            .delete() \
+            .eq('id', testimonial_id) \
+            .execute()
+
+        if result.data:
+            return jsonify({'success': True, 'message': 'Testimonial deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete testimonial'}), 500
+
+    except Exception as e:
+        logger.error(f"Delete testimonial error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+
 # ===== BOOKMARK ENDPOINT FIX =====
 @app.route('/api/bookmark/<content_type>/<content_id>', methods=['POST'])
 @login_required
@@ -3714,38 +3960,76 @@ def get_internship_filters():
 @admin_required
 def toggle_resource_status(resource, id):
     try:
-        # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'newsletter']
-        if resource not in valid_resources:
-            return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
+        # DEBUG: Log the incoming request
+        logger.info(f"🔄 Status update request received - Resource: {resource}, ID: {id}")
 
         data = request.get_json()
+        logger.info(f"📊 Request data: {data}")
+
+        if not data:
+            logger.error("❌ No JSON data in request")
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
         is_active = data.get('is_active')
+        logger.info(f"🔧 is_active value: {is_active}")
 
         if is_active is None:
+            logger.error("❌ is_active parameter is missing")
             return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
 
-        # Determine the correct table name
+        # Validate resource type
+        valid_resources = ['courses', 'jobs', 'internships', 'blog_posts', 'users', 'newsletter_subscribers']
+        if resource not in valid_resources:
+            logger.error(f"❌ Invalid resource type: {resource}")
+            return jsonify({'success': False, 'message': f'Invalid resource type: {resource}'}), 400
+
+        # Map resource to table name (some resources use different table names)
         table_map = {
-            'blog': 'blog_posts',
-            'newsletter': 'newsletter_subscribers'
+            'blog_posts': 'blog_posts',
+            'newsletter_subscribers': 'newsletter_subscribers'
         }
         table_name = table_map.get(resource, resource)
 
-        # Update status in database
-        update_data = {'is_active': is_active, 'updated_at': get_current_utc_time().isoformat()}
+        logger.info(f"🗃️ Using table: {table_name} for resource: {resource}")
 
+        # Check if resource exists
+        existing_response = supabase_admin.table(table_name).select('id').eq('id', id).execute()
+        if not existing_response.data:
+            logger.error(f"❌ Resource not found: {table_name} with ID: {id}")
+            return jsonify({'success': False, 'message': f'{resource.replace("_", " ").title()} not found'}), 404
+
+        # Update status in database
+        update_data = {
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        # For blog posts, courses, jobs, internships - sync featured status with active status
+        if resource in ['blog_posts', 'courses', 'jobs', 'internships']:
+            update_data['is_featured'] = bool(is_active)
+            logger.info(f"⭐ Syncing featured status to: {is_active}")
+
+        logger.info(f"📝 Update data: {update_data}")
+
+        # Perform the update
         response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
 
         if not response.data:
-            return jsonify({'success': False, 'message': f'{resource[:-1]} not found'}), 404
+            logger.error(f"❌ No data returned from update for {resource} {id}")
+            return jsonify({'success': False, 'message': f'Failed to update {resource.replace("_", " ")} status'}), 500
 
-        return jsonify({'success': True, 'message': f'{resource[:-1]} status updated successfully'})
+        logger.info(f"✅ Successfully updated {resource} {id} status to: {is_active}")
+
+        # Format the resource name for the response message
+        resource_name = resource.replace('_', ' ').title().rstrip('s')
+        return jsonify({
+            'success': True,
+            'message': f'{resource_name} status updated successfully'
+        })
 
     except Exception as e:
-        logger.error(f"Error updating {resource} status: {str(e)}")
+        logger.error(f"❌ Error updating {resource} status: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
-
 
 # ===== FEATURED TOGGLE ROUTES =====
 
@@ -3827,42 +4111,69 @@ def bulk_delete_resources(resource):
 @admin_required
 def bulk_update_resource_status(resource):
     try:
-        # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'newsletter']
-        if resource not in valid_resources:
-            return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
+        # DEBUG: Log the incoming request
+        logger.info(f"🔄 Bulk status update request received - Resource: {resource}")
 
         data = request.get_json()
+        logger.info(f"📊 Bulk request data: {data}")
+
+        if not data:
+            logger.error("❌ No JSON data in bulk request")
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
         ids = data.get('ids', [])
         is_active = data.get('is_active')
 
         if not ids:
+            logger.error("❌ No IDs provided in bulk request")
             return jsonify({'success': False, 'message': 'No items selected'}), 400
 
         if is_active is None:
+            logger.error("❌ is_active parameter is missing in bulk request")
             return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
 
-        # Determine the correct table name
+        # Validate resource type
+        valid_resources = ['courses', 'jobs', 'internships', 'blog_posts', 'users', 'newsletter_subscribers']
+        if resource not in valid_resources:
+            logger.error(f"❌ Invalid resource type for bulk update: {resource}")
+            return jsonify({'success': False, 'message': f'Invalid resource type: {resource}'}), 400
+
+        # Map resource to table name
         table_map = {
-            'blog': 'blog_posts',
-            'newsletter': 'newsletter_subscribers'
+            'blog_posts': 'blog_posts',
+            'newsletter_subscribers': 'newsletter_subscribers'
         }
         table_name = table_map.get(resource, resource)
 
+        logger.info(f"🗃️ Bulk update using table: {table_name} for resource: {resource}")
+        logger.info(f"🔧 Updating {len(ids)} items with is_active: {is_active}")
+
         # Update status in database
-        update_data = {'is_active': is_active, 'updated_at': get_current_utc_time().isoformat()}
+        update_data = {
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        # For blog posts, courses, jobs, internships - sync featured status
+        if resource in ['blog_posts', 'courses', 'jobs', 'internships']:
+            update_data['is_featured'] = bool(is_active)
+            logger.info(f"⭐ Bulk syncing featured status to: {is_active}")
 
         response = supabase_admin.table(table_name).update(update_data).in_('id', ids).execute()
 
+        updated_count = len(response.data) if response.data else 0
+        logger.info(f"✅ Bulk update completed: {updated_count} items updated")
+
+        # Format the resource name for the response message
+        resource_name = resource.replace('_', ' ').title().rstrip('s')
         return jsonify({
             'success': True,
-            'message': f'{len(response.data) if response.data else 0} {resource} status updated successfully'
+            'message': f'{updated_count} {resource_name} status updated successfully'
         })
 
     except Exception as e:
-        logger.error(f"Error bulk updating {resource} status: {str(e)}")
+        logger.error(f"❌ Error bulk updating {resource} status: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
-
 
 # ===== DATA FETCHING ROUTES =====
 
@@ -4950,251 +5261,6 @@ def toggle_newsletter_status(id):
         logger.error(f"Error updating newsletter status: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
 
-
-# =============================================
-# FIXED TESTIMONIAL ROUTES - PROPER PROFILE PICTURES
-# =============================================
-
-@app.route('/api/testimonial/auth-check')
-def testimonial_auth_check():
-    """Check if user can post testimonial"""
-    try:
-        if 'user_id' in session:
-            user = supabase_admin.table('users').select('username, profile_pic').eq('id', session[
-                'user_id']).single().execute()
-            if user.data:
-                return jsonify({
-                    'can_post': True,
-                    'username': user.data['username'],
-                    'user_id': session['user_id']
-                })
-        return jsonify({'can_post': False})
-    except Exception as e:
-        logger.error(f"Auth check error: {str(e)}")
-        return jsonify({'can_post': False})
-
-
-@app.route('/api/testimonial/list')
-def testimonial_list():
-    """Get all testimonials with profile pictures - FIXED VERSION"""
-    try:
-        # Get testimonials
-        response = supabase_admin.table('testimonials') \
-            .select('*') \
-            .eq('is_active', True) \
-            .order('created_at', desc=True) \
-            .limit(12) \
-            .execute()
-
-        current_user_id = session.get('user_id')
-        testimonials_data = []
-
-        for testimonial in response.data:
-            item = dict(testimonial)
-
-            # Check if current user owns this testimonial
-            item['can_edit'] = current_user_id and str(current_user_id) == str(item.get('user_id'))
-
-            # Get username
-            username = item.get('username', 'Anonymous')
-
-            # Get profile picture - FIXED: Use the profile_pic stored in testimonials table
-            profile_pic_path = item.get('profile_pic')
-
-            if profile_pic_path:
-                # Generate URL for profile-pictures bucket
-                item['profile_pic_url'] = generate_profile_pic_url(profile_pic_path)
-            else:
-                # If no profile pic in testimonials, try to get from users table
-                user_id = item.get('user_id')
-                if user_id:
-                    user_profile_pic = get_user_profile_pic_from_users_table(user_id)
-                    if user_profile_pic:
-                        item['profile_pic_url'] = generate_profile_pic_url(user_profile_pic)
-                    else:
-                        item[
-                            'profile_pic_url'] = f"https://ui-avatars.com/api/?name={username}&background=10b981&color=fff&bold=true"
-                else:
-                    item[
-                        'profile_pic_url'] = f"https://ui-avatars.com/api/?name={username}&background=10b981&color=fff&bold=true"
-
-            testimonials_data.append(item)
-
-        return jsonify({
-            'testimonials': testimonials_data,
-            'current_user_id': current_user_id
-        })
-
-    except Exception as e:
-        logger.error(f"Testimonial list error: {str(e)}")
-        return jsonify({'testimonials': [], 'current_user_id': None})
-
-
-def generate_profile_pic_url(profile_pic_path):
-    """Generate profile picture URL for profile-pictures bucket"""
-    try:
-        # Extract project reference from your supabase_url
-        project_ref = supabase_url.split('//')[1].split('.')[0]
-
-        # Construct the direct URL to the profile-pictures bucket
-        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}"
-
-        # Optional: Verify the image exists (remove if too slow)
-        # response = requests.head(profile_pic_url, timeout=2)
-        # if response.status_code != 200:
-        #     return None
-
-        return profile_pic_url
-    except Exception as e:
-        logger.error(f"Error generating profile pic URL: {str(e)}")
-        return None
-
-
-def get_user_profile_pic_from_users_table(user_id):
-    """Get profile picture path from users table"""
-    try:
-        user_response = supabase_admin.table('users') \
-            .select('profile_pic') \
-            .eq('id', user_id) \
-            .execute()
-
-        if user_response.data and len(user_response.data) > 0:
-            return user_response.data[0].get('profile_pic')
-        return None
-    except Exception as e:
-        logger.error(f"Error getting user profile pic: {str(e)}")
-        return None
-
-
-@app.route('/api/testimonial/submit', methods=['POST'])
-def testimonial_submit():
-    """Submit a testimonial - FIXED to store current profile picture"""
-    try:
-        if 'user_id' not in session:
-            return jsonify({'success': False, 'message': 'Please login first'}), 401
-
-        data = request.get_json()
-        content = data.get('content', '').strip()
-        rating = data.get('rating', 5)
-
-        if not content:
-            return jsonify({'success': False, 'message': 'Please share your experience'}), 400
-
-        # Get user info with CURRENT profile picture
-        user_id = session['user_id']
-        user = supabase_admin.table('users').select('username, profile_pic').eq('id', user_id).single().execute()
-
-        if not user.data:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-
-        # Save testimonial with CURRENT profile picture path
-        testimonial_data = {
-            'user_id': user_id,
-            'username': user.data['username'],
-            'profile_pic': user.data.get('profile_pic'),  # Store the current profile picture path
-            'content': content,
-            'rating': rating,
-            'is_active': True,
-            'created_at': get_current_utc_time().isoformat()
-        }
-
-        result = supabase_admin.table('testimonials').insert(testimonial_data).execute()
-
-        if result.data:
-            return jsonify({
-                'success': True,
-                'message': 'Thank you for sharing your experience!'
-            })
-        else:
-            logger.error(f"Testimonial insert failed: {result}")
-            return jsonify({'success': False, 'message': 'Failed to save testimonial'}), 500
-
-    except Exception as e:
-        logger.error(f"Testimonial submit error: {str(e)}")
-        return jsonify({'success': False, 'message': 'Server error'}), 500
-
-
-@app.route('/api/testimonial/update/<testimonial_id>', methods=['PUT'])
-def update_testimonial(testimonial_id):
-    """Update a testimonial"""
-    try:
-        if 'user_id' not in session:
-            return jsonify({'success': False, 'message': 'Please login first'}), 401
-
-        data = request.get_json()
-        content = data.get('content', '').strip()
-        rating = data.get('rating', 5)
-
-        if not content:
-            return jsonify({'success': False, 'message': 'Content is required'}), 400
-
-        # Verify ownership
-        testimonial = supabase_admin.table('testimonials') \
-            .select('user_id') \
-            .eq('id', testimonial_id) \
-            .single() \
-            .execute()
-
-        if not testimonial.data:
-            return jsonify({'success': False, 'message': 'Testimonial not found'}), 404
-
-        if str(testimonial.data['user_id']) != str(session['user_id']):
-            return jsonify({'success': False, 'message': 'Not authorized'}), 403
-
-        # Update testimonial
-        result = supabase_admin.table('testimonials') \
-            .update({
-            'content': content,
-            'rating': rating,
-            'updated_at': get_current_utc_time().isoformat()
-        }) \
-            .eq('id', testimonial_id) \
-            .execute()
-
-        if result.data:
-            return jsonify({'success': True, 'message': 'Testimonial updated successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'Failed to update testimonial'}), 500
-
-    except Exception as e:
-        logger.error(f"Update testimonial error: {str(e)}")
-        return jsonify({'success': False, 'message': 'Server error'}), 500
-
-
-@app.route('/api/testimonial/delete/<testimonial_id>', methods=['DELETE'])
-def delete_testimonial(testimonial_id):
-    """Delete a testimonial"""
-    try:
-        if 'user_id' not in session:
-            return jsonify({'success': False, 'message': 'Please login first'}), 401
-
-        # Verify ownership
-        testimonial = supabase_admin.table('testimonials') \
-            .select('user_id') \
-            .eq('id', testimonial_id) \
-            .single() \
-            .execute()
-
-        if not testimonial.data:
-            return jsonify({'success': False, 'message': 'Testimonial not found'}), 404
-
-        if str(testimonial.data['user_id']) != str(session['user_id']):
-            return jsonify({'success': False, 'message': 'Not authorized'}), 403
-
-        # Delete testimonial
-        result = supabase_admin.table('testimonials') \
-            .delete() \
-            .eq('id', testimonial_id) \
-            .execute()
-
-        if result.data:
-            return jsonify({'success': True, 'message': 'Testimonial deleted successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'Failed to delete testimonial'}), 500
-
-    except Exception as e:
-        logger.error(f"Delete testimonial error: {str(e)}")
-        return jsonify({'success': False, 'message': 'Server error'}), 500
 
 # Content expiration routes
 @app.route('/api/admin/expired-content-stats')

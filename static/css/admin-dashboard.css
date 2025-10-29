@@ -3418,3 +3418,11 @@ body {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+.modal {
+    /* Ensure the modal background doesn't capture clicks */
+    pointer-events: none;
+}
+
+.modal-content {
+    pointer-events: auto;
+}
