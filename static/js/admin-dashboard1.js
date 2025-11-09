@@ -99,6 +99,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize dark mode
     window.adminDarkMode = new DarkMode();
 
+    // Form submission
+    const replyForm = document.getElementById('messageReplyForm');
+    if (replyForm) {
+        replyForm.addEventListener('submit', handleMessageReplySubmit);
+    }
+
+    // Character count
+    const replyMessage = document.getElementById('replyMessage');
+    if (replyMessage) {
+        replyMessage.addEventListener('input', updateCharCount);
+    }
+
+    // Reply button in view modal - FIXED
+    const replyFromViewBtn = document.getElementById('replyFromView');
+    if (replyFromViewBtn) {
+        replyFromViewBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const viewModal = document.getElementById('messageViewModal');
+            if (viewModal && viewModal._messageData) {
+                const message = viewModal._messageData;
+                closeModal();
+                setTimeout(() => {
+                    openReplyModal(message.id, message.email, message.subject);
+                }, 300);
+            } else {
+                showNotification('Message data not available. Please close and reopen the message.', 'error');
+            }
+        });
+    }
+
     // Global variables
     let currentPage = {
         courses: 1,
@@ -128,6 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize the dashboard
     initDashboard();
+    setupTestimonialsGlobalIntegration();
+
 
     // Add this function to handle logo previews
     function setupLogoPreview() {
@@ -263,11 +295,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setupBulkActionButtons();
         setupSearchFilters();
         setupPagination();
-        setupBlogCategories();
+        setupSelect2();
         setupLogoPreview();
         setupExpirationDateFields();
+        setupExpirationDates();
         setupTestimonialsGlobalIntegration();
-
 
         // Load data and content
         loadDashboardStats();
@@ -281,11 +313,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Check session every 5 minutes (less intrusive)
         setInterval(checkAdminSession, 5 * 60 * 1000);
-
-        // Setup dashboard refresh button
-        document.getElementById('refreshDashboardBtn')?.addEventListener('click', function() {
-            refreshDashboard();
-        });
 
         // Setup global AJAX error handling
         setupGlobalErrorHandling();
@@ -301,40 +328,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             history.replaceState(state, title, url);
         }
-    }
-
-    // Dashboard refresh function
-    function refreshDashboard() {
-        const button = document.getElementById('refreshDashboardBtn');
-        const originalHtml = button?.innerHTML;
-
-        // Show loading state on button
-        if (button) {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-            button.disabled = true;
-        }
-
-        showLoading();
-
-        // Refresh all dashboard data
-        Promise.all([
-            loadDashboardStats(),
-            loadNotifications(),
-            loadExpiredContentStats()
-        ]).then(() => {
-            showNotification('Dashboard refreshed successfully', 'success');
-        }).catch(error => {
-            console.error('Error refreshing dashboard:', error);
-            showNotification('Failed to refresh dashboard', 'error');
-        }).finally(() => {
-            hideLoading();
-
-            // Restore button state
-            if (button) {
-                button.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
-                button.disabled = false;
-            }
-        });
     }
 
      // Enhanced section restoration
@@ -410,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Default: Dashboard - ALWAYS refresh when showing dashboard
+        // Default: Dashboard
         const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
         const dashboardSection = document.getElementById('dashboard');
 
@@ -419,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Navigate to specific section with history management
+     // Navigate to specific section with history management
     function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
         // Update menu active state
         const menuItems = document.querySelectorAll('.sidebar-menu a');
@@ -460,22 +453,9 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSection = targetSection;
             sessionStorage.setItem('currentSection', targetSection);
 
-            // Load section data for ALL sections including dashboard
-            if (targetSection === 'dashboard') {
-                // Show loader and refresh dashboard stats when dashboard is clicked
-                showLoading();
-                Promise.all([
-                    loadDashboardStats(),
-                    loadNotifications(),
-                    loadExpiredContentStats()
-                ]).finally(() => {
-                    hideLoading();
-                });
-            } else {
-                showLoading();
-                loadSectionData(targetSection).finally(() => {
-                    hideLoading();
-                });
+            // Load section data if not dashboard
+            if (targetSection !== 'dashboard') {
+                loadSectionData(targetSection);
             }
 
             // Update browser history if not from popstate event
@@ -492,137 +472,89 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Professional multi-select dropdown for blog categories
-    function setupBlogCategories() {
-        console.log('Setting up professional blog categories dropdown');
+    // Fixed Select2 initialization for blog categories
+    function setupSelect2() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            console.log('Select2 library loaded');
 
-        const header = document.getElementById('blogCategoriesHeader');
-        const options = document.getElementById('blogCategoriesOptions');
-        const tagsContainer = document.getElementById('blogCategoriesTags');
-        const hiddenInput = document.getElementById('blogCategoriesHidden');
+            // Reinitialize Select2 when blog modal opens
+            $(document).on('click', '#addBlogBtn', function() {
+                setTimeout(initializeBlogSelect2, 300);
+            });
 
-        if (!header || !options) {
-            console.log('Blog categories elements not found');
-            return;
+            // Also initialize when editing blog posts
+            $(document).on('click', '.edit-item', function() {
+                const row = this.closest('tr');
+                const section = row.closest('.admin-section').id;
+                if (section === 'blog') {
+                    setTimeout(initializeBlogSelect2, 300);
+                }
+            });
         }
+    }
 
-        let selectedCategories = [];
+    function initializeBlogSelect2() {
+        const $blogCategories = $('#blogCategories');
 
-        // Toggle dropdown
-        header.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const isOpen = options.style.display === 'block';
-            options.style.display = isOpen ? 'none' : 'block';
-            this.querySelector('i').className = isOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-        });
+        if ($blogCategories.length) {
+            // Check if Select2 is causing issues, fallback to native select
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!header.contains(e.target) && !options.contains(e.target)) {
-                options.style.display = 'none';
-                header.querySelector('i').className = 'fas fa-chevron-down';
-            }
-        });
-
-        // Handle checkbox selection
-        options.addEventListener('change', function(e) {
-            if (e.target.type === 'checkbox') {
-                const value = e.target.value;
-                const isChecked = e.target.checked;
-
-                if (isChecked) {
-                    if (!selectedCategories.includes(value)) {
-                        selectedCategories.push(value);
-                    }
-                } else {
-                    selectedCategories = selectedCategories.filter(cat => cat !== value);
-                }
-
-                updateSelectedTags();
-                updateHiddenInput();
-            }
-        });
-
-        // Remove tag when X is clicked
-        tagsContainer.addEventListener('click', function(e) {
-            if (e.target.classList.contains('tag-remove')) {
-                const value = e.target.getAttribute('data-value');
-                selectedCategories = selectedCategories.filter(cat => cat !== value);
-
-                // Uncheck the corresponding checkbox
-                const checkbox = options.querySelector(`input[value="${value}"]`);
-                if (checkbox) {
-                    checkbox.checked = false;
-                }
-
-                updateSelectedTags();
-                updateHiddenInput();
-            }
-        });
-
-        function updateSelectedTags() {
-            if (selectedCategories.length === 0) {
-                tagsContainer.innerHTML = '';
-                header.querySelector('.selected-text').textContent = 'Select categories...';
+            if (isMobile || $blogCategories.hasClass('select2-failed')) {
+                // Use native multiple select
+                $blogCategories.attr('multiple', 'multiple');
+                $blogCategories.css({
+                    'height': 'auto',
+                    'min-height': '100px'
+                });
+                console.log('Using native multiple select for categories');
                 return;
             }
 
-            // Update header text
-            header.querySelector('.selected-text').textContent = `${selectedCategories.length} category${selectedCategories.length > 1 ? 'ies' : ''} selected`;
+            try {
+                // Try Select2 with enhanced error handling
+                if ($blogCategories.hasClass('select2-hidden-accessible')) {
+                    $blogCategories.select2('destroy');
+                }
 
-            // Update tags display
-            tagsContainer.innerHTML = selectedCategories.map(category => `
-                <span class="selected-tag">
-                    ${category}
-                    <span class="tag-remove" data-value="${category}">×</span>
-                </span>
-            `).join('');
-        }
-
-        function updateHiddenInput() {
-            hiddenInput.value = JSON.stringify(selectedCategories);
-        }
-
-        // Initialize with any existing values (for edit mode)
-        function initializeWithValues(categories) {
-            if (categories && Array.isArray(categories)) {
-                selectedCategories = [...categories];
-
-                // Check the corresponding checkboxes
-                categories.forEach(category => {
-                    const checkbox = options.querySelector(`input[value="${category}"]`);
-                    if (checkbox) {
-                        checkbox.checked = true;
+                $blogCategories.select2({
+                    placeholder: "Select categories",
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#blogModal'),
+                    closeOnSelect: false,
+                    dropdownCss: {
+                        'z-index': '99999',
+                        'position': 'fixed',
+                        'top': 'auto',
+                        'left': 'auto'
                     }
+                }).on('select2:open', function(e) {
+                    // Force dropdown outside modal
+                    setTimeout(() => {
+                        const $dropdown = $('.select2-dropdown');
+                        if ($dropdown.length) {
+                            $dropdown.css({
+                                'z-index': '99999',
+                                'position': 'fixed'
+                            });
+                        }
+                    }, 10);
                 });
 
-                updateSelectedTags();
-                updateHiddenInput();
+                console.log('✅ Select2 initialized successfully');
+
+            } catch (error) {
+                console.error('Select2 initialization failed, falling back to native select:', error);
+                $blogCategories.addClass('select2-failed');
+                $blogCategories.attr('multiple', 'multiple');
+                $blogCategories.css({
+                    'height': 'auto',
+                    'min-height': '100px'
+                });
             }
         }
-
-        // Clear all selections
-        function clearSelections() {
-            selectedCategories = [];
-            const checkboxes = options.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            updateSelectedTags();
-            updateHiddenInput();
-        }
-
-        console.log('✅ Professional blog categories dropdown setup complete');
-
-        return {
-            initializeWithValues,
-            clearSelections,
-            getSelectedCategories: () => selectedCategories
-        };
     }
-
-    // Global variable to store the categories manager
-    let blogCategoriesManager = null;
 
     // Enhanced session check with automatic redirect
     function checkAdminSession() {
@@ -711,14 +643,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Content expiration function
     // Handle expiration date in forms
-    function setupExpirationDateFields() {
+    function setupExpirationDates() {
         // Set minimum date to today for expiration date fields
         const today = new Date().toISOString().slice(0, 16);
         document.querySelectorAll('input[type="datetime-local"][name="expiration_date"]').forEach(input => {
             input.min = today;
         });
     }
-
     // Add this to check for expired content every minute
     function startExpirationChecker() {
         setInterval(() => {
@@ -865,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Handle stat card links - ENHANCED to refresh dashboard when returning
+        // Handle stat card links
         document.querySelectorAll('.stat-card a').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -878,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
     // Enhanced notification functionality
     function setupNotificationEvents() {
         const notificationBell = document.querySelector('.notification-bell');
@@ -940,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadNotifications() {
-        return fetch('/api/admin/notifications', {
+        fetch('/api/admin/notifications', {
             credentials: 'include'
         })
         .then(response => {
@@ -953,7 +885,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error loading notifications:', error);
-            throw error; // Re-throw to handle in Promise.all
         });
     }
 
@@ -1089,9 +1020,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Update the loadDashboardStats function to include blog count
     function loadDashboardStats() {
-        return fetch('/api/admin/dashboard-stats', {
+        fetch('/api/admin/dashboard-stats', {
             credentials: 'include'
         })
         .then(response => {
@@ -1109,11 +1039,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'coursesCount': data.courses || 0,
                 'jobsCount': data.jobs || 0,
                 'internshipsCount': data.internships || 0,
-                'blogPostsCount': data.blog_posts || 0,
                 'messagesCount': data.unread_messages || 0,
                 'subscribersCount': data.subscribers || 0,
-                'testimonialsCount': data.testimonials || 0,
-                'expiredContentCount': data.total_expired || 0
+                'testimonialsCount': data.testimonials || 0
             };
 
             // Update each stat element safely
@@ -1134,8 +1062,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set all stats to 0 on error
             const statIds = [
                 'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
-                'blogPostsCount', 'messagesCount', 'subscribersCount',
-                'testimonialsCount', 'expiredContentCount'
+                'messagesCount', 'subscribersCount', 'testimonialsCount'
             ];
 
             statIds.forEach(statId => {
@@ -1146,7 +1073,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             showNotification('Failed to load dashboard statistics', 'error');
-            throw error; // Re-throw to handle in Promise.all
         });
     }
 
@@ -1170,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.testimonialManager = new TestimonialManager();
                 window.testimonialManager.init();
             }
-            return Promise.resolve();
+            return;
         }
 
         showLoading();
@@ -1219,12 +1145,12 @@ document.addEventListener('DOMContentLoaded', function() {
             default:
                 console.warn(`❌ Unknown section: ${section}`);
                 hideLoading();
-                return Promise.reject(`Unknown section: ${section}`);
+                return;
         }
 
         console.log(`📡 Fetching from: ${endpoint}?${params.toString()}`);
 
-        return fetch(`${endpoint}?${params.toString()}`, {
+        fetch(`${endpoint}?${params.toString()}`, {
             credentials: 'include',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -1240,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`✅ Successfully loaded ${section} data:`, data);
             renderTableData(section, data);
             updatePaginationInfo(section, data.count, page);
+            hideLoading();
 
             // Show success notification for non-dashboard sections
             if (section !== 'dashboard') {
@@ -1250,11 +1177,10 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error(`❌ Error loading ${section}:`, error);
             showNotification(`Failed to load ${section}: ${error.message}`, 'error');
-        })
-        .finally(() => {
             hideLoading();
         });
     }
+
     function renderTableData(section, data) {
         const tableBody = document.getElementById(`${section}TableBody`);
         if (!tableBody) return;
@@ -2184,7 +2110,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enhanced blog modal opening function
+    // Enhanced form handling with expiration dates
+    function setupExpirationDateFields() {
+        // Set up expiration date fields in modals
+        const modals = ['courseModal', 'jobModal', 'internshipModal'];
+
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                const form = modal.querySelector('form');
+                const expirationField = form.querySelector('[name="expiration_date"]');
+
+                if (expirationField) {
+                    // Set minimum date to today
+                    const today = new Date().toISOString().slice(0, 16);
+                    expirationField.min = today;
+
+                    // Format existing expiration date for display
+                    const existingExpiration = expirationField.value;
+                    if (existingExpiration) {
+                        try {
+                            const date = new Date(existingExpiration);
+                            if (!isNaN(date.getTime())) {
+                                expirationField.value = date.toISOString().slice(0, 16);
+                            }
+                        } catch (e) {
+                            console.error('Error formatting expiration date:', e);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function openAddModal(type) {
         const modalId = `${type}Modal`;
         const modal = document.getElementById(modalId);
@@ -2203,17 +2161,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Special handling for blog form
             if (type === 'blog') {
-                // Clear categories selection
-                if (blogCategoriesManager) {
-                    blogCategoriesManager.clearSelections();
+                const categoriesSelect = document.getElementById('blogCategories');
+                if (categoriesSelect) {
+                    categoriesSelect.style.height = '100px';
+                    categoriesSelect.style.minHeight = '100px';
+                    categoriesSelect.size = 4; // Show 4 options at once
                 }
             }
         }
 
         modal.style.display = 'block';
+
+        // Initialize Select2 for blog after modal is displayed
+        if (type === 'blog') {
+            setTimeout(() => {
+                initializeBlogSelect2();
+            }, 100);
+        }
     }
 
-    // Enhanced blog edit modal function
     function openEditModal(section, id) {
         fetch(`/api/admin/${section}/${id}`, {
             credentials: 'include'
@@ -2239,8 +2205,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             field.checked = item[key];
                         } else if (key === 'categories' && Array.isArray(item[key])) {
                             // Handle categories array for blog posts
-                            if (section === 'blog' && blogCategoriesManager) {
-                                blogCategoriesManager.initializeWithValues(item[key]);
+                            if (section === 'blog') {
+                                // Set the value but don't trigger Select2 yet
+                                field.value = item[key].join(',');
                             } else {
                                 field.value = item[key].join(', ');
                             }
@@ -2269,12 +2236,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             modal.style.display = 'block';
+
+            // Initialize Select2 for blog after modal is displayed and data is set
+            if (type === 'blog') {
+                const categoriesSelect = document.getElementById('blogCategories');
+                if (categoriesSelect) {
+                    categoriesSelect.style.height = '100px';
+                    categoriesSelect.style.minHeight = '100px';
+                    categoriesSelect.size = 4; // Show 4 options at once
+                }
+            }
         })
         .catch(error => {
             console.error(`Error loading ${section} item:`, error);
             showNotification(`Failed to load ${section} item`, 'error');
         });
     }
+
 
 
     // ===== TESTIMONIAL MANAGER - COMPLETE FIXED IMPLEMENTATION =====
@@ -3190,9 +3168,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Load expired content stats
     // Load expired content stats - Always show View All link
     function loadExpiredContentStats() {
-        return fetch('/api/admin/expired-content-stats', {
+        fetch('/api/admin/expired-content-stats', {
             credentials: 'include'
         })
         .then(response => response.json())
@@ -3216,10 +3195,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Make it more prominent when there are expired items
                     if (expiredCount > 0) {
                         viewLink.style.fontWeight = 'bold';
-                        viewLink.style.color = '#dc3545';
+                        viewLink.style.color = '#dc3545'; // Red color for urgency
                     } else {
                         viewLink.style.fontWeight = 'normal';
-                        viewLink.style.color = '';
+                        viewLink.style.color = ''; // Reset to default
                     }
                 }
 
@@ -3254,9 +3233,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (viewLink) {
                 viewLink.style.display = 'block';
             }
-            throw error; // Re-throw to handle in Promise.all
         });
     }
+
     // Load expired content section
     function loadExpiredContentSection() {
         // Update active states
@@ -3741,6 +3720,38 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
+    // Add manual expiration check button
+    document.getElementById('checkExpiredContentBtn')?.addEventListener('click', function() {
+        const button = this;
+        const originalText = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+        fetch('/api/admin/check-expired-content', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showNotification('Expired content check completed', 'success');
+                loadExpiredContentStats();
+                loadDashboardStats();
+            } else {
+                showNotification(result.message || 'Failed to check expired content', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking expired content:', error);
+            showNotification('Failed to check expired content', 'error');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        });
+    });
+
     function openNewsletterModal() {
         const modal = document.getElementById('newsletterModal');
         if (!modal) return;
@@ -3987,7 +3998,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enhanced form submission for blog posts
     function handleFormSubmit(e, type) {
         e.preventDefault();
 
@@ -4017,10 +4027,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle categories array for blog posts
         if (type === 'blog' && data.categories) {
-            try {
-                data.categories = JSON.parse(data.categories);
-            } catch (e) {
-                data.categories = [];
+            if (typeof data.categories === 'string') {
+                data.categories = data.categories.split(',').map(cat => cat.trim()).filter(cat => cat);
             }
         }
 
@@ -4054,7 +4062,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (type in required_fields) {
             for (const field of required_fields[type]) {
-                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
+                if (!data[field]) {
                     showNotification(`${field.replace('_', ' ')} is required`, 'error');
                     return;
                 }
@@ -4090,11 +4098,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Close modal and reset form
                 closeModal();
                 form.reset();
-
-                // Clear categories if it's a blog form
-                if (type === 'blog' && blogCategoriesManager) {
-                    blogCategoriesManager.clearSelections();
-                }
 
                 // Reload the appropriate section
                 if (currentSection === 'expired-content') {

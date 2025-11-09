@@ -3426,3 +3426,723 @@ body {
 .modal-content {
     pointer-events: auto;
 }
+/* ===== TESTIMONIAL ACTION BUTTONS - MATCHING OTHER SECTIONS ===== */
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.btn-icon {
+    padding: 6px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+/* Testimonial specific action buttons */
+.btn-icon.view-testimonial {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.btn-icon.view-testimonial:hover {
+    background: #bbdefb;
+    transform: translateY(-1px);
+}
+
+.btn-icon.edit-testimonial {
+    background: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #ffe0b2;
+}
+
+.btn-icon.edit-testimonial:hover {
+    background: #ffe0b2;
+    transform: translateY(-1px);
+}
+
+.btn-icon.delete-testimonial {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.btn-icon.delete-testimonial:hover {
+    background: #ffcdd2;
+    transform: translateY(-1px);
+}
+
+.btn-icon.approve-testimonial {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.btn-icon.approve-testimonial:hover {
+    background: #c8e6c9;
+    transform: translateY(-1px);
+}
+
+.btn-icon.reject-testimonial {
+    background: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #ffe0b2;
+}
+
+.btn-icon.reject-testimonial:hover {
+    background: #ffe0b2;
+    transform: translateY(-1px);
+}
+
+/* Status badges for testimonials */
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.status-badge.approved {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.status-badge.rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* ===== TESTIMONIAL CONTENT FIELD DARK MODE FIX ===== */
+.admin-dashboard.dark-mode .testimonial-content-field .view-content,
+.admin-dashboard.dark-mode .testimonial-content-field .field-value,
+.admin-dashboard.dark-mode .testimonial-content-field .form-control {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+.admin-dashboard.dark-mode .testimonial-content-field textarea {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Dark mode for testimonial action buttons */
+.admin-dashboard.dark-mode .btn-icon.view-testimonial {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.view-testimonial:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.edit-testimonial {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.edit-testimonial:hover {
+    background: rgba(245, 158, 11, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.delete-testimonial {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.delete-testimonial:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.approve-testimonial {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.approve-testimonial:hover {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.reject-testimonial {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-dashboard.dark-mode .btn-icon.reject-testimonial:hover {
+    background: rgba(245, 158, 11, 0.3);
+}
+
+/* ===== FORM STRUCTURE CORRECTION ===== */
+/* Ensure all forms use consistent structure */
+.form-container {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin: 0;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+}
+
+.form-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -0.75rem;
+    gap: 1rem;
+}
+
+.form-group {
+    flex: 1 0 calc(50% - 1rem);
+    margin-bottom: 1.5rem;
+    min-width: 250px;
+}
+
+.form-group.full-width {
+    flex: 1 0 100%;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.form-group input:not([type="checkbox"]):not([type="radio"]),
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+/* Testimonial specific form styles */
+.testimonial-form .rating-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rating-star {
+    font-size: 1.5rem;
+    color: var(--border-color);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.rating-star.active,
+.rating-star:hover {
+    color: var(--warning);
+}
+
+.testimonial-status-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Form actions consistency */
+.form-actions {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* ===== TABLE STRUCTURE CONSISTENCY ===== */
+/* Ensure testimonial table matches other sections */
+.content-table th:nth-child(1),
+.content-table td:nth-child(1) {
+    width: 60px;
+    text-align: center;
+}
+
+.content-table th:last-child,
+.content-table td:last-child {
+    width: 150px;
+    text-align: center;
+}
+
+/* ===== DARK MODE FORM FIXES ===== */
+.admin-dashboard.dark-mode .form-container {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+.admin-dashboard.dark-mode .form-group input:not([type="checkbox"]):not([type="radio"]),
+.admin-dashboard.dark-mode .form-group select,
+.admin-dashboard.dark-mode .form-group textarea {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.admin-dashboard.dark-mode .form-group input:focus,
+.admin-dashboard.dark-mode .form-group select:focus,
+.admin-dashboard.dark-mode .form-group textarea:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* ===== RESPONSIVE FIXES ===== */
+@media (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .btn-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+
+    .form-group {
+        flex: 1 0 100%;
+    }
+
+    .form-row {
+        margin: 0;
+    }
+
+    .testimonial-status-group {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .content-table th:last-child,
+    .content-table td:last-child {
+        width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-container {
+        padding: 1rem;
+    }
+
+    .form-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .action-buttons {
+        flex-direction: row;
+        gap: 3px;
+    }
+
+    .btn-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 10px;
+        padding: 4px;
+    }
+}
+/* Professional Multi-Select Dropdown Styles */
+.custom-multi-select {
+    position: relative;
+    width: 100%;
+}
+
+.select-header {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.3s;
+}
+
+.select-header:hover {
+    border-color: #4a6cf7;
+}
+
+.select-header i {
+    transition: transform 0.3s;
+    color: #666;
+}
+
+.select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+    margin-top: 4px;
+}
+
+.option-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.option-item:last-child {
+    border-bottom: none;
+}
+
+.option-item:hover {
+    background-color: #f8f9fa;
+}
+
+.option-item input[type="checkbox"] {
+    margin-right: 10px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.option-item label {
+    cursor: pointer;
+    margin: 0;
+    flex: 1;
+    font-size: 14px;
+}
+
+.selected-tags {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 32px;
+}
+
+.selected-tag {
+    background: #4a6cf7;
+    color: white;
+    padding: 4px 8px 4px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.tag-remove {
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.tag-remove:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Ensure dropdown appears above modal */
+.modal .select-options {
+    z-index: 9999;
+}
+
+/* Scrollbar styling for options */
+.select-options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select-options::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.select-options::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.select-options::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+/* Dark Mode Support for Multi-Select Dropdown */
+.admin-dashboard.dark-mode .custom-multi-select .select-header {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .select-header:hover {
+    border-color: #4a6cf7;
+    background: #2d3748;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .select-options {
+    background: #2d3748;
+    border-color: #4a5568;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item {
+    background: #2d3748;
+    border-bottom-color: #4a5568;
+    color: #e2e8f0;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item:hover {
+    background: #4a5568;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item label {
+    color: #e2e8f0;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item input[type="checkbox"] {
+    background: #4a5568;
+    border: 1px solid #718096;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item input[type="checkbox"]:checked {
+    background: #4a6cf7;
+    border-color: #4a6cf7;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .option-item input[type="checkbox"]:checked::before {
+    color: #ffffff;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .selected-tag {
+    background: #4a6cf7;
+    color: #ffffff;
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .tag-remove:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.admin-dashboard.dark-mode .custom-multi-select .select-header i {
+    color: #cbd5e0;
+}
+
+/* Dark mode scrollbar */
+.admin-dashboard.dark-mode .select-options::-webkit-scrollbar-track {
+    background: #4a5568;
+}
+
+.admin-dashboard.dark-mode .select-options::-webkit-scrollbar-thumb {
+    background: #718096;
+}
+
+.admin-dashboard.dark-mode .select-options::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+/* Enhanced checkbox styling for better visibility */
+.admin-dashboard.dark-mode .option-item input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #718096;
+    border-radius: 3px;
+    background: #2d3748;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard.dark-mode .option-item input[type="checkbox"]:checked {
+    background: #4a6cf7;
+    border-color: #4a6cf7;
+}
+
+.admin-dashboard.dark-mode .option-item input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.admin-dashboard.dark-mode .option-item input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.3);
+}
+
+/* Light mode checkbox enhancements */
+.admin-dashboard:not(.dark-mode) .option-item input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #cbd5e0;
+    border-radius: 3px;
+    background: white;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard:not(.dark-mode) .option-item input[type="checkbox"]:checked {
+    background: #4a6cf7;
+    border-color: #4a6cf7;
+}
+
+.admin-dashboard:not(.dark-mode) .option-item input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.admin-dashboard:not(.dark-mode) .option-item input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.3);
+}
+
+/* Ensure the dropdown text is visible in both modes */
+.admin-dashboard.dark-mode .select-header .selected-text {
+    color: #e2e8f0;
+}
+
+.admin-dashboard:not(.dark-mode) .select-header .selected-text {
+    color: #2d3748;
+}
+
+/* Form label colors for dark mode */
+.admin-dashboard.dark-mode .form-group label {
+    color: #e2e8f0;
+}
+
+.admin-dashboard:not(.dark-mode) .form-group label {
+    color: #2d3748;
+}
+
+/* Modal background for dark mode */
+.admin-dashboard.dark-mode .modal-content {
+    background: #2d3748;
+    color: #e2e8f0;
+}
+
+.admin-dashboard.dark-mode .modal-content .form-group input,
+.admin-dashboard.dark-mode .modal-content .form-group textarea,
+.admin-dashboard.dark-mode .modal-content .form-group select {
+    background: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+}
+
+.admin-dashboard.dark-mode .modal-content .form-group input:focus,
+.admin-dashboard.dark-mode .modal-content .form-group textarea:focus,
+.admin-dashboard.dark-mode .modal-content .form-group select:focus {
+    border-color: #4a6cf7;
+    box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.3);
+}
+
+/* Placeholder text for dark mode */
+.admin-dashboard.dark-mode .modal-content .form-group input::placeholder,
+.admin-dashboard.dark-mode .modal-content .form-group textarea::placeholder {
+    color: #a0aec0;
+}
+
+
+

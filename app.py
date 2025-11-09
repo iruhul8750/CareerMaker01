@@ -105,6 +105,22 @@ def get_current_utc_time():
     """Get current time in UTC for consistent expiration checks"""
     return datetime.now(timezone.utc)
 
+def test_supabase_connection():
+    """Test Supabase connection with retry logic"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Test regular client
+            test = supabase.table('users').select('*').limit(1).execute()
+            logger.info("✅ Supabase connection test successful")
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Supabase connection attempt {attempt + 1} failed: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(1)  # Wait 1 second before retry
+            else:
+                logger.error(f"❌ All Supabase connection attempts failed")
+                return False
 
 def parse_db_timestamp(timestamp_str):
     """Parse database timestamp and ensure it's timezone-aware"""
@@ -302,6 +318,7 @@ def share_blog():
     except Exception as e:
         logger.error(f"Error sharing blog: {str(e)}")
 
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -313,27 +330,7 @@ def admin_required(f):
                     'requires_login': True,
                     'redirect_url': '/admin/login'
                 }), 401
-
-            # Additional verification that admin still exists and is active
-            admin_id = session.get('admin_id')
-            if admin_id:
-                admin = supabase_admin.table('admins') \
-                    .select('id, is_active') \
-                    .eq('id', admin_id) \
-                    .maybe_single() \
-                    .execute()
-
-                if not admin.data or not admin.data.get('is_active', True):
-                    session.clear()
-                    return jsonify({
-                        'success': False,
-                        'message': 'Admin account no longer active',
-                        'requires_login': True,
-                        'redirect_url': '/admin/login'
-                    }), 401
-
             return f(*args, **kwargs)
-
         except Exception as e:
             logger.error(f"Admin required decorator error: {str(e)}")
             return jsonify({
@@ -342,11 +339,9 @@ def admin_required(f):
                 'requires_login': True,
                 'redirect_url': '/admin/login'
             }), 500
-
     return decorated_function
 
 # Logo fetch functions for contents
-
 def fetch_company_logo(company_name):
     """
     Optimized company logo fetching with multiple strategies and better matching
@@ -3587,50 +3582,162 @@ def admin_dashboard():
         flash('Failed to load dashboard data. Please try again.', 'danger')
         return redirect(url_for('admin_login'))
 
+
 # ===== ADMIN DATA FETCHING ROUTES =====
 
 @app.route('/api/admin/dashboard-stats')
 @admin_required
 def admin_dashboard_stats():
+    """Get dashboard statistics with robust error handling"""
     try:
-        # Get statistics using admin client (bypasses RLS)
-        with ThreadPoolExecutor() as executor:
-            users_future = executor.submit(
-                supabase_admin.table('users').select('id', count='exact').execute
-            )
-            courses_future = executor.submit(
-                supabase_admin.table('courses').select('id', count='exact').eq('is_active', True).execute
-            )
-            jobs_future = executor.submit(
-                supabase_admin.table('jobs').select('id', count='exact').eq('is_active', True).execute
-            )
-            internships_future = executor.submit(
-                supabase_admin.table('internships').select('id', count='exact').eq('is_active', True).execute
-            )
-            messages_future = executor.submit(
-                supabase_admin.table('contact_messages').select('id', count='exact').execute
-            )
-            unread_future = executor.submit(
-                supabase_admin.table('contact_messages').select('id', count='exact').eq('status', 'unread').execute
-            )
-            subscribers_future = executor.submit(
-                supabase_admin.table('newsletter_subscribers').select('id', count='exact').eq('is_active', True).execute
-            )
+        # Initialize default stats
+        stats = {
+            'users': 0,
+            'courses': 0,
+            'jobs': 0,
+            'internships': 0,
+            'messages': 0,
+            'unread_messages': 0,
+            'subscribers': 0,
+            'testimonials': 0,
+            'blog_posts': 0,
+            'total_expired': 0
+        }
 
-            stats = {
-                'users': users_future.result().count or 0,
-                'courses': courses_future.result().count or 0,
-                'jobs': jobs_future.result().count or 0,
-                'internships': internships_future.result().count or 0,
-                'messages': messages_future.result().count or 0,
-                'unread_messages': unread_future.result().count or 0,
-                'subscribers': subscribers_future.result().count or 0
-            }
+        # Test database connection first
+        try:
+            test_response = supabase_admin.table('users').select('id').limit(1).execute()
+            logger.info("✅ Database connection test successful")
+        except Exception as db_error:
+            logger.error(f"❌ Database connection failed: {str(db_error)}")
+            # Return default stats instead of error
+            return jsonify(stats)
+
+        # Get all stats with individual error handling
+        try:
+            # Users count
+            users_response = supabase_admin.table('users').select('id', count='exact').execute()
+            stats['users'] = getattr(users_response, 'count', 0) or 0
+            logger.info(f"✅ Users count: {stats['users']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting users count: {str(e)}")
+            stats['users'] = 0
+
+        try:
+            # Active courses count
+            courses_response = supabase_admin.table('courses').select('id', count='exact').eq('is_active',
+                                                                                              True).execute()
+            stats['courses'] = getattr(courses_response, 'count', 0) or 0
+            logger.info(f"✅ Courses count: {stats['courses']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting courses count: {str(e)}")
+            stats['courses'] = 0
+
+        try:
+            # Active jobs count
+            jobs_response = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', True).execute()
+            stats['jobs'] = getattr(jobs_response, 'count', 0) or 0
+            logger.info(f"✅ Jobs count: {stats['jobs']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting jobs count: {str(e)}")
+            stats['jobs'] = 0
+
+        try:
+            # Active internships count
+            internships_response = supabase_admin.table('internships').select('id', count='exact').eq('is_active',
+                                                                                                      True).execute()
+            stats['internships'] = getattr(internships_response, 'count', 0) or 0
+            logger.info(f"✅ Internships count: {stats['internships']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting internships count: {str(e)}")
+            stats['internships'] = 0
+
+        try:
+            # Total messages count
+            messages_response = supabase_admin.table('contact_messages').select('id', count='exact').execute()
+            stats['messages'] = getattr(messages_response, 'count', 0) or 0
+            logger.info(f"✅ Messages count: {stats['messages']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting messages count: {str(e)}")
+            stats['messages'] = 0
+
+        try:
+            # Unread messages count
+            unread_response = supabase_admin.table('contact_messages').select('id', count='exact').eq('status',
+                                                                                                      'unread').execute()
+            stats['unread_messages'] = getattr(unread_response, 'count', 0) or 0
+            logger.info(f"✅ Unread messages: {stats['unread_messages']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting unread messages: {str(e)}")
+            stats['unread_messages'] = 0
+
+        try:
+            # Active subscribers count
+            subscribers_response = supabase_admin.table('newsletter_subscribers').select('id', count='exact').eq(
+                'is_active', True).execute()
+            stats['subscribers'] = getattr(subscribers_response, 'count', 0) or 0
+            logger.info(f"✅ Subscribers count: {stats['subscribers']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting subscribers count: {str(e)}")
+            stats['subscribers'] = 0
+
+        try:
+            # Active testimonials count
+            testimonials_response = supabase_admin.table('testimonials').select('id', count='exact').eq('is_active',
+                                                                                                        True).execute()
+            stats['testimonials'] = getattr(testimonials_response, 'count', 0) or 0
+            logger.info(f"✅ Testimonials count: {stats['testimonials']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting testimonials count: {str(e)}")
+            stats['testimonials'] = 0
+
+        try:
+            # Blog posts count
+            blog_posts_response = supabase_admin.table('blog_posts').select('id', count='exact').execute()
+            stats['blog_posts'] = getattr(blog_posts_response, 'count', 0) or 0
+            logger.info(f"✅ Blog posts count: {stats['blog_posts']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting blog posts count: {str(e)}")
+            stats['blog_posts'] = 0
+
+        try:
+            # Expired content count (content that is inactive)
+            expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active',
+                                                                                             False).execute()
+            expired_jobs = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', False).execute()
+            expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active',
+                                                                                                     False).execute()
+
+            expired_courses_count = getattr(expired_courses, 'count', 0) or 0
+            expired_jobs_count = getattr(expired_jobs, 'count', 0) or 0
+            expired_internships_count = getattr(expired_internships, 'count', 0) or 0
+
+            stats['total_expired'] = expired_courses_count + expired_jobs_count + expired_internships_count
+            logger.info(
+                f"✅ Expired content: {stats['total_expired']} (Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count})")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting expired content count: {str(e)}")
+            stats['total_expired'] = 0
+
+        logger.info(f"🎯 Final dashboard stats: {stats}")
 
         return jsonify(stats)
+
     except Exception as e:
-        logger.error(f"Error loading dashboard stats: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"❌ Critical error in dashboard stats: {str(e)}", exc_info=True)
+        # Return default stats on critical error
+        return jsonify({
+            'users': 0,
+            'courses': 0,
+            'jobs': 0,
+            'internships': 0,
+            'messages': 0,
+            'unread_messages': 0,
+            'subscribers': 0,
+            'testimonials': 0,
+            'blog_posts': 0,
+            'total_expired': 0
+        })
 
 
 # ===== CREATE/UPDATE ROUTES =====
@@ -4737,7 +4844,6 @@ def generate_blog_slug():
         logger.error(f"Error generating slug: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to generate slug'}), 500
 
-
 # ===== HELPER FUNCTIONS =====
 
 def generate_slug(title):
@@ -5031,6 +5137,284 @@ def format_date_filter(value, format='%b %d, %Y'):
         # If parsing fails, return the original value truncated
         return str(value)[:10] if value else 'Unknown date'
 
+
+# ===== TESTIMONIAL ADMIN ROUTES - FIXED =====
+
+@app.route('/api/admin/testimonials/stats')
+@admin_required
+def get_testimonial_stats():
+    """Get testimonial statistics for admin dashboard - SIMPLIFIED"""
+    try:
+        # Get all testimonials
+        response = supabase_admin.table('testimonials').select('*').execute()
+
+        if not hasattr(response, 'data'):
+            return jsonify({'success': True, 'stats': {
+                'total': 0, 'active': 0, 'inactive': 0, 'recent': 0
+            }})
+
+        all_testimonials = response.data
+        total_count = len(all_testimonials)
+
+        # Count active testimonials
+        active_count = len([t for t in all_testimonials if t.get('is_active', True)])
+
+        # Count recent testimonials (last 7 days)
+        week_ago = (get_current_utc_time() - timedelta(days=7)).isoformat()
+        recent_count = len([t for t in all_testimonials if t.get('created_at', '') >= week_ago])
+
+        stats = {
+            'total': total_count,
+            'active': active_count,
+            'inactive': total_count - active_count,
+            'recent': recent_count
+        }
+
+        return jsonify({'success': True, 'stats': stats})
+
+    except Exception as e:
+        logger.error(f"Error getting testimonial stats: {str(e)}")
+        return jsonify({'success': False, 'stats': {}})
+
+
+@app.route('/api/admin/testimonials')
+@admin_required
+def get_admin_testimonials():
+    """Get all testimonials for admin management - COMPLETELY REWRITTEN"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')  # active, inactive, all
+
+        logger.info(f"Fetching testimonials - page: {page}, search: '{search}', status: '{status}'")
+
+        # SIMPLE APPROACH: Get all testimonials and handle filtering/pagination manually
+        response = supabase_admin.table('testimonials').select('*').execute()
+
+        if not hasattr(response, 'data'):
+            logger.warning("No data attribute in response")
+            return jsonify({
+                'success': True,
+                'testimonials': [],
+                'total_count': 0,
+                'per_page': per_page,
+                'page': page
+            })
+
+        all_testimonials = response.data
+        logger.info(f"Retrieved {len(all_testimonials)} testimonials from database")
+
+        # Apply search filter
+        if search:
+            search_lower = search.lower()
+            all_testimonials = [
+                t for t in all_testimonials
+                if (t.get('username', '').lower().find(search_lower) >= 0 or
+                    t.get('content', '').lower().find(search_lower) >= 0)
+            ]
+            logger.info(f"After search filter: {len(all_testimonials)} testimonials")
+
+        # Apply status filter
+        if status == 'active':
+            all_testimonials = [t for t in all_testimonials if t.get('is_active', True)]
+            logger.info(f"After active filter: {len(all_testimonials)} testimonials")
+        elif status == 'inactive':
+            all_testimonials = [t for t in all_testimonials if not t.get('is_active', True)]
+            logger.info(f"After inactive filter: {len(all_testimonials)} testimonials")
+
+        # Sort by creation date (newest first)
+        all_testimonials.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
+        # Manual pagination
+        total_count = len(all_testimonials)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_testimonials = all_testimonials[start_idx:end_idx]
+
+        logger.info(f"Pagination: showing {len(paginated_testimonials)} of {total_count} testimonials")
+
+        # Enhance testimonials with additional data
+        enhanced_testimonials = []
+        for testimonial in paginated_testimonials:
+            enhanced = dict(testimonial)
+
+            # Get user details if user_id exists
+            if testimonial.get('user_id'):
+                try:
+                    user_response = supabase_admin.table('users') \
+                        .select('email, created_at, is_active') \
+                        .eq('id', testimonial['user_id']) \
+                        .execute()
+
+                    if user_response.data:
+                        user_data = user_response.data[0]
+                        enhanced['user_email'] = user_data.get('email')
+                        enhanced['user_created_at'] = user_data.get('created_at')
+                        enhanced['user_active'] = user_data.get('is_active', True)
+                except Exception as e:
+                    logger.warning(f"Could not fetch user data for testimonial {testimonial['id']}: {str(e)}")
+                    enhanced['user_email'] = None
+                    enhanced['user_active'] = True
+
+            # Generate profile picture URL
+            profile_pic_path = testimonial.get('profile_pic')
+            if profile_pic_path:
+                try:
+                    # Extract project reference from your supabase_url
+                    project_ref = supabase_url.split('//')[1].split('.')[0]
+                    enhanced[
+                        'profile_pic_url'] = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}"
+                except Exception as e:
+                    logger.warning(f"Could not generate profile pic URL: {str(e)}")
+                    enhanced[
+                        'profile_pic_url'] = f"https://ui-avatars.com/api/?name={testimonial.get('username', 'User')}&background=10b981&color=fff&bold=true"
+            else:
+                enhanced[
+                    'profile_pic_url'] = f"https://ui-avatars.com/api/?name={testimonial.get('username', 'User')}&background=10b981&color=fff&bold=true"
+
+            enhanced_testimonials.append(enhanced)
+
+        logger.info(f"Successfully processed {len(enhanced_testimonials)} testimonials")
+
+        return jsonify({
+            'success': True,
+            'testimonials': enhanced_testimonials,
+            'total_count': total_count,
+            'per_page': per_page,
+            'page': page
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting admin testimonials: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/admin/testimonials/<testimonial_id>')
+@admin_required
+def get_admin_testimonial(testimonial_id):
+    """Get single testimonial for admin"""
+    try:
+        testimonial = supabase_admin.table('testimonials') \
+            .select('*') \
+            .eq('id', testimonial_id) \
+            .single() \
+            .execute()
+
+        if not testimonial.data:
+            return jsonify({'success': False, 'error': 'Testimonial not found'}), 404
+
+        return jsonify({'success': True, 'testimonial': testimonial.data})
+
+    except Exception as e:
+        logger.error(f"Error getting testimonial: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/testimonials/<testimonial_id>/status', methods=['PUT'])
+@admin_required
+def update_testimonial_status(testimonial_id):
+    """Update testimonial status"""
+    try:
+        data = request.get_json()
+        is_active = data.get('is_active')
+
+        if is_active is None:
+            return jsonify({'success': False, 'error': 'is_active parameter is required'}), 400
+
+        # Update testimonial status
+        result = supabase_admin.table('testimonials') \
+            .update({
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }) \
+            .eq('id', testimonial_id) \
+            .execute()
+
+        if result.data:
+            status_text = "activated" if is_active else "deactivated"
+            return jsonify({
+                'success': True,
+                'message': f'Testimonial {status_text} successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Testimonial not found'}), 404
+
+    except Exception as e:
+        logger.error(f"Error updating testimonial status: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to update testimonial status'}), 500
+
+
+@app.route('/api/admin/testimonials/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_testimonials():
+    """Bulk delete testimonials"""
+    try:
+        data = request.get_json()
+        testimonial_ids = data.get('ids', [])
+
+        if not testimonial_ids:
+            return jsonify({'success': False, 'error': 'No testimonials selected'}), 400
+
+        # Delete testimonials
+        result = supabase_admin.table('testimonials') \
+            .delete() \
+            .in_('id', testimonial_ids) \
+            .execute()
+
+        deleted_count = len(result.data) if result.data else 0
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count} testimonials deleted successfully',
+            'deleted_count': deleted_count
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk deleting testimonials: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to delete testimonials'}), 500
+
+
+@app.route('/api/admin/testimonials/bulk-status', methods=['POST'])
+@admin_required
+def bulk_update_testimonial_status():
+    """Bulk update testimonial status"""
+    try:
+        data = request.get_json()
+        testimonial_ids = data.get('ids', [])
+        is_active = data.get('is_active')
+
+        if not testimonial_ids:
+            return jsonify({'success': False, 'error': 'No testimonials selected'}), 400
+
+        if is_active is None:
+            return jsonify({'success': False, 'error': 'is_active parameter is required'}), 400
+
+        # Update testimonial status in bulk
+        result = supabase_admin.table('testimonials') \
+            .update({
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }) \
+            .in_('id', testimonial_ids) \
+            .execute()
+
+        updated_count = len(result.data) if result.data else 0
+
+        status_text = "activated" if is_active else "deactivated"
+        return jsonify({
+            'success': True,
+            'message': f'{updated_count} testimonials {status_text} successfully',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk updating testimonial status: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to update testimonial status'}), 500
+
+
 # ===== MESSAGE SPECIFIC ROUTES =====
 
 @app.route('/api/admin/messages/<string:id>/status', methods=['PUT'])
@@ -5126,6 +5510,13 @@ def admin_message_reply():
 @admin_required
 def get_notifications():
     try:
+        # Test database connection first
+        try:
+            test_connection = supabase_admin.table('admin_notifications').select('id').limit(1).execute()
+        except Exception as db_error:
+            logger.error(f"Database connection failed for notifications: {str(db_error)}")
+            return jsonify([])
+
         # Get notifications
         response = supabase_admin.table('admin_notifications') \
             .select('*') \
@@ -5266,26 +5657,49 @@ def toggle_newsletter_status(id):
 @app.route('/api/admin/expired-content-stats')
 @admin_required
 def expired_content_stats():
-    """Get count of content that has been marked as expired (either by scheduler or manually)"""
+    """Get count of content that has been marked as expired (is_active=False)"""
     try:
-        # Count content that is marked as expired (is_active=False due to expiration)
-        expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active', False).execute()
-        expired_jobs = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', False).execute()
-        expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active', False).execute()
+        # Count content that is marked as expired (is_active=False)
+        expired_courses_count = 0
+        expired_jobs_count = 0
+        expired_internships_count = 0
 
-        total_expired = (expired_courses.count or 0) + (expired_jobs.count or 0) + (expired_internships.count or 0)
+        try:
+            expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active', False).execute()
+            expired_courses_count = expired_courses.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting expired courses: {str(e)}")
+
+        try:
+            expired_jobs = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', False).execute()
+            expired_jobs_count = expired_jobs.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting expired jobs: {str(e)}")
+
+        try:
+            expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active', False).execute()
+            expired_internships_count = expired_internships.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting expired internships: {str(e)}")
+
+        total_expired = expired_courses_count + expired_jobs_count + expired_internships_count
+
+        logger.info(f"Expired content stats - Total: {total_expired}, Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count}")
 
         return jsonify({
             'success': True,
             'total_expired': total_expired,
-            'courses': expired_courses.count or 0,
-            'jobs': expired_jobs.count or 0,
-            'internships': expired_internships.count or 0
+            'courses': expired_courses_count,
+            'jobs': expired_jobs_count,
+            'internships': expired_internships_count
         })
 
     except Exception as e:
         logger.error(f"Error getting expired content stats: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/admin/expired-content')
 @admin_required

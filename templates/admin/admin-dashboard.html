@@ -26,6 +26,8 @@
                     class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
+            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a>
+            </li>
             <li class="menu-item"><a href="#expired-content"><i
                     class="fas fa-clock"></i><span>Expired Content</span></a></li>
             <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
@@ -97,18 +99,16 @@
             <div class="section-header">
                 <h2>Admin Dashboard</h2>
                 <div class="dashboard-actions">
+                    <button class="btn btn-outline" id="refreshDashboardBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                     <button class="btn btn-outline" id="checkExpiredContentBtn">
-                        <i class="fas fa-sync-alt"></i> Check Expired Now
+                        <i class="fas fa-clock"></i> Check Expired Now
                     </button>
                 </div>
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card primary">
-                    <h3>Total Users</h3>
-                    <p id="usersCount">0</p>
-                    <a href="#users">View All <i class="fas fa-arrow-right"></i></a>
-                </div>
 
                 <div class="stat-card success">
                     <h3>Total Courses</h3>
@@ -129,15 +129,21 @@
                 </div>
 
                 <div class="stat-card info">
-                    <h3>Unread Messages</h3>
-                    <p id="messagesCount">0</p>
-                    <a href="#messages">View All <i class="fas fa-arrow-right"></i></a>
+                    <h3>Blog Posts</h3>
+                    <p id="blogPostsCount">0</p>
+                    <a href="#blog">View All <i class="fas fa-arrow-right"></i></a>
                 </div>
 
                 <div class="stat-card secondary">
                     <h3>Newsletter Subscribers</h3>
                     <p id="subscribersCount">0</p>
                     <a href="#newsletter">View All <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="stat-card info">
+                    <h3>Total Testimonials</h3>
+                    <p id="testimonialsCount">0</p>
+                    <a href="#testimonials" id="viewTestimonialsLink">View All <i class="fas fa-arrow-right"></i></a>
                 </div>
 
                 <!-- New Expired Content Card -->
@@ -147,6 +153,20 @@
                     <a href="#expired-content" id="viewExpiredLink" class="view-link">View All <i
                             class="fas fa-arrow-right"></i></a>
                 </div>
+
+                <div class="stat-card primary">
+                    <h3>Total Users</h3>
+                    <p id="usersCount">0</p>
+                    <a href="#users">View All <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="stat-card info">
+                    <h3>Unread Messages</h3>
+                    <p id="messagesCount">0</p>
+                    <a href="#messages">View All <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+
             </div>
 
             <div class="recent-activity">
@@ -401,6 +421,69 @@
                     <button class="btn btn-outline" id="prevBlogPage"><i class="fas fa-chevron-left"></i></button>
                     <span class="page-info" id="blogPageInfo">Page 1 of 1</span>
                     <button class="btn btn-outline" id="nextBlogPage"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testimonials Section -->
+        <div class="admin-section" id="testimonials">
+            <div class="section-header">
+                <h2>Testimonial Management</h2>
+                <button class="btn btn-outline" id="refreshTestimonialsBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <div class="content-filters">
+                <div class="search-box">
+                    <input type="text" placeholder="Search testimonials..." id="testimonialSearch" class="search-input">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <div class="filter-options">
+                    <select id="testimonialStatusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="content-table">
+                <table>
+                    <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllTestimonials"></th>
+                        <th>S.No</th>
+                        <th>User</th>
+                        <th>Content</th>
+                        <th>Rating</th>
+                        <th>Posted Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="testimonialsTableBody">
+                    <!-- Testimonials will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="bulk-actions">
+                    <select id="testimonialBulkAction" class="bulk-action-select">
+                        <option value="">Bulk Actions</option>
+                        <option value="activate">Activate</option>
+                        <option value="deactivate">Deactivate</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button class="btn btn-outline" id="applyTestimonialBulkAction">Apply</button>
+                </div>
+                <div class="pagination">
+                    <button class="btn btn-outline" id="prevTestimonialPage"><i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="page-info" id="testimonialPageInfo">Page 1 of 1</span>
+                    <button class="btn btn-outline" id="nextTestimonialPage"><i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -919,19 +1002,53 @@
                                 <input type="text" id="blogAuthor" name="author" required>
                             </div>
                         </div>
+
+                        <!-- PROFESSIONAL MULTI-SELECT DROPDOWN -->
                         <div class="form-group">
-                            <label for="blogCategories">Categories *</label>
-                            <select id="blogCategories" name="categories" multiple required style="width: 100%;">
-                                <option value="Career Advice">Career Advice</option>
-                                <option value="Resume Tips">Resume Tips</option>
-                                <option value="Interviewing">Interviewing</option>
-                                <option value="Industry News">Industry News</option>
-                                <option value="Professional Development">Professional Development</option>
-                                <option value="Job Search">Job Search</option>
-                                <option value="Skills Development">Skills Development</option>
-                                <option value="Workplace Tips">Workplace Tips</option>
-                            </select>
+                            <div class="custom-multi-select">
+                                <div class="select-header" id="blogCategoriesHeader">
+                                    <span class="selected-text">Select categories...</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="select-options" id="blogCategoriesOptions">
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_career" value="Career Advice">
+                                        <label for="cat_career">Career Advice</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_resume" value="Resume Tips">
+                                        <label for="cat_resume">Resume Tips</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_interview" value="Interviewing">
+                                        <label for="cat_interview">Interviewing</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_news" value="Industry News">
+                                        <label for="cat_news">Industry News</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_development" value="Professional Development">
+                                        <label for="cat_development">Professional Development</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_jobsearch" value="Job Search">
+                                        <label for="cat_jobsearch">Job Search</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_skills" value="Skills Development">
+                                        <label for="cat_skills">Skills Development</label>
+                                    </div>
+                                    <div class="option-item">
+                                        <input type="checkbox" id="cat_workplace" value="Workplace Tips">
+                                        <label for="cat_workplace">Workplace Tips</label>
+                                    </div>
+                                </div>
+                                <div class="selected-tags" id="blogCategoriesTags"></div>
+                                <input type="hidden" name="categories" id="blogCategoriesHidden">
+                            </div>
                         </div>
+
                         <div class="form-group">
                             <label for="blogContent">Content</label>
                             <textarea id="blogContent" name="content" rows="8" required></textarea>
@@ -1190,26 +1307,9 @@
             });
         }
 
-        // Close modal when clicking outside
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal();
-                }
-            });
-        });
-
         // Add any other essential JavaScript that was in base template
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Admin Dashboard Loaded');
-
-            // Initialize Select2
-            if (typeof $ !== 'undefined' && $.fn.select2) {
-                $('#blogCategories').select2({
-                    placeholder: "Select categories...",
-                    allowClear: true
-                });
-            }
         });
     </script>
 </div>
