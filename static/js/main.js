@@ -2489,6 +2489,57 @@
       });
     });
 
+    // Add this to your main.js file
+    function initializeBadgeColors() {
+        // Color code categories
+        const categoryColors = {
+            'technology': 'technology',
+            'programming': 'technology',
+            'web development': 'technology',
+            'data science': 'technology',
+            'business': 'business',
+            'finance': 'business',
+            'marketing': 'marketing',
+            'design': 'design',
+            'ux/ui': 'design',
+            'science': 'science',
+            'engineering': 'science'
+        };
+
+        // Add category badges
+        document.querySelectorAll('.category').forEach(categoryEl => {
+            const categoryText = categoryEl.textContent.toLowerCase();
+            const colorClass = categoryColors[categoryText] || 'technology';
+
+            const badge = document.createElement('span');
+            badge.className = `category-badge ${colorClass}`;
+            badge.innerHTML = `<i class="fas fa-tag"></i>${categoryEl.textContent}`;
+
+            categoryEl.parentNode.replaceChild(badge, categoryEl);
+        });
+
+        // Update expiration badges based on date
+        document.querySelectorAll('.expiration-badge').forEach(badge => {
+            if (badge.classList.contains('active')) {
+                const dateText = badge.textContent;
+                if (dateText.includes('Expires:')) {
+                    const dateStr = dateText.replace('Expires:', '').trim();
+                    const expireDate = new Date(dateStr);
+                    const today = new Date();
+                    const daysUntilExpire = Math.ceil((expireDate - today) / (1000 * 60 * 60 * 24));
+
+                    if (daysUntilExpire <= 3) {
+                        badge.classList.remove('active');
+                        badge.classList.add('urgent');
+                    }
+                }
+            }
+        });
+    }
+
+    // Call this function when the page loads
+    document.addEventListener('DOMContentLoaded', initializeBadgeColors);
+
     // =============================================
     // Dark Mode Toggle
     // =============================================

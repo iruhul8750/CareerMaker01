@@ -79,22 +79,79 @@
                          !='/static/images/default-course.png' %}style="display: none;" {% endif %}>
                         <i class="fas fa-book"></i>
                     </div>
+
+                    <!-- Expiration Badge -->
+                    {% if course.expiration_date %}
+                    {% set exp_date = course.expiration_date|string %}
+                    {% set current_time = now().isoformat() %}
+                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < current_time %}
+                        Expired
+                        {% else %}
+                        Expires: {{ course.expiration_date|format_date('%b %d') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ course.title }}</h3>
-                    <p class="company">{{ course.company or course.instructor }}</p>
+
+                    <!-- Company name with icon -->
+                    <p class="company">
+                        <i class="fas fa-building"></i>
+                        {{ course.company or course.instructor or 'Unknown Provider' }}
+                    </p>
+
+                    <!-- Category will be automatically converted to colored badge -->
                     <p class="category">{{ course.category or 'General' }}</p>
+
                     <p class="description">{{ course.description|default('No description available', true)|truncate(120)
                         }}</p>
+
                     <div class="preview-meta">
-            <span class="price">
-              {% if course.price and course.price != 'Free' %}
+        <span class="price">
+            <i class="fas fa-tag"></i>
+            {% if course.price and course.price != 'Free' %}
                 ${{ course.price }}
-              {% else %}
+            {% else %}
                 Free
-              {% endif %}
-            </span>
-                        <span class="level">{{ course.level or 'All Levels' }}</span>
+            {% endif %}
+        </span>
+                        <span class="level">
+            <i class="fas fa-chart-line"></i>
+            {{ course.level or 'All Levels' }}
+        </span>
+                        {% if course.duration %}
+                        <span class="duration">
+            <i class="fas fa-clock"></i>
+            {{ course.duration }}
+        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Additional details -->
+                    <div class="additional-details">
+                        {% if course.instructor and course.instructor != 'Unknown Instructor' %}
+                        <div class="detail-item">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span>Instructor: {{ course.instructor }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if course.language %}
+                        <div class="detail-item">
+                            <i class="fas fa-language"></i>
+                            <span>Language: {{ course.language }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if course.enrollment_count %}
+                        <div class="detail-item">
+                            <i class="fas fa-users"></i>
+                            <span>{{ course.enrollment_count }} enrolled</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="action-buttons">
@@ -148,16 +205,59 @@
                          !='/static/images/default-job.png' %}style="display: none;" {% endif %}>
                         <i class="fas fa-briefcase"></i>
                     </div>
+
+                    <!-- Expiration Badge -->
+                    {% if job.expiration_date %}
+                    {% set exp_date = job.expiration_date|string %}
+                    {% set current_time = now().isoformat() %}
+                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < current_time %}
+                        Expired
+                        {% else %}
+                        Expires: {{ job.expiration_date|format_date('%b %d') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ job.title }}</h3>
-                    <p class="company">{{ job.company }}</p>
-                    <p class="location">{{ job.location or 'Location not specified' }}</p>
+                    <p class="company">{{ job.company or 'Unknown Company' }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location or 'Location not
+                        specified' }}</p>
                     <p class="description">{{ job.description|default('No description available', true)|truncate(120)
                         }}</p>
+
                     <div class="preview-meta">
-                        <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
-                        <span class="type">{{ job.type or 'Full-time' }}</span>
+                        <span class="salary"><i class="fas fa-money-bill-wave"></i> {{ job.salary or 'Salary not specified' }}</span>
+                        <span class="type"><i class="fas fa-briefcase"></i> {{ job.type or 'Full-time' }}</span>
+                        {% if job.experience_level %}
+                        <span class="experience"><i class="fas fa-user-tie"></i> {{ job.experience_level }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Additional Job Details -->
+                    <div class="additional-details">
+                        {% if job.remote %}
+                        <div class="detail-item">
+                            <i class="fas fa-laptop-house"></i>
+                            <span>Remote Work Available</span>
+                        </div>
+                        {% endif %}
+
+                        {% if job.required_skills %}
+                        <div class="detail-item">
+                            <i class="fas fa-tools"></i>
+                            <span>Skills: {{ job.required_skills|join(', ') if job.required_skills is iterable else job.required_skills }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if job.posted_date %}
+                        <div class="detail-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Posted: {{ job.posted_date|format_date('%b %d') }}</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="action-buttons">
@@ -212,23 +312,68 @@
                          !='/static/images/default-internship.png' %}style="display: none;" {% endif %}>
                         <i class="fas fa-user-graduate"></i>
                     </div>
+
+                    <!-- Expiration Badge -->
+                    {% if internship.expiration_date %}
+                    {% set exp_date = internship.expiration_date|string %}
+                    {% set current_time = now().isoformat() %}
+                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < current_time %}
+                        Expired
+                        {% else %}
+                        Expires: {{ internship.expiration_date|format_date('%b %d') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ internship.title }}</h3>
-                    <p class="company">{{ internship.company }}</p>
-                    <p class="location">{{ internship.location or 'Location not specified' }}</p>
-                    <p class="duration">{{ internship.duration or 'Duration not specified' }}</p>
+                    <p class="company">{{ internship.company or 'Unknown Company' }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not
+                        specified' }}</p>
+                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not
+                        specified' }}</p>
                     <p class="description">{{ internship.description|default('No description available',
                         true)|truncate(120) }}</p>
+
                     <div class="preview-meta">
-                        <span class="type">{{ internship.type or 'Internship' }}</span>
+                        <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
                         <span class="stipend">
-              {% if internship.type == 'Paid' %}
-                {{ internship.stipend or 'Stipend available' }}
-              {% else %}
-                Unpaid
-              {% endif %}
-            </span>
+                            <i class="fas fa-money-bill-wave"></i>
+                            {% if internship.stipend and internship.stipend != 'Unpaid' %}
+                                {{ internship.stipend }}
+                            {% else %}
+                                Unpaid
+                            {% endif %}
+                        </span>
+                        {% if internship.work_type %}
+                        <span class="work-type"><i class="fas fa-laptop"></i> {{ internship.work_type }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Additional Internship Details -->
+                    <div class="additional-details">
+                        {% if internship.required_skills %}
+                        <div class="detail-item">
+                            <i class="fas fa-tools"></i>
+                            <span>Skills: {{ internship.required_skills|join(', ') if internship.required_skills is iterable else internship.required_skills }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if internship.qualifications %}
+                        <div class="detail-item">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Qualifications: {{ internship.qualifications|truncate(50) }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if internship.start_date %}
+                        <div class="detail-item">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Starts: {{ internship.start_date|format_date('%b %d') }}</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="action-buttons">
@@ -285,7 +430,7 @@
                         <img src="/static/images/default-blog.jpg" alt="{{ post.title }}" class="blog-image-vertical">
                         {% endif %}
                         <div class="blog-category-badge-vertical">
-                            {{ post.categories[0] if post.categories else 'Career' }}
+                            {{ post.categories[0] if post.categories and post.categories|length > 0 else 'Career' }}
                         </div>
 
                         <!-- Views Counter Badge - LIVE DATA -->
@@ -374,7 +519,6 @@
 
         <div class="blog-modal-header">
             <div class="blog-modal-category" id="modalCategory">Career</div>
-            <h2 id="modalTitle">Blog Title</h2>
             <div class="blog-modal-meta">
                 <div class="modal-author">
                     <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">

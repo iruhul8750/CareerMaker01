@@ -5668,3 +5668,418 @@ footer .container {
     width: 100%;
   }
 }
+/* Expiration Badge */
+.expiration-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 2;
+}
+
+.expiration-badge.expired {
+    background: #ef4444;
+}
+
+.expiration-badge i {
+    margin-right: 4px;
+}
+
+/* Additional Details */
+.additional-details {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.detail-item i {
+    margin-right: 8px;
+    width: 16px;
+    color: #8b5fbf;
+}
+
+/* Enhanced Meta Information */
+.preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.preview-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+/* Location and Company Styling */
+.location, .company {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+/* ====================== */
+/* FIX CONTENT CARD CUTTING ISSUES */
+/* ====================== */
+
+.preview-content {
+  padding: 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* Changed from hidden */
+  min-height: 0; /* Allow content to shrink properly */
+}
+
+.preview-card {
+  background-color: white;
+  border-radius: 12px;
+  overflow: visible; /* Changed from hidden */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: auto; /* Changed from fixed height */
+  min-height: 420px; /* Minimum height instead of fixed */
+  border: 1px solid #e9ecef;
+  position: relative;
+}
+
+/* Ensure content areas don't cut text */
+.description {
+  color: #5d6d7e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  margin-bottom: 1rem;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 3.6em; /* Ensure consistent height */
+}
+
+.additional-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.detail-item i {
+  margin-right: 8px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+/* ====================== */
+/* COLORFUL BADGE SYSTEM */
+/* ====================== */
+
+/* Base badge styles */
+.expiration-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.expiration-badge i {
+  font-size: 0.7rem;
+}
+
+/* Active expiration badge - Green */
+.expiration-badge.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid #059669;
+}
+
+/* Expired badge - Red */
+.expiration-badge.expired {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: 1px solid #dc2626;
+}
+
+/* Urgent expiration (within 3 days) - Orange */
+.expiration-badge.urgent {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 1px solid #d97706;
+}
+
+/* ====================== */
+/* COLORFUL META BADGES */
+/* ====================== */
+
+.preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  flex-shrink: 0;
+}
+
+.preview-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+}
+
+/* Price/Salary badges - Green */
+.price, .salary {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Level/Type badges - Blue */
+.level, .type, .experience {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Stipend badges - Yellow */
+.stipend {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Duration badges - Purple */
+.duration {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Work type badges - Indigo */
+.work-type {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Free badge - Emerald */
+.preview-meta .price:contains("Free") {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* ====================== */
+/* CATEGORY BADGES */
+/* ====================== */
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  border: 1px solid;
+}
+
+/* Technology - Blue */
+.category-badge.technology {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Business - Green */
+.category-badge.business {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Design - Purple */
+.category-badge.design {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Marketing - Pink */
+.category-badge.marketing {
+  background: rgba(236, 72, 153, 0.1);
+  color: #be185d;
+  border-color: rgba(236, 72, 153, 0.3);
+}
+
+/* Science - Orange */
+.category-badge.science {
+  background: rgba(249, 115, 22, 0.1);
+  color: #c2410c;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+/* ====================== */
+/* LOCATION & COMPANY STYLING */
+/* ====================== */
+
+.location, .company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.location i, .company i {
+  color: #8b5fbf;
+  width: 14px;
+}
+
+/* ====================== */
+/* ACTION BUTTONS FIX */
+/* ====================== */
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  margin-top: auto;
+  flex-shrink: 0; /* Prevent buttons from being cut off */
+}
+
+.dark-mode .action-buttons {
+  background: #1f2937;
+  border-top-color: #374151;
+}
+
+/* ====================== */
+/* DARK MODE SUPPORT */
+/* ====================== */
+
+.dark-mode .preview-meta span {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .price,
+.dark-mode .salary {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.dark-mode .level,
+.dark-mode .type,
+.dark-mode .experience {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.dark-mode .stipend {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.dark-mode .duration {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.dark-mode .work-type {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.dark-mode .additional-details {
+  border-top-color: #374151;
+}
+
+.dark-mode .detail-item {
+  color: #9ca3af;
+}
+
+/* ====================== */
+/* RESPONSIVE FIXES */
+/* ====================== */
+
+@media (max-width: 768px) {
+  .preview-card {
+    min-height: 380px;
+  }
+
+  .preview-meta {
+    gap: 6px;
+  }
+
+  .preview-meta span {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+
+  .expiration-badge {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 576px) {
+  .preview-content {
+    padding: 1rem;
+  }
+
+  .action-buttons {
+    padding: 0.75rem 1rem;
+  }
+
+  .preview-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
