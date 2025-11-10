@@ -1231,7 +1231,7 @@
     }
 
     // =============================================
-    // ENHANCED TESTIMONIAL SYSTEM WITH PROFILE PICTURE FIX
+    // ENHANCED TESTIMONIAL SYSTEM - FIXED CIRCULAR SLIDING
     // =============================================
 
     const testimonialSystem = {
@@ -1240,64 +1240,119 @@
         currentIndex: 0,
         autoSlideInterval: null,
         testimonialToDelete: null,
+        autoPlayDelay: 5000,
+        cardsPerView: 3, // Number of cards visible at once
+        isAnimating: false,
 
         init() {
-            console.log('🌟 Enhanced testimonial system initialized');
+            console.log('🚀 Initializing testimonial system...');
             this.loadTestimonials();
+            this.bindEvents();
+            this.startAutoSlide();
+        },
 
-            // Add click event to static button
-            const btn = document.getElementById('testimonialBtn');
-            if (btn) {
-                btn.addEventListener('click', (e) => {
+        bindEvents() {
+            // Main testimonial button
+            const testimonialBtn = document.getElementById('testimonialBtn');
+            if (testimonialBtn) {
+                testimonialBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     this.openTestimonialForm();
                 });
             }
 
-            // Initialize carousel buttons event listeners
-            this.initCarouselButtons();
+            // Carousel navigation
+            const prevBtn = document.querySelector('.carousel-prev');
+            const nextBtn = document.querySelector('.carousel-next');
+            if (prevBtn) prevBtn.addEventListener('click', () => this.prevSlide());
+            if (nextBtn) nextBtn.addEventListener('click', () => this.nextSlide());
 
-            // Initialize modal close buttons
-            this.initModalCloseButtons();
+            // Dot navigation
+            this.setupDotNavigation();
+
+            // Modal events
+            this.setupModalEvents();
+
+            // Hover pause
+            const carousel = document.querySelector('.testimonials-carousel');
+            if (carousel) {
+                carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
+                carousel.addEventListener('mouseleave', () => this.startAutoSlide());
+            }
         },
 
-        initCarouselButtons() {
-            const prevBtn = document.querySelector('#testimonials .carousel-prev');
-            const nextBtn = document.querySelector('#testimonials .carousel-next');
-
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => this.prevSlide());
-            }
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => this.nextSlide());
+        setupDotNavigation() {
+            const dotsContainer = document.querySelector('.carousel-dots');
+            if (dotsContainer) {
+                dotsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('carousel-dot')) {
+                        const index = parseInt(e.target.getAttribute('data-index'));
+                        if (!isNaN(index)) {
+                            this.goToSlide(index);
+                        }
+                    }
+                });
             }
         },
 
-        initModalCloseButtons() {
-            // Testimonial modal close button
-            const testimonialCloseBtn = document.querySelector('#testimonialModal .close-btn');
-            if (testimonialCloseBtn) {
-                testimonialCloseBtn.addEventListener('click', () => this.closeModal());
+        setupModalEvents() {
+            // Close buttons
+            const closeButtons = document.querySelectorAll('.close-btn');
+            closeButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const modal = btn.closest('.modal');
+                    if (modal.id === 'testimonialModal') {
+                        this.closeModal();
+                    } else if (modal.id === 'deleteConfirmModal') {
+                        this.closeDeleteModal();
+                    }
+                });
+            });
+
+            // Modal overlays
+            const overlays = document.querySelectorAll('.modal-overlay');
+            overlays.forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const modal = overlay.closest('.modal');
+                    if (modal.id === 'testimonialModal') {
+                        this.closeModal();
+                    } else if (modal.id === 'deleteConfirmModal') {
+                        this.closeDeleteModal();
+                    }
+                });
+            });
+
+            // Cancel buttons
+            const cancelBtns = document.querySelectorAll('.btn-secondary');
+            cancelBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const modal = btn.closest('.modal');
+                    if (modal.id === 'testimonialModal') {
+                        this.closeModal();
+                    } else if (modal.id === 'deleteConfirmModal') {
+                        this.closeDeleteModal();
+                    }
+                });
+            });
+
+            // Form submission
+            const form = document.getElementById('testimonialForm');
+            if (form) {
+                form.addEventListener('submit', (e) => this.handleSubmit(e));
             }
 
-            // Delete confirmation modal close button
-            const deleteCloseBtn = document.querySelector('#deleteConfirmModal .close-btn');
-            if (deleteCloseBtn) {
-                deleteCloseBtn.addEventListener('click', () => this.closeDeleteModal());
-            }
-
-            // Delete modal cancel button
-            const cancelBtn = document.querySelector('#deleteConfirmModal .btn-secondary');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => this.closeDeleteModal());
+            // Delete confirmation
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => this.confirmDelete());
             }
         },
 
         async openTestimonialForm() {
-            console.log('🎯 Opening testimonial form');
-
-            if (this.isModalOpen) return;
-            this.isModalOpen = true;
+            console.log('📝 Opening testimonial form...');
 
             try {
                 const response = await fetch('/api/testimonial/auth-check');
@@ -1321,60 +1376,39 @@
             const userName = document.getElementById('userName');
             const testimonialText = document.getElementById('testimonialText');
             const ratingValue = document.getElementById('ratingValue');
-            const submitBtn = document.querySelector('#testimonialForm button[type="submit"] .btn-text');
-            const messageDiv = document.getElementById('formMessage');
+            const submitBtn = document.querySelector('#testimonialForm .btn-text');
 
-            // Clear any previous messages
-            messageDiv.style.display = 'none';
-            messageDiv.textContent = '';
+            if (!modal) {
+                console.error('❌ Testimonial modal not found');
+                return;
+            }
 
             modalTitle.textContent = isEdit ? 'Edit Your Experience' : 'Share Your Experience';
-            userName.value = username;
+            userName.value = username || 'Current User';
             testimonialText.value = isEdit ? testimonial.content : '';
             ratingValue.value = isEdit ? testimonial.rating : 5;
-            submitBtn.textContent = isEdit ? 'Update Experience' : 'Share Experience';
+            if (submitBtn) submitBtn.textContent = isEdit ? 'Update Experience' : 'Share Experience';
 
-            // Setup star rating
             this.setupStarRating(isEdit ? testimonial.rating : 5);
-
-            // Setup form submission
-            const form = document.getElementById('testimonialForm');
-            form.onsubmit = isEdit ?
-                (e) => this.handleUpdate(e, testimonial.id) :
-                (e) => this.handleSubmit(e);
-
             modal.style.display = 'flex';
+            this.isModalOpen = true;
         },
 
         setupStarRating(initialRating = 5) {
             const stars = document.querySelectorAll('.star-btn');
             const ratingInput = document.getElementById('ratingValue');
 
-            // Reset all stars
-            stars.forEach(star => {
-                star.classList.remove('active');
-                star.innerHTML = '☆';
-            });
-
-            // Set active stars based on initial rating
             stars.forEach((star, index) => {
-                if (index < initialRating) {
-                    star.classList.add('active');
-                    star.innerHTML = '★';
-                }
+                star.classList.toggle('active', index < initialRating);
+                star.innerHTML = index < initialRating ? '★' : '☆';
 
                 star.onclick = () => {
                     const rating = parseInt(star.dataset.rating);
                     ratingInput.value = rating;
 
                     stars.forEach((s, i) => {
-                        if (i < rating) {
-                            s.classList.add('active');
-                            s.innerHTML = '★';
-                        } else {
-                            s.classList.remove('active');
-                            s.innerHTML = '☆';
-                        }
+                        s.classList.toggle('active', i < rating);
+                        s.innerHTML = i < rating ? '★' : '☆';
                     });
                 };
             });
@@ -1398,11 +1432,9 @@
                 return;
             }
 
-            // Show loading
             btnText.style.display = 'none';
             spinner.style.display = 'inline-block';
             submitBtn.disabled = true;
-            messageDiv.style.display = 'none';
 
             try {
                 const response = await fetch('/api/testimonial/submit', {
@@ -1441,75 +1473,12 @@
             }
         },
 
-        async handleUpdate(event, testimonialId) {
-            event.preventDefault();
-            console.log('📝 Updating testimonial...', testimonialId);
-
-            const form = event.target;
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const btnText = submitBtn.querySelector('.btn-text');
-            const spinner = submitBtn.querySelector('.loading-spinner');
-            const messageDiv = document.getElementById('formMessage');
-
-            const content = document.getElementById('testimonialText').value.trim();
-            const rating = parseInt(document.getElementById('ratingValue').value);
-
-            if (!content) {
-                this.showMessage('Please share your experience', 'error', messageDiv);
-                return;
-            }
-
-            // Show loading
-            btnText.style.display = 'none';
-            spinner.style.display = 'inline-block';
-            submitBtn.disabled = true;
-            messageDiv.style.display = 'none';
-
-            try {
-                const response = await fetch(`/api/testimonial/update/${testimonialId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        content: content,
-                        rating: rating
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    this.showMessage(data.message, 'success', messageDiv);
-                    setTimeout(() => {
-                        this.closeModal();
-                        this.loadTestimonials();
-                        if (typeof showToast === 'function') {
-                            showToast('Testimonial updated successfully!', 'success');
-                        }
-                    }, 1500);
-                } else {
-                    throw new Error(data.message);
-                }
-
-            } catch (error) {
-                console.error('Update error:', error);
-                this.showMessage(error.message, 'error', messageDiv);
-            } finally {
-                btnText.style.display = 'inline-block';
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-            }
-        },
-
         showDeleteConfirmation(testimonialId) {
             this.testimonialToDelete = testimonialId;
             const modal = document.getElementById('deleteConfirmModal');
-            modal.style.display = 'flex';
-
-            // Setup delete button
-            const deleteBtn = document.getElementById('confirmDeleteBtn');
-            deleteBtn.onclick = () => this.confirmDelete();
+            if (modal) {
+                modal.style.display = 'flex';
+            }
         },
 
         async confirmDelete() {
@@ -1519,7 +1488,6 @@
             const btnText = deleteBtn.querySelector('.btn-text');
             const spinner = deleteBtn.querySelector('.loading-spinner');
 
-            // Show loading
             btnText.style.display = 'none';
             spinner.style.display = 'inline-block';
             deleteBtn.disabled = true;
@@ -1532,10 +1500,10 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    this.closeDeleteModal();
                     if (typeof showToast === 'function') {
                         showToast('Testimonial deleted successfully!', 'success');
                     }
-                    this.closeDeleteModal();
                     this.loadTestimonials();
                 } else {
                     throw new Error(data.message);
@@ -1554,19 +1522,23 @@
         },
 
         deleteTestimonial(testimonialId) {
+            console.log('🗑️ Deleting testimonial:', testimonialId);
             this.showDeleteConfirmation(testimonialId);
         },
 
         showMessage(message, type, element) {
-            element.textContent = message;
-            element.className = `form-message ${type}`;
-            element.style.display = 'block';
+            if (element) {
+                element.textContent = message;
+                element.className = `form-message ${type}`;
+                element.style.display = 'block';
+            }
         },
 
         showLoginPrompt() {
             if (typeof showToast === 'function') {
                 showToast('Please login to share your experience', 'warning');
             }
+
             if (typeof openLoginModal === 'function') {
                 openLoginModal();
             }
@@ -1576,8 +1548,6 @@
             const modal = document.getElementById('testimonialModal');
             if (modal) {
                 modal.style.display = 'none';
-
-                // Clear the form when closing modal
                 this.clearForm();
             }
             this.isModalOpen = false;
@@ -1592,7 +1562,6 @@
         },
 
         clearForm() {
-            // Clear form fields and reset to default state
             const testimonialText = document.getElementById('testimonialText');
             const messageDiv = document.getElementById('formMessage');
 
@@ -1602,16 +1571,17 @@
                 messageDiv.textContent = '';
             }
 
-            // Reset star rating to default
             this.setupStarRating(5);
         },
 
         async loadTestimonials() {
             try {
                 const track = document.getElementById('testimonialTrack');
-                if (!track) return;
+                if (!track) {
+                    console.error('❌ Testimonial track not found');
+                    return;
+                }
 
-                // Show loading state
                 track.innerHTML = `
                     <div class="loading-state">
                         <i class="fas fa-spinner fa-spin"></i>
@@ -1622,25 +1592,16 @@
                 const response = await fetch('/api/testimonial/list');
                 const data = await response.json();
 
-                console.log('📊 Loaded testimonials:', data);
+                console.log('📊 Loaded testimonials from backend:', data);
 
-                this.currentTestimonials = data.testimonials || [];
-
-                if (this.currentTestimonials.length === 0) {
-                    track.innerHTML = `
-                        <div class="empty-testimonials">
-                            <i class="fas fa-comments"></i>
-                            <h4>No Experiences Shared Yet</h4>
-                            <p>Be the first to share your journey!</p>
-                        </div>`;
-                    this.stopAutoSlide();
-                    this.updateCarouselButtonsVisibility(); // Hide buttons when no posts
-                    return;
+                if (data.testimonials) {
+                    this.currentTestimonials = data.testimonials;
+                } else {
+                    throw new Error('No testimonials data received');
                 }
 
                 this.renderTestimonials();
-                this.startAutoSlide();
-                this.updateCarouselButtonsVisibility(); // Show buttons when posts exist
+                this.updateNavigation();
 
             } catch (error) {
                 console.error('❌ Failed to load testimonials:', error);
@@ -1653,7 +1614,6 @@
                             <p>Please try again later</p>
                         </div>`;
                 }
-                this.updateCarouselButtonsVisibility(); // Hide buttons on error
             }
         },
 
@@ -1661,31 +1621,45 @@
             const track = document.getElementById('testimonialTrack');
             if (!track) return;
 
-            // FIXED: Use only the original testimonials, no duplicates
+            if (this.currentTestimonials.length === 0) {
+                track.innerHTML = `
+                    <div class="empty-testimonials">
+                        <i class="fas fa-comments"></i>
+                        <h4>No Experiences Shared Yet</h4>
+                        <p>Be the first to share your journey!</p>
+                    </div>`;
+                this.stopAutoSlide();
+                this.updateNavigation();
+                return;
+            }
+
+            // Create testimonial cards
             track.innerHTML = this.currentTestimonials.map((testimonial, index) => `
-                <div class="testimonial-slide" data-index="${index}" data-testimonial-id="${testimonial.id}">
-                    <div class="testimonial-card-round">
-                        <div class="testimonial-content">
-                            <p>"${testimonial.content}"</p>
+                <div class="testimonial-card" data-index="${index}" data-testimonial-id="${testimonial.id}">
+                    <div class="testimonial-card-inner">
+                        <div class="testimonial-quote">"</div>
+                        <div class="testimonial-rating">
+                            ${Array.from({length: 5}, (_, i) =>
+                                `<span class="star ${i < testimonial.rating ? '' : 'empty'}">★</span>`
+                            ).join('')}
                         </div>
+                        <p class="testimonial-text">${testimonial.content}</p>
                         <div class="testimonial-author">
-                            <img src="${testimonial.profile_pic_url}"
+                            <img src="${testimonial.profile_pic_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(testimonial.username) + '&background=10b981&color=fff&bold=true'}"
                                  alt="${testimonial.username}"
-                                 class="author-avatar-round"
-                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=8B5FBF&color=fff&bold=true'">
+                                 class="author-avatar"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true'">
                             <div class="author-info">
                                 <h4>${testimonial.username}</h4>
-                                <div class="testimonial-rating">
-                                    ${'★'.repeat(testimonial.rating)}${'☆'.repeat(5 - testimonial.rating)}
-                                </div>
+                                <p>CareerMaker User</p>
                             </div>
                         </div>
                         ${testimonial.can_edit ? `
                         <div class="testimonial-actions">
-                            <button class="btn-edit" onclick="testimonialSystem.editTestimonial('${testimonial.id}')">
+                            <button class="btn-edit" onclick="testimonialSystem.editTestimonial('${testimonial.id}')" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-delete" onclick="testimonialSystem.deleteTestimonial('${testimonial.id}')">
+                            <button class="btn-delete" onclick="testimonialSystem.deleteTestimonial('${testimonial.id}')" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -1694,116 +1668,171 @@
                 </div>
             `).join('');
 
+            // Setup hover events for individual cards
+            this.setupIndividualCardHover();
+
             this.currentIndex = 0;
             this.updateCarousel();
+            this.updateDots();
+            this.startAutoSlide();
+        },
+
+        setupIndividualCardHover() {
+            const cards = document.querySelectorAll('.testimonial-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => this.pauseAutoSlide());
+                card.addEventListener('mouseleave', () => this.startAutoSlide());
+            });
         },
 
         editTestimonial(testimonialId) {
             const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
             if (testimonial) {
-                this.closeModal();
-                setTimeout(() => {
-                    this.showModal(testimonial.username, testimonial);
-                }, 300);
+                this.showModal(testimonial.username, testimonial);
             }
         },
 
         nextSlide() {
-            if (this.currentTestimonials.length <= 1) return; // Don't slide if only one testimonial
+            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
 
-            this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
+            this.isAnimating = true;
+
+            // Move to next slide
+            this.currentIndex++;
+
+            // Check if we've reached the end
+            if (this.currentIndex > this.currentTestimonials.length - this.cardsPerView) {
+                this.currentIndex = 0;
+            }
+
             this.updateCarousel();
+            this.updateDots();
+
+            // Reset animation flag after transition
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 500);
         },
 
         prevSlide() {
-            if (this.currentTestimonials.length <= 1) return; // Don't slide if only one testimonial
+            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
 
-            this.currentIndex = (this.currentIndex - 1 + this.currentTestimonials.length) % this.currentTestimonials.length;
+            this.isAnimating = true;
+
+            // Move to previous slide
+            this.currentIndex--;
+
+            // Check if we've reached the beginning
+            if (this.currentIndex < 0) {
+                this.currentIndex = this.currentTestimonials.length - this.cardsPerView;
+            }
+
             this.updateCarousel();
+            this.updateDots();
+
+            // Reset animation flag after transition
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 500);
         },
 
-        updateCarousel(instant = false) {
+        goToSlide(index) {
+            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
+
+            this.isAnimating = true;
+            this.currentIndex = index;
+            this.updateCarousel();
+            this.updateDots();
+
+            setTimeout(() => {
+                this.isAnimating = false;
+            }, 500);
+        },
+
+        updateCarousel() {
             const track = document.getElementById('testimonialTrack');
-            const slides = document.querySelectorAll('.testimonial-slide');
-            const progressFill = document.getElementById('progressFill');
+            if (track && this.currentTestimonials.length > 0) {
+                const cardWidth = 100 / this.cardsPerView;
+                const translateX = -this.currentIndex * cardWidth;
+                track.style.transform = `translateX(${translateX}%)`;
 
-            if (track && slides.length > 0) {
-                // Update transition for instant reset
-                track.style.transition = instant ? 'none' : 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-
-                // Calculate transform
-                const slideWidth = 280; // Fixed width for round cards
-                const gap = 32; // Gap between cards
-                const totalWidth = slideWidth + gap;
-                const centerOffset = (track.offsetWidth - slideWidth) / 2;
-                const translateX = centerOffset - (this.currentIndex * totalWidth);
-
-                track.style.transform = `translateX(${translateX}px)`;
-
-                // Apply 3D effects for circular appearance
-                slides.forEach((slide, index) => {
-                    const distance = Math.abs(index - this.currentIndex);
-                    const relativeDistance = (index - this.currentIndex);
-
-                    // Calculate scale and opacity based on distance from center
-                    const scale = Math.max(0.7, 1 - Math.abs(relativeDistance) * 0.15);
-                    const opacity = Math.max(0.3, 1 - Math.abs(relativeDistance) * 0.3);
-                    const rotation = relativeDistance * 15; // Rotation angle
-                    const zIndex = 10 - Math.abs(relativeDistance);
-
-                    slide.style.transform = `scale(${scale}) rotateY(${rotation}deg)`;
-                    slide.style.opacity = opacity;
-                    slide.style.zIndex = zIndex;
-
-                    // Add/remove active class
-                    if (Math.abs(relativeDistance) < 0.5) {
-                        slide.classList.add('active');
-                    } else {
-                        slide.classList.remove('active');
-                    }
-                });
-
-                // Update progress indicator
-                if (progressFill) {
-                    const progress = (this.currentIndex / this.currentTestimonials.length) * 100;
-                    progressFill.style.width = `${progress}%`;
-                }
-
-                // Reset transition after instant move
-                if (instant) {
-                    setTimeout(() => {
-                        track.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                    }, 50);
-                }
+                // Update card states
+                this.updateCardStates();
             }
         },
 
-        updateCarouselButtonsVisibility() {
-            const prevBtn = document.querySelector('#testimonials .carousel-prev');
-            const nextBtn = document.querySelector('#testimonials .carousel-next');
+        updateCardStates() {
+            const cards = document.querySelectorAll('.testimonial-card');
+            const visibleIndices = this.getVisibleIndices();
 
-            const hasPosts = this.currentTestimonials.length > 0;
-            const canScroll = this.currentTestimonials.length > 1; // Only show buttons if more than 1 testimonial
+            cards.forEach((card, index) => {
+                const isVisible = visibleIndices.includes(index);
+                card.style.opacity = isVisible ? '1' : '0.6';
+                card.style.transform = isVisible ? 'scale(1)' : 'scale(0.95)';
+                card.style.pointerEvents = isVisible ? 'all' : 'none';
+                card.style.transition = 'all 0.3s ease';
+            });
+        },
+
+        getVisibleIndices() {
+            const indices = [];
+            for (let i = 0; i < this.cardsPerView; i++) {
+                let index = this.currentIndex + i;
+                // Handle circular wrapping
+                if (index >= this.currentTestimonials.length) {
+                    index = index % this.currentTestimonials.length;
+                }
+                indices.push(index);
+            }
+            return indices;
+        },
+
+        updateDots() {
+            const dotsContainer = document.querySelector('.carousel-dots');
+            if (!dotsContainer || this.currentTestimonials.length <= this.cardsPerView) return;
+
+            const totalSlides = this.currentTestimonials.length - this.cardsPerView + 1;
+
+            // Clear existing dots
+            dotsContainer.innerHTML = '';
+
+            // Create dots based on number of slides
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('button');
+                dot.className = `carousel-dot ${i === this.currentIndex ? 'active' : ''}`;
+                dot.setAttribute('data-index', i);
+                dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                dotsContainer.appendChild(dot);
+            }
+
+            // Re-bind dot click events
+            this.setupDotNavigation();
+        },
+
+        updateNavigation() {
+            const prevBtn = document.querySelector('.carousel-prev');
+            const nextBtn = document.querySelector('.carousel-next');
+            const dotsContainer = document.querySelector('.carousel-dots');
+
+            const canScroll = this.currentTestimonials.length > this.cardsPerView;
 
             if (prevBtn && nextBtn) {
-                if (hasPosts && canScroll) {
-                    prevBtn.classList.add('visible');
-                    nextBtn.classList.add('visible');
-                } else {
-                    prevBtn.classList.remove('visible');
-                    nextBtn.classList.remove('visible');
-                }
+                prevBtn.style.display = canScroll ? 'flex' : 'none';
+                nextBtn.style.display = canScroll ? 'flex' : 'none';
+            }
+
+            if (dotsContainer) {
+                dotsContainer.style.display = canScroll ? 'flex' : 'none';
             }
         },
 
         startAutoSlide() {
-            this.stopAutoSlide(); // Clear any existing interval
+            this.stopAutoSlide();
 
-            // Only start auto-slide if there are multiple testimonials
-            if (this.currentTestimonials.length > 1) {
+            if (this.currentTestimonials.length > this.cardsPerView) {
                 this.autoSlideInterval = setInterval(() => {
                     this.nextSlide();
-                }, 4000); // Change slide every 4 seconds
+                }, this.autoPlayDelay);
             }
         },
 
@@ -1812,6 +1841,10 @@
                 clearInterval(this.autoSlideInterval);
                 this.autoSlideInterval = null;
             }
+        },
+
+        pauseAutoSlide() {
+            this.stopAutoSlide();
         }
     };
 
@@ -1819,7 +1852,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         testimonialSystem.init();
     });
-
 
     // =============================================
     // Newsletter Form Handling

@@ -566,60 +566,52 @@
     </div>
 </div>
 
-<!-- Enhanced Testimonials Section  -->
-<section class="testimonials" id="testimonials">
-    <div class="container">
-        <div class="section-header">
-            <div class="section-title">
-                <h2>What Our Users Say</h2>
-                <p>Hear from our community of learners and professionals</p>
-            </div>
+<!-- Professional Testimonials Section -->
+<section class="testimonials-section" id="testimonials">
+    <div class="testimonials-container">
+        <div class="testimonials-header">
+            <h2>What Our Users Say</h2>
+            <p>Join thousands of professionals who have transformed their careers with CareerMaker</p>
             <button class="btn btn-primary" id="testimonialBtn">
                 <i class="fas fa-plus"></i> Share Your Experience
             </button>
         </div>
 
-        <div class="testimonial-carousel-container">
-            <div class="testimonial-carousel">
-                <button class="carousel-btn carousel-prev" onclick="testimonialSystem.prevSlide()">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
+        <div class="testimonials-carousel">
+            <button class="carousel-btn carousel-prev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
 
-                <div class="testimonial-track" id="testimonialTrack">
-                    <!-- Testimonials will be dynamically loaded here -->
-                    <div class="loading-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading experiences...</p>
-                    </div>
-                </div>
-
-                <button class="carousel-btn carousel-next" onclick="testimonialSystem.nextSlide()">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-
-                <!-- Circular Progress Indicator -->
-                <div class="carousel-progress">
-                    <div class="progress-track">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
+            <div class="testimonials-track" id="testimonialTrack">
+                <!-- Testimonials will be loaded here dynamically -->
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading experiences...</p>
                 </div>
             </div>
+
+            <button class="carousel-btn carousel-next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
+            <!-- ADD THIS: Dot navigation container -->
+            <div class="carousel-dots"></div>
         </div>
     </div>
 </section>
 
-<!-- Rest of your modals remain the same -->
+<!-- Testimonial Modal -->
 <div class="modal" id="testimonialModal" style="display: none;">
-    <div class="modal-overlay" onclick="testimonialSystem.closeModal()"></div>
+    <div class="modal-overlay"></div>
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modalTitle">Share Your Experience</h3>
-            <button class="close-btn" onclick="testimonialSystem.closeModal()">&times;</button>
+            <button class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
             <form id="testimonialForm">
                 <div class="form-group">
-                    <label>Your Name</label>
+                    <label for="userName">Your Name</label>
                     <input type="text" class="form-input" id="userName" disabled>
                 </div>
 
@@ -636,22 +628,19 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Your Experience *</label>
-                    <textarea
-                            id="testimonialText"
-                            class="form-textarea"
-                            placeholder="Tell us about your experience with CareerMaker..."
-                            required
-                            rows="4"
-                    ></textarea>
+                    <label for="testimonialText">Your Experience *</label>
+                    <textarea id="testimonialText" class="form-textarea"
+                              placeholder="Tell us about your experience with CareerMaker..." required
+                              rows="4"></textarea>
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeModal()">Cancel
-                    </button>
+                    <button type="button" class="btn btn-secondary">Cancel</button>
                     <button type="submit" class="btn btn-primary">
                         <span class="btn-text">Share Experience</span>
-                        <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+                        <div class="loading-spinner" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
                     </button>
                 </div>
             </form>
@@ -660,12 +649,13 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
 <div class="modal" id="deleteConfirmModal" style="display: none;">
-    <div class="modal-overlay" onclick="testimonialSystem.closeDeleteModal()"></div>
-    <div class="modal-content confirm-modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
         <div class="modal-header">
             <h3>Delete Testimonial</h3>
-            <button class="close-btn" onclick="testimonialSystem.closeDeleteModal()">&times;</button>
+            <button class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
             <div class="confirm-icon">
@@ -673,11 +663,12 @@
             </div>
             <p>Are you sure you want to delete your testimonial? This action cannot be undone.</p>
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="testimonialSystem.closeDeleteModal()">Cancel
-                </button>
+                <button type="button" class="btn btn-secondary">Cancel</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
                     <span class="btn-text">Delete</span>
-                    <i class="fas fa-spinner fa-spin loading-spinner" style="display: none;"></i>
+                    <div class="loading-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
                 </button>
             </div>
         </div>
