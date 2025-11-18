@@ -4143,6 +4143,243 @@ body {
 .admin-dashboard.dark-mode .modal-content .form-group textarea::placeholder {
     color: #a0aec0;
 }
+/* Course Image Upload Styles */
+.image-upload-container {
+    border: 2px dashed #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+}
 
+.image-upload-container:hover {
+    border-color: #3b82f6;
+    background: #f0f9ff;
+}
 
+.image-preview-container {
+    position: relative;
+    margin-bottom: 15px;
+    text-align: center;
+}
 
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-remove-image {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.btn-remove-image:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.image-upload-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.upload-option {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.image-url-input {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.image-url-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Course Card Styles for Frontend */
+.course-card {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    height: 200px;
+}
+
+.course-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.course-image-section {
+    flex: 0 0 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.course-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.course-card:hover .course-image {
+    transform: scale(1.05);
+}
+
+.course-image-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.course-details-section {
+    flex: 0 0 50%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.course-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.3;
+}
+
+.course-instructor {
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.course-category {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.course-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.course-price {
+    font-size: 16px;
+    font-weight: 600;
+    color: #059669;
+}
+
+.course-level {
+    font-size: 12px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.course-description {
+    color: #4b5563;
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 10px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.course-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .course-card {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .course-image-section,
+    .course-details-section {
+        flex: 1 1 100%;
+    }
+
+    .course-image-section {
+        height: 160px;
+    }
+}
+
+/* Dark Mode Support */
+.dark-mode .image-upload-container {
+    border-color: #4b5563;
+    background: #374151;
+}
+
+.dark-mode .image-upload-container:hover {
+    border-color: #3b82f6;
+    background: #4b5563;
+}
+
+.dark-mode .image-url-input {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+}
+
+.dark-mode .course-card {
+    background: #374151;
+    color: #f9fafb;
+}
+
+.dark-mode .course-header h3 {
+    color: #f9fafb;
+}
+
+.dark-mode .course-instructor {
+    color: #d1d5db;
+}
+
+.dark-mode .course-description {
+    color: #d1d5db;
+}

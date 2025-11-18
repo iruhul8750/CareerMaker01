@@ -2182,6 +2182,275 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => openReplyModal(messageId, email, subject), 300);
             }
         });
+
+        // Initialize course image upload when course modal is opened
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'addCourseBtn' || e.target.closest('#addCourseBtn')) {
+                // Initialize course image upload functionality after modal opens
+                setTimeout(initCourseImageUpload, 100);
+            }
+        });
+
+        // Initialize course modal when it's opened via edit
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pre-initialize course image upload for when modal opens
+            const courseModal = document.getElementById('courseModal');
+            if (courseModal) {
+                // Observe when course modal becomes visible
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                            const displayStyle = courseModal.style.display;
+                            if (displayStyle === 'block') {
+                                // Initialize course image upload when modal opens
+                                initCourseImageUpload();
+                            }
+                        }
+                    });
+                });
+
+                observer.observe(courseModal, {
+                    attributes: true,
+                    attributeFilter: ['style']
+                });
+            }
+        });
+    }
+
+    // Initialize course image upload functionality
+    function initCourseImageUpload() {
+        const uploadBtn = document.getElementById('uploadCourseImageBtn');
+        const fileInput = document.getElementById('courseImageUpload');
+        const imageUrlInput = document.getElementById('courseImageUrl');
+        const imagePreview = document.getElementById('courseImagePreview');
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+        const removeImageBtn = document.getElementById('removeCourseImage');
+
+        if (!uploadBtn || !fileInput) return;
+
+        // Remove existing event listeners to prevent duplicates
+        uploadBtn.replaceWith(uploadBtn.cloneNode(true));
+        fileInput.replaceWith(fileInput.cloneNode(true));
+
+        // Get fresh references after cloning
+        const newUploadBtn = document.getElementById('uploadCourseImageBtn');
+        const newFileInput = document.getElementById('courseImageUpload');
+
+        // Handle upload button click
+        newUploadBtn.addEventListener('click', () => {
+            newFileInput.click();
+        });
+
+        // Handle file selection
+        newFileInput.addEventListener('change', handleCourseImageUpload);
+
+        // Handle URL input changes
+        if (imageUrlInput) {
+            imageUrlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url) {
+                    updateCourseImagePreview(url);
+                } else {
+                    hideCourseImagePreview();
+                }
+            });
+        }
+
+        // Handle remove image button
+        if (removeImageBtn) {
+            removeImageBtn.addEventListener('click', function() {
+                hideCourseImagePreview();
+                if (imageUrlInput) imageUrlInput.value = '';
+                if (newFileInput) newFileInput.value = '';
+            });
+        }
+
+        // Handle drag and drop
+        const uploadContainer = document.querySelector('.image-upload-container');
+        if (uploadContainer) {
+            uploadContainer.addEventListener('dragover', handleDragOver);
+            uploadContainer.addEventListener('drop', handleCourseImageDrop);
+        }
+
+        // Initialize image preview if URL already exists
+        if (imageUrlInput && imageUrlInput.value) {
+            updateCourseImagePreview(imageUrlInput.value);
+        }
+    }
+
+    function handleCourseImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            showNotification('Please select a valid image file (JPEG, PNG, GIF)', 'error');
+            return;
+        }
+
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showNotification('Image size should be less than 5MB', 'error');
+            return;
+        }
+
+        uploadCourseImage(file);
+    }
+
+    function handleCourseImageDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const file = event.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            uploadCourseImage(file);
+        }
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+    }
+
+    function uploadCourseImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showLoading();
+
+        fetch('/api/admin/courses/upload-image', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                const imageUrlInput = document.getElementById('courseImageUrl');
+                if (imageUrlInput) {
+                    imageUrlInput.value = data.image_url;
+                    updateCourseImagePreview(data.image_url);
+                }
+                showNotification('Image uploaded successfully!', 'success');
+            } else {
+                showNotification(data.error || 'Failed to upload image', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error uploading image:', error);
+            showNotification('Error uploading image', 'error');
+        });
+    }
+
+    function updateCourseImagePreview(imageUrl) {
+        const imagePreview = document.getElementById('courseImagePreview');
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+
+        if (imagePreview && previewContainer) {
+            imagePreview.src = imageUrl;
+            previewContainer.style.display = 'block';
+
+            // Add error handling for broken images
+            imagePreview.onerror = function() {
+                showNotification('Failed to load image from URL', 'error');
+                hideCourseImagePreview();
+            };
+        }
+    }
+
+    function hideCourseImagePreview() {
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+        if (previewContainer) {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    // Update the openAddModal function to handle course modal specifically
+    function openAddModal(type) {
+        const modalId = `${type}Modal`;
+        const modal = document.getElementById(modalId);
+
+        if (modal) {
+            // Reset form
+            const form = modal.querySelector('form');
+            if (form) {
+                form.reset();
+                form.querySelector('input[name="id"]').value = '';
+            }
+
+            // Set modal title
+            const titleElement = modal.querySelector('h2');
+            if (titleElement) {
+                titleElement.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            }
+
+            // Special handling for course modal
+            if (type === 'course') {
+                hideCourseImagePreview();
+                // Initialize course image upload after a short delay to ensure modal is visible
+                setTimeout(initCourseImageUpload, 100);
+            }
+
+            // Show modal
+            modal.style.display = 'block';
+        }
+    }
+
+    // Update the edit item function to handle course image
+    function editItem(type, id) {
+        fetch(`/api/admin/${type}/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                const modalId = `${type}Modal`;
+                const modal = document.getElementById(modalId);
+
+                if (modal) {
+                    const form = modal.querySelector('form');
+                    if (form) {
+                        // Fill form with existing data
+                        Object.keys(data).forEach(key => {
+                            const input = form.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                if (input.type === 'checkbox') {
+                                    input.checked = Boolean(data[key]);
+                                } else {
+                                    input.value = data[key] || '';
+                                }
+                            }
+                        });
+
+                        // Special handling for course image
+                        if (type === 'courses' && data.image) {
+                            const imageUrlInput = document.getElementById('courseImageUrl');
+                            if (imageUrlInput) {
+                                imageUrlInput.value = data.image;
+                                updateCourseImagePreview(data.image);
+                            }
+                        }
+
+                        // Set modal title
+                        const titleElement = modal.querySelector('h2');
+                        if (titleElement) {
+                            titleElement.textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1).slice(0, -1)}`;
+                        }
+
+                        modal.style.display = 'block';
+
+                        // Initialize course image upload for edit mode
+                        if (type === 'courses') {
+                            setTimeout(initCourseImageUpload, 100);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching item:', error);
+                showNotification('Error loading item data', 'error');
+            });
     }
 
     // Enhanced blog modal opening function
@@ -2275,7 +2544,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification(`Failed to load ${section} item`, 'error');
         });
     }
-
 
     // ===== TESTIMONIAL MANAGER - COMPLETE FIXED IMPLEMENTATION =====
     class TestimonialManager {

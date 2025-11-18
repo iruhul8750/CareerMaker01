@@ -6160,3 +6160,169 @@ footer .container {
     align-items: flex-start;
   }
 }
+/* MAIN CARD */
+.course-card-layout {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e5e7eb;
+    background: var(--light-color);
+    min-height: 420px; /* ensures good layout */
+}
+
+.dark-mode .course-card-layout {
+    background: var(--dark-mode-card);
+    border-color: #374151;
+}
+
+/* =====================
+   TOP HALF (IMAGE)
+===================== */
+.course-image-section {
+    height: 50%;
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.course-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.course-image-placeholder {
+    width: 100%;
+    height: 100%;
+    font-size: 1.1rem;
+    opacity: 0.6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* BADGES */
+.category-badge,
+.expiration-badge {
+    position: absolute;
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    color: #fff;
+    background: rgba(0,0,0,0.65);
+    top: 10px;
+}
+
+.category-badge {
+    left: 10px;
+}
+
+.expiration-badge {
+    right: 10px;
+}
+
+.expiration-badge.expired {
+    background: rgba(255,0,0,0.7);
+}
+
+/* =====================
+   BOTTOM HALF (DETAILS)
+===================== */
+.course-details-section {
+    height: 50%;
+    padding: 15px 18px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Title + Instructor */
+.course-header h3 {
+    font-size: 1.15rem;
+    margin-bottom: 5px;
+}
+
+.course-instructor {
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+/* Description */
+.course-description {
+    font-size: 0.9rem;
+    line-height: 1.35;
+    margin: 10px 0;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* Meta info */
+.course-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.course-meta div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Extra details */
+.additional-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+/* =====================
+   ACTION BUTTONS
+===================== */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.action-buttons .btn-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-buttons .btn-primary {
+    flex: 1;
+    height: 36px;
+}
+
+/* =====================
+   MOBILE FIXES
+===================== */
+@media (max-width: 480px) {
+    .course-card-layout {
+        min-height: 380px;
+    }
+
+    .course-image-section {
+        height: 45%;
+    }
+
+    .course-details-section {
+        height: 55%;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+}

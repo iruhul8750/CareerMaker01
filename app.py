@@ -23,7 +23,7 @@ import os
 from supabase import create_client, Client
 import logging
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 from urllib.parse import urlparse
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
@@ -2425,6 +2425,57 @@ def enroll_course(course_id):
         logger.error(f"Enrollment error: {str(e)}")
         flash('Failed to enroll in course', 'danger')
         return redirect(url_for('course_detail', course_id=course_id))
+
+@app.route('/api/admin/courses/upload-image', methods=['POST'])
+@admin_required
+def upload_course_image():
+    """Upload course image"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({'success': False, 'error': 'Invalid file type. Only JPG, PNG, GIF allowed.'}), 400
+
+        # Read file data
+        file_data = file.read()
+
+        # Extract extension
+        ext = file.filename.rsplit('.', 1)[1].lower()
+
+        # ❌ WRONG: course-images/<filename>
+        # unique_name = f"course-images/{uuid.uuid4().hex}.{ext}"
+
+        # ✅ CORRECT: only folder inside bucket (optional)
+        unique_name = f"courses/{uuid.uuid4().hex}.{ext}"
+
+        # Upload into bucket "course-images"
+        upload_response = supabase_admin.storage.from_("course-images").upload(
+            unique_name,
+            file_data,
+            {"content-type": file.content_type}
+        )
+
+        if isinstance(upload_response, dict) and upload_response.get("error"):
+            logger.error(f"Supabase upload error: {upload_response}")
+            return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
+
+        # Get public URL
+        image_url = supabase_admin.storage.from_("course-images").get_public_url(unique_name)
+
+        return jsonify({
+            'success': True,
+            'image_url': image_url,
+            'message': 'Image uploaded successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error uploading course image: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
 
 
 @app.route('/jobs')
