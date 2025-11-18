@@ -3159,60 +3159,40 @@ def get_application_link(content_type, content_id):
 def share_content(content_type, content_id):
     try:
         table_map = {
-            'course': ('courses', 'title', 'description'),
-            'job': ('jobs', 'title', 'company'),
-            'internship': ('internships', 'title', 'company'),
-            'blog': ('blog_posts', 'title', 'description')
+            'course': ('courses', 'title', 'description', 'application_link'),
+            'job': ('jobs', 'title', 'company', 'application_link'),
+            'internship': ('internships', 'title', 'company', 'application_link'),
+            'blog': ('blog_posts', 'title', 'description', 'application_link')
         }
 
         if content_type not in table_map:
-            flash('Invalid content type', 'danger')
-            return redirect(url_for('index'))
+            return jsonify({'error': 'Invalid content type'}), 400
 
-        table, title_field, desc_field = table_map[content_type]
+        table, title_field, desc_field, link_field = table_map[content_type]
 
-        content = supabase.table(table).select(f'id, {title_field}, {desc_field}, application_link') \
+        content = supabase.table(table).select(f'id, {title_field}, {desc_field}, {link_field}') \
             .eq('id', content_id).single().execute().data
 
         if not content:
-            flash('Content not found', 'danger')
-            return redirect(url_for(f'{content_type}s'))
+            return jsonify({'error': 'Content not found'}), 404
 
-        # FIX: Use the correct endpoint for courses
-        if content_type == 'course':
-            share_url = request.host_url.rstrip('/') + url_for('course_detail', course_id=content_id)
-        elif content_type == 'blog':
-            share_url = request.host_url.rstrip('/') + url_for('blog_detail', blog_id=content_id)
-        else:
-            share_url = request.host_url.rstrip('/') + url_for(
-                f'apply_{content_type}', **{f'{content_type}_id': content_id})
+        # Use application_link as the primary share URL
+        share_url = content.get(link_field) or request.host_url.rstrip('/') + url_for('index')
 
-        # Social share links
-        social_links = {
-            'facebook': f'https://www.facebook.com/sharer/sharer.php?u={share_url}',
-            'twitter': f'https://twitter.com/intent/tweet?text={content[title_field]}&url={share_url}',
-            'linkedin': f'https://www.linkedin.com/sharing/share-offsite/?url={share_url}',
-            'whatsapp': f'https://wa.me/?text={content[title_field]} - {share_url}'
-        }
-
-        return render_template('share.html',
-                               content_type=content_type,
-                               content_id=content_id,
-                               title=content[title_field],
-                               description=content[desc_field],
-                               share_url=share_url,
-                               social_links=social_links,
-                               direct_link=content.get('application_link', share_url))
+        # Return JSON data for the modal
+        return jsonify({
+            'success': True,
+            'content_type': content_type,
+            'content_id': content_id,
+            'title': content[title_field],
+            'description': content.get(desc_field, ''),
+            'share_url': share_url,
+            'direct_link': share_url  # This is the application link
+        })
 
     except Exception as e:
         logger.error(f"Share error: {str(e)}")
-        flash('Failed to generate share link', 'danger')
-        return redirect(url_for(f'{content_type}s'))
-
-    except Exception as e:
-        logger.error(f"Share error: {str(e)}")
-        flash('Failed to generate share link', 'danger')
-        return redirect(url_for(f'{content_type}s'))
+        return jsonify({'error': 'Failed to generate share data'}), 500
 
 
 # Contact and newsletter subscribe routes

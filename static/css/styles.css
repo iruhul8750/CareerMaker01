@@ -6326,3 +6326,297 @@ footer .container {
         flex-direction: column;
     }
 }
+/* Enhanced Share Modal Styles with Dark Mode */
+.share-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.share-modal.active {
+    display: flex;
+    opacity: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.share-modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.share-modal.active .share-modal-content {
+    transform: translateY(0);
+}
+
+/* Dark Mode Styles */
+.share-modal.dark-mode .share-modal-content {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+.share-modal.dark-mode .share-modal-header {
+    border-bottom-color: #374151;
+}
+
+.share-modal.dark-mode .share-modal-header h3 {
+    color: #f9fafb;
+}
+
+.share-modal.dark-mode .share-modal-close {
+    color: #9ca3af;
+}
+
+.share-modal.dark-mode .share-modal-close:hover {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+.share-modal.dark-mode .share-url-input {
+    background-color: #111827;
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+.share-modal.dark-mode .share-platform-btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+.share-modal.dark-mode .share-platform-btn:hover {
+    background-color: #374151;
+}
+
+/* Platform colors still apply in dark mode */
+.share-modal.dark-mode .share-platform-btn[data-platform]:hover {
+    color: white !important;
+}
+
+.share-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.share-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.share-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.share-modal-close:hover {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.share-modal-body {
+    padding: 24px;
+}
+
+.share-url-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.share-url-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    background-color: #f9fafb;
+    cursor: not-allowed;
+    font-family: monospace;
+}
+
+.share-url-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.copy-url-btn {
+    padding: 12px 16px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.copy-url-btn:hover {
+    background-color: #2563eb;
+}
+
+.copy-url-btn.copied {
+    background-color: #10b981;
+}
+
+.copy-url-btn.copied:hover {
+    background-color: #059669;
+}
+
+.share-platforms {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.share-platform-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.share-platform-btn:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Platform-specific hover effects */
+.share-platform-btn[data-platform="twitter"]:hover {
+    background-color: #1da1f2 !important;
+    color: white !important;
+    border-color: #1da1f2 !important;
+}
+
+.share-platform-btn[data-platform="facebook"]:hover {
+    background-color: #1877f2 !important;
+    color: white !important;
+    border-color: #1877f2 !important;
+}
+
+.share-platform-btn[data-platform="linkedin"]:hover {
+    background-color: #0a66c2 !important;
+    color: white !important;
+    border-color: #0a66c2 !important;
+}
+
+.share-platform-btn[data-platform="whatsapp"]:hover {
+    background-color: #25d366 !important;
+    color: white !important;
+    border-color: #25d366 !important;
+}
+
+.share-platform-btn[data-platform="telegram"]:hover {
+    background-color: #0088cc !important;
+    color: white !important;
+    border-color: #0088cc !important;
+}
+
+.share-platform-btn[data-platform="email"]:hover {
+    background-color: #ea4335 !important;
+    color: white !important;
+    border-color: #ea4335 !important;
+}
+
+.share-modal-footer {
+    padding: 0 24px 20px;
+    min-height: 40px;
+}
+
+.share-success-message {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #d1fae5;
+    color: #065f46;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid #a7f3d0;
+}
+
+.share-modal.dark-mode .share-success-message {
+    background-color: #064e3b;
+    color: #a7f3d0;
+    border-color: #065f46;
+}
+
+.share-success-message.show {
+    display: flex;
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .share-modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+
+    .share-platforms {
+        grid-template-columns: 1fr;
+    }
+
+    .share-url-container {
+        flex-direction: column;
+    }
+
+    .copy-url-btn {
+        justify-content: center;
+    }
+}

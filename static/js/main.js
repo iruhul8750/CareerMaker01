@@ -563,47 +563,234 @@
         });
     }
 
-    // =============================================
-    // Share Functionality - Fixed
-    // =============================================
-    function shareContent(contentId, contentType, button) {
+    // Share functionality - UPDATED to use API
+    // Share functionality - FIXED social media URLs and dark mode
+    // Share functionality - FIXED to open in same tab
+    async function shareContent(contentId, contentType, button) {
         console.log('Share function called:', { contentType, contentId, button });
 
-        // Show loading state
+        // Show loading state on the button
         const originalHTML = button.innerHTML;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         button.disabled = true;
 
-        // Construct share URL
-        const shareUrl = `/share/${contentType}/${contentId}`;
+        try {
+            // Fetch share data from backend API
+            const response = await fetch(`/share/${contentType}/${contentId}`);
+            const data = await response.json();
 
-        console.log('Redirecting to share URL:', shareUrl);
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to load share data');
+            }
 
-        // Redirect to share page
-        window.location.href = shareUrl;
+            // Show the share modal with data from API
+            showShareModal(data, contentType);
 
-        // Reset button after a short delay (in case redirect fails)
-        setTimeout(() => {
+        } catch (error) {
+            console.error('Share error:', error);
+            // Fallback: construct URL manually if API fails
+            const fallbackData = {
+                share_url: `${window.location.origin}/${contentType}s/${contentId}`,
+                title: `Amazing ${contentType}`,
+                description: `Check out this ${contentType} on CareerMaker`
+            };
+
+            showShareModal(fallbackData, contentType);
+
+            // Show error notification
+            showNotification('Share content loaded with limited information', 'info');
+        } finally {
+            // Reset button
             button.innerHTML = originalHTML;
             button.disabled = false;
-        }, 1000);
+        }
     }
 
-     // Alternative: Copy to clipboard function
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Link copied to clipboard!', 'success');
-        }).catch(() => {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            showToast('Link copied to clipboard!', 'success');
+    // Enhanced showShareModal function - FIXED to open in same tab
+    function showShareModal(data, contentType) {
+        const modal = document.getElementById('shareModal');
+        const urlInput = document.getElementById('shareUrlInput');
+        const copyBtn = document.getElementById('copyShareUrl');
+        const closeBtn = document.querySelector('.share-modal-close');
+        const platformBtns = document.querySelectorAll('.share-platform-btn');
+        const successMessage = document.getElementById('shareSuccessMessage');
+
+        // Set share URL - use application_link if available, otherwise use share_url
+        const shareUrl = data.direct_link || data.share_url;
+        urlInput.value = shareUrl;
+
+        // Reset UI state
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        copyBtn.classList.remove('copied');
+        successMessage.classList.remove('show');
+
+        // Apply dark mode if active
+        applyDarkModeToModal();
+
+        // Show modal
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        // Store current active element for accessibility
+        const previousActiveElement = document.activeElement;
+
+        // Focus management for accessibility
+        modal.setAttribute('aria-hidden', 'false');
+        closeBtn.focus();
+
+        // Close modal handlers
+        function closeModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            modal.setAttribute('aria-hidden', 'true');
+
+            // Return focus to previous element
+            if (previousActiveElement) {
+                previousActiveElement.focus();
+            }
+
+            // Remove event listeners
+            modal.removeEventListener('click', handleBackdropClick);
+            closeBtn.removeEventListener('click', closeModal);
+            document.removeEventListener('keydown', handleEscape);
+        }
+
+        function handleBackdropClick(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        }
+
+        function handleEscape(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        }
+
+        // Add event listeners
+        modal.addEventListener('click', handleBackdropClick);
+        closeBtn.addEventListener('click', closeModal);
+        document.addEventListener('keydown', handleEscape);
+
+        // Copy URL functionality
+        copyBtn.onclick = async function() {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+
+                // Show success state
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                this.classList.add('copied');
+                successMessage.classList.add('show');
+
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    this.classList.remove('copied');
+                    successMessage.classList.remove('show');
+                }, 2000);
+
+            } catch (err) {
+                // Fallback for older browsers
+                urlInput.select();
+                urlInput.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+
+                // Show success state
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                this.classList.add('copied');
+                successMessage.classList.add('show');
+
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    this.classList.remove('copied');
+                    successMessage.classList.remove('show');
+                }, 2000);
+            }
+        };
+
+        // Platform sharing functionality - OPEN IN NEW TAB (Better UX)
+        platformBtns.forEach(btn => {
+            btn.onclick = function() {
+                const platform = this.dataset.platform;
+                const shareTitle = encodeURIComponent(data.title || `Check out this ${contentType}`);
+                const shareText = encodeURIComponent(data.description || `I found this on CareerMaker!`);
+                const encodedUrl = encodeURIComponent(shareUrl);
+
+                let shareUrlToOpen;
+
+                switch (platform) {
+                    case 'twitter':
+                        shareUrlToOpen = `https://twitter.com/intent/tweet?text=${shareTitle}&url=${encodedUrl}`;
+                        break;
+                    case 'facebook':
+                        shareUrlToOpen = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+                        break;
+                    case 'linkedin':
+                        shareUrlToOpen = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+                        break;
+                    case 'whatsapp':
+                        shareUrlToOpen = `https://api.whatsapp.com/send?text=${shareTitle}%20${encodedUrl}`;
+                        break;
+                    case 'telegram':
+                        shareUrlToOpen = `https://t.me/share/url?url=${encodedUrl}&text=${shareTitle}`;
+                        break;
+                    default:
+                        return;
+                }
+
+                // Open in new tab (better UX - user doesn't lose current page)
+                if (platform === 'email') {
+                    // mailto links work differently
+                    window.location.href = shareUrlToOpen;
+                } else {
+                    // Open social platforms in new tab
+                    window.open(shareUrlToOpen, '_blank');
+                }
+            };
         });
     }
+
+    // Apply dark mode to modal
+    function applyDarkModeToModal() {
+        const modal = document.getElementById('shareModal');
+        const isDarkMode = document.body.classList.contains('dark-mode') ||
+                           document.documentElement.classList.contains('dark-mode') ||
+                           localStorage.getItem('theme') === 'dark';
+
+        if (isDarkMode) {
+            modal.classList.add('dark-mode');
+        } else {
+            modal.classList.remove('dark-mode');
+        }
+    }
+
+    // Listen for theme changes
+    function initShareModalThemeListener() {
+        // Observe theme changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class') {
+                    applyDarkModeToModal();
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        // Also check localStorage for theme
+        if (localStorage.getItem('theme') === 'dark') {
+            applyDarkModeToModal();
+        }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        initShareModalThemeListener();
+    });
 
     // =============================================
     // OTP Verification System

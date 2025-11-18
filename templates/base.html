@@ -279,6 +279,52 @@
     </div>
 </div>
 
+<!-- Share Modal -->
+<div id="shareModal" class="share-modal">
+    <div class="share-modal-content">
+        <div class="share-modal-header">
+            <h3>Share this content</h3>
+            <button class="share-modal-close" aria-label="Close share modal">&times;</button>
+        </div>
+        <div class="share-modal-body">
+            <div class="share-url-container">
+                <input type="text" id="shareUrlInput" readonly class="share-url-input" aria-label="Share URL">
+                <button id="copyShareUrl" class="copy-url-btn">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+            <div class="share-platforms">
+                <button class="share-platform-btn" data-platform="twitter" aria-label="Share on Twitter">
+                    <i class="fab fa-twitter"></i>
+                    Twitter
+                </button>
+                <button class="share-platform-btn" data-platform="facebook" aria-label="Share on Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                    Facebook
+                </button>
+                <button class="share-platform-btn" data-platform="linkedin" aria-label="Share on LinkedIn">
+                    <i class="fab fa-linkedin-in"></i>
+                    LinkedIn
+                </button>
+                <button class="share-platform-btn" data-platform="whatsapp" aria-label="Share on WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                    WhatsApp
+                </button>
+                <button class="share-platform-btn" data-platform="telegram" aria-label="Share on Telegram">
+                    <i class="fab fa-telegram"></i>
+                    Telegram
+                </button>
+            </div>
+        </div>
+        <div class="share-modal-footer">
+            <div id="shareSuccessMessage" class="share-success-message">
+                <i class="fas fa-check-circle"></i>
+                Link copied to clipboard!
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Main JavaScript -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
