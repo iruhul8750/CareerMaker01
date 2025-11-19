@@ -1386,11 +1386,11 @@ def index():
     try:
         user_id = session.get('user_id')
 
-        # Fetch only ACTIVE content (expired content is automatically deactivated)
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(8).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(6).execute().data or []
+        # FIX: Fetch only 4 items for each content type (1 row)
+        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
 
         # Enhance content with logos
         enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
@@ -1414,7 +1414,7 @@ def index():
             for blog in blogs:
                 blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
 
-        # Fetch testimonials
+        # Fetch testimonials - keep 3 for testimonials section
         testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_active', True).limit(3).execute().data or []
 
         logger.info(f"Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}")
@@ -1924,22 +1924,103 @@ def user_dashboard():
         bookmarks = get_user_bookmarks(user_id)
         logger.info(f"Retrieved {len(bookmarks)} bookmarks for dashboard")
 
-        # Separate bookmarks by type for the template
-        courses = [b for b in bookmarks if b.get('content_type') == 'course']
-        jobs = [b for b in bookmarks if b.get('content_type') == 'job']
-        internships = [b for b in bookmarks if b.get('content_type') == 'internship']
-        blogs = [b for b in bookmarks if b.get('content_type') == 'blog']
+        # Separate bookmarks by type
+        course_bookmarks = [b for b in bookmarks if b.get('content_type') == 'course']
+        job_bookmarks = [b for b in bookmarks if b.get('content_type') == 'job']
+        internship_bookmarks = [b for b in bookmarks if b.get('content_type') == 'internship']
+        blog_bookmarks = [b for b in bookmarks if b.get('content_type') == 'blog']
 
-        # Enhance blog bookmarks with additional data (views, likes, etc.)
+        # FIX: Fetch FRESH course data from courses table (like main page does)
+        enhanced_courses = []
+        if course_bookmarks:
+            course_ids = [bookmark['id'] for bookmark in course_bookmarks]
+
+            try:
+                # Fetch ACTIVE courses from courses table (same as main page)
+                courses_data = supabase_admin.table('courses') \
+                                   .select('*') \
+                                   .in_('id', course_ids) \
+                                   .eq('is_active', True) \
+                                   .execute().data or []
+
+                # Enhance with logos (same as main page)
+                enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in
+                                    courses_data]
+
+                # Add bookmark status
+                for course in enhanced_courses:
+                    course['is_bookmarked'] = True  # All these are bookmarked by user
+
+                logger.info(f"Enhanced {len(enhanced_courses)} courses with images")
+
+            except Exception as e:
+                logger.error(f"Error enhancing course data: {str(e)}")
+                # Fallback: use basic bookmark data
+                for bookmark in course_bookmarks:
+                    enhanced_course = bookmark.copy()
+                    enhanced_course['company_logo'] = '/static/images/default-course.jpg'
+                    enhanced_courses.append(enhanced_course)
+
+        # FIX: Fetch FRESH job data from jobs table
+        enhanced_jobs = []
+        if job_bookmarks:
+            job_ids = [bookmark['id'] for bookmark in job_bookmarks]
+
+            try:
+                jobs_data = supabase_admin.table('jobs') \
+                                .select('*') \
+                                .in_('id', job_ids) \
+                                .eq('is_active', True) \
+                                .execute().data or []
+
+                enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs_data]
+
+                for job in enhanced_jobs:
+                    job['is_bookmarked'] = True
+
+            except Exception as e:
+                logger.error(f"Error enhancing job data: {str(e)}")
+                for bookmark in job_bookmarks:
+                    enhanced_job = bookmark.copy()
+                    enhanced_job['company_logo'] = '/static/images/default-job.jpg'
+                    enhanced_jobs.append(enhanced_job)
+
+        # FIX: Fetch FRESH internship data from internships table
+        enhanced_internships = []
+        if internship_bookmarks:
+            internship_ids = [bookmark['id'] for bookmark in internship_bookmarks]
+
+            try:
+                internships_data = supabase_admin.table('internships') \
+                                       .select('*') \
+                                       .in_('id', internship_ids) \
+                                       .eq('is_active', True) \
+                                       .execute().data or []
+
+                enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for
+                                        internship in internships_data]
+
+                for internship in enhanced_internships:
+                    internship['is_bookmarked'] = True
+
+            except Exception as e:
+                logger.error(f"Error enhancing internship data: {str(e)}")
+                for bookmark in internship_bookmarks:
+                    enhanced_internship = bookmark.copy()
+                    enhanced_internship['company_logo'] = '/static/images/default-internship.jpg'
+                    enhanced_internships.append(enhanced_internship)
+
+        # ENHANCE BLOG BOOKMARKS
         enhanced_blogs = []
-        if blogs:
-            blog_ids = [blog['id'] for blog in blogs]
+        if blog_bookmarks:
+            blog_ids = [bookmark['id'] for bookmark in blog_bookmarks]
 
             try:
                 # Get additional blog data from blog_posts table
                 blogs_data_response = supabase_admin.table('blog_posts') \
                     .select('*') \
                     .in_('id', blog_ids) \
+                    .eq('is_active', True) \
                     .execute()
 
                 blogs_data = {blog['id']: blog for blog in (blogs_data_response.data or [])}
@@ -1967,20 +2048,21 @@ def user_dashboard():
                     like_counts[blog_id] = like_counts.get(blog_id, 0) + 1
 
                 # Enhance each blog bookmark with additional data
-                for blog in blogs:
-                    blog_id = blog['id']
+                for bookmark in blog_bookmarks:
+                    blog_id = bookmark['id']
                     blog_data = blogs_data.get(blog_id, {})
 
-                    enhanced_blog = blog.copy()
+                    enhanced_blog = bookmark.copy()
 
                     # Add data from blog_posts table
-                    enhanced_blog['title'] = blog_data.get('title', blog.get('title', 'Untitled Article'))
-                    enhanced_blog['description'] = blog_data.get('description', blog.get('description', ''))
+                    enhanced_blog['title'] = blog_data.get('title', bookmark.get('title', 'Untitled Article'))
+                    enhanced_blog['description'] = blog_data.get('description', bookmark.get('description', ''))
                     enhanced_blog['content'] = blog_data.get('content', '')
                     enhanced_blog['image'] = blog_data.get('image', '/static/images/default-blog.jpg')
                     enhanced_blog['author'] = blog_data.get('author', 'CareerMaker Team')
                     enhanced_blog['read_time'] = blog_data.get('read_time', '5 min read')
                     enhanced_blog['categories'] = blog_data.get('categories', ['Career'])
+                    enhanced_blog['is_bookmarked'] = True
 
                     # Add view and like counts
                     enhanced_blog['views'] = view_counts.get(blog_id, 0)
@@ -1990,26 +2072,25 @@ def user_dashboard():
 
             except Exception as e:
                 logger.error(f"Error enhancing blog data: {str(e)}")
-                # If enhancement fails, use basic blog data
-                enhanced_blogs = blogs
-                for blog in enhanced_blogs:
-                    blog.setdefault('views', 0)
-                    blog.setdefault('like_count', 0)
-                    blog.setdefault('read_time', '5 min read')
-                    blog.setdefault('categories', ['Career'])
-        else:
-            enhanced_blogs = []
+                for bookmark in blog_bookmarks:
+                    enhanced_blog = bookmark.copy()
+                    enhanced_blog['image'] = '/static/images/default-blog.jpg'
+                    enhanced_blog['views'] = 0
+                    enhanced_blog['like_count'] = 0
+                    enhanced_blog['read_time'] = '5 min read'
+                    enhanced_blog['categories'] = ['Career']
+                    enhanced_blogs.append(enhanced_blog)
 
         logger.info(
-            f"Dashboard breakdown - Courses: {len(courses)}, Jobs: {len(jobs)}, Internships: {len(internships)}, Blogs: {len(enhanced_blogs)}")
+            f"Dashboard breakdown - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(enhanced_blogs)}")
 
         return render_template('user-dashboard.html',
                                username=user.get('username'),
                                email=user.get('email'),
                                avatar_url=avatar_url,
-                               courses=courses,
-                               jobs=jobs,
-                               internships=internships,
+                               courses=enhanced_courses,
+                               jobs=enhanced_jobs,
+                               internships=enhanced_internships,
                                blogs=enhanced_blogs)
 
     except Exception as e:

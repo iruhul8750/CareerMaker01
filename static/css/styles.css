@@ -6620,3 +6620,32 @@ footer .container {
         justify-content: center;
     }
 }
+/* In your CSS file */
+.featured-courses-grid,
+.featured-jobs-grid,
+.featured-internships-grid,
+.featured-blogs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columns */
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 1024px) {
+    .featured-courses-grid,
+    .featured-jobs-grid,
+    .featured-internships-grid,
+    .featured-blogs-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
+    }
+}
+
+@media (max-width: 768px) {
+    .featured-courses-grid,
+    .featured-jobs-grid,
+    .featured-internships-grid,
+    .featured-blogs-grid {
+        grid-template-columns: 1fr; /* 1 column on mobile */
+    }
+}
