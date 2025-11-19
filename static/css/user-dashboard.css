@@ -1892,3 +1892,16 @@
     height: 150px;
   }
 }
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Ensure loader is above everything */
+.universal-loading-overlay {
+    z-index: 9999;
+}
+
+.modal {
+    z-index: 1000;
+}

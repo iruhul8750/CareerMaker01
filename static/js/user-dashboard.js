@@ -78,32 +78,23 @@
     }
 
     async function openBlogModal(blogId) {
-        try {
-            console.log('Opening blog modal for:', blogId);
+        return withLoader(
+            (async () => {
+                const response = await fetch(`/api/blog/${blogId}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-            showLoading();
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Blog post not found');
 
-            const response = await fetch(`/api/blog/${blogId}`);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to load blog post');
-            }
-
-            if (!data.success) {
-                throw new Error(data.error || 'Blog post not found');
-            }
-
-            const blog = data.blog;
-            showBlogModal(blog);
-            trackBlogView(blogId);
-
-        } catch (error) {
-            console.error('❌ Error loading blog:', error);
-            showToast('Failed to load blog post', 'error');
-        } finally {
-            hideLoading();
-        }
+                const blog = data.blog;
+                showBlogModal(blog);
+                trackBlogView(blogId);
+                return blog;
+            })(),
+            'Loading article...',
+            null, // No success toast
+            'Failed to load blog post'
+        );
     }
 
     function showBlogModal(blog) {
@@ -478,7 +469,7 @@
         }
     }
 
-    function setupAvatarUpload() {
+     function setupAvatarUpload() {
         if (!profilePicUpload) return;
 
         profilePicUpload.addEventListener('change', async function(e) {
@@ -501,7 +492,8 @@
             formData.append('file', file);
 
             try {
-                showLoading();
+                showLoader('Uploading profile picture...');
+
                 avatarInitials.style.display = 'none';
                 avatarImg.style.display = 'none';
 
@@ -511,29 +503,34 @@
                     credentials: 'include'
                 });
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Upload failed');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+                }
 
-                // Add cache busting parameter
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+
                 const timestamp = new Date().getTime();
                 const imageUrl = data.image_url + '?t=' + timestamp;
 
-                // Update avatar
                 avatarImg.src = imageUrl;
                 avatarImg.style.display = 'block';
 
-                // Store in localStorage with timestamp (store base URL without timestamp)
                 localStorage.setItem('profilePicUrl', data.image_url);
                 localStorage.setItem('profilePicTimestamp', timestamp);
 
                 showToast('Profile picture updated!', 'success');
+
             } catch (error) {
-                // Show initial on upload error
-                showInitialAvatar();
-                showToast(error.message, 'error');
                 console.error('Upload error:', error);
+                showInitialAvatar();
+                showToast(error.message || 'Failed to upload image', 'error');
             } finally {
-                hideLoading();
+                hideLoader();
                 e.target.value = '';
             }
         });
@@ -852,6 +849,287 @@
                 }
             }, 300);
         }, 3000);
+    }
+
+    // ======================
+    // UNIVERSAL LOADER MANAGEMENT
+    // ======================
+
+    const LoaderManager = {
+        // Loader configuration
+        config: {
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            spinnerColor: '#ffffff',
+            textColor: '#ffffff',
+            blurEffect: '5px',
+            animationDuration: '0.3s'
+        },
+
+        // Active loaders counter
+        activeLoaders: 0,
+
+        // Show loader with custom message
+        show: function(message = 'Loading...', options = {}) {
+            this.activeLoaders++;
+
+            let overlay = document.getElementById('universalLoadingOverlay');
+
+            // Create loader if it doesn't exist
+            if (!overlay) {
+                overlay = this.createLoader();
+            }
+
+            // Update message if provided
+            if (message) {
+                const messageElement = overlay.querySelector('.loading-message');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+            }
+
+            // Apply custom options
+            this.applyOptions(overlay, options);
+
+            // Show loader
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
+
+            return overlay;
+        },
+
+        // Hide loader
+        hide: function(force = false) {
+            if (force) {
+                this.activeLoaders = 0;
+            } else {
+                this.activeLoaders = Math.max(0, this.activeLoaders - 1);
+            }
+
+            // Only hide if no more active loaders
+            if (this.activeLoaders <= 0) {
+                const overlay = document.getElementById('universalLoadingOverlay');
+                if (overlay) {
+                    // Add fade-out animation
+                    overlay.style.opacity = '0';
+                    overlay.style.transition = `opacity ${this.config.animationDuration} ease`;
+
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        overlay.style.opacity = '1'; // Reset for next time
+                        document.body.style.overflow = '';
+                        console.log('✅ All loaders hidden');
+                    }, 300);
+                }
+                this.activeLoaders = 0; // Reset counter
+            } else {
+                console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
+            }
+        },
+
+        // Create the loader element
+        createLoader: function() {
+            const overlay = document.createElement('div');
+            overlay.id = 'universalLoadingOverlay';
+            overlay.className = 'universal-loading-overlay';
+
+            overlay.innerHTML = `
+                <div class="universal-loading-content">
+                    <div class="universal-spinner"></div>
+                    <p class="loading-message">Loading...</p>
+                </div>
+            `;
+
+            this.applyStyles(overlay);
+            document.body.appendChild(overlay);
+
+            return overlay;
+        },
+
+        // Apply base styles
+        applyStyles: function(overlay) {
+            Object.assign(overlay.style, {
+                display: 'none',
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                backgroundColor: this.config.backgroundColor,
+                zIndex: this.config.zIndex,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backdropFilter: `blur(${this.config.blurEffect})`,
+                transition: `opacity ${this.config.animationDuration} ease`
+            });
+
+            const content = overlay.querySelector('.universal-loading-content');
+            if (content) {
+                Object.assign(content.style, {
+                    textAlign: 'center',
+                    color: this.config.textColor,
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    padding: '30px 40px',
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                });
+            }
+
+            const spinner = overlay.querySelector('.universal-spinner');
+            if (spinner) {
+                Object.assign(spinner.style, {
+                    width: '50px',
+                    height: '50px',
+                    border: `4px solid rgba(255, 255, 255, 0.3)`,
+                    borderTop: `4px solid ${this.config.spinnerColor}`,
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    margin: '0 auto 20px',
+                    display: 'block'
+                });
+            }
+
+            const message = overlay.querySelector('.loading-message');
+            if (message) {
+                Object.assign(message.style, {
+                    margin: '0',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: this.config.textColor
+                });
+            }
+        },
+
+        // Apply custom options
+        applyOptions: function(overlay, options) {
+            if (options.backgroundColor) {
+                overlay.style.backgroundColor = options.backgroundColor;
+            }
+
+            if (options.zIndex) {
+                overlay.style.zIndex = options.zIndex;
+            }
+
+            if (options.message) {
+                const messageElement = overlay.querySelector('.loading-message');
+                if (messageElement) {
+                    messageElement.textContent = options.message;
+                }
+            }
+        },
+
+        // Reset all loaders (emergency use)
+        reset: function() {
+            this.activeLoaders = 0;
+            this.hide(true);
+            console.log('🔄 All loaders reset');
+        },
+
+        // Get current loader status
+        getStatus: function() {
+            return {
+                active: this.activeLoaders > 0,
+                count: this.activeLoaders,
+                visible: document.getElementById('universalLoadingOverlay')?.style.display === 'flex'
+            };
+        }
+    };
+
+    // ======================
+    // CONVENIENCE FUNCTIONS
+    // ======================
+
+    // Shortcut functions
+    function showLoader(message = 'Loading...', options = {}) {
+        return LoaderManager.show(message, options);
+    }
+
+    function hideLoader(force = false) {
+        return LoaderManager.hide(force);
+    }
+
+    function resetLoader() {
+        return LoaderManager.reset();
+    }
+
+    // Async wrapper for API calls
+    async function withLoader(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
+        showLoader(loadingMessage);
+
+        try {
+            const result = await promise;
+
+            if (successMessage) {
+                showToast(successMessage, 'success');
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Operation failed:', error);
+
+            if (errorMessage) {
+                showToast(errorMessage, 'error');
+            } else {
+                showToast(error.message || 'Operation failed', 'error');
+            }
+
+            throw error;
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // ======================
+    // USAGE EXAMPLES
+    // ======================
+
+    // Example 1: Basic usage
+    async function fetchUserData() {
+        showLoader('Loading user data...');
+        try {
+            const response = await fetch('/api/user/data');
+            const data = await response.json();
+            return data;
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // Example 2: Using the wrapper
+    async function updateProfile(data) {
+        return withLoader(
+            fetch('/api/profile', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            }),
+            'Updating profile...',
+            'Profile updated successfully!',
+            'Failed to update profile'
+        );
+    }
+
+    // Example 3: Multiple sequential operations
+    async function performMultipleOperations() {
+        showLoader('Starting process...');
+        try {
+            // Operation 1
+            showLoader('Loading user data...');
+            await fetch('/api/user');
+
+            // Operation 2
+            showLoader('Loading preferences...');
+            await fetch('/api/preferences');
+
+            // Operation 3
+            showLoader('Finalizing...');
+            await fetch('/api/finalize');
+
+        } finally {
+            hideLoader();
+        }
     }
 
     // ======================
