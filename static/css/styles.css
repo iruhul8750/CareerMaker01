@@ -71,7 +71,7 @@ header {
   max-width: 1400px;
   margin: 0 auto;
   /* Remove margin-left and add transform instead */
-  transform: translateX(60px); /* Adjust this value to shift right */
+  transform: translateX(50px); /* Adjust this value to shift right */
 }
 
 .logo {
@@ -244,7 +244,7 @@ header {
 }
 
 .toggle-icon {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   margin-right: 0.5rem;
   transition: var(--transition);
 }
@@ -6647,5 +6647,145 @@ footer .container {
     .featured-internships-grid,
     .featured-blogs-grid {
         grid-template-columns: 1fr; /* 1 column on mobile */
+    }
+}
+/* =============================================
+   NAVIGATION PROFILE PICTURE STYLES
+   ============================================= */
+
+.user-profile-nav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.nav-profile-pic-container {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #4e73df;
+    background: linear-gradient(135deg, #4e73df 0%, #2e59d9 100%);
+    transition: all 0.3s ease;
+}
+
+.nav-profile-pic-container:hover {
+    border-color: #2e59d9;
+    transform: scale(1.05);
+}
+
+.nav-profile-pic {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+.nav-avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #4e73df 0%, #2e59d9 100%);
+}
+
+/* User Dropdown */
+.user-dropdown-nav {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 10px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.user-profile-nav:hover .user-dropdown-nav {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.user-dropdown-header {
+    padding: 15px;
+    background: linear-gradient(135deg, #4e73df 0%, #2e59d9 100%);
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-dropdown-header strong {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 3px;
+}
+
+.user-dropdown-header small {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.user-dropdown-nav a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+}
+
+.user-dropdown-nav a:last-child {
+    border-bottom: none;
+}
+
+.user-dropdown-nav a:hover {
+    background-color: #f8f9fa;
+    color: #4e73df;
+    padding-left: 20px;
+}
+
+.user-dropdown-nav a i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .user-profile-nav {
+        order: -1;
+        margin-right: 15px;
+    }
+
+    .nav-profile-pic-container {
+        width: 36px;
+        height: 36px;
+    }
+
+    .user-dropdown-nav {
+        position: fixed;
+        top: 70px;
+        right: 15px;
+        left: 15px;
+        min-width: auto;
+    }
+
+    .auth-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 }

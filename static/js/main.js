@@ -237,7 +237,7 @@
     }
 
     // =============================================
-    // Initialize Application - UPDATED
+    // Initialize Application
     // =============================================
     function initializeHomePage() {
         handleLogoErrors();
@@ -290,6 +290,119 @@
             });
         });
     }
+
+    // =============================================
+    // NAVIGATION PROFILE PICTURE LOADER
+    // =============================================
+
+    function loadNavigationProfilePicture() {
+        const profilePicElement = document.getElementById('navProfilePic');
+        const initialsElement = document.getElementById('navAvatarInitials');
+
+        if (!profilePicElement || !initialsElement) return;
+
+        // Check if user is logged in
+        fetch('/api/check-session', {
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(sessionData => {
+            if (!sessionData.logged_in) {
+                // User not logged in, hide profile section
+                const userProfileNav = document.querySelector('.user-profile-nav');
+                if (userProfileNav) {
+                    userProfileNav.style.display = 'none';
+                }
+                return;
+            }
+
+            // User is logged in, load profile picture
+            const username = sessionData.username || 'User';
+            const userInitial = username[0].toUpperCase();
+
+            // Set initials first
+            initialsElement.textContent = userInitial;
+
+            // Check for recent update timestamp
+            const cacheBust = localStorage.getItem('profilePicCacheBust') || Date.now();
+
+            // Fetch profile picture with aggressive cache busting
+            fetch(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.image_url) {
+                    // Create new image to test loading
+                    const testImage = new Image();
+                    testImage.onload = function() {
+                        // Image loaded successfully
+                        profilePicElement.src = data.image_url;
+                        profilePicElement.style.display = 'block';
+                        initialsElement.style.display = 'none';
+
+                        // Store in session for quick access
+                        sessionStorage.setItem('navProfilePicUrl', data.image_url);
+                        sessionStorage.setItem('navProfilePicTimestamp', timestamp);
+                    };
+                    testImage.onerror = function() {
+                        // Image failed to load, show initials
+                        profilePicElement.style.display = 'none';
+                        initialsElement.style.display = 'flex';
+                    };
+                    testImage.src = data.image_url;
+                } else {
+                    // No profile picture, show initials
+                    profilePicElement.style.display = 'none';
+                    initialsElement.style.display = 'flex';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading profile picture:', error);
+                profilePicElement.style.display = 'none';
+                initialsElement.style.display = 'flex';
+            });
+        })
+        .catch(error => {
+            console.error('Error checking session:', error);
+        });
+    }
+
+    // Also add this function to refresh profile picture when updated
+    function refreshNavigationProfilePicture() {
+        // Clear cached data
+        sessionStorage.removeItem('navProfilePicUrl');
+        sessionStorage.removeItem('navProfilePicTimestamp');
+
+        // Reload with fresh cache busting
+        loadNavigationProfilePicture();
+    }
+
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit for the DOM to fully load
+        setTimeout(() => {
+            loadNavigationProfilePicture();
+        }, 500);
+
+        // Listen for login events
+        document.addEventListener('userLoggedIn', function() {
+            setTimeout(() => {
+                loadNavigationProfilePicture();
+            }, 1000);
+        });
+
+        // Listen for profile picture updates
+        document.addEventListener('profilePictureUpdated', function() {
+            setTimeout(() => {
+                refreshNavigationProfilePicture();
+            }, 500);
+        });
+    });
 
     // =============================================
     // Modal Management - ENHANCED FOR NAVIGATION

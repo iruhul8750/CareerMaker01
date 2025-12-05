@@ -481,6 +481,7 @@
                 // Clear cache for this image
                 localStorage.removeItem('profilePicUrl');
                 localStorage.removeItem('profilePicTimestamp');
+                localStorage.removeItem('profilePicCacheBust');
             };
             reader.readAsDataURL(file);
 
@@ -529,11 +530,18 @@
                     localStorage.setItem('profilePicCacheBust', timestamp.toString());
 
                     showToast('Profile picture updated successfully!', 'success');
+
+                    // TRIGGER PROFILE PICTURE REFRESH ON ALL PAGES
+                    triggerProfilePictureRefresh();
                 };
 
                 img.onerror = function() {
                     // Fallback to the preview if server image fails to load
                     console.log('Server image failed to load, using preview');
+                    showToast('Profile picture updated! (Using preview)', 'success');
+
+                    // Still trigger refresh even if preview is used
+                    triggerProfilePictureRefresh();
                 };
 
                 img.src = imageUrl;
@@ -550,6 +558,132 @@
             }
         });
     }
+
+    // Add this function to trigger profile picture refresh across all pages
+    function triggerProfilePictureRefresh() {
+        console.log('🔄 Triggering profile picture refresh...');
+
+        // Method 1: Dispatch custom event (for single page app behavior)
+        const profileUpdatedEvent = new CustomEvent('profilePictureUpdated', {
+            detail: {
+                timestamp: Date.now(),
+                source: 'dashboard'
+            }
+        });
+        document.dispatchEvent(profileUpdatedEvent);
+
+        // Method 2: Broadcast to all tabs using BroadcastChannel
+        try {
+            const broadcastChannel = new BroadcastChannel('profile_picture_updates');
+            broadcastChannel.postMessage({
+                type: 'PROFILE_PICTURE_UPDATED',
+                timestamp: Date.now()
+            });
+            broadcastChannel.close();
+        } catch (e) {
+            console.log('BroadcastChannel not supported, using localStorage method');
+        }
+
+        // Method 3: Use localStorage to signal refresh (works across tabs)
+        localStorage.setItem('profilePicLastUpdate', Date.now().toString());
+
+        // Method 4: Force reload navigation profile picture if function exists
+        if (typeof refreshNavigationProfilePicture === 'function') {
+            setTimeout(() => {
+                refreshNavigationProfilePicture();
+            }, 500);
+        }
+
+        // Method 5: If on dashboard page, force reload main page after a delay
+        if (window.location.pathname.includes('/dashboard')) {
+            console.log('On dashboard - scheduling main page profile refresh');
+            setTimeout(() => {
+                // Try to fetch main page profile picture
+                fetch('/get-profile-pic?force=' + Date.now(), {
+                    credentials: 'include',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                }).catch(() => {
+                    // Ignore errors
+                });
+            }, 1000);
+        }
+    }
+
+    // Also add a listener for profile picture updates (for when user is on other tabs)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Listen for the custom event
+        document.addEventListener('profilePictureUpdated', function(e) {
+            console.log('📢 Profile picture update event received:', e.detail);
+
+            // Reload the profile picture
+            if (typeof loadNavigationProfilePicture === 'function') {
+                setTimeout(() => {
+                    loadNavigationProfilePicture();
+                }, 300);
+            }
+
+            // If there's a welcome banner profile picture, reload it too
+            const welcomeProfilePic = document.querySelector('.welcome-profile-pic');
+            if (welcomeProfilePic) {
+                const newTimestamp = Date.now();
+                const currentSrc = welcomeProfilePic.src;
+                const baseSrc = currentSrc.split('?')[0];
+                welcomeProfilePic.src = baseSrc + '?t=' + newTimestamp;
+            }
+        });
+
+        // Listen for BroadcastChannel messages
+        try {
+            const broadcastChannel = new BroadcastChannel('profile_picture_updates');
+            broadcastChannel.onmessage = function(event) {
+                if (event.data.type === 'PROFILE_PICTURE_UPDATED') {
+                    console.log('📢 Profile picture updated via BroadcastChannel');
+                    if (typeof loadNavigationProfilePicture === 'function') {
+                        setTimeout(() => {
+                            loadNavigationProfilePicture();
+                        }, 300);
+                    }
+                }
+            };
+        } catch (e) {
+            console.log('BroadcastChannel not supported');
+        }
+
+        // Check localStorage for recent updates
+        const lastUpdate = localStorage.getItem('profilePicLastUpdate');
+        if (lastUpdate) {
+            const now = Date.now();
+            const updateTime = parseInt(lastUpdate);
+
+            // If update was within the last 10 seconds, refresh
+            if (now - updateTime < 10000) {
+                console.log('Recent profile picture update detected, refreshing...');
+                if (typeof loadNavigationProfilePicture === 'function') {
+                    setTimeout(() => {
+                        loadNavigationProfilePicture();
+                    }, 1000);
+                }
+            }
+        }
+    });
+
+    // Also add a periodic check for profile picture updates (every 30 seconds)
+    setInterval(() => {
+        const lastUpdate = localStorage.getItem('profilePicLastUpdate');
+        if (lastUpdate) {
+            const now = Date.now();
+            const updateTime = parseInt(lastUpdate);
+
+            // If update was within the last minute, refresh
+            if (now - updateTime < 60000) {
+                if (typeof loadNavigationProfilePicture === 'function') {
+                    loadNavigationProfilePicture();
+                }
+            }
+        }
+    }, 30000);
 
     function clearImageCache(imageElement) {
         if (!imageElement) return;

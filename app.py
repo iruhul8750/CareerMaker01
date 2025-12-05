@@ -1419,6 +1419,49 @@ def index():
 
         logger.info(f"Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}")
 
+        # Get user profile picture if logged in
+        profile_pic_data = None
+        if user_id:
+            try:
+                user_response = supabase_admin.table('users').select('profile_pic, username, email').eq('id',
+                                                                                                        user_id).execute()
+                if user_response.data:
+                    user = user_response.data[0]
+
+                    # Generate profile picture URL with cache busting
+                    if user.get('profile_pic'):
+                        timestamp = int(datetime.now().timestamp())
+                        profile_pic_path = user['profile_pic']
+                        project_ref = supabase_url.split('//')[1].split('.')[0]
+                        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}?t={timestamp}"
+
+                        profile_pic_data = {
+                            'url': profile_pic_url,
+                            'username': user['username'],
+                            'email': user.get('email', ''),
+                            'has_picture': True
+                        }
+                    else:
+                        profile_pic_data = {
+                            'url': None,
+                            'username': user['username'],
+                            'email': user.get('email', ''),
+                            'has_picture': False
+                        }
+            except Exception as e:
+                logger.error(f"Error fetching user data for index: {str(e)}")
+                profile_pic_data = None
+
+        logger.info(f"Homepage loaded - User logged in: {bool(user_id)}, Profile data: {bool(profile_pic_data)}")
+
+        return render_template('index.html',
+                               courses=enhanced_courses,
+                               jobs=enhanced_jobs,
+                               internships=enhanced_internships,
+                               blogs=blogs,
+                               testimonials=testimonials,
+                               profile_pic_data=profile_pic_data)  # Pass to template
+
     except Exception as e:
         logger.error(f"Error loading index: {str(e)}")
         enhanced_courses, enhanced_jobs, enhanced_internships, blogs, testimonials = [], [], [], [], []
@@ -1428,7 +1471,8 @@ def index():
                            jobs=enhanced_jobs,
                            internships=enhanced_internships,
                            blogs=blogs,
-                           testimonials=testimonials)
+                           testimonials=testimonials,
+                           profile_pic_data=None)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
