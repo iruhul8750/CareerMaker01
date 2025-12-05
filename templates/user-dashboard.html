@@ -58,221 +58,446 @@
             <button class="tab-btn" data-tab="jobs">Jobs</button>
             <button class="tab-btn" data-tab="internships">Internships</button>
             <button class="tab-btn" data-tab="blogs">Articles</button>
+            <button class="tab-btn" data-tab="testimonials">My Testimonials</button>
         </div>
 
         <!-- Courses Tab -->
-<!-- In user-dashboard.html, update the Courses Tab section -->
-<div class="tab-content active" id="courses">
-    {% if courses %}
-    <div class="dashboard-card">
-        <h3>Saved Courses</h3>
-        {% for course in courses %}
-        <div class="bookmark-item" data-id="{{ course.id }}" data-type="course">
-            <!-- DEBUG: Add this to see what image data we have -->
-            <div style="display: none;" class="image-debug">
-                Course ID: {{ course.id }}<br>
-                Company Logo: {{ course.company_logo }}<br>
-                Image: {{ course.image }}<br>
-                Thumbnail: {{ course.thumbnail }}
-            </div>
-
-            <!-- FIXED: Try multiple possible image fields -->
-            <img src="{{
-                course.image if course.image and course.image != 'None' else
-                course.company_logo if course.company_logo and course.company_logo != 'None' else
-                course.thumbnail if course.thumbnail and course.thumbnail != 'None' else
-                url_for('static', filename='images/default-course.jpg')
-            }}"
-                 alt="{{ course.title }}"
-                 class="bookmark-img"
-                 onerror="console.log('Image error for course {{ course.id }}:', this.src); this.src='{{ url_for('static', filename='images/default-course.jpg') }}'">
-            <div class="bookmark-info">
-                <h4>{{ course.title }}</h4>
-                <p>{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
-                <div class="bookmark-meta">
-                    <span><i class="fas fa-dollar-sign"></i> {{ course.price if course.price else 'Free' }}</span>
-                    <span><i class="fas fa-tag"></i> {{ course.level if course.level else 'All Levels' }}</span>
-                    {% if course.company and course.company != 'Unknown Provider' %}
-                    <span><i class="fas fa-building"></i> {{ course.company }}</span>
-                    {% endif %}
-                    {% if course.category and course.category != 'General' %}
-                    <span><i class="fas fa-layer-group"></i> {{ course.category }}</span>
-                    {% endif %}
-                    {% if course.instructor and course.instructor != 'Unknown Instructor' %}
-                    <span><i class="fas fa-user"></i> {{ course.instructor }}</span>
-                    {% endif %}
+        <div class="tab-content active" id="courses">
+            <div class="dashboard-card">
+                <div class="tab-header">
+                    <h3>Saved Courses</h3>
+                    <a href="/courses" class="btn btn-primary browse-more-btn">
+                        <i class="fas fa-plus"></i> Browse More Courses
+                    </a>
                 </div>
-            </div>
-            <div class="bookmark-actions">
-                <a href="/courses" class="btn btn-outline view-content-btn" data-type="course"
-                   data-id="{{ course.id }}">
-                    <i class="fas fa-external-link-alt"></i> View
-                </a>
-                <button class="btn btn-outline remove-bookmark" data-id="{{ course.id }}" data-type="course">
-                    <i class="fas fa-trash-alt"></i> Remove
-                </button>
+
+                {% if courses %}
+                <div class="bookmarks-list">
+                    {% for course in courses %}
+                    <div class="bookmark-item" data-id="{{ course.id }}" data-type="course">
+                        <div style="display: none;" class="image-debug">
+                            Course ID: {{ course.id }}<br>
+                            Company Logo: {{ course.company_logo }}<br>
+                            Image: {{ course.image }}<br>
+                            Thumbnail: {{ course.thumbnail }}
+                        </div>
+
+                        <img src="{{
+                            course.image if course.image and course.image != 'None' else
+                            course.company_logo if course.company_logo and course.company_logo != 'None' else
+                            course.thumbnail if course.thumbnail and course.thumbnail != 'None' else
+                            url_for('static', filename='images/default-course.jpg')
+                        }}"
+                             alt="{{ course.title }}"
+                             class="bookmark-img"
+                             onerror="console.log('Image error for course {{ course.id }}:', this.src); this.src='{{ url_for('static', filename='images/default-course.jpg') }}'">
+                        <div class="bookmark-info">
+                            <h4>{{ course.title }}</h4>
+                            <p>{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
+                            <div class="bookmark-meta">
+                                <span><i class="fas fa-dollar-sign"></i> {{ course.price if course.price else 'Free' }}</span>
+                                <span><i class="fas fa-tag"></i> {{ course.level if course.level else 'All Levels' }}</span>
+                                {% if course.company and course.company != 'Unknown Provider' %}
+                                <span><i class="fas fa-building"></i> {{ course.company }}</span>
+                                {% endif %}
+                                {% if course.category and course.category != 'General' %}
+                                <span><i class="fas fa-layer-group"></i> {{ course.category }}</span>
+                                {% endif %}
+                                {% if course.instructor and course.instructor != 'Unknown Instructor' %}
+                                <span><i class="fas fa-user"></i> {{ course.instructor }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <a href="/courses" class="btn btn-outline view-content-btn" data-type="course"
+                               data-id="{{ course.id }}">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </a>
+                            <button class="btn btn-outline remove-bookmark" data-id="{{ course.id }}" data-type="course">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h4>No courses saved yet</h4>
+                    <p>Save courses from the courses page to view them here</p>
+                    <a href="/courses" class="btn btn-primary">Browse Courses</a>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="dashboard-card">
-        <div class="empty-state">
-            <i class="fas fa-graduation-cap"></i>
-            <h4>No courses saved yet</h4>
-            <p>Save courses from the courses page to view them here</p>
-            <a href="/courses" class="btn btn-primary">Browse Courses</a>
-        </div>
-    </div>
-    {% endif %}
-</div>
 
         <!-- Jobs Tab -->
         <div class="tab-content" id="jobs">
-            {% if jobs %}
             <div class="dashboard-card">
-                <h3>Saved Jobs</h3>
-                {% for job in jobs %}
-                <div class="bookmark-item" data-id="{{ job.id }}" data-type="job">
-                    <img src="{{ job.company_logo if job.company_logo else (job.image if job.image else url_for('static', filename='images/default-job.jpg')) }}"
-                         alt="{{ job.title }}"
-                         class="bookmark-img"
-                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-job.jpg') }}'">
-                    <div class="bookmark-info">
-                        <h4>{{ job.title }}</h4>
-                        <p>{{ job.company }} • {{ job.location }}</p>
-                        <p>{{ job.description[:100] }}...</p>
-                        <div class="bookmark-meta">
-                            <span><i class="fas fa-dollar-sign"></i> {{ job.salary if job.salary else 'Not Specified' }}</span>
-                            <span><i class="fas fa-tag"></i> {{ job.type if job.type else 'Full-time' }}</span>
+                <div class="tab-header">
+                    <h3>Saved Jobs</h3>
+                    <a href="/jobs" class="btn btn-primary browse-more-btn">
+                        <i class="fas fa-plus"></i> Browse More Jobs
+                    </a>
+                </div>
+
+                {% if jobs %}
+                <div class="bookmarks-list">
+                    {% for job in jobs %}
+                    <div class="bookmark-item" data-id="{{ job.id }}" data-type="job">
+                        <img src="{{ job.company_logo if job.company_logo else (job.image if job.image else url_for('static', filename='images/default-job.jpg')) }}"
+                             alt="{{ job.title }}"
+                             class="bookmark-img"
+                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-job.jpg') }}'">
+                        <div class="bookmark-info">
+                            <h4>{{ job.title }}</h4>
+                            <p>{{ job.company }} • {{ job.location }}</p>
+                            <p>{{ job.description[:100] }}...</p>
+                            <div class="bookmark-meta">
+                                <span><i class="fas fa-dollar-sign"></i> {{ job.salary if job.salary else 'Not Specified' }}</span>
+                                <span><i class="fas fa-tag"></i> {{ job.type if job.type else 'Full-time' }}</span>
+                            </div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <a href="/jobs" class="btn btn-outline view-content-btn" data-type="job" data-id="{{ job.id }}">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </a>
+                            <button class="btn btn-outline remove-bookmark" data-id="{{ job.id }}" data-type="job">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
                         </div>
                     </div>
-                    <div class="bookmark-actions">
-                        <!-- FIXED: Use correct URL for jobs -->
-                        <a href="/jobs" class="btn btn-outline view-content-btn" data-type="job" data-id="{{ job.id }}">
-                            <i class="fas fa-external-link-alt"></i> View
-                        </a>
-                        <button class="btn btn-outline remove-bookmark" data-id="{{ job.id }}" data-type="job">
-                            <i class="fas fa-trash-alt"></i> Remove
-                        </button>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-briefcase"></i>
+                    <h4>No jobs saved yet</h4>
+                    <p>Save jobs from the jobs page to view them here</p>
+                    <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
+                </div>
+                {% endif %}
             </div>
-            {% else %}
-            <!-- ... empty state remains the same ... -->
-            {% endif %}
         </div>
 
         <!-- Internships Tab -->
         <div class="tab-content" id="internships">
-            {% if internships %}
             <div class="dashboard-card">
-                <h3>Saved Internships</h3>
-                {% for internship in internships %}
-                <div class="bookmark-item" data-id="{{ internship.id }}" data-type="internship">
-                    <img src="{{ internship.company_logo if internship.company_logo else (internship.image if internship.image else url_for('static', filename='images/default-internship.jpg')) }}"
-                         alt="{{ internship.title }}"
-                         class="bookmark-img"
-                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-internship.jpg') }}'">
-                    <div class="bookmark-info">
-                        <h4>{{ internship.title }}</h4>
-                        <p>{{ internship.company }} • {{ internship.location }}</p>
-                        <p>{{ internship.description[:100] }}...</p>
-                        <div class="bookmark-meta">
-                            <span><i class="fas fa-dollar-sign"></i> {{ internship.stipend if internship.stipend else 'Unpaid' }}</span>
-                            <span><i class="fas fa-tag"></i> {{ internship.duration if internship.duration else 'Flexible' }}</span>
+                <div class="tab-header">
+                    <h3>Saved Internships</h3>
+                    <a href="/internships" class="btn btn-primary browse-more-btn">
+                        <i class="fas fa-plus"></i> Browse More Internships
+                    </a>
+                </div>
+
+                {% if internships %}
+                <div class="bookmarks-list">
+                    {% for internship in internships %}
+                    <div class="bookmark-item" data-id="{{ internship.id }}" data-type="internship">
+                        <img src="{{ internship.company_logo if internship.company_logo else (internship.image if internship.image else url_for('static', filename='images/default-internship.jpg')) }}"
+                             alt="{{ internship.title }}"
+                             class="bookmark-img"
+                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-internship.jpg') }}'">
+                        <div class="bookmark-info">
+                            <h4>{{ internship.title }}</h4>
+                            <p>{{ internship.company }} • {{ internship.location }}</p>
+                            <p>{{ internship.description[:100] }}...</p>
+                            <div class="bookmark-meta">
+                                <span><i class="fas fa-dollar-sign"></i> {{ internship.stipend if internship.stipend else 'Unpaid' }}</span>
+                                <span><i class="fas fa-tag"></i> {{ internship.duration if internship.duration else 'Flexible' }}</span>
+                            </div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <a href="/internships" class="btn btn-outline view-content-btn" data-type="internship"
+                               data-id="{{ internship.id }}">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </a>
+                            <button class="btn btn-outline remove-bookmark" data-id="{{ internship.id }}"
+                                    data-type="internship">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
                         </div>
                     </div>
-                    <div class="bookmark-actions">
-                        <!-- FIXED: Use correct URL for internships -->
-                        <a href="/internships" class="btn btn-outline view-content-btn" data-type="internship"
-                           data-id="{{ internship.id }}">
-                            <i class="fas fa-external-link-alt"></i> View
-                        </a>
-                        <button class="btn btn-outline remove-bookmark" data-id="{{ internship.id }}"
-                                data-type="internship">
-                            <i class="fas fa-trash-alt"></i> Remove
-                        </button>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-user-graduate"></i>
+                    <h4>No internships saved yet</h4>
+                    <p>Save internships from the internships page to view them here</p>
+                    <a href="/internships" class="btn btn-primary">Browse Internships</a>
+                </div>
+                {% endif %}
             </div>
-            {% else %}
-            <!-- ... empty state remains the same ... -->
-            {% endif %}
         </div>
 
         <!-- Blogs Tab -->
         <div class="tab-content" id="blogs">
-            {% if blogs %}
             <div class="dashboard-card">
-                <h3>Saved Articles</h3>
-                {% for blog in blogs %}
-                <div class="bookmark-item" data-id="{{ blog.id }}" data-type="blog">
-                    <img src="{{ blog.image if blog.image else url_for('static', filename='images/default-blog.jpg') }}"
-                         alt="{{ blog.title }}"
-                         class="bookmark-img"
-                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-blog.jpg') }}'">
-                    <div class="bookmark-info">
-                        <h4>{{ blog.title }}</h4>
-                        <p>{{ (blog.description or blog.content or 'No description available')[:100] }}...</p>
-                        <div class="bookmark-meta">
-                            <span><i class="fas fa-user"></i> {{ blog.author or 'CareerMaker Team' }}</span>
-                            <span><i class="far fa-clock"></i> {{ blog.read_time or '5 min read' }}</span>
-                            <span><i class="fas fa-eye"></i> {{ blog.views or 0 }} views</span>
-                            <span><i class="fas fa-heart"></i> {{ blog.like_count or 0 }} likes</span>
-                        </div>
-                        {% if blog.categories %}
-                        <div class="blog-categories">
-                            {% for category in blog.categories[:2] %}
-                            <span class="category-tag">{{ category }}</span>
-                            {% endfor %}
-                            {% if blog.categories|length > 2 %}
-                            <span class="category-tag">+{{ blog.categories|length - 2 }} more</span>
+                <div class="tab-header">
+                    <h3>Saved Articles</h3>
+                    <a href="/blogs.html" class="btn btn-primary browse-more-btn">
+                        <i class="fas fa-plus"></i> Browse More Articles
+                    </a>
+                </div>
+
+                {% if blogs %}
+                <div class="bookmarks-list">
+                    {% for blog in blogs %}
+                    <div class="bookmark-item" data-id="{{ blog.id }}" data-type="blog">
+                        <img src="{{ blog.image if blog.image else url_for('static', filename='images/default-blog.jpg') }}"
+                             alt="{{ blog.title }}"
+                             class="bookmark-img"
+                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-blog.jpg') }}'">
+                        <div class="bookmark-info">
+                            <h4>{{ blog.title }}</h4>
+                            <p>{{ (blog.description or blog.content or 'No description available')[:100] }}...</p>
+                            <div class="bookmark-meta">
+                                <span><i class="fas fa-user"></i> {{ blog.author or 'CareerMaker Team' }}</span>
+                                <span><i class="far fa-clock"></i> {{ blog.read_time or '5 min read' }}</span>
+                                <span><i class="fas fa-eye"></i> {{ blog.views or 0 }} views</span>
+                                <span><i class="fas fa-heart"></i> {{ blog.like_count or 0 }} likes</span>
+                            </div>
+                            {% if blog.categories %}
+                            <div class="blog-categories">
+                                {% for category in blog.categories[:2] %}
+                                <span class="category-tag">{{ category }}</span>
+                                {% endfor %}
+                                {% if blog.categories|length > 2 %}
+                                <span class="category-tag">+{{ blog.categories|length - 2 }} more</span>
+                                {% endif %}
+                            </div>
                             {% endif %}
                         </div>
-                        {% endif %}
+                        <div class="bookmark-actions">
+                            <button class="btn btn-outline read-blog-btn" data-id="{{ blog.id }}">
+                                <i class="fas fa-book-open"></i> Read
+                            </button>
+                            <button class="btn btn-outline remove-bookmark" data-id="{{ blog.id }}" data-type="blog">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </div>
                     </div>
-                    <div class="bookmark-actions">
-                        <button class="btn btn-outline read-blog-btn" data-id="{{ blog.id }}">
-                            <i class="fas fa-book-open"></i> Read
-                        </button>
-                        <button class="btn btn-outline remove-bookmark" data-id="{{ blog.id }}" data-type="blog">
-                            <i class="fas fa-trash-alt"></i> Remove
-                        </button>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="dashboard-card">
+                {% else %}
                 <div class="empty-state">
                     <i class="far fa-newspaper"></i>
                     <h4>No articles saved yet</h4>
                     <p>Save articles from the blog page to view them here</p>
                     <a href="/blogs.html" class="btn btn-primary">Browse Articles</a>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
+        </div>
+
+        <!-- Testimonials Tab -->
+        <div class="tab-content" id="testimonials">
+            <div class="dashboard-card">
+                <div class="tab-header">
+                    <div class="testimonials-header">
+                        <h3>My Testimonials</h3>
+                        <p class="testimonials-subtitle">Your feedback and experiences shared with the community</p>
+                    </div>
+                    <a href="/#testimonials-section" class="btn btn-primary browse-more-btn" id="addTestimonialBtn">
+                        <i class="fas fa-plus"></i> Add New Testimonial
+                    </a>
+                </div>
+
+                {% if testimonials %}
+                <div class="testimonials-list">
+                    {% for testimonial in testimonials %}
+                    <div class="testimonial-item" data-id="{{ testimonial.id }}">
+                        <div class="testimonial-content">
+                            <div class="testimonial-text">
+                                <p>{{ testimonial.content }}</p>
+                            </div>
+                            <div class="testimonial-meta">
+                                <div class="testimonial-author">
+                                    <div class="testimonial-avatar">
+                                        {% if avatar_url %}
+                                        <img src="{{ avatar_url }}" alt="{{ username }}" class="user-avatar">
+                                        {% else %}
+                                        <div class="avatar-initials-small">
+                                            {{ username[0]|upper if username else '?' }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="author-info">
+                                        <strong>{{ username }}</strong>
+                                        <span class="testimonial-role">{{ testimonial.role or 'CareerMaker User' }}</span>
+                                    </div>
+                                </div>
+                                <div class="testimonial-status">
+                                    <span class="testimonial-date">
+                                        <i class="far fa-calendar"></i>
+                                        {{ testimonial.created_at[:10] if testimonial.created_at else 'Recently' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="testimonial-actions">
+                            <button class="btn btn-outline view-testimonial" data-id="{{ testimonial.id }}"
+                                    title="Read Testimonial">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-outline edit-testimonial" data-id="{{ testimonial.id }}">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-outline delete-testimonial" data-id="{{ testimonial.id }}">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-comment-dots"></i>
+                    <h4>No testimonials yet</h4>
+                    <p>Share your experience and help others in their career journey</p>
+                    <a href="/#testimonials-section" class="btn btn-primary" id="addTestimonialBtn">
+                        <i class="fas fa-plus"></i> Add Your Testimonial
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+
+          <!-- Testimonial Read Modal -->
+        <div id="testimonialReadModal" class="modal" style="display: none;">
+            <div class="modal-overlay" onclick="closeTestimonialReadModal()"></div>
+            <div class="modal-content testimonial-modal-content">
+                <button class="close-modal" onclick="closeTestimonialReadModal()" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <div class="testimonial-modal-header">
+                    <div class="testimonial-modal-badge">
+                        <i class="fas fa-quote-left"></i> Testimonial
+                    </div>
+                    <h2 id="testimonialModalTitle">User Testimonial</h2>
+
+                    <div class="testimonial-modal-meta">
+                        <div class="testimonial-modal-author">
+                            <div class="testimonial-modal-avatar">
+                                <img id="testimonialModalAvatar" src="" alt="User" class="modal-avatar">
+                            </div>
+                            <div class="testimonial-author-info">
+                                <span id="testimonialModalAuthor">User Name</span>
+                                <span class="testimonial-modal-role" id="testimonialModalRole">CareerMaker User</span>
+                            </div>
+                        </div>
+                        <div class="testimonial-modal-stats">
+                            <span class="testimonial-modal-date" id="testimonialModalDate">
+                                <i class="far fa-calendar"></i> Recently
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-modal-body">
+                    <div class="testimonial-modal-content">
+                        <div class="testimonial-quote">
+                            <i class="fas fa-quote-left quote-icon"></i>
+                            <p id="testimonialModalContent">Testimonial content will appear here...</p>
+                            <i class="fas fa-quote-right quote-icon"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-modal-footer">
+                    <button class="btn btn-outline" onclick="closeTestimonialReadModal()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                    <button class="btn btn-primary share-testimonial-btn" onclick="shareTestimonial()">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Testimonial Modal -->
+        <div id="editTestimonialModal" class="modal" style="display: none;">
+            <div class="modal-overlay" onclick="closeEditTestimonialModal()"></div>
+            <div class="modal-content">
+                <button class="close-modal" onclick="closeEditTestimonialModal()" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="modal-header">
+                    <h3>Edit Testimonial</h3>
+                    <p>Update your experience and feedback</p>
+                </div>
+                <form id="editTestimonialForm">
+                    <input type="hidden" id="editTestimonialId" name="id">
+                    <div class="form-group">
+                        <label for="editTestimonialRole">Your Role/Position</label>
+                        <input type="text" id="editTestimonialRole" name="role"
+                               placeholder="e.g., Software Developer, Student, Career Changer"
+                               class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTestimonialContent">Your Testimonial *</label>
+                        <textarea id="editTestimonialContent" name="content"
+                                  placeholder="Share your experience with CareerMaker. What did you achieve? How did it help your career?"
+                                  class="form-control" rows="6" required></textarea>
+                        <div class="char-count">
+                            <span id="editCharCount">0</span>/500 characters
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeEditTestimonialModal()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="updateTestimonialBtn">
+                            <i class="fas fa-save"></i>
+                            Update Testimonial
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteTestimonialModal" class="confirmation-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-icon">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h3 class="modal-title">Delete Testimonial</h3>
+                <p class="modal-message">Are you sure you want to delete this testimonial? This action cannot be
+                    undone.</p>
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-cancel" id="cancelTestimonialDelete">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                    <button class="modal-btn modal-btn-confirm" id="confirmTestimonialDelete">
+                        <i class="fas fa-check"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </section>
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/user-dashboard.js') }}"></script>
-<script>
-    // Add logout functionality for the dashboard logout button
-    document.addEventListener('DOMContentLoaded', function() {
-      const dashboardLogoutBtn = document.getElementById('dashboardLogoutBtn');
-      if (dashboardLogoutBtn) {
-        dashboardLogoutBtn.addEventListener('click', function() {
-          // Show the logout confirmation modal
-          document.getElementById('logoutModal').style.display = 'flex';
-          document.body.style.overflow = 'hidden';
-        });
-      }
-    });
-</script>
+<!--<script>-->
+<!--    // Add logout functionality for the dashboard logout button-->
+<!--    document.addEventListener('DOMContentLoaded', function() {-->
+<!--      const dashboardLogoutBtn = document.getElementById('dashboardLogoutBtn');-->
+<!--      if (dashboardLogoutBtn) {-->
+<!--        dashboardLogoutBtn.addEventListener('click', function() {-->
+<!--          // Show the logout confirmation modal-->
+<!--          document.getElementById('logoutModal').style.display = 'flex';-->
+<!--          document.body.style.overflow = 'hidden';-->
+<!--        });-->
+<!--      }-->
+<!--    });-->
+<!--</script>-->
 {% endblock %}

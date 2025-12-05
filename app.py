@@ -1829,27 +1829,75 @@ def upload_profile_pic():
         # Read file data
         file_data = file.read()
 
-        # Generate unique filename
+        # Validate image
+        try:
+            image = Image.open(BytesIO(file_data))
+            image.verify()
+            image = Image.open(BytesIO(file_data))  # Re-open after verification
+            image_format = image.format.lower() if image.format else 'png'
+
+            # Resize image if too large
+            max_size = (800, 800)
+            if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
+                image.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+                # Convert back to bytes
+                img_byte_arr = BytesIO()
+                image.save(img_byte_arr, format=image_format)
+                file_data = img_byte_arr.getvalue()
+        except Exception as img_error:
+            logger.warning(f"Image processing error: {str(img_error)}")
+            # Continue with original file if processing fails
+
+        # Generate unique filename with timestamp to prevent caching
         ext = file.filename.rsplit('.', 1)[1].lower()
-        unique_name = f"{user_id}/{uuid.uuid4().hex}.{ext}"
+        timestamp = int(datetime.now().timestamp())
+        unique_name = f"{user_id}/{uuid.uuid4().hex}_{timestamp}.{ext}"
+
+        # Delete old profile picture if exists
+        try:
+            user_response = supabase_admin.table('users').select('profile_pic').eq('id', user_id).execute()
+            if user_response.data and user_response.data[0].get('profile_pic'):
+                old_file_path = user_response.data[0]['profile_pic']
+                # Try to delete old file from storage
+                try:
+                    supabase_admin.storage.from_("profile-pictures").remove([old_file_path])
+                except Exception as delete_error:
+                    logger.warning(f"Could not delete old profile picture: {str(delete_error)}")
+        except Exception as e:
+            logger.warning(f"Error checking old profile picture: {str(e)}")
 
         # Use admin client to bypass RLS for storage operations
         response = supabase_admin.storage.from_("profile-pictures").upload(
             unique_name,
             file_data,
-            {"content-type": file.content_type}
+            {
+                "content-type": file.content_type,
+                "cache-control": "no-cache, no-store, must-revalidate",
+                "pragma": "no-cache"
+            }
         )
 
-        # Get public URL using regular client
-        image_url = supabase.storage.from_("profile-pictures").get_public_url(unique_name)
+        if isinstance(response, dict) and response.get("error"):
+            logger.error(f"Supabase upload error: {response}")
+            return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
 
-        # Store the file path in DB using regular client
-        db_value = unique_name
-        supabase.table('users').update({'profile_pic': db_value}).eq('id', user_id).execute()
+        # Get public URL - FORCE CACHE BUSTING
+        project_ref = supabase_url.split('//')[1].split('.')[0]
+        image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{unique_name}?t={timestamp}"
+
+        # Store the file path in DB using admin client (bypasses RLS)
+        supabase_admin.table('users').update({'profile_pic': unique_name}).eq('id', user_id).execute()
+
+        # Clear any cached user data
+        if 'user_profile_pic' in session:
+            del session['user_profile_pic']
 
         return jsonify({
             'success': True,
-            'image_url': image_url
+            'image_url': image_url,
+            'cache_bust_timestamp': timestamp,
+            'message': 'Profile picture updated successfully'
         })
 
     except Exception as e:
@@ -1862,19 +1910,70 @@ def upload_profile_pic():
 def get_profile_pic():
     user_id = session['user_id']
     try:
-        user = supabase.table('users').select('profile_pic').eq('id', user_id).single().execute().data
+        # Get current timestamp for cache busting
+        cache_bust_timestamp = request.args.get('t') or str(int(datetime.now().timestamp()))
+
+        user = supabase_admin.table('users').select('profile_pic').eq('id', user_id).single().execute().data
         if user and user.get('profile_pic'):
-            # Get public URL from Supabase Storage
-            image_url = supabase.storage.from_("profile-pictures").get_public_url(user['profile_pic'])
+            # Generate fresh URL with cache busting parameter
+            project_ref = supabase_url.split('//')[1].split('.')[0]
+            image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={cache_bust_timestamp}"
+
             return jsonify({
                 'success': True,
-                'image_url': image_url
+                'image_url': image_url,
+                'cache_bust_timestamp': cache_bust_timestamp,
+                'profile_pic_path': user['profile_pic']
             })
-        return jsonify({'success': False, 'error': 'No profile picture'})
+
+        return jsonify({
+            'success': False,
+            'error': 'No profile picture',
+            'default_url': f"https://ui-avatars.com/api/?name=User&background=007bff&color=fff&bold=true"
+        })
+
     except Exception as e:
         logger.error(f"Profile pic fetch error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'default_url': f"https://ui-avatars.com/api/?name=User&background=007bff&color=fff&bold=true"
+        }), 500
 
+
+@app.route('/api/clear-profile-cache', methods=['POST'])
+@login_required
+def clear_profile_cache():
+    """Clear client-side cache for profile picture"""
+    try:
+        user_id = session['user_id']
+
+        # Generate new cache bust timestamp
+        timestamp = int(datetime.now().timestamp())
+
+        # Get current profile picture path
+        user_response = supabase_admin.table('users').select('profile_pic').eq('id', user_id).execute()
+
+        if user_response.data and user_response.data[0].get('profile_pic'):
+            profile_pic_path = user_response.data[0]['profile_pic']
+            project_ref = supabase_url.split('//')[1].split('.')[0]
+            image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}?t={timestamp}"
+
+            return jsonify({
+                'success': True,
+                'image_url': image_url,
+                'cache_bust_timestamp': timestamp
+            })
+
+        return jsonify({
+            'success': True,
+            'image_url': None,
+            'message': 'No profile picture to clear cache for'
+        })
+
+    except Exception as e:
+        logger.error(f"Clear profile cache error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Helper function to get profile picture URL from database value
 def profile_pic_url_from_db(value):
@@ -1891,6 +1990,23 @@ def profile_pic_url_from_db(value):
         logger.error(f"Error getting profile picture URL: {str(e)}")
         return None
 
+
+def get_profile_pic_url_with_cache_bust(profile_pic_path, timestamp=None):
+    """
+    Generate profile picture URL with cache busting
+    """
+    if not profile_pic_path:
+        return None
+
+    if timestamp is None:
+        timestamp = int(datetime.now().timestamp())
+
+    try:
+        project_ref = supabase_url.split('//')[1].split('.')[0]
+        return f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}?t={timestamp}"
+    except Exception as e:
+        logger.error(f"Error generating profile pic URL: {str(e)}")
+        return None
 
 @app.route('/dashboard')
 @login_required
@@ -1910,15 +2026,25 @@ def user_dashboard():
 
         user = user_response.data[0]
 
-        # Get profile picture URL from Supabase storage
+        # Get profile picture URL from Supabase storage WITH CACHE BUSTING
         avatar_url = None
+        cache_timestamp = int(datetime.now().timestamp())
+
         if user and user.get('profile_pic'):
             try:
-                avatar_url = supabase.storage.from_("profile-pictures").get_public_url(user['profile_pic'])
-                logger.info(f"Profile picture URL: {avatar_url}")
+                # Force fresh URL with timestamp
+                project_ref = supabase_url.split('//')[1].split('.')[0]
+                avatar_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={cache_timestamp}"
+
+                logger.info(f"Profile picture URL with cache busting: {avatar_url}")
             except Exception as e:
                 logger.error(f"Error getting profile picture URL: {str(e)}")
                 avatar_url = None
+
+        # If no profile picture, use default avatar
+        if not avatar_url:
+            username = user.get('username', 'User')
+            avatar_url = f"https://ui-avatars.com/api/?name={username}&background=007bff&color=fff&bold=true"
 
         # Get user bookmarks
         bookmarks = get_user_bookmarks(user_id)
@@ -1930,32 +2056,26 @@ def user_dashboard():
         internship_bookmarks = [b for b in bookmarks if b.get('content_type') == 'internship']
         blog_bookmarks = [b for b in bookmarks if b.get('content_type') == 'blog']
 
-        # FIX: Fetch FRESH course data from courses table (like main page does)
+        # FIX: Fetch FRESH course data from courses table
         enhanced_courses = []
         if course_bookmarks:
             course_ids = [bookmark['id'] for bookmark in course_bookmarks]
 
             try:
-                # Fetch ACTIVE courses from courses table (same as main page)
                 courses_data = supabase_admin.table('courses') \
                                    .select('*') \
                                    .in_('id', course_ids) \
                                    .eq('is_active', True) \
                                    .execute().data or []
 
-                # Enhance with logos (same as main page)
                 enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in
                                     courses_data]
 
-                # Add bookmark status
                 for course in enhanced_courses:
-                    course['is_bookmarked'] = True  # All these are bookmarked by user
-
-                logger.info(f"Enhanced {len(enhanced_courses)} courses with images")
+                    course['is_bookmarked'] = True
 
             except Exception as e:
                 logger.error(f"Error enhancing course data: {str(e)}")
-                # Fallback: use basic bookmark data
                 for bookmark in course_bookmarks:
                     enhanced_course = bookmark.copy()
                     enhanced_course['company_logo'] = '/static/images/default-course.jpg'
@@ -2016,7 +2136,6 @@ def user_dashboard():
             blog_ids = [bookmark['id'] for bookmark in blog_bookmarks]
 
             try:
-                # Get additional blog data from blog_posts table
                 blogs_data_response = supabase_admin.table('blog_posts') \
                     .select('*') \
                     .in_('id', blog_ids) \
@@ -2081,8 +2200,26 @@ def user_dashboard():
                     enhanced_blog['categories'] = ['Career']
                     enhanced_blogs.append(enhanced_blog)
 
+        # NEW: Get user testimonials - REMOVED APPROVAL SYSTEM
+        user_testimonials = []
+        try:
+            # Assuming testimonials are stored in a 'testimonials' table
+            testimonials_response = supabase_admin.table('testimonials') \
+                .select('*') \
+                .eq('user_id', user_id) \
+                .eq('is_active', True) \
+                .order('created_at', desc=True) \
+                .execute()
+
+            user_testimonials = testimonials_response.data or []
+            logger.info(f"Retrieved {len(user_testimonials)} testimonials for user {user_id}")
+
+        except Exception as e:
+            logger.error(f"Error fetching user testimonials: {str(e)}")
+            user_testimonials = []
+
         logger.info(
-            f"Dashboard breakdown - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(enhanced_blogs)}")
+            f"Dashboard breakdown - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(enhanced_blogs)}, Testimonials: {len(user_testimonials)}")
 
         return render_template('user-dashboard.html',
                                username=user.get('username'),
@@ -2091,7 +2228,8 @@ def user_dashboard():
                                courses=enhanced_courses,
                                jobs=enhanced_jobs,
                                internships=enhanced_internships,
-                               blogs=enhanced_blogs)
+                               blogs=enhanced_blogs,
+                               testimonials=user_testimonials)
 
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}", exc_info=True)
@@ -2913,11 +3051,6 @@ def generate_profile_pic_url(profile_pic_path):
         # Construct the direct URL to the profile-pictures bucket
         profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}"
 
-        # Optional: Verify the image exists (remove if too slow)
-        # response = requests.head(profile_pic_url, timeout=2)
-        # if response.status_code != 200:
-        #     return None
-
         return profile_pic_url
     except Exception as e:
         logger.error(f"Error generating profile pic URL: {str(e)}")
@@ -3070,6 +3203,31 @@ def delete_testimonial(testimonial_id):
         logger.error(f"Delete testimonial error: {str(e)}")
         return jsonify({'success': False, 'message': 'Server error'}), 500
 
+
+@app.route('/api/testimonials/<testimonial_id>')
+@login_required
+def get_testimonial(testimonial_id):
+    try:
+        user_id = session.get('user_id')
+
+        # Get testimonial with user verification
+        testimonial_response = supabase_admin.table('testimonials') \
+            .select('*') \
+            .eq('id', testimonial_id) \
+            .eq('user_id', user_id) \
+            .execute()
+
+        if not testimonial_response.data:
+            return jsonify({'success': False, 'error': 'Testimonial not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'testimonial': testimonial_response.data[0]
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching testimonial: {str(e)}")
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 # ===== BOOKMARK ENDPOINT FIX =====
 @app.route('/api/bookmark/<content_type>/<content_id>', methods=['POST'])

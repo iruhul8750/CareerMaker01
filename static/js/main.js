@@ -1427,8 +1427,9 @@
         currentIndex: 0,
         autoSlideInterval: null,
         testimonialToDelete: null,
+        testimonialToEdit: null, // Track which testimonial is being edited
         autoPlayDelay: 5000,
-        cardsPerView: 3, // Number of cards visible at once
+        cardsPerView: 3,
         isAnimating: false,
 
         init() {
@@ -1570,6 +1571,13 @@
                 return;
             }
 
+            // Store the testimonial ID if editing
+            if (isEdit) {
+                this.testimonialToEdit = testimonial.id;
+            } else {
+                this.testimonialToEdit = null;
+            }
+
             modalTitle.textContent = isEdit ? 'Edit Your Experience' : 'Share Your Experience';
             userName.value = username || 'Current User';
             testimonialText.value = isEdit ? testimonial.content : '';
@@ -1624,8 +1632,23 @@
             submitBtn.disabled = true;
 
             try {
-                const response = await fetch('/api/testimonial/submit', {
-                    method: 'POST',
+                // Determine if this is an edit or create operation
+                const isEdit = !!this.testimonialToEdit;
+                const url = isEdit
+                    ? `/api/testimonial/update/${this.testimonialToEdit}`
+                    : '/api/testimonial/submit';
+
+                const method = isEdit ? 'PUT' : 'POST';
+
+                console.log(`${isEdit ? 'Editing' : 'Creating'} testimonial:`, {
+                    url,
+                    method,
+                    content,
+                    rating
+                });
+
+                const response = await fetch(url, {
+                    method: method,
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -1641,9 +1664,14 @@
                     this.showMessage(data.message, 'success', messageDiv);
                     setTimeout(() => {
                         this.closeModal();
-                        this.loadTestimonials();
+                        this.loadTestimonials(); // Reload to get updated list
                         if (typeof showToast === 'function') {
-                            showToast('Thank you for sharing your experience!', 'success');
+                            showToast(
+                                isEdit
+                                    ? 'Experience updated successfully!'
+                                    : 'Thank you for sharing your experience!',
+                                'success'
+                            );
                         }
                     }, 1500);
                 } else {
@@ -1738,6 +1766,7 @@
                 this.clearForm();
             }
             this.isModalOpen = false;
+            this.testimonialToEdit = null; // Reset edit state
         },
 
         closeDeleteModal() {
@@ -1759,6 +1788,7 @@
             }
 
             this.setupStarRating(5);
+            this.testimonialToEdit = null; // Reset edit state
         },
 
         async loadTestimonials() {
@@ -2038,6 +2068,30 @@
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         testimonialSystem.init();
+    });
+
+    // Auto scroll support for user dashboard to add testimonial
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.location.hash === '#testimonials') {
+            // Remove hash
+            history.replaceState(null, null, ' ');
+
+            // Simple scroll after delay
+            setTimeout(() => {
+                const section = document.getElementById('testimonials-section') ||
+                               document.getElementById('testimonials') ||
+                               document.querySelector('.testimonials') ||
+                               document.querySelector('section');
+
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Highlight
+                    section.style.boxShadow = '0 0 0 3px #4361ee';
+                    setTimeout(() => section.style.boxShadow = 'none', 2000);
+                }
+            }, 800);
+        }
     });
 
     // =============================================
