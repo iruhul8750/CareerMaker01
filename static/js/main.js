@@ -20,53 +20,247 @@
     }
 
     // =============================================
-    // Loading State Management
+    // UNIVERSAL LOADER MANAGEMENT (Single Instance)
     // =============================================
+
+    // Only create LoaderManager if it doesn't exist
+    if (typeof LoaderManager === 'undefined') {
+        window.LoaderManager = {
+            config: {
+                zIndex: 9999,
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                spinnerColor: '#ffffff',
+                textColor: '#ffffff',
+                blurEffect: '5px',
+                animationDuration: '0.3s'
+            },
+
+            activeLoaders: 0,
+
+            show: function(message = 'Loading...', options = {}) {
+                this.activeLoaders++;
+
+                let overlay = document.getElementById('universalLoadingOverlay');
+
+                if (!overlay) {
+                    overlay = this.createLoader();
+                }
+
+                if (message) {
+                    const messageElement = overlay.querySelector('.loading-message');
+                    if (messageElement) {
+                        messageElement.textContent = message;
+                    }
+                }
+
+                this.applyOptions(overlay, options);
+
+                overlay.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+
+                console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
+
+                return overlay;
+            },
+
+            hide: function(force = false) {
+                if (force) {
+                    this.activeLoaders = 0;
+                } else {
+                    this.activeLoaders = Math.max(0, this.activeLoaders - 1);
+                }
+
+                if (this.activeLoaders <= 0) {
+                    const overlay = document.getElementById('universalLoadingOverlay');
+                    if (overlay) {
+                        overlay.style.opacity = '0';
+                        overlay.style.transition = `opacity ${this.config.animationDuration} ease`;
+
+                        setTimeout(() => {
+                            overlay.style.display = 'none';
+                            overlay.style.opacity = '1';
+                            document.body.style.overflow = '';
+                            console.log('✅ All loaders hidden');
+                        }, 300);
+                    }
+                    this.activeLoaders = 0;
+                } else {
+                    console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
+                }
+            },
+
+            createLoader: function() {
+                const overlay = document.createElement('div');
+                overlay.id = 'universalLoadingOverlay';
+                overlay.className = 'universal-loading-overlay';
+
+                overlay.innerHTML = `
+                    <div class="universal-loading-content">
+                        <div class="universal-spinner"></div>
+                        <p class="loading-message">Loading...</p>
+                    </div>
+                `;
+
+                this.applyStyles(overlay);
+                document.body.appendChild(overlay);
+
+                return overlay;
+            },
+
+            applyStyles: function(overlay) {
+                Object.assign(overlay.style, {
+                    display: 'none',
+                    position: 'fixed',
+                    top: '0',
+                    left: '0',
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: this.config.backgroundColor,
+                    zIndex: this.config.zIndex,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backdropFilter: `blur(${this.config.blurEffect})`,
+                    transition: `opacity ${this.config.animationDuration} ease`
+                });
+
+                const content = overlay.querySelector('.universal-loading-content');
+                if (content) {
+                    Object.assign(content.style, {
+                        textAlign: 'center',
+                        color: this.config.textColor,
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        padding: '30px 40px',
+                        borderRadius: '12px',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                    });
+                }
+
+                const spinner = overlay.querySelector('.universal-spinner');
+                if (spinner) {
+                    Object.assign(spinner.style, {
+                        width: '50px',
+                        height: '50px',
+                        border: `4px solid rgba(255, 255, 255, 0.3)`,
+                        borderTop: `4px solid ${this.config.spinnerColor}`,
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        margin: '0 auto 20px',
+                        display: 'block'
+                    });
+                }
+
+                const message = overlay.querySelector('.loading-message');
+                if (message) {
+                    Object.assign(message.style, {
+                        margin: '0',
+                        fontSize: '16px',
+                        fontWeight: '500',
+                        color: this.config.textColor
+                    });
+                }
+            },
+
+            applyOptions: function(overlay, options) {
+                if (options.backgroundColor) {
+                    overlay.style.backgroundColor = options.backgroundColor;
+                }
+
+                if (options.zIndex) {
+                    overlay.style.zIndex = options.zIndex;
+                }
+
+                if (options.message) {
+                    const messageElement = overlay.querySelector('.loading-message');
+                    if (messageElement) {
+                        messageElement.textContent = options.message;
+                    }
+                }
+            },
+
+            reset: function() {
+                this.activeLoaders = 0;
+                this.hide(true);
+                console.log('🔄 All loaders reset');
+            },
+
+            getStatus: function() {
+                return {
+                    active: this.activeLoaders > 0,
+                    count: this.activeLoaders,
+                    visible: document.getElementById('universalLoadingOverlay')?.style.display === 'flex'
+                };
+            }
+        };
+
+        // Add spinner animation style if not already present
+        if (!document.querySelector('#loader-spinner-style')) {
+            const style = document.createElement('style');
+            style.id = 'loader-spinner-style';
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // Convenience functions - Only define if they don't exist
+    if (typeof showLoader === 'undefined') {
+        window.showLoader = function(message = 'Loading...', options = {}) {
+            return LoaderManager.show(message, options);
+        };
+    }
+
+    if (typeof hideLoader === 'undefined') {
+        window.hideLoader = function(force = false) {
+            return LoaderManager.hide(force);
+        };
+    }
+
+    if (typeof resetLoader === 'undefined') {
+        window.resetLoader = function() {
+            return LoaderManager.reset();
+        };
+    }
+
+    if (typeof withLoader === 'undefined') {
+        window.withLoader = async function(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
+            showLoader(loadingMessage);
+
+            try {
+                const result = await promise;
+
+                if (successMessage) {
+                    showToast(successMessage, 'success');
+                }
+
+                return result;
+            } catch (error) {
+                console.error('Operation failed:', error);
+
+                if (errorMessage) {
+                    showToast(errorMessage, 'error');
+                } else {
+                    showToast(error.message || 'Operation failed', 'error');
+                }
+
+                throw error;
+            } finally {
+                hideLoader();
+            }
+        };
+    }
+
+    // Update existing loading functions to use universal loader
     function showLoading() {
-      const loadingOverlay = document.getElementById('loadingOverlay') || createLoadingOverlay();
-      loadingOverlay.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
+        return showLoader('Loading...');
     }
 
     function hideLoading() {
-      const loadingOverlay = document.getElementById('loadingOverlay');
-      if (loadingOverlay) loadingOverlay.style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
-
-    function createLoadingOverlay() {
-      const overlay = document.createElement('div');
-      overlay.id = 'loadingOverlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0,0,0,0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-      `;
-      overlay.innerHTML = `
-        <div class="spinner" style="
-          width: 50px;
-          height: 50px;
-          border: 5px solid #f3f3f3;
-          border-top: 5px solid #3498db;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        "></div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      `;
-      document.body.appendChild(overlay);
-      return overlay;
+        return hideLoader();
     }
 
     // =============================================
@@ -579,6 +773,7 @@
             bookmarkState.set(`${itemType}-${itemId}`, newState);
 
             // Show loading state
+            const loader = showLoader(newState ? 'Adding bookmark...' : 'Removing bookmark...');
             const originalHTML = bookmarkBtn.innerHTML;
             bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             bookmarkBtn.disabled = true;
@@ -600,7 +795,7 @@
                 }
 
                 if (data.success) {
-                    // Success - UI is already updated, just show message
+                    hideLoader();
                     const action = newState ? 'added' : 'removed';
                     showToast(data.message || `Bookmark ${action} successfully`, 'success');
                 } else {
@@ -608,6 +803,7 @@
                 }
             } catch (error) {
                 console.error('Bookmark API error:', error);
+                hideLoader();
 
                 // REVERT UI UPDATE on error
                 bookmarkBtn.classList.toggle('bookmarked', currentState);
@@ -676,13 +872,12 @@
         });
     }
 
-    // Share functionality - UPDATED to use API
-    // Share functionality - FIXED social media URLs and dark mode
     // Share functionality - FIXED to open in same tab
-    async function shareContent(contentId, contentType, button) {
+     async function shareContent(contentId, contentType, button) {
         console.log('Share function called:', { contentType, contentId, button });
 
         // Show loading state on the button
+        const loader = showLoader('Loading share options...');
         const originalHTML = button.innerHTML;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         button.disabled = true;
@@ -696,11 +891,14 @@
                 throw new Error(data.error || 'Failed to load share data');
             }
 
-            // Show the share modal with data from API
+            // Hide loader and show share modal
+            hideLoader();
             showShareModal(data, contentType);
 
         } catch (error) {
             console.error('Share error:', error);
+            hideLoader();
+
             // Fallback: construct URL manually if API fails
             const fallbackData = {
                 share_url: `${window.location.origin}/${contentType}s/${contentId}`,
@@ -711,7 +909,7 @@
             showShareModal(fallbackData, contentType);
 
             // Show error notification
-            showNotification('Share content loaded with limited information', 'info');
+            showToast('Share content loaded with limited information', 'info');
         } finally {
             // Reset button
             button.innerHTML = originalHTML;
@@ -1081,270 +1279,424 @@
     // =============================================
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
-      // Password validation UI
-      const passwordInput = registerForm.querySelector('#registerPassword');
-      if (passwordInput) {
-        const requirementsContainer = document.createElement('div');
-        requirementsContainer.className = 'password-requirements';
-        requirementsContainer.innerHTML = `
-          <p class="requirements-title">Password must contain:</p>
-          <ul class="requirements-list">
-            <li class="requirement" data-requirement="length">At least 8 characters</li>
-            <li class="requirement" data-requirement="uppercase">At least one uppercase letter</li>
-            <li class="requirement" data-requirement="number">At least one number</li>
-            <li class="requirement" data-requirement="special">At least one special character</li>
-          </ul>`;
-        passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
+        // Password validation UI
+        const passwordInput = registerForm.querySelector('#registerPassword');
+        if (passwordInput) {
+            const requirementsContainer = document.createElement('div');
+            requirementsContainer.className = 'password-requirements';
+            requirementsContainer.innerHTML = `
+                <p class="requirements-title">Password must contain:</p>
+                <ul class="requirements-list">
+                    <li class="requirement" data-requirement="length">At least 8 characters</li>
+                    <li class="requirement" data-requirement="uppercase">At least one uppercase letter</li>
+                    <li class="requirement" data-requirement="number">At least one number</li>
+                    <li class="requirement" data-requirement="special">At least one special character</li>
+                </ul>`;
+            passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
 
-        const requirements = {
-          length: registerForm.querySelector('[data-requirement="length"]'),
-          uppercase: registerForm.querySelector('[data-requirement="uppercase"]'),
-          number: registerForm.querySelector('[data-requirement="number"]'),
-          special: registerForm.querySelector('[data-requirement="special"]')
-        };
+            const requirements = {
+                length: registerForm.querySelector('[data-requirement="length"]'),
+                uppercase: registerForm.querySelector('[data-requirement="uppercase"]'),
+                number: registerForm.querySelector('[data-requirement="number"]'),
+                special: registerForm.querySelector('[data-requirement="special"]')
+            };
 
-        passwordInput.addEventListener('input', function() {
-          const value = this.value;
-          requirements.length.classList.toggle('valid', value.length >= 8);
-          requirements.uppercase.classList.toggle('valid', /[A-Z]/.test(value));
-          requirements.number.classList.toggle('valid', /\d/.test(value));
-          requirements.special.classList.toggle('valid', /[!@#$%^&*(),.?":{}|<>]/.test(value));
+            passwordInput.addEventListener('input', function() {
+                const value = this.value;
+                requirements.length.classList.toggle('valid', value.length >= 8);
+                requirements.uppercase.classList.toggle('valid', /[A-Z]/.test(value));
+                requirements.number.classList.toggle('valid', /\d/.test(value));
+                requirements.special.classList.toggle('valid', /[!@#$%^&*(),.?":{}|<>]/.test(value));
+            });
+        }
+
+        registerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            const formResponse = document.getElementById('registerResponse');
+            const emailInput = this.querySelector('#registerEmail');
+            const usernameInput = this.querySelector('#registerUsername');
+
+            formResponse.style.display = 'none';
+            emailInput.classList.remove('input-error');
+            usernameInput.classList.remove('input-error');
+
+            const username = usernameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = this.querySelector('#registerPassword').value;
+            const confirmPassword = this.querySelector('#registerConfirmPassword').value;
+            const termsAgreement = this.querySelector('#termsAgreement').checked;
+
+            // Validation
+            if (!username || username.length < 3) {
+                showFieldError(usernameInput, 'Username must be at least 3 characters');
+                return;
+            }
+
+            if (!email || !validateEmail(email)) {
+                showFieldError(emailInput, 'Please enter a valid email address');
+                return;
+            }
+
+            if (!isPasswordStrong(password)) {
+                formResponse.className = 'form-response error';
+                formResponse.textContent = 'Password must meet all requirements';
+                formResponse.style.display = 'block';
+                this.querySelector('#registerPassword').focus();
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                formResponse.className = 'form-response error';
+                formResponse.textContent = 'Passwords do not match';
+                formResponse.style.display = 'block';
+                this.querySelector('#registerConfirmPassword').focus();
+                return;
+            }
+
+            if (!termsAgreement) {
+                formResponse.className = 'form-response error';
+                formResponse.textContent = 'You must agree to the Terms of Service and Privacy Policy';
+                formResponse.style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            // Show universal loader
+            const loader = showLoader('Creating your account...', {
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                message: 'Creating your account...'
+            });
+
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    hideLoader(); // Hide loader on error
+
+                    if (data.message && data.message.includes('Email already registered')) {
+                        showFieldError(emailInput, data.message);
+                    } else if (data.message && data.message.includes('Username')) {
+                        showFieldError(usernameInput, data.message);
+                    } else {
+                        throw new Error(data.message || 'Registration failed. Please try again.');
+                    }
+                    return;
+                }
+
+                // Hide the universal loader
+                hideLoader();
+
+                if (data.requires_verification) {
+                    // Update loader message for verification
+                    showLoader('Account created! Please verify your email...', {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        message: 'Account created! Please verify your email...'
+                    });
+
+                    setTimeout(() => {
+                        hideLoader();
+                        showOTPVerificationModal(
+                            data.email,
+                            formData.get('username'),
+                            formData.get('password')
+                        );
+
+                        document.getElementById('registerModal').style.display = 'none';
+
+                        if (data.otp) {
+                            console.log('Development OTP:', data.otp);
+                            showToast('OTP generated. Check console for development.', 'info');
+                        } else {
+                            showToast('Verification email sent! Please check your inbox.', 'success');
+                        }
+                    }, 1000);
+
+                } else {
+                    // Show success loader
+                    const successLoader = showLoader('Registration successful!', {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        message: 'Registration successful!'
+                    });
+
+                    // Change loader to success state
+                    const messageElement = successLoader.querySelector('.loading-message');
+                    const spinner = successLoader.querySelector('.universal-spinner');
+
+                    if (messageElement) {
+                        messageElement.style.color = '#4ade80';
+                        messageElement.innerHTML = `
+                            <i class="fas fa-check-circle" style="margin-right: 8px; font-size: 18px;"></i>
+                            Registration successful!
+                        `;
+                    }
+
+                    if (spinner) {
+                        spinner.style.borderTopColor = '#4ade80';
+                        spinner.style.borderColor = '#4ade80';
+
+                        setTimeout(() => {
+                            spinner.style.animation = 'none';
+                            spinner.innerHTML = '<i class="fas fa-check" style="font-size: 24px;"></i>';
+                            spinner.style.border = 'none';
+                            spinner.style.display = 'flex';
+                            spinner.style.alignItems = 'center';
+                            spinner.style.justifyContent = 'center';
+                        }, 300);
+                    }
+
+                    setTimeout(() => {
+                        hideLoader();
+                        window.location.href = data.redirect || '/dashboard';
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                hideLoader(); // Hide loader on error
+                formResponse.className = 'form-response error';
+                formResponse.textContent = error.message || 'Registration failed. Please try again.';
+                formResponse.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         });
-      }
 
-      registerForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        const formResponse = document.getElementById('registerResponse');
-        const emailInput = this.querySelector('#registerEmail');
-        const usernameInput = this.querySelector('#registerUsername');
-
-        formResponse.style.display = 'none';
-        emailInput.classList.remove('input-error');
-        usernameInput.classList.remove('input-error');
-
-        const username = usernameInput.value.trim();
-        const email = emailInput.value.trim();
-        const password = this.querySelector('#registerPassword').value;
-        const confirmPassword = this.querySelector('#registerConfirmPassword').value;
-        const termsAgreement = this.querySelector('#termsAgreement').checked;
-
-        if (!username || username.length < 3) {
-          showFieldError(usernameInput, 'Username must be at least 3 characters');
-          return;
+        // Helper functions
+        function isPasswordStrong(password) {
+            return password.length >= 8 &&
+                   /[A-Z]/.test(password) &&
+                   /\d/.test(password) &&
+                   /[!@#$%^&*(),.?":{}|<>]/.test(password);
         }
 
-        if (!email || !validateEmail(email)) {
-          showFieldError(emailInput, 'Please enter a valid email address');
-          return;
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
         }
 
-        if (!isPasswordStrong(password)) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = 'Password must meet all requirements';
-          formResponse.style.display = 'block';
-          this.querySelector('#registerPassword').focus();
-          return;
-        }
-
-        if (password !== confirmPassword) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = 'Passwords do not match';
-          formResponse.style.display = 'block';
-          this.querySelector('#registerConfirmPassword').focus();
-          return;
-        }
-
-        if (!termsAgreement) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = 'You must agree to the Terms of Service and Privacy Policy';
-          formResponse.style.display = 'block';
-          return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-        try {
-          const formData = new FormData(this);
-          const response = await fetch('/register', {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            if (data.message && data.message.includes('Email already registered')) {
-              showFieldError(emailInput, data.message);
-            } else if (data.message && data.message.includes('Username')) {
-              showFieldError(usernameInput, data.message);
+        function showFieldError(inputElement, message) {
+            inputElement.classList.add('input-error');
+            const errorElement = inputElement.nextElementSibling;
+            if (errorElement && errorElement.classList.contains('error-message')) {
+                errorElement.textContent = message;
             } else {
-              throw new Error(data.message || 'Registration failed. Please try again.');
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'error-message';
+                errorMsg.textContent = message;
+                inputElement.parentNode.insertBefore(errorMsg, inputElement.nextSibling);
             }
-            return;
-          }
-
-          if (data.requires_verification) {
-            showOTPVerificationModal(
-              data.email,
-              formData.get('username'),
-              formData.get('password')
-            );
-
-            document.getElementById('registerModal').style.display = 'none';
-
-            if (data.otp) {
-              console.log('Development OTP:', data.otp);
-              showToast('OTP generated. Check console for development.', 'info');
-            } else {
-              showToast('Verification email sent! Please check your inbox.', 'success');
-            }
-          } else {
-            showToast('Registration successful!', 'success');
-            setTimeout(() => {
-              window.location.href = data.redirect || '/dashboard';
-            }, 1500);
-          }
-        } catch (error) {
-          console.error('Registration error:', error);
-          formResponse.className = 'form-response error';
-          formResponse.textContent = error.message || 'Registration failed. Please try again.';
-          formResponse.style.display = 'block';
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = originalText;
+            inputElement.focus();
         }
-      });
-
-      function isPasswordStrong(password) {
-        return password.length >= 8 &&
-               /[A-Z]/.test(password) &&
-               /\d/.test(password) &&
-               /[!@#$%^&*(),.?":{}|<>]/.test(password);
-      }
-
-      function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
-      }
-
-      function showFieldError(inputElement, message) {
-        inputElement.classList.add('input-error');
-        const errorElement = inputElement.nextElementSibling;
-        if (errorElement && errorElement.classList.contains('error-message')) {
-          errorElement.textContent = message;
-        } else {
-          const errorMsg = document.createElement('div');
-          errorMsg.className = 'error-message';
-          errorMsg.textContent = message;
-          inputElement.parentNode.insertBefore(errorMsg, inputElement.nextSibling);
-        }
-        inputElement.focus();
-      }
     }
 
     // =============================================
     // Login Form
     // =============================================
     document.getElementById('loginForm')?.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const submitBtn = this.querySelector('button[type="submit"]');
-      const loadingIcon = submitBtn.querySelector('.loading-icon');
-      const btnText = submitBtn.querySelector('.btn-text');
-      const responseDiv = document.getElementById('loginResponse');
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const responseDiv = document.getElementById('loginResponse');
 
-      btnText.style.display = 'none';
-      loadingIcon.style.display = 'inline-block';
-      submitBtn.disabled = true;
-      responseDiv.style.display = 'none';
+        btnText.style.display = 'none';
+        submitBtn.disabled = true;
+        responseDiv.style.display = 'none';
 
-      const formData = {
-        email: this.querySelector('#loginEmail').value,
-        password: this.querySelector('#loginPassword').value
-      };
+        // Show loader
+        const loader = showLoader('Logging in...');
 
-      fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-      .then(response => {
-        if (!response.ok) return response.json().then(err => { throw err; });
-        return response.json();
-      })
-      .then(data => {
-        if (data.requires_verification) {
-          showToast('Please verify your email first', 'warning');
-          showOTPVerificationModal(data.email, null, null, 'login-verification');
-        } else if (data.status === 'success' && data.redirect) {
-          showToast('Login successful!', 'success');
-          setTimeout(() => window.location.href = data.redirect, 1000);
-        }
-      })
-      .catch(error => {
-        responseDiv.style.display = 'block';
-        responseDiv.className = 'form-response error';
-        responseDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.error || 'Login failed'}`;
-      })
-      .finally(() => {
-        btnText.style.display = 'inline-block';
-        loadingIcon.style.display = 'none';
-        submitBtn.disabled = false;
-      });
+        const formData = {
+            email: this.querySelector('#loginEmail').value,
+            password: this.querySelector('#loginPassword').value
+        };
+
+        fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            if (!response.ok) return response.json().then(err => { throw err; });
+            return response.json();
+        })
+        .then(data => {
+            if (data.requires_verification) {
+                hideLoader();
+                showToast('Please verify your email first', 'warning');
+                showOTPVerificationModal(data.email, null, null, 'login-verification');
+            } else if (data.status === 'success' && data.redirect) {
+                hideLoader();
+                showToast('Login successful!', 'success');
+                setTimeout(() => window.location.href = data.redirect, 1000);
+            }
+        })
+        .catch(error => {
+            hideLoader();
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'form-response error';
+            responseDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.error || 'Login failed'}`;
+        })
+        .finally(() => {
+            btnText.style.display = 'inline-block';
+            submitBtn.disabled = false;
+        });
     });
 
     // =============================================
-    // Logout Handling
+    // Logout Handling - UPDATED TO MATCH DASHBOARD
     // =============================================
-    const logoutBtn = document.getElementById('logoutBtn');
-    const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-    const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
-    const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
 
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        document.getElementById('logoutModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-      });
+    function setupLogout() {
+        console.log('🔧 Setting up logout functionality...');
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+        const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+
+        // Open logout modal
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal) {
+                    logoutModal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    console.warn('❌ Logout modal not found');
+                }
+            });
+        }
+
+        // Setup logout modal handlers
+        setupLogoutModal();
     }
 
-    function closeLogoutModal() {
-      document.getElementById('logoutModal').style.display = 'none';
-      document.body.style.overflow = 'auto';
-    }
+    function setupLogoutModal() {
+        const logoutModal = document.getElementById('logoutModal');
+        if (!logoutModal) {
+            console.warn('⚠️ Logout modal not found, skipping modal setup');
+            return;
+        }
 
-    if (cancelLogoutBtn) cancelLogoutBtn.addEventListener('click', closeLogoutModal);
-    if (closeLogoutModalBtn) closeLogoutModalBtn.addEventListener('click', closeLogoutModal);
+        const cancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
+        const confirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
+        const closeBtn = logoutModal.querySelector('#closeLogoutModal');
 
-    if (confirmLogoutBtn) {
-      confirmLogoutBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        showLoading();
+        // Cancel logout
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('❌ Logout cancelled');
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        }
 
-        fetch('/logout', {
-          method: 'POST',
-          credentials: 'same-origin'
-        })
-        .then(response => {
-          if (response.redirected) {
-            sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
-            window.location.href = response.url;
-          }
-        })
-        .catch(error => {
-          console.error('Logout error:', error);
-          hideLoading();
-          showToast('Logout failed. Please try again.', 'error');
+        // Close modal
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('❌ Logout modal closed');
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        }
+
+        // Confirm logout - FIXED VERSION
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                console.log('✅ Logout confirmed');
+                await performLogout();
+            });
+        }
+
+        // Close on overlay click
+        logoutModal.addEventListener('click', function(e) {
+            if (e.target === logoutModal) {
+                console.log('❌ Logout cancelled (overlay click)');
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
         });
-      });
+    }
+
+    async function performLogout() {
+        // Show loader (use the universal loader)
+        showLoader('Logging you out...', {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            message: 'Logging you out...'
+        });
+
+        try {
+            // Clear profile picture cache
+            localStorage.removeItem('profilePicUrl');
+            localStorage.removeItem('profilePicTimestamp');
+            localStorage.removeItem('profilePicCacheBust');
+            localStorage.removeItem('profilePicLastUpdate');
+            sessionStorage.clear();
+
+            // Perform logout request
+            const response = await fetch('/logout', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            // Close logout modal if open
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+                logoutModal.style.display = 'none';
+            }
+
+            if (response.ok || response.redirected) {
+                // Show success message
+                showToast('You have been logged out successfully', 'success');
+
+                // Store logout message for next page
+                sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
+
+                // Wait a moment to show the loader message
+                setTimeout(() => {
+                    // Redirect to home page
+                    window.location.href = '/';
+                }, 1500);
+
+            } else {
+                throw new Error('Logout failed');
+            }
+
+        } catch (error) {
+            console.error('Logout error:', error);
+            showToast('Logout failed. Please try again.', 'error');
+            hideLoader();
+
+            // Close logout modal if open
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
     }
 
     // =============================================
@@ -1407,7 +1759,9 @@
     // =============================================
     function applyForContent(contentId, contentType, button) {
         // Show loading state
+        const loader = showLoader('Opening application...');
         const originalHTML = button.innerHTML;
+
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
         button.disabled = true;
 
@@ -1424,16 +1778,20 @@
         })
         .then(data => {
             if (data.application_link) {
+                hideLoader(); // Hide universal loader first
                 window.open(data.application_link, '_blank');
                 showToast('Application opened in new tab', 'success');
             } else if (data.error) {
+                hideLoader();
                 showToast(data.error, 'error');
             } else {
+                hideLoader();
                 showToast('Application link not available', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            hideLoader();
             showToast(error.message || 'Failed to get application link', 'error');
         })
         .finally(() => {
@@ -1461,27 +1819,31 @@
     // Dashboard Link Handling
     // =============================================
     document.addEventListener('click', function(e) {
-      const dashboardLink = e.target.closest('a[href="/dashboard"]');
-      if (dashboardLink) {
-        e.preventDefault();
-        showLoading();
+        const dashboardLink = e.target.closest('a[href="/dashboard"]');
+        if (dashboardLink) {
+            e.preventDefault();
 
-        fetch('/api/check-session', { credentials: 'same-origin' })
-        .then(response => response.json())
-        .then(data => {
-          if (data.logged_in) {
-            window.location.href = '/dashboard';
-          } else {
-            showToast('Please login to access your dashboard', 'warning');
-            document.getElementById('loginModal').style.display = 'flex';
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          showToast('Failed to check session status', 'error');
-        })
-        .finally(hideLoading);
-      }
+            // Show loader
+            const loader = showLoader('Checking session...');
+
+            fetch('/api/check-session', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.logged_in) {
+                    hideLoader();
+                    window.location.href = '/dashboard';
+                } else {
+                    hideLoader();
+                    showToast('Please login to access your dashboard', 'warning');
+                    document.getElementById('loginModal').style.display = 'flex';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideLoader();
+                showToast('Failed to check session status', 'error');
+            });
+        }
     });
 
     // =============================================
@@ -1489,45 +1851,52 @@
     // =============================================
     const contactForm = document.getElementById('contactForm');
     if (contactForm) {
-      contactForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = contactForm.querySelector('button[type="submit"]');
-        const loadingIcon = submitBtn.querySelector('.loading-icon');
-        const btnText = submitBtn.querySelector('.btn-text');
-        const formResponse = document.getElementById('formResponse');
+        contactForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const formResponse = document.getElementById('formResponse');
 
-        btnText.style.display = 'none';
-        loadingIcon.style.display = 'inline-block';
-        submitBtn.disabled = true;
-        formResponse.style.display = 'none';
+            btnText.style.display = 'none';
+            submitBtn.disabled = true;
+            formResponse.style.display = 'none';
 
-        try {
-          const formData = new FormData(contactForm);
-          const response = await fetch('/api/contact', {
-            method: 'POST',
-            body: formData
-          });
+            // Show loader
+            const loader = showLoader('Sending message...');
 
-          const data = await response.json();
+            try {
+                const formData = new FormData(contactForm);
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    body: formData
+                });
 
-          if (!response.ok) {
-            throw new Error(data.message || 'Failed to send message');
-          }
+                const data = await response.json();
 
-          formResponse.className = 'form-response success';
-          formResponse.textContent = data.message;
-          formResponse.style.display = 'block';
-          contactForm.reset();
-        } catch (error) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = error.message || 'An error occurred. Please try again.';
-          formResponse.style.display = 'block';
-        } finally {
-          btnText.style.display = 'inline-block';
-          loadingIcon.style.display = 'none';
-          submitBtn.disabled = false;
-        }
-      });
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to send message');
+                }
+
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response success';
+                formResponse.textContent = data.message;
+                formResponse.style.display = 'block';
+                contactForm.reset();
+
+                // Show success toast
+                showToast('Message sent successfully!', 'success');
+
+            } catch (error) {
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response error';
+                formResponse.textContent = error.message || 'An error occurred. Please try again.';
+                formResponse.style.display = 'block';
+                showToast('Failed to send message', 'error');
+            } finally {
+                btnText.style.display = 'inline-block';
+                submitBtn.disabled = false;
+            }
+        });
     }
 
     // =============================================
@@ -2212,50 +2581,57 @@
     // =============================================
     const newsletterForm = document.getElementById('newsletterForm');
     if (newsletterForm) {
-      newsletterForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = newsletterForm.querySelector('button[type="submit"]');
-        const loadingIcon = submitBtn.querySelector('.loading-icon');
-        const btnText = submitBtn.querySelector('.btn-text');
-        const formResponse = document.getElementById('newsletterResponse');
-        const emailInput = newsletterForm.querySelector('input[type="email"]');
+        newsletterForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = newsletterForm.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const formResponse = document.getElementById('newsletterResponse');
+            const emailInput = newsletterForm.querySelector('input[type="email"]');
 
-        btnText.style.display = 'none';
-        loadingIcon.style.display = 'inline-block';
-        submitBtn.disabled = true;
-        formResponse.style.display = 'none';
+            btnText.style.display = 'none';
+            submitBtn.disabled = true;
+            formResponse.style.display = 'none';
 
-        try {
-          const response = await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: emailInput.value
-            })
-          });
+            // Show loader
+            const loader = showLoader('Subscribing...');
 
-          const data = await response.json();
+            try {
+                const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: emailInput.value
+                    })
+                });
 
-          if (!response.ok) {
-            throw new Error(data.message || 'Failed to subscribe');
-          }
+                const data = await response.json();
 
-          formResponse.className = 'form-response success';
-          formResponse.textContent = data.message;
-          formResponse.style.display = 'block';
-          newsletterForm.reset();
-        } catch (error) {
-          formResponse.className = 'form-response error';
-          formResponse.textContent = error.message || 'An error occurred. Please try again.';
-          formResponse.style.display = 'block';
-        } finally {
-          btnText.style.display = 'inline-block';
-          loadingIcon.style.display = 'none';
-          submitBtn.disabled = false;
-        }
-      });
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to subscribe');
+                }
+
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response success';
+                formResponse.textContent = data.message;
+                formResponse.style.display = 'block';
+                newsletterForm.reset();
+
+                // Show success toast
+                showToast('Subscribed successfully!', 'success');
+
+            } catch (error) {
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response error';
+                formResponse.textContent = error.message || 'An error occurred. Please try again.';
+                formResponse.style.display = 'block';
+                showToast('Failed to subscribe', 'error');
+            } finally {
+                btnText.style.display = 'inline-block';
+                submitBtn.disabled = false;
+            }
+        });
     }
 
     // =============================================
@@ -2968,97 +3344,160 @@
     // Initialize application when DOM is loaded
     // =============================================
     document.addEventListener('DOMContentLoaded', function() {
-      // Check for logout message
-      if (sessionStorage.getItem('logoutMessage')) {
-        const message = sessionStorage.getItem('logoutMessage');
-        sessionStorage.removeItem('logoutMessage');
-        showToast(message, 'success');
-      }
+        // Setup logout functionality FIRST
+        setupLogout();
 
-      // Check URL for login modal parameter
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('showLogin') === 'true') {
-        const loginModal = document.getElementById('loginModal');
-        if (loginModal) {
-          loginModal.style.display = 'flex';
-          document.body.style.overflow = 'hidden';
-
-          // Focus on the email input when modal opens
-          const emailInput = loginModal.querySelector('#loginEmail');
-          if (emailInput) {
-            setTimeout(() => emailInput.focus(), 100);
-          }
-
-          // Show success message if provided in URL
-          const message = urlParams.get('message');
-          if (message) {
+        // Check for logout message
+        if (sessionStorage.getItem('logoutMessage')) {
+            const message = sessionStorage.getItem('logoutMessage');
+            sessionStorage.removeItem('logoutMessage');
             showToast(message, 'success');
-          }
-
-          // Remove the parameters from URL without refreshing
-          const url = new URL(window.location);
-          url.searchParams.delete('showLogin');
-          url.searchParams.delete('message');
-          window.history.replaceState({}, '', url);
         }
-      }
 
-      // Initialize dark mode
-      initDarkMode();
+        // Check URL for login modal parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('showLogin') === 'true') {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
 
-      // Initialize logo preview system
-      setupLogoPreview();
+                // Focus on the email input when modal opens
+                const emailInput = loginModal.querySelector('#loginEmail');
+                if (emailInput) {
+                    setTimeout(() => emailInput.focus(), 100);
+                }
 
-      // Initialize content cards functionality
-      initializeContentCards();
+                // Show success message if provided in URL
+                const message = urlParams.get('message');
+                if (message) {
+                    showToast(message, 'success');
+                }
 
-      // Mobile Navigation
-      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-      const navContainer = document.getElementById('navContainer');
-      if (mobileMenuToggle && navContainer) {
-        mobileMenuToggle.addEventListener('click', function() {
-          const isExpanded = this.getAttribute('aria-expanded') === 'true';
-          this.setAttribute('aria-expanded', !isExpanded);
-          navContainer.classList.toggle('active');
-          this.classList.toggle('active');
-          document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
-        });
-
-        document.querySelectorAll('.nav-links a').forEach(link => {
-          link.addEventListener('click', function() {
-            if (navContainer.classList.contains('active')) {
-              navContainer.classList.remove('active');
-              mobileMenuToggle.classList.remove('active');
-              mobileMenuToggle.setAttribute('aria-expanded', 'false');
-              document.body.style.overflow = 'auto';
+                // Remove the parameters from URL without refreshing
+                const url = new URL(window.location);
+                url.searchParams.delete('showLogin');
+                url.searchParams.delete('message');
+                window.history.replaceState({}, '', url);
             }
-          });
-        });
-      }
+        }
 
-      // Initialize flash messages
-      initFlashMessages();
+        // Initialize dark mode
+        initDarkMode();
 
-      // Enhance form fields
-      function enhanceFormFields() {
-        document.querySelectorAll('.form-group').forEach(group => {
-          const input = group.querySelector('input, textarea, select');
-          const label = group.querySelector('label');
+        // Initialize logo preview system
+        setupLogoPreview();
 
-          if (input && label) {
-            group.classList.add('floating-label-group');
-            if (input.value) group.classList.add('has-value');
+        // Initialize content cards functionality
+        initializeContentCards();
 
-            input.addEventListener('focus', () => group.classList.add('focused'));
-            input.addEventListener('blur', () => {
-              group.classList.remove('focused');
-              if (!input.value) group.classList.remove('has-value');
+        // Initialize blog modal system
+        blogModal.init();
+
+        // Initialize testimonial system
+        if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {
+            testimonialSystem.init();
+        }
+
+        // Add click handlers for entire blog cards
+        document.querySelectorAll('.blog-card-vertical').forEach(card => {
+            card.addEventListener('click', function(e) {
+                // Don't trigger if clicking on buttons or links
+                if (e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                }
+
+                const blogId = this.dataset.id;
+                if (typeof blogModal !== 'undefined' && blogModal.openModal) {
+                    blogModal.openModal(blogId);
+                }
             });
-            input.addEventListener('input', () => {
-              group.classList.toggle('has-value', !!input.value);
-            });
-          }
         });
-      }
-      enhanceFormFields();
+
+        // Mobile Navigation
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const navContainer = document.getElementById('navContainer');
+        if (mobileMenuToggle && navContainer) {
+            mobileMenuToggle.addEventListener('click', function() {
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                this.setAttribute('aria-expanded', !isExpanded);
+                navContainer.classList.toggle('active');
+                this.classList.toggle('active');
+                document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
+            });
+
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (navContainer.classList.contains('active')) {
+                        navContainer.classList.remove('active');
+                        mobileMenuToggle.classList.remove('active');
+                        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                        document.body.style.overflow = 'auto';
+                    }
+                });
+            });
+        }
+
+        // Initialize flash messages
+        initFlashMessages();
+
+        // Initialize navigation profile picture
+        if (typeof loadNavigationProfilePicture === 'function') {
+            setTimeout(() => {
+                loadNavigationProfilePicture();
+            }, 500);
+        }
+
+        // Listen for login events
+        document.addEventListener('userLoggedIn', function() {
+            setTimeout(() => {
+                if (typeof loadNavigationProfilePicture === 'function') {
+                    loadNavigationProfilePicture();
+                }
+            }, 1000);
+        });
+
+        // Listen for profile picture updates
+        document.addEventListener('profilePictureUpdated', function() {
+            setTimeout(() => {
+                if (typeof refreshNavigationProfilePicture === 'function') {
+                    refreshNavigationProfilePicture();
+                }
+            }, 500);
+        });
+
+        // Enhance form fields
+        function enhanceFormFields() {
+            document.querySelectorAll('.form-group').forEach(group => {
+                const input = group.querySelector('input, textarea, select');
+                const label = group.querySelector('label');
+
+                if (input && label) {
+                    group.classList.add('floating-label-group');
+                    if (input.value) group.classList.add('has-value');
+
+                    input.addEventListener('focus', () => group.classList.add('focused'));
+                    input.addEventListener('blur', () => {
+                        group.classList.remove('focused');
+                        if (!input.value) group.classList.remove('has-value');
+                    });
+                    input.addEventListener('input', () => {
+                        group.classList.toggle('has-value', !!input.value);
+                    });
+                }
+            });
+        }
+        enhanceFormFields();
+
+        // Initialize badge colors
+        if (typeof initializeBadgeColors === 'function') {
+            initializeBadgeColors();
+        }
+
+        // Initialize share modal theme listener
+        if (typeof initShareModalThemeListener === 'function') {
+            initShareModalThemeListener();
+        }
+
+        console.log('🎯 Application fully initialized');
     });

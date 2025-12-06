@@ -1676,27 +1676,136 @@
     }
 
     // ======================
-    // Clear cache on logout
+    // Clear cache on logout - UPDATED
     // ======================
 
     function setupLogoutCacheClear() {
         const logoutButtons = document.querySelectorAll('#logoutBtn, #dashboardLogoutBtn');
+
         logoutButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const currentProfilePic = localStorage.getItem('profilePicUrl');
-                const currentTimestamp = localStorage.getItem('profilePicTimestamp');
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                localStorage.removeItem('profilePicUrl');
-                localStorage.removeItem('profilePicTimestamp');
-
-                if (currentProfilePic) {
-                    setTimeout(() => {
-                        localStorage.setItem('profilePicUrl', currentProfilePic);
-                        console.log('Logout: Profile URL restored after temporary clear');
-                    }, 100);
+                // Show confirmation modal first
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal) {
+                    logoutModal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    // If no modal exists, directly show loader and logout
+                    performLogout();
                 }
             });
         });
+
+        // Setup logout modal handlers
+        setupLogoutModal();
+    }
+
+    function setupLogoutModal() {
+        const logoutModal = document.getElementById('logoutModal');
+        if (!logoutModal) return;
+
+        const cancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
+        const confirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
+        const closeBtn = logoutModal.querySelector('#closeLogoutModal');
+
+        // Cancel logout
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        }
+
+        // Close modal
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        }
+
+        // Confirm logout - FIXED VERSION
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                await performLogout();
+            });
+        }
+
+        // Close on overlay click
+        logoutModal.addEventListener('click', function(e) {
+            if (e.target === logoutModal) {
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+    }
+
+    async function performLogout() {
+        // Show loader (use the universal loader)
+        showLoader('Logging you out...', {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            message: 'Logging you out...'
+        });
+
+        try {
+            // Clear profile picture cache
+            localStorage.removeItem('profilePicUrl');
+            localStorage.removeItem('profilePicTimestamp');
+            localStorage.removeItem('profilePicCacheBust');
+            localStorage.removeItem('profilePicLastUpdate');
+            sessionStorage.clear();
+
+            // Perform logout request
+            const response = await fetch('/logout', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            // Close logout modal if open
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+                logoutModal.style.display = 'none';
+            }
+
+            if (response.ok || response.redirected) {
+                // Show success message
+                showToast('You have been logged out successfully', 'success');
+
+                // Store logout message for next page
+                sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
+
+                // Wait a moment to show the loader message
+                setTimeout(() => {
+                    // Redirect to home page
+                    window.location.href = '/';
+                }, 1500);
+
+            } else {
+                throw new Error('Logout failed');
+            }
+
+        } catch (error) {
+            console.error('Logout error:', error);
+            showToast('Logout failed. Please try again.', 'error');
+            hideLoader();
+
+            // Close logout modal if open
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+                logoutModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
     }
 
     // ======================
