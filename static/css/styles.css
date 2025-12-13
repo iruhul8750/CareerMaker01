@@ -326,6 +326,26 @@ header {
   gap: 1rem;
   margin-top: 1.5rem;
 }
+/* Hero Section Buttons — Both White Initially */
+.hero .btn {
+  background-color: white !important;
+  color: #065f46 !important;  /* dark green text */
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+}
+
+/* Hover Effect (green background + white text) */
+.hero .btn:hover {
+  background-color: #0f9d75 !important;   /* hover color */
+  color: white !important;
+}
 
 /* Sections Common Styles */
 section {

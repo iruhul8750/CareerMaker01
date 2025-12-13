@@ -1557,7 +1557,7 @@
     });
 
     // =============================================
-    // Logout Handling - UPDATED TO MATCH DASHBOARD
+    // Logout Handling
     // =============================================
 
     function setupLogout() {

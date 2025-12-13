@@ -1,40 +1,21 @@
-import os
-import json
-import ssl
 import uuid
 import secrets
-import logging
-import smtplib
 import hashlib
 import binascii
-import smtplib
-import atexit
-import re
-import requests
 from fuzzywuzzy import fuzz
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import logging
-from flask import Flask, request, jsonify
 import smtplib
-from zoneinfo import ZoneInfo
 import os
-from supabase import create_client, Client
 import logging
-import base64
 from datetime import datetime, timedelta, timezone, time
-from urllib.parse import urlparse
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
-from supabase.lib.client_options import ClientOptions
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, \
-    make_response, Response
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
+    make_response
 from functools import wraps
 from dotenv import load_dotenv
-from PIL import Image
 from flask_cors import CORS
 from supabase import create_client, Client
 import requests
@@ -43,7 +24,6 @@ import io
 import base64
 import re
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 import atexit
 
 # Initialize logging

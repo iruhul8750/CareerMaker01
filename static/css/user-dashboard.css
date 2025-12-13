@@ -262,6 +262,144 @@
   color: #adb5bd;
 }
 
+/* Header Actions - Logout Button */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Direct Logout Button – THEME MATCHED */
+.btn-logout-direct {
+  background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Shine animation stays same */
+.btn-logout-direct::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transition: left 0.6s ease;
+  z-index: -1;
+}
+
+.btn-logout-direct:hover::before {
+  left: 100%;
+}
+
+/* Hover */
+.btn-logout-direct:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+}
+
+/* Active */
+.btn-logout-direct:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.25);
+}
+
+/* Icon animation */
+.btn-logout-direct i {
+  font-size: 1.1rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-logout-direct:hover i {
+  transform: translateX(2px);
+}
+
+/* Dark Mode Support */
+.dark-mode .btn-logout-direct {
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+}
+
+.dark-mode .btn-logout-direct:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .btn-logout-direct {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-profile {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .avatar-container {
+    width: 80px;
+    height: 80px;
+  }
+
+  .avatar-initials {
+    font-size: 2rem;
+  }
+
+  .user-info h2 {
+    font-size: 1.5rem;
+  }
+
+  .user-info p {
+    font-size: 1rem;
+  }
+
+  .header-actions {
+    justify-content: center;
+  }
+
+  .btn-logout-direct {
+    padding: 10px 18px;
+    font-size: 0.85rem;
+  }
+}
+
 /* Modern Dashboard Tabs */
 .dashboard-tabs {
   display: flex;

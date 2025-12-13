@@ -298,7 +298,7 @@
     setupFlashMessages();
     setupBlogReading();
     setupTestimonials();
-    setupLogoutCacheClear();
+    setupLogout();
 
     // ======================
     // Tab Management with State Preservation
@@ -1676,135 +1676,174 @@
     }
 
     // ======================
-    // Clear cache on logout - UPDATED
+    // LOGOUT FUNCTIONALITY
     // ======================
 
-    function setupLogoutCacheClear() {
-        const logoutButtons = document.querySelectorAll('#logoutBtn, #dashboardLogoutBtn');
+    function setupLogout() {
+        const logoutBtn = document.getElementById('dashboardDirectLogoutBtn');
+        if (!logoutBtn) {
+            console.error('Logout button not found!');
+            return;
+        }
 
-        logoutButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+        // Remove any existing event listeners
+        const newLogoutBtn = logoutBtn.cloneNode(true);
+        logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
 
-                // Show confirmation modal first
-                const logoutModal = document.getElementById('logoutModal');
-                if (logoutModal) {
-                    logoutModal.style.display = 'flex';
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    // If no modal exists, directly show loader and logout
-                    performLogout();
-                }
-            });
+        // Get fresh reference
+        const freshLogoutBtn = document.getElementById('dashboardDirectLogoutBtn');
+
+        // Add click event listener
+        freshLogoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            showLogoutConfirmationModal();
         });
 
-        // Setup logout modal handlers
-        setupLogoutModal();
+        console.log('Logout setup complete');
     }
 
-    function setupLogoutModal() {
-        const logoutModal = document.getElementById('logoutModal');
-        if (!logoutModal) return;
-
-        const cancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
-        const confirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
-        const closeBtn = logoutModal.querySelector('#closeLogoutModal');
-
-        // Cancel logout
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                logoutModal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            });
+    function showLogoutConfirmationModal() {
+        const modal = document.getElementById('logoutModal');
+        if (!modal) {
+            console.error('Logout modal not found!');
+            // Fallback to simple confirm
+            performLogout();
+            return;
         }
 
-        // Close modal
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                logoutModal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            });
-        }
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
 
-        // Confirm logout - FIXED VERSION
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                await performLogout();
-            });
-        }
+        // Setup modal buttons
+        setupLogoutModalButtons();
+    }
 
-        // Close on overlay click
-        logoutModal.addEventListener('click', function(e) {
-            if (e.target === logoutModal) {
-                logoutModal.style.display = 'none';
-                document.body.style.overflow = 'auto';
+    function setupLogoutModalButtons() {
+        const modal = document.getElementById('logoutModal');
+        if (!modal) return;
+
+        // Cancel button
+        const cancelBtn = document.getElementById('cancelLogoutBtn');
+        const closeBtn = document.getElementById('closeLogoutModal');
+        const confirmBtn = document.getElementById('confirmLogoutBtn');
+
+        // Clear existing listeners
+        cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        closeBtn.replaceWith(closeBtn.cloneNode(true));
+        confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+
+        // Get fresh references
+        const freshCancelBtn = document.getElementById('cancelLogoutBtn');
+        const freshCloseBtn = document.getElementById('closeLogoutModal');
+        const freshConfirmBtn = document.getElementById('confirmLogoutBtn');
+
+        // Close modal function
+        const closeModal = () => {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        };
+
+        // Event handlers
+        freshCancelBtn.addEventListener('click', closeModal);
+        freshCloseBtn.addEventListener('click', closeModal);
+        freshConfirmBtn.addEventListener('click', performLogout);
+
+        // Close when clicking outside modal
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Close with Escape key
+        document.addEventListener('keydown', function handleEscape(e) {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
             }
         });
     }
 
     async function performLogout() {
-        // Show loader (use the universal loader)
-        showLoader('Logging you out...', {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            message: 'Logging you out...'
-        });
-
         try {
-            // Clear profile picture cache
-            localStorage.removeItem('profilePicUrl');
-            localStorage.removeItem('profilePicTimestamp');
-            localStorage.removeItem('profilePicCacheBust');
-            localStorage.removeItem('profilePicLastUpdate');
+            // Show loading state
+            showLoader('Logging out...');
+
+            // Clear all local storage
+            const itemsToRemove = [
+                'profilePicUrl',
+                'profilePicTimestamp',
+                'profilePicCacheBust',
+                'profilePicLastUpdate',
+                'dashboardActiveTab',
+                'userPreferences',
+                'lastVisit'
+            ];
+
+            itemsToRemove.forEach(item => localStorage.removeItem(item));
+
+            // Clear session storage
             sessionStorage.clear();
 
-            // Perform logout request
+            // Clear cookies (by setting past expiration date)
+            document.cookie.split(";").forEach(function(c) {
+                document.cookie = c.replace(/^ +/, "")
+                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+
+            // Send logout request to server
             const response = await fetch('/logout', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
                 }
             });
 
-            // Close logout modal if open
-            const logoutModal = document.getElementById('logoutModal');
-            if (logoutModal) {
-                logoutModal.style.display = 'none';
-            }
-
-            if (response.ok || response.redirected) {
-                // Show success message
-                showToast('You have been logged out successfully', 'success');
-
-                // Store logout message for next page
-                sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
-
-                // Wait a moment to show the loader message
-                setTimeout(() => {
-                    // Redirect to home page
-                    window.location.href = '/';
-                }, 1500);
-
-            } else {
-                throw new Error('Logout failed');
-            }
-
-        } catch (error) {
-            console.error('Logout error:', error);
-            showToast('Logout failed. Please try again.', 'error');
-            hideLoader();
-
-            // Close logout modal if open
-            const logoutModal = document.getElementById('logoutModal');
-            if (logoutModal) {
-                logoutModal.style.display = 'none';
+            // Close modal if open
+            const modal = document.getElementById('logoutModal');
+            if (modal) {
+                modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
             }
+
+            // Show success message
+            if (typeof showToast === 'function') {
+                showToast('Logged out successfully! Redirecting...', 'success');
+            } else {
+                alert('Logged out successfully!');
+            }
+
+            // Force redirect with cache busting
+            setTimeout(() => {
+                // Force hard redirect to clear any cached states
+                window.location.href = '/?logout=' + Date.now();
+                // Fallback redirect
+                setTimeout(() => {
+                    window.location.replace('/');
+                }, 1000);
+            }, 1000);
+
+        } catch (error) {
+            console.error('Logout failed:', error);
+
+            // Show error message
+            if (typeof showToast === 'function') {
+                showToast('Logout failed. Please try again.', 'error');
+            } else {
+                alert('Logout failed. Please try again.');
+            }
+
+            // Fallback redirect on error
+            setTimeout(() => {
+                window.location.href = '/logout';
+            }, 2000);
+        } finally {
+            hideLoader();
         }
     }
 

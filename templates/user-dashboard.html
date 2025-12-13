@@ -26,31 +26,38 @@
         {% endif %}
         {% endwith %}
 
-        <!-- Dashboard Header -->
-        <div class="dashboard-header">
-            <div class="user-profile">
-                <div class="avatar-container">
-                    <label for="profilePicUpload" class="avatar-wrapper">
-                        <div class="avatar-initials" id="userAvatarInitials">
-                            {{ username[0]|upper if username else '?' }}
-                        </div>
-                        <img id="userAvatarImage"
-                             class="user-avatar"
-                             alt="Profile Picture"
-                             style="display:none;">
-                        <div class="avatar-overlay">
-                            <i class="fas fa-camera"></i>
-                            <span>Change Photo</span>
-                        </div>
-                    </label>
-                    <input type="file" id="profilePicUpload" accept="image/*" style="display:none">
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="user-profile">
+        <div class="avatar-container">
+            <label for="profilePicUpload" class="avatar-wrapper">
+                <div class="avatar-initials" id="userAvatarInitials">
+                    {{ username[0]|upper if username else '?' }}
                 </div>
-                <div class="user-info">
-                    <h2>{{ username }}</h2>
-                    <p>{{ email }}</p>
+                <img id="userAvatarImage"
+                     class="user-avatar"
+                     alt="Profile Picture"
+                     style="display:none;">
+                <div class="avatar-overlay">
+                    <i class="fas fa-camera"></i>
+                    <span>Change Photo</span>
                 </div>
-            </div>
+            </label>
+            <input type="file" id="profilePicUpload" accept="image/*" style="display:none">
         </div>
+        <div class="user-info">
+            <h2>{{ username }}</h2>
+            <p>{{ email }}</p>
+        </div>
+    </div>
+
+    <!-- ADD THIS BUTTON - MUST MATCH THE ID IN JAVASCRIPT -->
+    <div class="header-actions">
+        <button id="dashboardDirectLogoutBtn" class="btn-logout-direct">
+            <i class="fas fa-sign-out-alt"></i> Quick Logout
+        </button>
+    </div>
+</div>
 
         <!-- Dashboard Tabs -->
         <div class="dashboard-tabs">
@@ -480,6 +487,27 @@
                 </div>
             </div>
         </div>
+        <!-- Add this to your user-dashboard.html if not present -->
+<div id="logoutModal" class="confirmation-modal" style="display: none;">
+    <div class="modal-content">
+        <button class="close-modal" id="closeLogoutModal" title="Close">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="modal-icon">
+            <i class="fas fa-sign-out-alt"></i>
+        </div>
+        <h3 class="modal-title">Confirm Logout</h3>
+        <p class="modal-message">Are you sure you want to logout?</p>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" id="cancelLogoutBtn">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="modal-btn modal-btn-confirm" id="confirmLogoutBtn">
+                <i class="fas fa-check"></i> Logout
+            </button>
+        </div>
+    </div>
+</div>
     </div>
 </section>
 
@@ -487,17 +515,4 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/user-dashboard.js') }}"></script>
-<!--<script>-->
-<!--    // Add logout functionality for the dashboard logout button-->
-<!--    document.addEventListener('DOMContentLoaded', function() {-->
-<!--      const dashboardLogoutBtn = document.getElementById('dashboardLogoutBtn');-->
-<!--      if (dashboardLogoutBtn) {-->
-<!--        dashboardLogoutBtn.addEventListener('click', function() {-->
-<!--          // Show the logout confirmation modal-->
-<!--          document.getElementById('logoutModal').style.display = 'flex';-->
-<!--          document.body.style.overflow = 'hidden';-->
-<!--        });-->
-<!--      }-->
-<!--    });-->
-<!--</script>-->
 {% endblock %}
