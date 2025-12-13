@@ -300,6 +300,9 @@
     setupTestimonials();
     setupLogout();
 
+    // Initialize dynamic button layout AFTER everything else
+    setupDynamicButtonLayout();
+
     // ======================
     // Tab Management with State Preservation
     // ======================
@@ -309,24 +312,58 @@
             btn.addEventListener('click', function() {
                 const tabId = this.dataset.tab;
 
+                // Don't do anything if already active
+                if (this.classList.contains('active')) return;
+
+                // Show loading state for the tab
                 showTabLoading(tabId);
 
-                tabBtns.forEach(btn => btn.classList.remove('active'));
+                // Update active tab button
+                tabBtns.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-selected', 'false');
+                });
                 this.classList.add('active');
+                this.setAttribute('aria-selected', 'true');
 
-                tabContents.forEach(content => content.classList.remove('active'));
+                // Hide all tab contents
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    content.setAttribute('aria-hidden', 'true');
+                });
 
+                // Show selected tab content with animation
                 setTimeout(() => {
                     const tabContent = document.getElementById(tabId);
                     if (tabContent) {
                         tabContent.classList.add('active');
+                        tabContent.setAttribute('aria-hidden', 'false');
+
+                        // Update button position for this tab
+                        if (typeof updateButtonPosition === 'function') {
+                            updateButtonPosition(tabId);
+                        }
+
+                        // Hide loading state
                         hideTabLoading(tabId);
+
+                        // Load tab-specific content if needed
                         loadTabContent(tabId);
+
+                        // Dispatch tab changed event
+                        const event = new CustomEvent('tabChanged', {
+                            detail: {
+                                tabId: tabId,
+                                previousTab: DashboardState.currentTab
+                            }
+                        });
+                        document.dispatchEvent(event);
+
+                        // Save state
+                        DashboardState.currentTab = tabId;
+                        DashboardState.saveState();
                     }
                 }, 300);
-
-                DashboardState.currentTab = tabId;
-                DashboardState.saveState();
             });
         });
 
@@ -398,6 +435,150 @@
         } catch (error) {
             console.error('Failed to load testimonials:', error);
         }
+    }
+
+    // ======================
+    // DYNAMIC BUTTON POSITIONING
+    // ======================
+
+    function setupDynamicButtonLayout() {
+        // Function to update button position based on content
+        function updateButtonPosition(tabId) {
+            const tabContent = document.getElementById(tabId);
+            if (!tabContent) return;
+
+            const dashboardCard = tabContent.querySelector('.dashboard-card');
+            const contentArea = tabContent.querySelector('.content-area');
+            const browseBtn = tabContent.querySelector('.browse-action-btn');
+
+            if (!dashboardCard || !contentArea || !browseBtn) return;
+
+            // Check if content area has content
+            const hasContent = () => {
+                // Get all items (including those with empty containers)
+                const bookmarkList = contentArea.querySelector('.bookmarks-list');
+                const testimonialsList = contentArea.querySelector('.testimonials-list');
+
+                // If there's a list container, check its children
+                if (bookmarkList) {
+                    const items = bookmarkList.querySelectorAll(
+                        '.bookmark-item:not(.bookmark-removing), ' +
+                        '.testimonial-item:not(.bookmark-removing)'
+                    );
+                    return items.length > 0;
+                }
+
+                if (testimonialsList) {
+                    const items = testimonialsList.querySelectorAll('.testimonial-item:not(.bookmark-removing)');
+                    return items.length > 0;
+                }
+
+                // Direct children check
+                const directItems = contentArea.querySelectorAll(
+                    '.bookmark-item:not(.bookmark-removing), ' +
+                    '.testimonial-item:not(.bookmark-removing), ' +
+                    '.bookmarks-list, ' +
+                    '.testimonials-list'
+                );
+
+                for (let item of directItems) {
+                    if (item.childNodes.length > 0 &&
+                        item.style.display !== 'none' &&
+                        item.style.visibility !== 'hidden') {
+                        return true;
+                    }
+                }
+
+                // Final fallback - check innerHTML
+                const html = contentArea.innerHTML.trim();
+                const isEmpty = html === '' ||
+                               html === '<div class="bookmarks-list"></div>' ||
+                               html === '<div class="testimonials-list"></div>';
+
+                return !isEmpty;
+            };
+
+            const contentExists = hasContent();
+
+            // Update dashboard card class
+            dashboardCard.classList.toggle('empty-state', !contentExists);
+
+            // Update button text based on content
+            if (!contentExists) {
+                if (tabId === 'testimonials') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
+                } else if (tabId === 'courses') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Courses';
+                } else if (tabId === 'jobs') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Jobs';
+                } else if (tabId === 'internships') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Internships';
+                } else if (tabId === 'blogs') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Articles';
+                }
+
+                // Ensure subtitle is visible
+                const subtitle = tabContent.querySelector('.tab-subtitle');
+                if (subtitle) {
+                    subtitle.style.display = 'block';
+                    subtitle.style.opacity = '1';
+                }
+            } else {
+                // Restore original button text
+                if (tabId === 'testimonials') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add New Testimonial';
+                } else if (tabId === 'courses') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Courses';
+                } else if (tabId === 'jobs') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Jobs';
+                } else if (tabId === 'internships') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Internships';
+                } else if (tabId === 'blogs') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Articles';
+                }
+
+                // Hide subtitle
+                const subtitle = tabContent.querySelector('.tab-subtitle');
+                if (subtitle) {
+                    subtitle.style.display = 'none';
+                }
+            }
+
+            console.log(`Button update for ${tabId}: contentExists=${contentExists}, empty-state=${!contentExists}`);
+        }
+
+        // Initialize for all tabs
+        const tabIds = ['courses', 'jobs', 'internships', 'blogs', 'testimonials'];
+        tabIds.forEach(tabId => {
+            updateButtonPosition(tabId);
+        });
+
+        // Listen for ALL content change events
+        document.addEventListener('bookmarkRemoved', function(e) {
+            console.log('Bookmark removed event:', e.detail);
+            setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
+        });
+
+        document.addEventListener('contentChanged', function(e) {
+            console.log('Content changed event:', e.detail);
+            setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
+        });
+
+        document.addEventListener('tabChanged', function(e) {
+            console.log('Tab changed event:', e.detail);
+            setTimeout(() => updateButtonPosition(e.detail.tabId), 300);
+        });
+
+        document.addEventListener('testimonialUpdated', function(e) {
+            console.log('Testimonial updated event');
+            setTimeout(() => updateButtonPosition('testimonials'), 100);
+        });
+
+        // Also add a mutation observer for dynamic content changes
+        setupMutationObserver();
+
+        // Make function available globally
+        window.updateButtonPosition = updateButtonPosition;
     }
 
     // ======================
@@ -776,12 +957,18 @@
 
     async function removeBookmark(itemId, itemType, bookmarkItem) {
         try {
-            showLoading();
+            showLoader('Removing bookmark...');
+
             const btn = bookmarkItem.querySelector('.remove-bookmark');
             if (btn) btn.disabled = true;
 
+            // Add removal animation class
             bookmarkItem.classList.add('bookmark-removing');
 
+            // Get current tab ID BEFORE removal
+            const currentTabId = getCurrentTabId();
+
+            // Send request to remove bookmark
             const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
                 method: 'POST',
                 credentials: 'include',
@@ -801,21 +988,75 @@
                 throw new Error(data.error || 'Failed to remove bookmark');
             }
 
+            // Wait for animation to complete
             setTimeout(() => {
+                // Remove the item from DOM
                 bookmarkItem.remove();
+
+                // Force a DOM update
+                void bookmarkItem.offsetHeight;
+
+                // Get all remaining items in this tab
+                const tabContent = document.getElementById(currentTabId);
+                const contentArea = tabContent?.querySelector('.content-area');
+                const remainingItems = contentArea?.querySelectorAll(
+                    '.bookmark-item:not(.bookmark-removing), ' +
+                    '.testimonial-item:not(.bookmark-removing)'
+                ) || [];
+
+                // Check if tab is now empty
+                const isNowEmpty = remainingItems.length === 0;
+
+                // Dispatch bookmark removed event with more details
+                const event = new CustomEvent('bookmarkRemoved', {
+                    detail: {
+                        type: itemType,
+                        tabId: currentTabId,
+                        itemId: itemId,
+                        isTabNowEmpty: isNowEmpty,
+                        remainingCount: remainingItems.length
+                    }
+                });
+                document.dispatchEvent(event);
+
+                // Also dispatch a generic content change event
+                const contentEvent = new CustomEvent('contentChanged', {
+                    detail: {
+                        tabId: currentTabId,
+                        action: 'removed',
+                        contentType: itemType
+                    }
+                });
+                document.dispatchEvent(contentEvent);
+
+                // Update button position immediately
+                if (typeof updateButtonPosition === 'function') {
+                    // Small delay to ensure DOM is updated
+                    setTimeout(() => {
+                        updateButtonPosition(currentTabId);
+                        console.log(`Updated button position for ${currentTabId}, empty: ${isNowEmpty}`);
+                    }, 50);
+                }
+
                 showToast('Bookmark removed successfully', 'success');
-                checkEmptyTabState();
+
             }, 700);
 
         } catch (error) {
             console.error('Remove bookmark error:', error);
             bookmarkItem.classList.remove('bookmark-removing');
-            showToast(error.message, 'error');
             const btn = bookmarkItem.querySelector('.remove-bookmark');
             if (btn) btn.disabled = false;
+            showToast(error.message || 'Failed to remove bookmark', 'error');
         } finally {
-            hideLoading();
+            hideLoader();
         }
+    }
+
+    // Simple helper to get current tab ID
+    function getCurrentTabId() {
+        const activeTab = document.querySelector('.tab-btn.active');
+        return activeTab ? activeTab.dataset.tab : 'courses';
     }
 
     function checkEmptyTabState() {
