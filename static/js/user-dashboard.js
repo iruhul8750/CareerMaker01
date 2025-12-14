@@ -500,6 +500,28 @@
 
             const contentExists = hasContent();
 
+            if (!contentExists) {
+                if (tabId === 'testimonials') {
+                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
+
+                    // Direct click handler
+                    browseBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Set the flag
+                        localStorage.setItem('dashboardTestimonialAction', 'scroll-and-open');
+
+                        // Navigate
+                        window.location.href = '/#testimonials-section';
+                    };
+
+                    if (browseBtn.tagName === 'A') {
+                        browseBtn.href = '#';
+                    }
+                }
+            }
+
             // Update dashboard card class
             dashboardCard.classList.toggle('empty-state', !contentExists);
 
@@ -1805,15 +1827,6 @@
         }
     }
 
-    function setupTestimonialScrolling() {
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('#addTestimonialBtn')) {
-                e.preventDefault();
-                window.location.href = '/#testimonials';
-            }
-        });
-    }
-
     function shareTestimonial() {
         const modal = document.getElementById('testimonialReadModal');
         if (!modal) return;
@@ -1841,6 +1854,35 @@
         }).catch(err => {
             console.error('Failed to copy:', err);
             showToast('Failed to copy testimonial', 'error');
+        });
+    }
+
+    // ======================
+    // SIMPLE TESTIMONIAL BUTTON - SCROLL + MODAL
+    // ======================
+
+    function setupTestimonialScrolling() {
+        console.log('🎯 Setting up testimonial button...');
+
+        document.addEventListener('click', function(e) {
+            const browseBtn = e.target.closest('.browse-action-btn');
+            if (browseBtn) {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab && activeTab.id === 'testimonials') {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    console.log('🎯 Testimonial button clicked from dashboard');
+
+                    // Set flag to trigger BOTH scroll AND modal open
+                    localStorage.setItem('dashboardTestimonialAction', 'scroll-and-open');
+
+                    // Navigate to homepage
+                    window.location.href = '/#testimonials-section';
+
+                    return;
+                }
+            }
         });
     }
 

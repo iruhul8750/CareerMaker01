@@ -1122,8 +1122,21 @@
             ${password ? `<input type="hidden" name="password" value="${password}">` : ''}
             <input type="hidden" name="purpose" value="${purpose}">
             <div class="form-group floating-label-group">
-              <input type="text" id="otpCode" name="otp" maxlength="6" pattern="\\d{6}" required placeholder=" " autocomplete="off" inputmode="numeric">
+              <input type="text" id="otpCode" name="otp" maxlength="6" required placeholder=" " autocomplete="off" inputmode="numeric" style="
+                width: 100%;
+                padding: 12px;
+                font-size: 18px;
+                letter-spacing: 8px;
+                text-align: center;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                outline: none;
+                background: white;
+                cursor: text;
+                pointer-events: auto;
+              ">
               <label for="otpCode">OTP Code</label>
+              <div class="form-error" id="otpError" style="display:none; color: #dc3545; font-size: 0.875em; margin-top: 5px;"></div>
             </div>
             <button type="submit" class="btn btn-primary" id="verifyOtpBtn">
               <span class="btn-text">Verify</span>
@@ -1136,7 +1149,64 @@
       </div>`;
 
       document.body.insertAdjacentHTML('beforeend', modalHTML);
-      document.getElementById('otpCode').focus();
+
+      // Initialize OTP input - SIMPLIFIED VERSION
+      const otpInput = document.getElementById('otpCode');
+
+      // Focus and select the input
+      setTimeout(() => {
+        otpInput.focus();
+        otpInput.select();
+      }, 100);
+
+      // Ensure the input is clickable and editable
+      otpInput.style.pointerEvents = 'auto';
+      otpInput.style.cursor = 'text';
+      otpInput.style.userSelect = 'auto';
+
+      // Remove any inherited disabled/readonly attributes
+      otpInput.removeAttribute('disabled');
+      otpInput.removeAttribute('readonly');
+
+      // SIMPLIFIED input handler - just allow typing
+      otpInput.addEventListener('input', function(e) {
+        // Only allow digits
+        this.value = this.value.replace(/\D/g, '');
+
+        // Limit to 6 digits
+        if (this.value.length > 6) {
+          this.value = this.value.substring(0, 6);
+        }
+
+        // Clear any error messages
+        const errorElement = document.getElementById('otpError');
+        if (errorElement) {
+          errorElement.style.display = 'none';
+        }
+      });
+
+      // Prevent any key that's not a number
+      otpInput.addEventListener('keydown', function(e) {
+        // Allow all control keys (backspace, delete, tab, arrows, etc.)
+        if (e.key.length === 1 && !/\d/.test(e.key)) {
+          e.preventDefault();
+          return;
+        }
+      });
+
+      // Handle paste events
+      otpInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const numbersOnly = pastedText.replace(/\D/g, '').substring(0, 6);
+        this.value = numbersOnly;
+      });
+
+      // Add a click handler to ensure focus
+      otpInput.addEventListener('click', function(e) {
+        this.focus();
+        this.select();
+      });
 
       const otpForm = document.getElementById('otpForm');
       const verifyBtn = document.getElementById('verifyOtpBtn');
@@ -1182,6 +1252,13 @@
           showToast(data.message || 'New OTP sent successfully!', 'success');
           startResendTimer(resendOtpBtn, resendTimer, timerCount);
 
+          // Clear and focus on OTP input after resend
+          otpInput.value = '';
+          setTimeout(() => {
+            otpInput.focus();
+            otpInput.select();
+          }, 100);
+
           if (data.otp) {
             console.log('Development OTP:', data.otp);
           }
@@ -1199,6 +1276,26 @@
       // OTP Verification Handler
       otpForm?.addEventListener('submit', async function(e) {
         e.preventDefault();
+
+        // Basic OTP validation
+        const otpValue = otpInput.value.trim();
+
+        if (!otpValue) {
+          const errorElement = document.getElementById('otpError');
+          errorElement.textContent = 'Please enter the OTP code';
+          errorElement.style.display = 'block';
+          otpInput.focus();
+          return;
+        }
+
+        if (otpValue.length !== 6) {
+          const errorElement = document.getElementById('otpError');
+          errorElement.textContent = 'OTP must be exactly 6 digits';
+          errorElement.style.display = 'block';
+          otpInput.focus();
+          return;
+        }
+
         const btnText = verifyBtn.querySelector('.btn-text');
         const loadingIcon = verifyBtn.querySelector('.loading-icon');
 
@@ -1208,6 +1305,7 @@
         btnText.textContent = 'Verifying...';
         loadingIcon.style.display = 'inline-block';
         verifyBtn.disabled = true;
+        otpInput.disabled = true;
 
         try {
           const formData = new FormData(otpForm);
@@ -1216,7 +1314,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: formData.get('email'),
-              otp: formData.get('otp'),
+              otp: otpValue,
               username: formData.get('username'),
               password: formData.get('password'),
               purpose: formData.get('purpose')
@@ -1244,6 +1342,13 @@
           otpResponse.className = 'form-response error';
           otpResponse.textContent = error.message || 'Invalid OTP. Please try again.';
           otpResponse.style.display = 'block';
+
+          // Re-enable input for correction
+          otpInput.disabled = false;
+          setTimeout(() => {
+            otpInput.focus();
+            otpInput.select();
+          }, 100);
         } finally {
           btnText.textContent = 'Verify';
           loadingIcon.style.display = 'none';
@@ -3187,6 +3292,101 @@
 
     scrollToTopBtn.addEventListener('click', function() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // =============================================
+    // Testimonial auto SCROLL + MODAL AUTO-OPEN
+    // =============================================
+
+    function handleDashboardTestimonialRedirect() {
+        console.log('🔍 Checking for dashboard redirect...');
+
+        // Check if we came from dashboard and should scroll+open
+        const shouldScrollAndOpen = localStorage.getItem('dashboardTestimonialAction') === 'scroll-and-open';
+        const isTestimonialSection = window.location.hash === '#testimonials-section';
+
+        if (shouldScrollAndOpen && isTestimonialSection) {
+            console.log('✅ Should scroll and open modal');
+
+            // Clear the flag immediately
+            localStorage.removeItem('dashboardTestimonialAction');
+
+            // Wait for page to be ready
+            setTimeout(() => {
+                // 1. FIRST: Scroll to section
+                const section = document.getElementById('testimonials-section') ||
+                               document.getElementById('testimonials') ||
+                               document.querySelector('.testimonials');
+
+                if (section) {
+                    console.log('📜 Scrolling to section...');
+                    section.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+
+                    // Add highlight effect
+                    section.style.boxShadow = '0 0 0 3px #4361ee';
+                    setTimeout(() => {
+                        section.style.boxShadow = 'none';
+                    }, 2000);
+
+                    // 2. THEN: Open modal after scroll completes
+                    setTimeout(() => {
+                        console.log('🚪 Opening modal...');
+                        openTestimonialModal();
+                    }, 800); // Wait for scroll to finish
+                }
+            }, 300);
+        }
+    }
+
+    function openTestimonialModal() {
+        // Try to find and click the testimonial button
+        const testimonialBtn = document.getElementById('testimonialBtn');
+
+        if (testimonialBtn) {
+            console.log('🎯 Found testimonial button, clicking...');
+            testimonialBtn.click();
+
+            // Set flag to prevent re-opening in this session
+            sessionStorage.setItem('modalAutoOpened', 'true');
+
+            // Listen for modal close
+            const modal = document.getElementById('testimonialModal');
+            if (modal) {
+                // Check when modal closes
+                const observer = new MutationObserver(() => {
+                    if (modal.style.display === 'none') {
+                        console.log('✅ Modal closed');
+                        observer.disconnect();
+                    }
+                });
+
+                observer.observe(modal, {
+                    attributes: true,
+                    attributeFilter: ['style']
+                });
+            }
+        } else {
+            console.warn('⚠️ Testimonial button not found');
+            // Fallback: try after a delay
+            setTimeout(() => {
+                const retryBtn = document.getElementById('testimonialBtn');
+                if (retryBtn) retryBtn.click();
+            }, 1000);
+        }
+    }
+
+    // Initialize when DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', handleDashboardTestimonialRedirect);
+
+    // Also run when hash changes (in case of direct navigation)
+    window.addEventListener('hashchange', function() {
+        if (window.location.hash === '#testimonials-section') {
+            // Small delay to ensure DOM is ready
+            setTimeout(handleDashboardTestimonialRedirect, 100);
+        }
     });
 
     // =============================================
