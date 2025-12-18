@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+import os
+load_dotenv()
 import uuid
 import secrets
 import hashlib
@@ -7,7 +10,6 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
-import os
 import logging
 from datetime import datetime, timedelta, timezone, time
 from io import BytesIO
