@@ -1,4 +1,9 @@
 careermaker/
+├──.env
+├──config
+│   └── credentials
+│       ├── credentials.json
+│       └── token.json
 ├── static/
 │   ├── css/
 │   │   ├── styles.css                  # for index.html template
@@ -7,6 +12,7 @@ careermaker/
 │   │   └── admin-dashboard.css         # for admin dashboard template
 │   ├── js/
 │   │   ├── main.js                     # for index.html template
+│   │   ├── admin-login.js
 │   │   ├── user-dashboard.js           # for user-dashboard.html template
 │   │   └── admin-dashboard.js          # for admin-dashboard.html template
 │   └── images/
@@ -14,8 +20,10 @@ careermaker/
 │       ├── hero-bg.jpg
 │       └── testimonials/                  # images will auto fetch from the user profile pic whoever is writing post, not manual update
 ├── templates/
+│   ├── 403.html
+│   ├── 404.html
+│   ├── 500.html
 │   ├── base.html
-│   ├── share.html
 │   ├── index.html
 │   ├── courses.html                        # this is for website rendering the courses and for admin also to post data
 │   ├── internships.html                    # this is for website rendering the internships and for admin also to post data
@@ -24,10 +32,14 @@ careermaker/
 │   ├── reset-password.html                 # reset password mail send with link to reset password
 │   ├── user-dashboard.html                 # for user bookmark to save the courses, jobs, internships for later apply when click my profile after login
 │   ├── reset-password-otp.html
+│   ├── terms.html
+│   ├── privacy.html
 │   └── admin/
 │         ├── admin-login.html               # hide the button in the frontend but implement route to access directly by route address in the domain manually
 │         └── admin-dashboard.html          # admin redirect to this page after login to upload courses, jobs, internships, blogs
 ├── app.py
 ├── .env
 ├── .gitignore
+├── file structure.txt
+├── README.md
 └── requirements.txt
