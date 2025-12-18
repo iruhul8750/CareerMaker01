@@ -1,5 +1,6 @@
-from dotenv import load_dotenv
 import os
+
+from dotenv import load_dotenv
 load_dotenv()
 import uuid
 import secrets
@@ -6443,9 +6444,5 @@ if __name__ == '__main__':
     # make sure upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    app.run(
-        host='0.0.0.0',
-        port=int(os.getenv('PORT', 5000)),
-        threaded=True,
-        debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
-    )
+    if __name__ == "__main__":
+        app.run()
