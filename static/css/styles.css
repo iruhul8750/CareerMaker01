@@ -6816,9 +6816,6 @@ footer .container {
 /* =========================================== */
 /* MOBILE RESPONSIVE STYLES ONLY */
 /* =========================================== */
-/* These styles ONLY apply to mobile/tablet screens */
-/* Desktop styles remain completely untouched */
-
 /* Mobile Menu Toggle - Hidden on Desktop */
 .mobile-menu-toggle {
   display: none;
@@ -6834,19 +6831,33 @@ footer .container {
   justify-content: center;
   align-items: center;
   position: relative;
+  background-color: rgba(16, 185, 129, 0.1);
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
+.dark-mode .mobile-menu-toggle {
+  background-color: rgba(52, 211, 153, 0.1);
+}
+
+.dark-mode .mobile-menu-toggle:hover {
+  background-color: rgba(52, 211, 153, 0.2);
 }
 
 .mobile-menu-toggle .hamburger {
   display: block;
   width: 24px;
   height: 2px;
-  background-color: var(--dark-color);
+  background-color: var(--primary-color);
   position: relative;
   transition: all 0.3s ease;
 }
 
 .dark-mode .mobile-menu-toggle .hamburger {
-  background-color: var(--dark-mode-text);
+  background-color: var(--accent-color);
 }
 
 .mobile-menu-toggle .hamburger::before,
@@ -6880,7 +6891,7 @@ footer .container {
   transform: translateY(-8px) rotate(-45deg);
 }
 
-/* Mobile Menu Overlay */
+/* Mobile Menu Overlay - SIMPLE VERSION */
 .mobile-menu-overlay {
   display: none;
   position: fixed;
@@ -6889,8 +6900,7 @@ footer .container {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(3px);
-  z-index: 999;
+  z-index: 998;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -6909,29 +6919,29 @@ footer .container {
     display: flex;
   }
 
-  /* Mobile navigation container - ONLY for mobile */
+  /* Mobile navigation container */
   .nav-container {
     position: fixed;
     top: 0;
     left: -100%;
     width: 320px;
-    max-width: 85%;
+    max-width: 90%;
     height: 100vh;
     background-color: white;
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding-top: 80px;
+    padding-top: 70px;
     padding-bottom: 2rem;
-    z-index: 1000;
-    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.15);
-    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease;
     overflow-y: auto;
   }
 
   .dark-mode .nav-container {
     background-color: var(--dark-mode-card);
-    box-shadow: 5px 0 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
   }
 
   .nav-container.active {
@@ -6943,7 +6953,7 @@ footer .container {
     flex-direction: column;
     margin: 0;
     width: 100%;
-    padding: 0 1.5rem;
+    padding: 0 1rem;
   }
 
   .nav-links li {
@@ -6955,13 +6965,13 @@ footer .container {
     display: flex;
     align-items: center;
     padding: 1rem 1.5rem;
-    border-radius: 10px;
+    border-radius: 8px;
     width: 100%;
     text-decoration: none;
     color: var(--dark-color);
     font-weight: 600;
-    transition: all 0.3s ease;
-    border-left: 4px solid transparent;
+    font-size: 1rem;
+    transition: all 0.2s ease;
   }
 
   .dark-mode .nav-links a {
@@ -6979,15 +6989,12 @@ footer .container {
   .nav-links a.active {
     background-color: rgba(16, 185, 129, 0.1);
     color: var(--primary-color);
-    border-left-color: var(--primary-color);
-    transform: translateX(5px);
   }
 
   .dark-mode .nav-links a:hover,
   .dark-mode .nav-links a.active {
     background-color: rgba(52, 211, 153, 0.1);
     color: var(--accent-color);
-    border-left-color: var(--accent-color);
   }
 
   /* Navigation right section - Mobile layout */
@@ -6995,23 +7002,26 @@ footer .container {
     flex-direction: column;
     align-items: stretch;
     width: 100%;
-    padding: 1.5rem;
+    padding: 1.5rem 1rem;
     margin-top: auto;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .dark-mode .nav-right {
+    border-top-color: rgba(255, 255, 255, 0.1);
   }
 
   .theme-toggle {
     margin: 0 0 1rem 0;
     padding: 1rem 1.5rem;
     width: 100%;
-    justify-content: flex-start;
-    border-radius: 10px;
+    justify-content: space-between;
+    border-radius: 8px;
     background-color: rgba(16, 185, 129, 0.05);
-    border-left: 4px solid var(--primary-color);
   }
 
   .dark-mode .theme-toggle {
     background-color: rgba(52, 211, 153, 0.05);
-    border-left-color: var(--accent-color);
   }
 
   .auth-buttons {
@@ -7032,6 +7042,13 @@ footer .container {
   .user-profile-nav {
     width: 100%;
     margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: rgba(16, 185, 129, 0.05);
+    border-radius: 8px;
+  }
+
+  .dark-mode .user-profile-nav {
+    background-color: rgba(52, 211, 153, 0.05);
   }
 
   .user-dropdown-nav {
@@ -7039,7 +7056,7 @@ footer .container {
     opacity: 1;
     visibility: visible;
     transform: none;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     box-shadow: none;
     background: transparent;
     border: 1px solid rgba(16, 185, 129, 0.2);
@@ -7072,12 +7089,12 @@ footer .container {
   }
 
   .nav-links {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
   }
 
   .nav-links a {
     padding: 0.9rem 1.2rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .nav-right {
@@ -7122,9 +7139,6 @@ footer .container {
   .preview-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
   }
 
   .featured-courses-grid,
@@ -7211,11 +7225,12 @@ footer .container {
 @media (max-width: 480px) {
   .nav-container {
     width: 280px;
+    max-width: 95%;
   }
 
   .nav-links a {
     padding: 0.8rem 1rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .nav-links a i {
@@ -7280,9 +7295,3 @@ footer .container {
     font-size: 0.9rem;
   }
 }
-
-/* =========================================== */
-/* IMPORTANT: DO NOT ADD DESKTOP OVERRIDES */
-/* =========================================== */
-/* Your original CSS already handles desktop perfectly */
-/* No @media (min-width: 992px) section needed */
