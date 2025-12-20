@@ -1,4 +1,4 @@
-from app import supabase_admin, hash_password, get_current_time, logger
+from main import supabase_admin, hash_password, get_current_utc_time, logger
 
 
 def create_initial_admin():
@@ -15,8 +15,8 @@ def create_initial_admin():
                 'password_hash': hash_password('admin1234'),  # Change this in production!
                 'is_superadmin': True,
                 'is_active': True,
-                'created_at': get_current_time().isoformat(),
-                'updated_at': get_current_time().isoformat()
+                'created_at': get_current_utc_time().isoformat(),
+                'updated_at': get_current_utc_time().isoformat()
             }
 
             supabase_admin.table('admins').insert(admin_data).execute()
