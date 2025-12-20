@@ -541,7 +541,7 @@
 
                         // Store in session for quick access
                         sessionStorage.setItem('navProfilePicUrl', data.image_url);
-                        sessionStorage.setItem('navProfilePicTimestamp', Date.now());
+                        sessionStorage.setItem('navProfilePicTimestamp', timestamp);
                     };
                     testImage.onerror = function() {
                         // Image failed to load, show initials
@@ -575,6 +575,28 @@
         // Reload with fresh cache busting
         loadNavigationProfilePicture();
     }
+
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit for the DOM to fully load
+        setTimeout(() => {
+            loadNavigationProfilePicture();
+        }, 500);
+
+        // Listen for login events
+        document.addEventListener('userLoggedIn', function() {
+            setTimeout(() => {
+                loadNavigationProfilePicture();
+            }, 1000);
+        });
+
+        // Listen for profile picture updates
+        document.addEventListener('profilePictureUpdated', function() {
+            setTimeout(() => {
+                refreshNavigationProfilePicture();
+            }, 500);
+        });
+    });
 
     // =============================================
     // Modal Management - ENHANCED FOR NAVIGATION
@@ -851,7 +873,7 @@
     }
 
     // Share functionality - FIXED to open in same tab
-    async function shareContent(contentId, contentType, button) {
+     async function shareContent(contentId, contentType, button) {
         console.log('Share function called:', { contentType, contentId, button });
 
         // Show loading state on the button
@@ -1053,6 +1075,33 @@
             modal.classList.remove('dark-mode');
         }
     }
+
+    // Listen for theme changes
+    function initShareModalThemeListener() {
+        // Observe theme changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class') {
+                    applyDarkModeToModal();
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        // Also check localStorage for theme
+        if (localStorage.getItem('theme') === 'dark') {
+            applyDarkModeToModal();
+        }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        initShareModalThemeListener();
+    });
 
     // =============================================
     // OTP Verification System
@@ -2603,6 +2652,93 @@
         }
     };
 
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        testimonialSystem.init();
+    });
+
+    // Auto scroll support for user dashboard to add testimonial
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.location.hash === '#testimonials') {
+            // Remove hash
+            history.replaceState(null, null, ' ');
+
+            // Simple scroll after delay
+            setTimeout(() => {
+                const section = document.getElementById('testimonials-section') ||
+                               document.getElementById('testimonials') ||
+                               document.querySelector('.testimonials') ||
+                               document.querySelector('section');
+
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Highlight
+                    section.style.boxShadow = '0 0 0 3px #4361ee';
+                    setTimeout(() => section.style.boxShadow = 'none', 2000);
+                }
+            }, 800);
+        }
+    });
+
+    // =============================================
+    // Newsletter Form Handling
+    // =============================================
+    const newsletterForm = document.getElementById('newsletterForm');
+    if (newsletterForm) {
+        newsletterForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = newsletterForm.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const formResponse = document.getElementById('newsletterResponse');
+            const emailInput = newsletterForm.querySelector('input[type="email"]');
+
+            btnText.style.display = 'none';
+            submitBtn.disabled = true;
+            formResponse.style.display = 'none';
+
+            // Show loader
+            const loader = showLoader('Subscribing...');
+
+            try {
+                const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: emailInput.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to subscribe');
+                }
+
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response success';
+                formResponse.textContent = data.message;
+                formResponse.style.display = 'block';
+                newsletterForm.reset();
+
+                // Show success toast
+                showToast('Subscribed successfully!', 'success');
+
+            } catch (error) {
+                hideLoader(); // Hide loader first
+                formResponse.className = 'form-response error';
+                formResponse.textContent = error.message || 'An error occurred. Please try again.';
+                formResponse.style.display = 'block';
+                showToast('Failed to subscribe', 'error');
+            } finally {
+                btnText.style.display = 'inline-block';
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
     // =============================================
     // BLOG MODAL SYSTEM - UPDATED
     // =============================================
@@ -3098,6 +3234,30 @@
     };
 
     // =============================================
+    // INITIALIZATION
+    // =============================================
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize blog modal system
+        blogModal.init();
+
+        // Add click handlers for entire blog cards
+        document.querySelectorAll('.blog-card-vertical').forEach(card => {
+            card.addEventListener('click', function(e) {
+                // Don't trigger if clicking on buttons or links
+                if (e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                }
+
+                const blogId = this.dataset.id;
+                blogModal.openModal(blogId);
+            });
+        });
+
+        console.log('🎯 Blog system fully initialized');
+    });
+
+    // =============================================
     // Flash Message Handling
     // =============================================
     function initFlashMessages() {
@@ -3218,6 +3378,17 @@
         }
     }
 
+    // Initialize when DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', handleDashboardTestimonialRedirect);
+
+    // Also run when hash changes (in case of direct navigation)
+    window.addEventListener('hashchange', function() {
+        if (window.location.hash === '#testimonials-section') {
+            // Small delay to ensure DOM is ready
+            setTimeout(handleDashboardTestimonialRedirect, 100);
+        }
+    });
+
     // =============================================
     // Active Navigation on Scroll
     // =============================================
@@ -3327,6 +3498,9 @@
             }
         });
     }
+
+    // Call this function when the page loads
+    document.addEventListener('DOMContentLoaded', initializeBadgeColors);
 
     // =============================================
     // Dark Mode Toggle
@@ -3526,12 +3700,4 @@
         }
 
         console.log('🎯 Application fully initialized');
-    });
-
-    // Also run when hash changes (in case of direct navigation)
-    window.addEventListener('hashchange', function() {
-        if (window.location.hash === '#testimonials-section') {
-            // Small delay to ensure DOM is ready
-            setTimeout(handleDashboardTestimonialRedirect, 100);
-        }
     });
