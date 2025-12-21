@@ -4168,97 +4168,33 @@
         }
     }
 
-    // ===========================================
-    // INITIALIZATION - MOBILE ONLY
-    // ===========================================
-
-    // Mobile menu toggle
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const navContainer = document.getElementById('navContainer');
-    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
-
-    if (mobileMenuToggle && navContainer) {
-      mobileMenuToggle.addEventListener('click', () => {
-        navContainer.classList.toggle('active');
-        mobileMenuOverlay.classList.toggle('active');
-        mobileMenuToggle.classList.toggle('active');
-        document.body.classList.toggle('menu-open');
-
-        // Update aria-expanded
-        const isExpanded = mobileMenuToggle.getAttribute('aria-expanded') === 'true';
-        mobileMenuToggle.setAttribute('aria-expanded', !isExpanded);
-      });
-
-      // Close menu when clicking overlay
-      mobileMenuOverlay.addEventListener('click', () => {
-        navContainer.classList.remove('active');
-        mobileMenuOverlay.classList.remove('active');
-        mobileMenuToggle.classList.remove('active');
-        document.body.classList.remove('menu-open');
-        mobileMenuToggle.setAttribute('aria-expanded', 'false');
-      });
-
-      // Close menu when clicking on a link
-      const navLinks = navContainer.querySelectorAll('a');
-      navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          navContainer.classList.remove('active');
-          mobileMenuOverlay.classList.remove('active');
-          mobileMenuToggle.classList.remove('active');
-          document.body.classList.remove('menu-open');
-          mobileMenuToggle.setAttribute('aria-expanded', 'false');
-        });
-      });
-    }
-    function initMobileTestimonial() {
-        // Only run on mobile
-        if (window.innerWidth > 991) return;
-
-        // Clean up existing instance
-        if (window.mobileTestimonial) {
-            window.mobileTestimonial.destroy();
-            delete window.mobileTestimonial;
-        }
-
-        // Initialize new instance
-        window.mobileTestimonial = new MobileTestimonialTouch();
-
-        if (window.mobileTestimonial) {
-            console.log('✅ Mobile testimonial system ready');
-        }
-    }
-
-    // ===========================================
-    // AUTO INITIALIZE
-    // ===========================================
-
-    // Initialize on DOM ready
+     // Fix for user profile in mobile menu
     document.addEventListener('DOMContentLoaded', function() {
-        // Check if on mobile
-        if (window.innerWidth <= 991) {
-            // Wait a bit for testimonials to load
-            setTimeout(initMobileTestimonial, 1000);
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const navContainer = document.getElementById('navContainer');
+
+      if (mobileMenuToggle && navContainer) {
+        // When mobile menu opens, make sure user dropdown is visible
+        mobileMenuToggle.addEventListener('click', function() {
+          const userDropdown = document.querySelector('.user-dropdown-nav');
+          if (userDropdown && window.innerWidth < 992) {
+            // Force display for mobile
+            userDropdown.style.display = 'flex';
+            userDropdown.style.opacity = '1';
+            userDropdown.style.visibility = 'visible';
+            userDropdown.style.position = 'static';
+          }
+        });
+
+        // Also fix on page load for mobile
+        if (window.innerWidth < 992) {
+          const userDropdown = document.querySelector('.user-dropdown-nav');
+          if (userDropdown) {
+            userDropdown.style.display = 'flex';
+            userDropdown.style.opacity = '1';
+            userDropdown.style.visibility = 'visible';
+            userDropdown.style.position = 'static';
+          }
         }
+      }
     });
-
-    // Re-initialize on resize to mobile
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            // If switching to mobile
-            if (window.innerWidth <= 991 && !window.mobileTestimonial) {
-                console.log('📱 Switched to mobile, initializing testimonial');
-                initMobileTestimonial();
-            }
-            // If switching to desktop
-            else if (window.innerWidth > 991 && window.mobileTestimonial) {
-                console.log('💻 Switched to desktop, cleaning up mobile testimonial');
-                window.mobileTestimonial.destroy();
-                delete window.mobileTestimonial;
-            }
-        }, 250);
-    });
-
-    // Optional: Manual initialization
-    window.initMobileTestimonial = initMobileTestimonial;
