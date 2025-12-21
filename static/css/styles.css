@@ -6882,7 +6882,7 @@ footer .container {
     transform: translateY(-8px) rotate(-45deg);
   }
 
-  /* Mobile Menu Overlay */
+  /* Mobile Menu Overlay - FIXED: Make it just a background */
   .mobile-menu-overlay {
     position: fixed;
     top: 0;
@@ -6894,6 +6894,7 @@ footer .container {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(2px);
   }
 
   .mobile-menu-overlay.active {
@@ -6901,19 +6902,22 @@ footer .container {
     visibility: visible;
   }
 
-  /* Mobile Navigation Container */
+  /* Mobile Navigation Container - FIXED: Height based on content */
   .mobile-nav-container {
     position: fixed;
     top: 0;
-    left: -300px;
+    left: -280px;
     width: 280px;
-    height: 100%;
+    min-height: auto; /* Change from height: 100% */
+    max-height: 100vh; /* Limit to viewport height */
     background-color: white;
     z-index: 1000;
-    overflow-y: auto;
+    overflow-y: auto; /* Enable scrolling if content exceeds height */
     transition: left 0.3s ease;
-    padding: 70px 20px 20px 20px;
+    padding: 20px;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
   }
 
   .dark-mode .mobile-nav-container {
@@ -6924,12 +6928,44 @@ footer .container {
     left: 0;
   }
 
+  /* Mobile Navigation Header - Added */
+  .mobile-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+  }
+
+  .dark-mode .mobile-nav-header {
+    border-bottom-color: #374151;
+  }
+
+  .mobile-nav-header .logo {
+    font-size: 1.5rem;
+  }
+
+  .mobile-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+  }
+
+  .dark-mode .mobile-close-btn {
+    color: #aaa;
+  }
+
   /* Mobile Navigation Links */
   .mobile-nav-links {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px; /* Reduced gap */
     margin-bottom: 20px;
+    flex: 1; /* Take available space */
   }
 
   .mobile-nav-links a {
@@ -6970,7 +7006,7 @@ footer .container {
     padding: 15px;
     border-radius: 8px;
     background-color: rgba(16, 185, 129, 0.05);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
 
   .dark-mode .mobile-user-profile {
@@ -6985,7 +7021,7 @@ footer .container {
     padding: 12px 16px;
     border-radius: 8px;
     background-color: rgba(16, 185, 129, 0.05);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     cursor: pointer;
   }
 
@@ -6993,11 +7029,18 @@ footer .container {
     background-color: rgba(52, 211, 153, 0.05);
   }
 
-  /* Mobile Auth Buttons */
+  /* Mobile Auth Buttons - FIXED: Position at bottom */
   .mobile-auth-buttons {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-top: auto; /* Push to bottom */
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+
+  .dark-mode .mobile-auth-buttons {
+    border-top-color: #374151;
   }
 
   .mobile-auth-buttons .btn {
@@ -7035,4 +7078,324 @@ footer .container {
   .preview-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+}
+/* =========================================== */
+/* FIX HORIZONTAL SCROLLBAR ON MOBILE */
+/* =========================================== */
+
+@media (max-width: 991px) {
+  /* Prevent horizontal overflow */
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Ensure all containers fit within viewport */
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+
+  /* Fix navbar width */
+  .navbar {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem 15px;
+    transform: translateX(0); /* Remove the shift that might cause overflow */
+    margin-left: 0;
+  }
+
+  /* Fix hero section */
+  .hero-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 15px;
+  }
+
+  /* Fix grid layouts */
+  .preview-grid,
+  .featured-courses-grid,
+  .featured-jobs-grid,
+  .featured-internships-grid,
+  .featured-blogs-grid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix cards to not exceed width */
+  .preview-card,
+  .blog-card-vertical,
+  .feature-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Fix images to be responsive */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Fix any absolute positioned elements */
+  .testimonials-carousel,
+  .support-row,
+  .footer-grid {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Fix modal width */
+  .modal-content,
+  .share-modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px;
+  }
+
+  /* Remove any fixed widths that might cause overflow */
+  .preview-grid {
+    gap: 15px;
+  }
+}
+
+/* Additional fixes for very small screens */
+@media (max-width: 480px) {
+  /* Further reduce padding on small screens */
+  .container {
+    padding: 0 10px;
+  }
+
+  .navbar {
+    padding: 0.8rem 10px;
+  }
+
+  /* Adjust section padding */
+  section {
+    padding: 3rem 10px;
+  }
+
+  /* Adjust hero section */
+  .hero {
+    padding: 2rem 10px;
+  }
+
+  .hero h1 {
+    font-size: 1.8rem;
+    line-height: 1.3;
+  }
+
+  /* Make buttons fit better */
+  .btn {
+    white-space: normal;
+    word-break: break-word;
+    padding: 0.8rem 1rem;
+  }
+
+  /* Fix action buttons in cards */
+  .action-buttons {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-buttons .btn-icon,
+  .action-buttons .btn-primary {
+    flex: 1;
+    min-width: 0;
+  }
+}
+/* =========================================== */
+/* FIX TOP NAV BAR TO BE STICKY/FIXED ON MOBILE */
+/* =========================================== */
+
+/* Global sticky header for ALL screen sizes */
+header {
+  position: -webkit-sticky; /* Safari */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  width: 100% !important;
+  background-color: white !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark-mode header {
+  background-color: var(--dark-mode-card) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Mobile specific fixes */
+@media (max-width: 991px) {
+  /* Force header to be fixed/sticky */
+  header {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Fix navbar container */
+  .navbar {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 15px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background-color: inherit !important;
+  }
+
+  /* Logo styling */
+  .logo {
+    font-size: 1.4rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 1001 !important;
+  }
+
+  /* Hamburger menu button */
+  .mobile-menu-toggle {
+    position: relative !important;
+    z-index: 1001 !important;
+    margin: 0 !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+  }
+
+  /* Position mobile menu below the sticky header */
+  .mobile-nav-container {
+    position: fixed !important;
+    top: 70px !important; /* Height of sticky header */
+    left: -280px !important;
+    width: 280px !important;
+    height: calc(100vh - 70px) !important; /* Full height minus header */
+    background-color: white !important;
+    z-index: 1000 !important;
+    overflow-y: auto !important;
+    transition: left 0.3s ease !important;
+    padding: 20px !important;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .dark-mode .mobile-nav-container {
+    background-color: #1e293b !important;
+  }
+
+  .mobile-nav-container.active {
+    left: 0 !important;
+  }
+
+  /* Mobile menu overlay should cover everything except header */
+  .mobile-menu-overlay {
+    position: fixed !important;
+    top: 70px !important; /* Start below header */
+    left: 0 !important;
+    width: 100% !important;
+    height: calc(100vh - 70px) !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 999 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    backdrop-filter: blur(2px) !important;
+  }
+
+  .mobile-menu-overlay.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Prevent body scroll when menu is open */
+  body.menu-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+  }
+
+  /* Add padding to first content element to prevent hiding under header */
+  main, .hero {
+    padding-top: 0 !important;
+  }
+
+  /* Adjust sections to account for sticky header */
+  section {
+    scroll-margin-top: 80px !important;
+  }
+
+  .hero {
+    margin-top: 0 !important;
+    padding-top: 3rem !important;
+  }
+
+  /* Ensure scroll-to-top button is above everything */
+  .scroll-to-top {
+    z-index: 998 !important;
+  }
+}
+
+/* Fix for very small screens */
+@media (max-width: 480px) {
+  header {
+    padding: 0 10px !important;
+  }
+
+  .navbar {
+    padding: 10px !important;
+    min-height: 60px !important;
+  }
+
+  .logo {
+    font-size: 1.3rem !important;
+  }
+
+  .mobile-nav-container {
+    top: 60px !important;
+    height: calc(100vh - 60px) !important;
+  }
+
+  .mobile-menu-overlay {
+    top: 60px !important;
+    height: calc(100vh - 60px) !important;
+  }
+
+  section {
+    scroll-margin-top: 65px !important;
+  }
+
+  .hero {
+    padding-top: 2.5rem !important;
+  }
+}
+
+/* Ensure desktop behavior is not affected */
+@media (min-width: 992px) {
+  header {
+    position: sticky !important;
+    top: 0 !important;
+  }
+
+  .navbar {
+    transform: translateX(50px) !important;
+  }
+}
+
+/* If there are any conflicting styles, override them */
+.navbar {
+  background-color: inherit !important;
+}
+
+/* Make sure nothing is overriding the sticky behavior */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-padding-top: 80px; /* Account for sticky header */
 }
