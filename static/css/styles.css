@@ -6814,12 +6814,127 @@ footer .container {
     100% { transform: rotate(360deg); }
 }
 /* =========================================== */
-/* MOBILE RESPONSIVE STYLES ONLY (BELOW 992px) */
+/* COMPLETE MOBILE CSS BLOCK - ORGANIZED */
+/* =========================================== */
+
+/* =========================================== */
+/* GLOBAL MOBILE FIXES (Outside media query) */
+/* =========================================== */
+
+/* Ensure user dropdown is visible in dark mode */
+.dark-mode .user-dropdown-nav {
+  background-color: var(--dark-mode-card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark-mode .user-dropdown-nav a {
+  color: var(--dark-mode-text) !important;
+}
+
+.dark-mode .user-dropdown-nav a:hover {
+  background-color: rgba(52, 211, 153, 0.1) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Dashboard link visibility */
+.dark-mode .user-dropdown-nav a[href="/dashboard"] {
+  color: var(--dark-mode-text) !important;
+}
+
+.dark-mode .user-dropdown-nav a[href="/dashboard"]:hover {
+  color: var(--accent-color) !important;
+}
+
+/* Logout button in dark mode */
+.dark-mode .user-dropdown-nav a[href*="logout"],
+.dark-mode .user-dropdown-nav a#logoutBtn {
+  color: #f87171 !important;
+}
+
+.dark-mode .user-dropdown-nav a[href*="logout"]:hover,
+.dark-mode .user-dropdown-nav a#logoutBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* Profile picture in dark mode */
+.dark-mode .nav-profile-pic-container {
+  border-color: var(--accent-color) !important;
+}
+
+.dark-mode .nav-avatar-initials {
+  color: white !important;
+}
+
+/* =========================================== */
+/* FORCE HAMBURGER X STATE */
+/* =========================================== */
+
+.mobile-menu-toggle.active .hamburger {
+  background-color: transparent !important;
+  transform: rotate(45deg) !important;
+}
+
+.mobile-menu-toggle.active .hamburger::before {
+  transform: translateY(8px) rotate(0deg) !important;
+}
+
+.mobile-menu-toggle.active .hamburger::after {
+  transform: translateY(-8px) rotate(-90deg) !important;
+}
+
+/* Theme-specific colors */
+.dark-mode .mobile-menu-toggle.active .hamburger::before,
+.dark-mode .mobile-menu-toggle.active .hamburger::after {
+  background-color: #e2e8f0 !important;
+}
+
+body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::before,
+body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
+  background-color: #374151 !important;
+}
+
+/* Ensure pseudo-elements exist */
+.mobile-menu-toggle .hamburger::before,
+.mobile-menu-toggle .hamburger::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  width: 24px !important;
+  height: 2px !important;
+  background-color: inherit !important;
+  transition: all 0.3s ease !important;
+}
+
+.mobile-menu-toggle .hamburger::before {
+  top: -8px !important;
+}
+
+.mobile-menu-toggle .hamburger::after {
+  top: 8px !important;
+}
+
+/* Initial state */
+.mobile-menu-toggle .hamburger {
+  background-color: var(--primary-color);
+  height: 2px;
+  width: 24px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .mobile-menu-toggle .hamburger {
+  background-color: var(--accent-color);
+}
+
+/* =========================================== */
+/* MOBILE RESPONSIVE STYLES (Below 992px) */
 /* =========================================== */
 
 @media (max-width: 991px) {
   /* ===================== */
-  /* STICKY HEADER FIX */
+  /* 1. FIXED/STICKY HEADER */
   /* ===================== */
   header {
     position: fixed !important;
@@ -6830,10 +6945,12 @@ footer .container {
     background-color: white !important;
     padding: 0 !important;
     margin: 0 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
   }
 
   .dark-mode header {
     background-color: var(--dark-mode-card) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
   }
 
   body {
@@ -6841,17 +6958,12 @@ footer .container {
   }
 
   /* ===================== */
-  /* NAVBAR FIX */
+  /* 2. NAVBAR CONTAINER */
   /* ===================== */
-  .nav-links,
-  .nav-right {
-    display: none !important;
-  }
-
   .navbar {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 12px 15px !important;
+    padding: 10px 15px !important;
     margin: 0 auto !important;
     transform: none !important;
     background-color: inherit !important;
@@ -6861,8 +6973,46 @@ footer .container {
     align-items: center !important;
   }
 
+  /* Hide desktop nav elements initially */
+  .nav-container {
+    display: none !important;
+  }
+
+  /* Active mobile menu */
+  .nav-container.active {
+    display: flex !important;
+    position: fixed !important;
+    top: 70px !important;
+    right: 0 !important;
+    width: 85% !important;
+    max-width: 320px !important;
+    height: calc(100vh - 70px) !important;
+    background-color: white !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    padding: 2rem 1.5rem !important;
+    z-index: 1000 !important;
+    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.1) !important;
+    overflow-y: auto !important;
+    animation: slideInRight 0.3s ease !important;
+  }
+
+  .dark-mode .nav-container.active {
+    background-color: var(--dark-mode-card) !important;
+    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
   /* ===================== */
-  /* MOBILE MENU TOGGLE */
+  /* 3. MOBILE MENU TOGGLE */
   /* ===================== */
   .mobile-menu-toggle {
     display: flex !important;
@@ -6870,14 +7020,13 @@ footer .container {
     border: none;
     cursor: pointer;
     padding: 10px;
-    z-index: 1002;
+    z-index: 1001;
     width: 50px;
     height: 50px;
     border-radius: 10px;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    position: relative;
     background-color: rgba(16, 185, 129, 0.1);
   }
 
@@ -6909,20 +7058,8 @@ footer .container {
     top: 8px;
   }
 
-  .mobile-menu-toggle.active .hamburger {
-    background-color: transparent;
-  }
-
-  .mobile-menu-toggle.active .hamburger::before {
-    transform: translateY(8px) rotate(45deg);
-  }
-
-  .mobile-menu-toggle.active .hamburger::after {
-    transform: translateY(-8px) rotate(-45deg);
-  }
-
   /* ===================== */
-  /* MOBILE MENU OVERLAY */
+  /* 4. MOBILE MENU OVERLAY */
   /* ===================== */
   .mobile-menu-overlay {
     position: fixed;
@@ -6944,176 +7081,252 @@ footer .container {
   }
 
   /* ===================== */
-  /* MOBILE NAV CONTAINER */
+  /* 5. NAV LINKS STYLING FOR MOBILE */
   /* ===================== */
-  .mobile-nav-container {
-    position: fixed;
-    top: 70px !important;
-    left: -280px;
-    width: 280px;
-    height: calc(100vh - 70px) !important;
-    background-color: white;
-    z-index: 1000;
-    overflow-y: auto;
-    transition: left 0.3s ease;
-    padding: 20px;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
+  .nav-links {
+    flex-direction: column !important;
+    margin: 0 0 1.5rem 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
   }
 
-  .dark-mode .mobile-nav-container {
-    background-color: #1e293b;
+  .nav-links li {
+    margin: 0 0 0.5rem 0 !important;
+    width: 100% !important;
   }
 
-  .mobile-nav-container.active {
-    left: 0;
+  .nav-links a {
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
   }
 
-  /* Mobile Navigation Header */
-  .mobile-nav-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 20px;
+  .nav-links a.active::after {
+    display: none !important;
   }
 
-  .dark-mode .mobile-nav-header {
-    border-bottom-color: #374151;
+  .nav-links a.active {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: var(--primary-color) !important;
   }
 
-  .mobile-nav-header .logo {
-    font-size: 1.5rem;
-  }
-
-  .mobile-close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #666;
-    cursor: pointer;
-    padding: 5px;
-  }
-
-  .dark-mode .mobile-close-btn {
-    color: #aaa;
-  }
-
-  /* Mobile Navigation Links */
-  .mobile-nav-links {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 20px;
-    flex: 1;
-  }
-
-  .mobile-nav-links a {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #333;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
-  }
-
-  .dark-mode .mobile-nav-links a {
-    color: #e2e8f0;
-  }
-
-  .mobile-nav-links a i {
-    margin-right: 12px;
-    font-size: 18px;
-    width: 24px;
-  }
-
-  .mobile-nav-links a:hover,
-  .mobile-nav-links a.active {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: var(--primary-color);
-  }
-
-  .dark-mode .mobile-nav-links a:hover,
-  .dark-mode .mobile-nav-links a.active {
-    background-color: rgba(52, 211, 153, 0.1);
-    color: var(--accent-color);
-  }
-
-  /* Mobile User Profile */
-  .mobile-user-profile {
-    padding: 15px;
-    border-radius: 8px;
-    background-color: rgba(16, 185, 129, 0.05);
-    margin-bottom: 15px;
-  }
-
-  .dark-mode .mobile-user-profile {
-    background-color: rgba(52, 211, 153, 0.05);
-  }
-
-  /* Mobile Theme Toggle */
-  .mobile-theme-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: 8px;
-    background-color: rgba(16, 185, 129, 0.05);
-    margin-bottom: 15px;
-    cursor: pointer;
-  }
-
-  .dark-mode .mobile-theme-toggle {
-    background-color: rgba(52, 211, 153, 0.05);
-  }
-
-  /* Mobile Auth Buttons */
-  .mobile-auth-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: auto;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
-  }
-
-  .dark-mode .mobile-auth-buttons {
-    border-top-color: #374151;
-  }
-
-  .mobile-auth-buttons .btn {
-    width: 100%;
-    padding: 12px;
-    text-align: center;
+  .dark-mode .nav-links a.active {
+    background-color: rgba(52, 211, 153, 0.1) !important;
+    color: var(--accent-color) !important;
   }
 
   /* ===================== */
-  /* CONTENT ADJUSTMENTS */
+  /* 6. NAV-RIGHT STYLING FOR MOBILE */
   /* ===================== */
-  body.menu-open {
-    overflow: hidden;
+  .nav-right {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    margin-top: auto !important;
+    padding-top: 20px !important;
+    border-top: 1px solid #eee !important;
   }
 
+  .dark-mode .nav-right {
+    border-top-color: #374151 !important;
+  }
+
+  .theme-toggle {
+    margin: 0 0 1.5rem 0 !important;
+    padding: 12px 16px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+    border-radius: 8px !important;
+    background-color: rgba(16, 185, 129, 0.05) !important;
+  }
+
+  .dark-mode .theme-toggle {
+    background-color: rgba(52, 211, 153, 0.05) !important;
+  }
+
+  .auth-buttons {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.8rem !important;
+  }
+
+  .auth-buttons .btn {
+    width: 100% !important;
+    margin: 0 !important;
+    text-align: center !important;
+    padding: 12px !important;
+  }
+
+  /* ===================== */
+  /* 7. USER PROFILE & AVATAR CENTERING */
+  /* ===================== */
+  .user-profile-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin: 0 auto 20px !important;
+    padding: 15px !important;
+    text-align: center !important;
+    background-color: rgba(16, 185, 129, 0.05) !important;
+    border-radius: 12px !important;
+  }
+
+  .dark-mode .user-profile-nav {
+    background-color: rgba(52, 211, 153, 0.05) !important;
+  }
+
+  /* Center the avatar */
+  .nav-profile-pic-container {
+    width: 80px !important;
+    height: 80px !important;
+    margin: 0 auto 15px !important;
+    border-width: 3px !important;
+  }
+
+  /* Center user info */
+  .user-dropdown-header {
+    text-align: center !important;
+    padding: 0 !important;
+    background: transparent !important;
+    margin-bottom: 15px !important;
+  }
+
+  .user-dropdown-header strong {
+    display: block !important;
+    font-size: 18px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .user-dropdown-header small {
+    display: block !important;
+    font-size: 13px !important;
+    color: #666 !important;
+    opacity: 0.8 !important;
+  }
+
+  .dark-mode .user-dropdown-header small {
+    color: #aaa !important;
+  }
+
+  /* Stack dashboard and logout buttons below avatar */
+  .user-dropdown-nav {
+    position: static !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+  }
+
+  .user-dropdown-nav a {
+    width: 100% !important;
+    max-width: 200px !important;
+    justify-content: center !important;
+    padding: 12px 20px !important;
+    border-radius: 8px !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  /* Dark mode fixes for centered layout */
+  .dark-mode .user-dropdown-nav a {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .dark-mode .user-dropdown-nav a:hover {
+    background-color: rgba(52, 211, 153, 0.15) !important;
+    border-color: var(--accent-color) !important;
+  }
+
+  /* ===================== */
+  /* 8. HERO SECTION FIX */
+  /* ===================== */
   .hero {
-    margin-top: 0 !important;
-    padding-top: 1rem !important;
+    padding: 2rem 15px !important;
+    text-align: center !important;
   }
 
-  section {
-    scroll-margin-top: 80px !important;
+  .hero-content {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+    text-align: center !important;
+    padding: 0 !important;
   }
 
-  .container {
-    padding: 0 15px;
-    padding-top: 0 !important;
+  .hero-text {
+    order: 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .hero h1 {
+    font-size: 2rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+  }
+
+  .hero p {
+    font-size: 1rem !important;
+    max-width: 100% !important;
+    margin: 0 auto 1.5rem !important;
+    text-align: center !important;
+    padding: 0 10px !important;
+  }
+
+  .hero-image {
+    order: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto 1.5rem !important;
+    text-align: center !important;
+    padding: 0 !important;
+  }
+
+  .hero-image img {
+    width: 100% !important;
+    max-width: 350px !important;
+    height: auto !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+    margin: 0 auto !important;
+    display: block !important;
+  }
+
+  .hero-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-top: 1.5rem !important;
+    width: 100% !important;
+  }
+
+  .hero-buttons .btn {
+    width: 100% !important;
+    max-width: 250px !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
+    padding: 0.9rem 1.5rem !important;
+    font-size: 1rem !important;
   }
 
   /* ===================== */
-  /* HORIZONTAL SCROLL FIX */
+  /* 9. HORIZONTAL SCROLL FIX */
   /* ===================== */
   html, body {
     max-width: 100%;
@@ -7124,11 +7337,7 @@ footer .container {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-  }
-
-  .navbar {
-    width: 100%;
-    max-width: 100%;
+    padding: 0 15px;
   }
 
   .hero-content {
@@ -7177,11 +7386,27 @@ footer .container {
   .preview-grid {
     gap: 15px;
   }
+
+  /* ===================== */
+  /* 10. CONTENT ADJUSTMENTS */
+  /* ===================== */
+  body.menu-open {
+    overflow: hidden;
+  }
+
+  section {
+    scroll-margin-top: 80px !important;
+  }
+
+  .hero {
+    margin-top: 0 !important;
+    padding-top: 1rem !important;
+  }
 }
 
-/* ===================== */
-/* VERY SMALL SCREENS */
-/* ===================== */
+/* =========================================== */
+/* VERY SMALL SCREENS (Below 480px) */
+/* =========================================== */
 @media (max-width: 480px) {
   header {
     padding: 0 10px !important;
@@ -7196,7 +7421,7 @@ footer .container {
     padding-top: 60px !important;
   }
 
-  .mobile-nav-container {
+  .nav-container.active {
     top: 60px !important;
     height: calc(100vh - 60px) !important;
   }
@@ -7210,10 +7435,6 @@ footer .container {
     padding: 0 10px;
   }
 
-  .navbar {
-    padding: 0.8rem 10px;
-  }
-
   section {
     padding: 3rem 10px;
   }
@@ -7223,179 +7444,93 @@ footer .container {
   }
 
   .hero h1 {
-    font-size: 1.8rem;
-    line-height: 1.3;
-  }
-
-  .btn {
-    white-space: normal;
-    word-break: break-word;
-    padding: 0.8rem 1rem;
-  }
-
-  .action-buttons {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .action-buttons .btn-icon,
-  .action-buttons .btn-primary {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-/* Tablet adjustments (768px - 991px) */
-@media (min-width: 768px) and (max-width: 991px) {
-  .mobile-nav-container {
-    width: 320px;
-  }
-
-  .preview-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
-/* =========================================== */
-/* FIX HERO SECTION ON MOBILE */
-/* =========================================== */
-
-@media (max-width: 991px) {
-  /* Fix hero section layout */
-  .hero {
-    padding: 2rem 15px !important;
-    text-align: center !important;
-  }
-
-  /* Fix hero content grid - stack vertically */
-  .hero-content {
-    display: flex !important;
-    flex-direction: column !important;
-    grid-template-columns: 1fr !important;
-    gap: 2rem !important;
-    text-align: center !important;
-    padding: 0 !important;
-  }
-
-  /* Hero text adjustments */
-  .hero-text {
-    order: 2 !important; /* Text comes after image on mobile */
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 0 !important;
-  }
-
-  .hero h1 {
-    font-size: 2rem !important;
-    line-height: 1.3 !important;
-    margin-bottom: 1rem !important;
-    text-align: center !important;
-  }
-
-  .hero p {
-    font-size: 1rem !important;
-    max-width: 100% !important;
-    margin: 0 auto 1.5rem !important;
-    text-align: center !important;
-    padding: 0 10px !important;
-  }
-
-  /* Hero image adjustments */
-  .hero-image {
-    order: 1 !important; /* Image comes first on mobile */
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 auto 1.5rem !important;
-    text-align: center !important;
-    padding: 0 !important;
-  }
-
-  .hero-image img {
-    width: 100% !important;
-    max-width: 350px !important; /* Limit max width */
-    height: auto !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-    margin: 0 auto !important;
-    display: block !important;
-  }
-
-  /* Hero buttons - center them */
-  .hero-buttons {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 1rem !important;
-    justify-content: center !important;
-    align-items: center !important;
-    margin-top: 1.5rem !important;
-    width: 100% !important;
-  }
-
-  .hero-buttons .btn {
-    width: 100% !important;
-    max-width: 250px !important;
-    margin: 0 auto !important;
-    justify-content: center !important;
-    padding: 0.9rem 1.5rem !important;
-    font-size: 1rem !important;
-  }
-
-  /* If you want buttons side by side on larger mobiles */
-  @media (min-width: 480px) and (max-width: 991px) {
-    .hero-buttons {
-      flex-direction: row !important;
-      flex-wrap: wrap !important;
-      justify-content: center !important;
-    }
-
-    .hero-buttons .btn {
-      width: auto !important;
-      min-width: 180px !important;
-      flex: 0 0 auto !important;
-    }
-  }
-
-  /* Remove any floats or positioning that might be breaking layout */
-  .hero-text, .hero-image {
-    float: none !important;
-    position: relative !important;
-    left: 0 !important;
-    right: 0 !important;
-    transform: none !important;
-  }
-
-  /* Ensure no margins are pushing content */
-  .hero-content > * {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-}
-
-/* Additional fixes for very small screens */
-@media (max-width: 480px) {
-  .hero {
-    padding: 1.5rem 10px !important;
-  }
-
-  .hero h1 {
     font-size: 1.6rem !important;
-    padding: 0 5px !important;
-  }
-
-  .hero p {
-    font-size: 0.95rem !important;
-    padding: 0 !important;
   }
 
   .hero-image img {
     max-width: 280px !important;
   }
 
-  .hero-buttons {
-    flex-direction: column !important;
-  }
-
   .hero-buttons .btn {
     width: 100% !important;
     max-width: 100% !important;
+  }
+
+  /* Adjust avatar size for very small screens */
+  .nav-profile-pic-container {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
+  .user-dropdown-nav a {
+    max-width: 100% !important;
+    padding: 10px 15px !important;
+  }
+}
+
+/* =========================================== */
+/* TABLET ADJUSTMENTS (768px - 991px) */
+/* =========================================== */
+@media (min-width: 768px) and (max-width: 991px) {
+  .preview-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .hero-buttons {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .hero-buttons .btn {
+    width: auto !important;
+    min-width: 180px !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* Adjust mobile menu width for tablets */
+  .nav-container.active {
+    width: 65% !important;
+    max-width: 400px !important;
+  }
+
+  /* Adjust avatar position for tablets */
+  .user-profile-nav {
+    padding: 20px !important;
+  }
+}
+
+/* =========================================== */
+/* DARK MODE SPECIFIC MOBILE FIXES */
+/* =========================================== */
+@media (max-width: 991px) {
+  .dark-mode .mobile-menu-toggle {
+    background-color: rgba(52, 211, 153, 0.1) !important;
+  }
+
+  .dark-mode .nav-links a {
+    color: #e2e8f0 !important;
+  }
+
+  .dark-mode .nav-links a:hover {
+    background-color: rgba(52, 211, 153, 0.15) !important;
+    color: var(--accent-color) !important;
+  }
+
+  .dark-mode .theme-toggle {
+    color: #e2e8f0 !important;
+  }
+
+  .dark-mode .theme-toggle .toggle-icon {
+    color: var(--accent-color) !important;
+  }
+
+  .dark-mode .auth-buttons .login-btn {
+    color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+  }
+
+  .dark-mode .auth-buttons .register-btn {
+    background: linear-gradient(135deg, var(--accent-color), var(--primary-color)) !important;
   }
 }
