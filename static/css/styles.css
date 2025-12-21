@@ -6814,122 +6814,7 @@ footer .container {
     100% { transform: rotate(360deg); }
 }
 /* =========================================== */
-/* COMPLETE MOBILE CSS BLOCK - ORGANIZED */
-/* =========================================== */
-
-/* =========================================== */
-/* GLOBAL MOBILE FIXES (Outside media query) */
-/* =========================================== */
-
-/* Ensure user dropdown is visible in dark mode */
-.dark-mode .user-dropdown-nav {
-  background-color: var(--dark-mode-card) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-}
-
-.dark-mode .user-dropdown-nav a {
-  color: var(--dark-mode-text) !important;
-}
-
-.dark-mode .user-dropdown-nav a:hover {
-  background-color: rgba(52, 211, 153, 0.1) !important;
-  color: var(--accent-color) !important;
-}
-
-/* Dashboard link visibility */
-.dark-mode .user-dropdown-nav a[href="/dashboard"] {
-  color: var(--dark-mode-text) !important;
-}
-
-.dark-mode .user-dropdown-nav a[href="/dashboard"]:hover {
-  color: var(--accent-color) !important;
-}
-
-/* Logout button in dark mode */
-.dark-mode .user-dropdown-nav a[href*="logout"],
-.dark-mode .user-dropdown-nav a#logoutBtn {
-  color: #f87171 !important;
-}
-
-.dark-mode .user-dropdown-nav a[href*="logout"]:hover,
-.dark-mode .user-dropdown-nav a#logoutBtn:hover {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  color: #fca5a5 !important;
-}
-
-/* Profile picture in dark mode */
-.dark-mode .nav-profile-pic-container {
-  border-color: var(--accent-color) !important;
-}
-
-.dark-mode .nav-avatar-initials {
-  color: white !important;
-}
-
-/* =========================================== */
-/* FORCE HAMBURGER X STATE */
-/* =========================================== */
-
-.mobile-menu-toggle.active .hamburger {
-  background-color: transparent !important;
-  transform: rotate(45deg) !important;
-}
-
-.mobile-menu-toggle.active .hamburger::before {
-  transform: translateY(8px) rotate(0deg) !important;
-}
-
-.mobile-menu-toggle.active .hamburger::after {
-  transform: translateY(-8px) rotate(-90deg) !important;
-}
-
-/* Theme-specific colors */
-.dark-mode .mobile-menu-toggle.active .hamburger::before,
-.dark-mode .mobile-menu-toggle.active .hamburger::after {
-  background-color: #e2e8f0 !important;
-}
-
-body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::before,
-body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
-  background-color: #374151 !important;
-}
-
-/* Ensure pseudo-elements exist */
-.mobile-menu-toggle .hamburger::before,
-.mobile-menu-toggle .hamburger::after {
-  content: '' !important;
-  position: absolute !important;
-  left: 0 !important;
-  width: 24px !important;
-  height: 2px !important;
-  background-color: inherit !important;
-  transition: all 0.3s ease !important;
-}
-
-.mobile-menu-toggle .hamburger::before {
-  top: -8px !important;
-}
-
-.mobile-menu-toggle .hamburger::after {
-  top: 8px !important;
-}
-
-/* Initial state */
-.mobile-menu-toggle .hamburger {
-  background-color: var(--primary-color);
-  height: 2px;
-  width: 24px;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.dark-mode .mobile-menu-toggle .hamburger {
-  background-color: var(--accent-color);
-}
-
-/* =========================================== */
-/* MOBILE RESPONSIVE STYLES (Below 992px) */
+/* MOBILE RESPONSIVE STYLES USING EXISTING HTML */
 /* =========================================== */
 
 @media (max-width: 991px) {
@@ -6973,12 +6858,11 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
     align-items: center !important;
   }
 
-  /* Hide desktop nav elements initially */
+  /* Hide desktop nav elements */
   .nav-container {
     display: none !important;
   }
 
-  /* Active mobile menu */
   .nav-container.active {
     display: flex !important;
     position: fixed !important;
@@ -7056,6 +6940,18 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
 
   .mobile-menu-toggle .hamburger::after {
     top: 8px;
+  }
+
+  .mobile-menu-toggle.active .hamburger {
+    background-color: transparent;
+  }
+
+  .mobile-menu-toggle.active .hamburger::before {
+    transform: translateY(8px) rotate(45deg);
+  }
+
+  .mobile-menu-toggle.active .hamburger::after {
+    transform: translateY(-8px) rotate(-45deg);
   }
 
   /* ===================== */
@@ -7158,60 +7054,18 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
     padding: 12px !important;
   }
 
-  /* ===================== */
-  /* 7. USER PROFILE & AVATAR CENTERING */
-  /* ===================== */
+  /* User profile in mobile menu */
   .user-profile-nav {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
     width: 100% !important;
-    margin: 0 auto 20px !important;
-    padding: 15px !important;
-    text-align: center !important;
-    background-color: rgba(16, 185, 129, 0.05) !important;
-    border-radius: 12px !important;
+    margin-bottom: 1rem !important;
   }
 
-  .dark-mode .user-profile-nav {
-    background-color: rgba(52, 211, 153, 0.05) !important;
-  }
-
-  /* Center the avatar */
   .nav-profile-pic-container {
-    width: 80px !important;
-    height: 80px !important;
-    margin: 0 auto 15px !important;
-    border-width: 3px !important;
+    width: 60px !important;
+    height: 60px !important;
+    margin: 0 auto 10px !important;
   }
 
-  /* Center user info */
-  .user-dropdown-header {
-    text-align: center !important;
-    padding: 0 !important;
-    background: transparent !important;
-    margin-bottom: 15px !important;
-  }
-
-  .user-dropdown-header strong {
-    display: block !important;
-    font-size: 18px !important;
-    margin-bottom: 5px !important;
-  }
-
-  .user-dropdown-header small {
-    display: block !important;
-    font-size: 13px !important;
-    color: #666 !important;
-    opacity: 0.8 !important;
-  }
-
-  .dark-mode .user-dropdown-header small {
-    color: #aaa !important;
-  }
-
-  /* Stack dashboard and logout buttons below avatar */
   .user-dropdown-nav {
     position: static !important;
     opacity: 1 !important;
@@ -7220,36 +7074,30 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
     box-shadow: none !important;
     background: transparent !important;
     width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 8px !important;
     margin-top: 10px !important;
   }
 
-  .user-dropdown-nav a {
-    width: 100% !important;
-    max-width: 200px !important;
-    justify-content: center !important;
-    padding: 12px 20px !important;
-    border-radius: 8px !important;
-    margin-bottom: 0 !important;
+  .user-dropdown-header {
     text-align: center !important;
+    padding: 15px !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+    border-radius: 8px !important;
+    margin-bottom: 10px !important;
   }
 
-  /* Dark mode fixes for centered layout */
-  .dark-mode .user-dropdown-nav a {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  .dark-mode .user-dropdown-header {
+    background: rgba(52, 211, 153, 0.05) !important;
   }
 
-  .dark-mode .user-dropdown-nav a:hover {
-    background-color: rgba(52, 211, 153, 0.15) !important;
-    border-color: var(--accent-color) !important;
+  .user-dropdown-nav a {
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    margin-bottom: 5px !important;
+    width: 100% !important;
   }
 
   /* ===================== */
-  /* 8. HERO SECTION FIX */
+  /* 7. HERO SECTION FIX */
   /* ===================== */
   .hero {
     padding: 2rem 15px !important;
@@ -7326,7 +7174,7 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
   }
 
   /* ===================== */
-  /* 9. HORIZONTAL SCROLL FIX */
+  /* 8. HORIZONTAL SCROLL FIX */
   /* ===================== */
   html, body {
     max-width: 100%;
@@ -7388,7 +7236,7 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
   }
 
   /* ===================== */
-  /* 10. CONTENT ADJUSTMENTS */
+  /* 9. CONTENT ADJUSTMENTS */
   /* ===================== */
   body.menu-open {
     overflow: hidden;
@@ -7404,9 +7252,9 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
   }
 }
 
-/* =========================================== */
-/* VERY SMALL SCREENS (Below 480px) */
-/* =========================================== */
+/* ===================== */
+/* VERY SMALL SCREENS */
+/* ===================== */
 @media (max-width: 480px) {
   header {
     padding: 0 10px !important;
@@ -7455,22 +7303,9 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
     width: 100% !important;
     max-width: 100% !important;
   }
-
-  /* Adjust avatar size for very small screens */
-  .nav-profile-pic-container {
-    width: 70px !important;
-    height: 70px !important;
-  }
-
-  .user-dropdown-nav a {
-    max-width: 100% !important;
-    padding: 10px 15px !important;
-  }
 }
 
-/* =========================================== */
-/* TABLET ADJUSTMENTS (768px - 991px) */
-/* =========================================== */
+/* Tablet adjustments (768px - 991px) */
 @media (min-width: 768px) and (max-width: 991px) {
   .preview-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -7487,50 +7322,200 @@ body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
     min-width: 180px !important;
     flex: 0 0 auto !important;
   }
+}
+/* =========================================== */
+/* GLOBAL DARK MODE FIXES */
+/* =========================================== */
 
-  /* Adjust mobile menu width for tablets */
-  .nav-container.active {
-    width: 65% !important;
-    max-width: 400px !important;
-  }
-
-  /* Adjust avatar position for tablets */
-  .user-profile-nav {
-    padding: 20px !important;
-  }
+/* Ensure user dropdown is visible in dark mode */
+.dark-mode .user-dropdown-nav {
+  background-color: var(--dark-mode-card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
+.dark-mode .user-dropdown-nav a {
+  color: var(--dark-mode-text) !important;
+}
+
+.dark-mode .user-dropdown-nav a:hover {
+  background-color: rgba(52, 211, 153, 0.1) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Dashboard link visibility */
+.dark-mode .user-dropdown-nav a[href="/dashboard"] {
+  color: var(--dark-mode-text) !important;
+}
+
+.dark-mode .user-dropdown-nav a[href="/dashboard"]:hover {
+  color: var(--accent-color) !important;
+}
+
+/* Logout button in dark mode */
+.dark-mode .user-dropdown-nav a[href*="logout"],
+.dark-mode .user-dropdown-nav a#logoutBtn {
+  color: #f87171 !important;
+}
+
+.dark-mode .user-dropdown-nav a[href*="logout"]:hover,
+.dark-mode .user-dropdown-nav a#logoutBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #fca5a5 !important;
+}
+
+/* Profile picture in dark mode */
+.dark-mode .nav-profile-pic-container {
+  border-color: var(--accent-color) !important;
+}
+
+.dark-mode .nav-avatar-initials {
+  color: white !important;
+}
 /* =========================================== */
-/* DARK MODE SPECIFIC MOBILE FIXES */
+/* FIX AVATAR POSITIONING IN MOBILE MENU */
 /* =========================================== */
+
 @media (max-width: 991px) {
-  .dark-mode .mobile-menu-toggle {
-    background-color: rgba(52, 211, 153, 0.1) !important;
+  /* Center the user profile section */
+  .user-profile-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin: 0 auto 20px !important;
+    padding: 15px !important;
+    text-align: center !important;
+    background-color: rgba(16, 185, 129, 0.05) !important;
+    border-radius: 12px !important;
   }
 
-  .dark-mode .nav-links a {
-    color: #e2e8f0 !important;
+  .dark-mode .user-profile-nav {
+    background-color: rgba(52, 211, 153, 0.05) !important;
   }
 
-  .dark-mode .nav-links a:hover {
+  /* Center the avatar */
+  .nav-profile-pic-container {
+    width: 80px !important;
+    height: 80px !important;
+    margin: 0 auto 15px !important;
+    border-width: 3px !important;
+  }
+
+  /* Center user info */
+  .user-dropdown-header {
+    text-align: center !important;
+    padding: 0 !important;
+    background: transparent !important;
+    margin-bottom: 15px !important;
+  }
+
+  .user-dropdown-header strong {
+    display: block !important;
+    font-size: 18px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .user-dropdown-header small {
+    display: block !important;
+    font-size: 13px !important;
+    color: #666 !important;
+    opacity: 0.8 !important;
+  }
+
+  .dark-mode .user-dropdown-header small {
+    color: #aaa !important;
+  }
+
+  /* Stack dashboard and logout buttons below avatar */
+  .user-dropdown-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+  }
+
+  .user-dropdown-nav a {
+    width: 100% !important;
+    max-width: 200px !important;
+    justify-content: center !important;
+    padding: 12px 20px !important;
+    border-radius: 8px !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  /* Dark mode fixes for centered layout */
+  .dark-mode .user-dropdown-nav a {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .dark-mode .user-dropdown-nav a:hover {
     background-color: rgba(52, 211, 153, 0.15) !important;
-    color: var(--accent-color) !important;
-  }
-
-  .dark-mode .theme-toggle {
-    color: #e2e8f0 !important;
-  }
-
-  .dark-mode .theme-toggle .toggle-icon {
-    color: var(--accent-color) !important;
-  }
-
-  .dark-mode .auth-buttons .login-btn {
-    color: var(--accent-color) !important;
     border-color: var(--accent-color) !important;
   }
+}
+/* =========================================== */
+/* FORCE HAMBURGER X STATE - ADD TO YOUR CSS */
+/* =========================================== */
 
-  .dark-mode .auth-buttons .register-btn {
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color)) !important;
-  }
+.mobile-menu-toggle.active .hamburger {
+    background-color: transparent !important;
+    transform: rotate(45deg) !important;
+}
+
+.mobile-menu-toggle.active .hamburger::before {
+    transform: translateY(8px) rotate(0deg) !important;
+}
+
+.mobile-menu-toggle.active .hamburger::after {
+    transform: translateY(-8px) rotate(-90deg) !important;
+}
+
+/* Theme-specific colors */
+.dark-mode .mobile-menu-toggle.active .hamburger::before,
+.dark-mode .mobile-menu-toggle.active .hamburger::after {
+    background-color: #e2e8f0 !important;
+}
+
+body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::before,
+body:not(.dark-mode) .mobile-menu-toggle.active .hamburger::after {
+    background-color: #374151 !important;
+}
+
+/* Ensure pseudo-elements exist */
+.mobile-menu-toggle .hamburger::before,
+.mobile-menu-toggle .hamburger::after {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    width: 24px !important;
+    height: 2px !important;
+    background-color: inherit !important;
+    transition: all 0.3s ease !important;
+}
+
+.mobile-menu-toggle .hamburger::before {
+    top: -8px !important;
+}
+
+.mobile-menu-toggle .hamburger::after {
+    top: 8px !important;
+}
+
+/* Initial state */
+.mobile-menu-toggle .hamburger {
+    background-color: var(--primary-color);
+    height: 2px;
+    width: 24px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.dark-mode .mobile-menu-toggle .hamburger {
+    background-color: var(--accent-color);
 }
