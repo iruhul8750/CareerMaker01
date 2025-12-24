@@ -1620,27 +1620,44 @@
         console.log('🔧 Setting up logout functionality...');
 
         const logoutBtn = document.getElementById('logoutBtn');
-        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
-        const closeLogoutModalBtn = document.getElementById('closeLogoutModal');
-        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const logoutModal = document.getElementById('logoutModal');
 
-        // Open logout modal
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const logoutModal = document.getElementById('logoutModal');
-                if (logoutModal) {
-                    logoutModal.style.display = 'flex';
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    console.warn('❌ Logout modal not found');
-                }
-            });
+        // Make sure logout modal exists
+        if (!logoutModal) {
+            console.warn('⚠️ Logout modal not found in DOM');
+            return;
         }
 
-        // Setup logout modal handlers
+        // Initialize modal setup first
         setupLogoutModal();
+
+        // Handle logout button click
+        if (logoutBtn) {
+            // Remove any existing listeners first
+            const freshLogoutBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(freshLogoutBtn, logoutBtn);
+
+            // Add click event to fresh button
+            freshLogoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🟡 Logout button clicked');
+
+                // Show the logout modal
+                const modal = document.getElementById('logoutModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                    console.log('✅ Logout modal displayed');
+                } else {
+                    console.warn('❌ Logout modal not found after click');
+                }
+            });
+        } else {
+            console.warn('⚠️ Logout button not found');
+        }
+
+        console.log('✅ Logout setup complete');
     }
 
     function setupLogoutModal() {
@@ -1654,10 +1671,27 @@
         const confirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
         const closeBtn = logoutModal.querySelector('#closeLogoutModal');
 
-        // Cancel logout
+        // Remove any existing event listeners first to prevent duplicates
         if (cancelBtn) {
-            cancelBtn.addEventListener('click', function(e) {
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        }
+        if (closeBtn) {
+            closeBtn.replaceWith(closeBtn.cloneNode(true));
+        }
+        if (confirmBtn) {
+            confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+        }
+
+        // Get fresh references after cloning
+        const freshCancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
+        const freshConfirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
+        const freshCloseBtn = logoutModal.querySelector('#closeLogoutModal');
+
+        // Cancel logout - FIXED
+        if (freshCancelBtn) {
+            freshCancelBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 console.log('❌ Logout cancelled');
                 logoutModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -1665,25 +1699,73 @@
         }
 
         // Close modal
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function(e) {
+        if (freshCloseBtn) {
+            freshCloseBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 console.log('❌ Logout modal closed');
                 logoutModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
             });
         }
 
-        // Confirm logout - FIXED VERSION
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', async function(e) {
+        // Confirm logout - SIMPLIFIED AND FIXED
+        if (freshConfirmBtn) {
+            freshConfirmBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
-                console.log('✅ Logout confirmed');
-                await performLogout();
+                e.stopPropagation();
+                console.log('✅ Logout confirmed, executing...');
+
+                // Show loader
+                const loader = showLoader('Logging you out...');
+
+                try {
+                    // Clear local storage first
+                    localStorage.removeItem('profilePicUrl');
+                    localStorage.removeItem('profilePicTimestamp');
+                    localStorage.removeItem('profilePicCacheBust');
+                    localStorage.removeItem('profilePicLastUpdate');
+                    sessionStorage.clear();
+
+                    // Close the modal
+                    logoutModal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+
+                    // Perform logout request
+                    const response = await fetch('/logout', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+
+                    // Show success message
+                    showToast('You have been logged out successfully', 'success');
+
+                    // Store logout message for next page
+                    sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
+
+                    // Wait a moment to show the toast, then redirect
+                    setTimeout(() => {
+                        hideLoader();
+                        window.location.href = '/';
+                    }, 1500);
+
+                } catch (error) {
+                    console.error('❌ Logout error:', error);
+                    hideLoader();
+                    showToast('Logout failed. Please try again.', 'error');
+
+                    // Ensure modal is closed on error
+                    logoutModal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
             });
         }
 
-        // Close on overlay click
+        // Close on overlay click - FIXED
         logoutModal.addEventListener('click', function(e) {
             if (e.target === logoutModal) {
                 console.log('❌ Logout cancelled (overlay click)');
@@ -3370,8 +3452,10 @@
     // Initialize application when DOM is loaded
     // =============================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Setup logout functionality FIRST
-        setupLogout();
+        // Setup logout functionality FIRST and early
+        setTimeout(() => {
+            setupLogout();
+        }, 100);
 
         // Check for logout message
         if (sessionStorage.getItem('logoutMessage')) {
@@ -3424,6 +3508,30 @@
         if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {
             testimonialSystem.init();
         }
+
+        // Add this as a backup logout handler
+        document.addEventListener('click', function(e) {
+            // Check if clicked on logout button (including in mobile menu)
+            const logoutBtn = e.target.closest('#logoutBtn');
+
+            if (logoutBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔧 Direct logout handler triggered');
+
+                // Show the logout modal
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal) {
+                    logoutModal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+
+                    // Re-initialize modal handlers just in case
+                    setTimeout(() => {
+                        setupLogoutModal();
+                    }, 100);
+                }
+            }
+        });
 
         // Add click handlers for entire blog cards
         document.querySelectorAll('.blog-card-vertical').forEach(card => {
@@ -3510,6 +3618,10 @@
             // Small delay to ensure DOM is ready
             setTimeout(handleDashboardTestimonialRedirect, 100);
         }
+        // Also re-initialize logout after a short delay to catch dynamically loaded elements
+        setTimeout(() => {
+            setupLogout();
+        }, 500);
     });
 
     // ===========================================
@@ -3605,80 +3717,84 @@
         const mobileNav = document.querySelector('.mobile-nav-container');
 
         if (!toggleBtn || !overlay || !mobileNav) {
-          console.error('Mobile navigation elements not found');
-          return;
+            console.error('Mobile navigation elements not found');
+            return;
         }
 
         // Toggle menu
         toggleBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.toggleMenu();
+            e.stopPropagation();
+            this.toggleMenu();
         });
 
         // Close menu on overlay click
         overlay.addEventListener('click', () => {
-          this.closeMenu();
+            this.closeMenu();
         });
 
         // Close menu on escape key
         document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && this.isOpen) {
-            this.closeMenu();
-          }
+            if (e.key === 'Escape' && this.isOpen) {
+                this.closeMenu();
+            }
         });
 
         // Handle navigation link clicks
         const navLinks = mobileNav.querySelectorAll('a');
         navLinks.forEach(link => {
-          link.addEventListener('click', (e) => {
-            const href = link.getAttribute('href');
+            link.addEventListener('click', (e) => {
+                const href = link.getAttribute('href');
 
-            if (href && href.startsWith('#')) {
-              e.preventDefault();
-              this.closeMenu();
+                if (href && href.startsWith('#')) {
+                    e.preventDefault();
+                    this.closeMenu();
 
-              // Scroll to section after menu closes
-              setTimeout(() => {
-                const target = document.querySelector(href);
-                if (target) {
-                  const headerHeight = 80;
-                  const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
+                    // Scroll to section after menu closes
+                    setTimeout(() => {
+                        const target = document.querySelector(href);
+                        if (target) {
+                            const headerHeight = 80;
+                            const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
 
-                  window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                  });
+                            window.scrollTo({
+                                top: targetPosition,
+                                behavior: 'smooth'
+                            });
 
-                  // Update URL
-                  history.pushState(null, null, href);
+                            // Update URL
+                            history.pushState(null, null, href);
+                        }
+                    }, 300);
                 }
-              }, 300);
-            }
-            // Other links (like /dashboard) will work normally
-          });
+                // Other links (like /dashboard) will work normally
+            });
         });
 
         // Handle theme toggle in mobile menu
         const themeToggle = mobileNav.querySelector('.mobile-theme-toggle');
         if (themeToggle) {
-          themeToggle.addEventListener('click', () => {
-            const desktopThemeToggle = document.querySelector('.theme-toggle');
-            if (desktopThemeToggle) {
-              desktopThemeToggle.click();
-            }
-          });
+            themeToggle.addEventListener('click', () => {
+                const desktopThemeToggle = document.querySelector('.theme-toggle');
+                if (desktopThemeToggle) {
+                    desktopThemeToggle.click();
+                }
+            });
         }
 
-        // Handle auth button clicks
-        const authButtons = mobileNav.querySelector('.mobile-auth-buttons');
-        if (authButtons) {
-          authButtons.querySelectorAll('.btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-              this.closeMenu();
-            });
-          });
-        }
+        // FIX: Handle auth button clicks in mobile menu
+        this.handleMobileAuthButtons(mobileNav);
+
+        // FIX: Also handle any dynamically loaded auth buttons
+        const observer = new MutationObserver(() => {
+            this.handleMobileAuthButtons(mobileNav);
+        });
+
+        observer.observe(mobileNav, {
+            childList: true,
+            subtree: true
+        });
       }
+
 
       toggleMenu() {
         const toggleBtn = document.getElementById('mobileMenuToggle');
@@ -3711,6 +3827,77 @@
       // Public method to close menu from outside
       close() {
         this.closeMenu();
+      }
+
+      // Add this new method to the MobileNavigation class:
+      handleMobileAuthButtons(mobileNav) {
+            // Handle login buttons in mobile menu
+            const loginButtons = mobileNav.querySelectorAll('.login-btn, #mobileLoginBtn');
+            loginButtons.forEach(btn => {
+                // Remove existing listeners to avoid duplicates
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeMenu(); // Close mobile menu first
+
+                    // Wait a bit for menu to close, then open login modal
+                    setTimeout(() => {
+                        if (typeof openLoginModal === 'function') {
+                            openLoginModal();
+                        } else {
+                            // Fallback to direct modal display
+                            const loginModal = document.getElementById('loginModal');
+                            if (loginModal) {
+                                loginModal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+
+                                // Focus on email input
+                                const emailInput = loginModal.querySelector('#loginEmail');
+                                if (emailInput) {
+                                    setTimeout(() => emailInput.focus(), 100);
+                                }
+                            }
+                        }
+                    }, 300);
+                });
+            });
+
+            // Handle register buttons in mobile menu
+            const registerButtons = mobileNav.querySelectorAll('.register-btn, #mobileRegisterBtn');
+            registerButtons.forEach(btn => {
+                // Remove existing listeners to avoid duplicates
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeMenu(); // Close mobile menu first
+
+                    // Wait a bit for menu to close, then open register modal
+                    setTimeout(() => {
+                        if (typeof openRegisterModal === 'function') {
+                            openRegisterModal();
+                        } else {
+                            // Fallback to direct modal display
+                            const registerModal = document.getElementById('registerModal');
+                            if (registerModal) {
+                                registerModal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+
+                                // Focus on username input
+                                const usernameInput = registerModal.querySelector('#registerUsername');
+                                if (usernameInput) {
+                                    setTimeout(() => usernameInput.focus(), 100);
+                                }
+                            }
+                        }
+                    }, 300);
+                });
+            });
       }
     }
 
