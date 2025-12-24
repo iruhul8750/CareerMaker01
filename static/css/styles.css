@@ -7564,3 +7564,263 @@ footer .container {
 .mobile-nav-container * {
     pointer-events: auto;
 }
+/* =========================================== */
+/* MOBILE NAVIGATION BUTTONS FIX */
+/* =========================================== */
+
+@media (max-width: 991px) {
+  /* Fix for mobile navigation container */
+  .nav-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    padding: 80px 20px 30px !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    background: white !important;
+  }
+
+  .dark-mode .nav-container {
+    background: var(--dark-mode-card) !important;
+  }
+
+  /* Fix for nav links container */
+  .nav-links {
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .nav-links li {
+    margin: 0 0 10px 0 !important;
+    width: 100% !important;
+  }
+
+  .nav-links a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+    color: #333 !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .dark-mode .nav-links a {
+    background: rgba(52, 211, 153, 0.05) !important;
+    color: #e2e8f0 !important;
+  }
+
+  .nav-links a i {
+    margin-right: 12px !important;
+    font-size: 18px !important;
+    width: 24px !important;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: var(--primary-color) !important;
+    transform: translateX(5px) !important;
+  }
+
+  .dark-mode .nav-links a:hover,
+  .dark-mode .nav-links a.active {
+    background: rgba(52, 211, 153, 0.15) !important;
+    color: var(--accent-color) !important;
+  }
+
+  /* Fix for nav-right container */
+  .nav-right {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    margin-top: auto !important;
+    gap: 15px !important;
+  }
+
+  /* Fix for auth buttons container */
+  .auth-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Fix for individual auth buttons */
+  .auth-buttons .btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 14px 20px !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease !important;
+    border: none !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+  }
+
+  /* Login button specific */
+  .auth-buttons .login-btn {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: var(--primary-color) !important;
+    border: 2px solid var(--primary-color) !important;
+  }
+
+  .auth-buttons .login-btn:hover {
+    background: var(--primary-color) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+  }
+
+  /* Register button specific */
+  .auth-buttons .register-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+  }
+
+  .auth-buttons .register-btn:hover {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+  }
+
+  /* Fix for theme toggle in mobile */
+  .theme-toggle {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+    margin: 10px 0 !important;
+    cursor: pointer !important;
+    width: 100% !important;
+  }
+
+  .dark-mode .theme-toggle {
+    background: rgba(52, 211, 153, 0.05) !important;
+  }
+
+  /* Fix user profile section */
+  .user-profile-nav {
+    order: -1 !important; /* Move to top in mobile */
+    margin-bottom: 20px !important;
+    padding-bottom: 20px !important;
+    border-bottom: 1px solid #eee !important;
+    width: 100% !important;
+  }
+
+  .dark-mode .user-profile-nav {
+    border-bottom-color: #374151 !important;
+  }
+}
+
+/* Additional fix for very small screens */
+@media (max-width: 480px) {
+  .nav-container {
+    padding: 70px 15px 20px !important;
+  }
+
+  .auth-buttons .btn {
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+  }
+
+  .nav-links a {
+    padding: 10px 14px !important;
+    font-size: 15px !important;
+  }
+}
+/* =========================================== */
+/* MOBILE MENU SPACING FIX */
+/* =========================================== */
+
+@media (max-width: 991px) {
+  /* Ensure mobile menu items have proper spacing */
+  .nav-container > * {
+    margin-bottom: 15px !important;
+  }
+
+  .nav-container > *:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Fix the container ordering */
+  .nav-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+
+  /* Re-order the sections */
+  .user-profile-nav {
+    order: 1 !important;
+  }
+
+  .nav-links {
+    order: 2 !important;
+  }
+
+  .theme-toggle {
+    order: 3 !important;
+  }
+
+  .auth-buttons {
+    order: 4 !important;
+  }
+
+  /* Add a spacer to push buttons up */
+  .auth-buttons::before {
+    content: '' !important;
+    flex-grow: 1 !important;
+  }
+}
+/* =========================================== */
+/* CRITICAL FIX: Ensure all buttons are visible */
+/* =========================================== */
+
+@media (max-width: 991px) {
+  /* Force all buttons in mobile nav to be visible */
+  .nav-container .btn,
+  .nav-container .login-btn,
+  .nav-container .register-btn {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    position: relative !important;
+    z-index: 10 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    transition: all 0.3s ease !important;
+  }
+
+  /* Remove any hiding properties */
+  .nav-container .btn[style*="display: none"],
+  .nav-container .btn[style*="opacity: 0"],
+  .nav-container .btn[style*="visibility: hidden"] {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure auth buttons container is visible */
+  .auth-buttons {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
