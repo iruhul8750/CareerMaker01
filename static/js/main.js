@@ -3625,7 +3625,7 @@
     });
 
     // ===========================================
-    // MOBILE NAVIGATION SYSTEM - PRODUCTION READY
+    // ENHANCED MOBILE NAVIGATION WITH DYNAMIC HEIGHT
     // ===========================================
 
     class MobileNavigation {
@@ -3635,269 +3635,273 @@
       }
 
       init() {
+        console.log('📱 Mobile navigation initializing...');
+
         // Create mobile menu structure if it doesn't exist
         this.createMobileMenu();
 
         // Initialize event listeners
         this.bindEvents();
 
-        console.log('Mobile navigation initialized');
+        // Calculate and set initial menu height
+        this.updateMenuHeight();
+
+        console.log('✅ Mobile navigation initialized');
       }
 
       createMobileMenu() {
-        // Create mobile menu toggle button
-        const existingToggle = document.getElementById('mobileMenuToggle');
-        if (!existingToggle) {
-          const toggleBtn = document.createElement('button');
+        // Check if mobile toggle already exists
+        let toggleBtn = document.getElementById('mobileMenuToggle');
+        if (!toggleBtn) {
+          toggleBtn = document.createElement('button');
           toggleBtn.id = 'mobileMenuToggle';
           toggleBtn.className = 'mobile-menu-toggle';
           toggleBtn.innerHTML = '<span class="hamburger"></span>';
           toggleBtn.setAttribute('aria-label', 'Toggle mobile menu');
+          toggleBtn.setAttribute('aria-expanded', 'false');
 
-          // Insert toggle button after logo
-          const logo = document.querySelector('.logo');
-          if (logo) {
-            logo.parentNode.insertBefore(toggleBtn, logo.nextSibling);
-          } else {
-            document.querySelector('header').appendChild(toggleBtn);
+          // Insert toggle button in navbar
+          const navbar = document.querySelector('.navbar');
+          if (navbar) {
+            navbar.appendChild(toggleBtn);
           }
         }
 
-        // Create mobile menu overlay
-        let overlay = document.querySelector('.mobile-menu-overlay');
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.className = 'mobile-menu-overlay';
-          document.body.appendChild(overlay);
-        }
+        // Get the existing nav container
+        let navContainer = document.getElementById('navContainer') ||
+                          document.querySelector('.nav-container');
 
-        // Create mobile navigation container
-        let mobileNav = document.querySelector('.mobile-nav-container');
-        if (!mobileNav) {
-          mobileNav = document.createElement('div');
-          mobileNav.className = 'mobile-nav-container';
-
-          // Copy navigation links from desktop
-          const desktopNav = document.querySelector('.nav-links');
-          if (desktopNav) {
-            const mobileNavLinks = desktopNav.cloneNode(true);
-            mobileNavLinks.className = 'mobile-nav-links';
-            mobileNav.appendChild(mobileNavLinks);
-          }
-
-          // Copy theme toggle
-          const desktopThemeToggle = document.querySelector('.theme-toggle');
-          if (desktopThemeToggle) {
-            const mobileThemeToggle = desktopThemeToggle.cloneNode(true);
-            mobileThemeToggle.className = 'mobile-theme-toggle';
-            mobileNav.appendChild(mobileThemeToggle);
-          }
-
-          // Copy auth buttons or user profile
-          const userProfile = document.querySelector('.user-profile-nav');
-          const authButtons = document.querySelector('.auth-buttons');
-
-          if (userProfile) {
-            const mobileUserProfile = userProfile.cloneNode(true);
-            mobileUserProfile.className = 'mobile-user-profile';
-            mobileNav.appendChild(mobileUserProfile);
-          } else if (authButtons) {
-            const mobileAuthButtons = authButtons.cloneNode(true);
-            mobileAuthButtons.className = 'mobile-auth-buttons';
-            mobileNav.appendChild(mobileAuthButtons);
-          }
-
-          document.body.appendChild(mobileNav);
+        if (navContainer) {
+          // Ensure it has the mobile class
+          navContainer.classList.add('mobile-nav-container');
         }
       }
 
       bindEvents() {
         const toggleBtn = document.getElementById('mobileMenuToggle');
-        const overlay = document.querySelector('.mobile-menu-overlay');
-        const mobileNav = document.querySelector('.mobile-nav-container');
+        const navContainer = document.getElementById('navContainer') ||
+                            document.querySelector('.nav-container');
 
-        if (!toggleBtn || !overlay || !mobileNav) {
-            console.error('Mobile navigation elements not found');
-            return;
+        if (!toggleBtn || !navContainer) {
+          console.error('❌ Mobile navigation elements not found');
+          return;
         }
 
         // Toggle menu
         toggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.toggleMenu();
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleMenu();
         });
 
-        // Close menu on overlay click
-        overlay.addEventListener('click', () => {
-            this.closeMenu();
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+          if (this.isOpen) {
+            const isClickInsideMenu = navContainer.contains(e.target);
+            const isClickOnToggle = toggleBtn.contains(e.target);
+
+            if (!isClickInsideMenu && !isClickOnToggle) {
+              this.closeMenu();
+            }
+          }
         });
 
         // Close menu on escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen) {
-                this.closeMenu();
-            }
+          if (e.key === 'Escape' && this.isOpen) {
+            this.closeMenu();
+          }
         });
 
-        // Handle navigation link clicks
-        const navLinks = mobileNav.querySelectorAll('a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                const href = link.getAttribute('href');
+        // Handle navigation links - FIXED VERSION
+        this.setupNavigationLinks(navContainer);
 
-                if (href && href.startsWith('#')) {
-                    e.preventDefault();
-                    this.closeMenu();
+        // Handle auth buttons
+        this.setupMobileAuthButtons(navContainer);
 
-                    // Scroll to section after menu closes
-                    setTimeout(() => {
-                        const target = document.querySelector(href);
-                        if (target) {
-                            const headerHeight = 80;
-                            const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-
-                            window.scrollTo({
-                                top: targetPosition,
-                                behavior: 'smooth'
-                            });
-
-                            // Update URL
-                            history.pushState(null, null, href);
-                        }
-                    }, 300);
-                }
-                // Other links (like /dashboard) will work normally
-            });
-        });
-
-        // Handle theme toggle in mobile menu
-        const themeToggle = mobileNav.querySelector('.mobile-theme-toggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', () => {
-                const desktopThemeToggle = document.querySelector('.theme-toggle');
-                if (desktopThemeToggle) {
-                    desktopThemeToggle.click();
-                }
-            });
-        }
-
-        // FIX: Handle auth button clicks in mobile menu
-        this.handleMobileAuthButtons(mobileNav);
-
-        // FIX: Also handle any dynamically loaded auth buttons
-        const observer = new MutationObserver(() => {
-            this.handleMobileAuthButtons(mobileNav);
-        });
-
-        observer.observe(mobileNav, {
-            childList: true,
-            subtree: true
+        // Update menu height on window resize
+        window.addEventListener('resize', () => {
+          if (this.isOpen) {
+            this.updateMenuHeight();
+          }
         });
       }
 
+      setupNavigationLinks(navContainer) {
+        // Find all navigation links in the container
+        const navLinks = navContainer.querySelectorAll('.nav-links a, .mobile-nav-links a');
+
+        navLinks.forEach(link => {
+          // Remove existing click handlers
+          const newLink = link.cloneNode(true);
+          link.parentNode.replaceChild(newLink, link);
+
+          // Add new click handler
+          newLink.addEventListener('click', (e) => {
+            const href = newLink.getAttribute('href');
+
+            // Only handle hash links (#section)
+            if (href && href.startsWith('#')) {
+              e.preventDefault();
+              e.stopPropagation();
+
+              // Close the menu first
+              this.closeMenu();
+
+              // Wait for menu animation to complete, then scroll
+              setTimeout(() => {
+                const targetId = href.substring(1);
+                const targetElement = document.getElementById(targetId);
+
+                if (targetElement) {
+                  // Calculate scroll position
+                  const headerHeight = document.querySelector('header').offsetHeight;
+                  const targetPosition = targetElement.offsetTop - headerHeight;
+
+                  // Smooth scroll
+                  window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                  });
+
+                  // Update URL without page reload
+                  history.pushState(null, null, href);
+                }
+              }, 300);
+            }
+            // For non-hash links (like /dashboard), they will navigate normally
+          });
+        });
+      }
+
+      setupMobileAuthButtons(navContainer) {
+        // Handle login buttons
+        const loginButtons = navContainer.querySelectorAll('.login-btn');
+        loginButtons.forEach(btn => {
+          // Remove existing listeners
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode.replaceChild(newBtn, btn);
+
+          newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.closeMenu();
+
+            setTimeout(() => {
+              if (typeof openLoginModal === 'function') {
+                openLoginModal();
+              } else {
+                const loginModal = document.getElementById('loginModal');
+                if (loginModal) {
+                  loginModal.style.display = 'flex';
+                  document.body.style.overflow = 'hidden';
+                }
+              }
+            }, 300);
+          });
+        });
+
+        // Handle register buttons
+        const registerButtons = navContainer.querySelectorAll('.register-btn');
+        registerButtons.forEach(btn => {
+          // Remove existing listeners
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode.replaceChild(newBtn, btn);
+
+          newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.closeMenu();
+
+            setTimeout(() => {
+              if (typeof openRegisterModal === 'function') {
+                openRegisterModal();
+              } else {
+                const registerModal = document.getElementById('registerModal');
+                if (registerModal) {
+                  registerModal.style.display = 'flex';
+                  document.body.style.overflow = 'hidden';
+                }
+              }
+            }, 300);
+          });
+        });
+      }
+
+      updateMenuHeight() {
+        const navContainer = document.getElementById('navContainer') ||
+                            document.querySelector('.nav-container');
+        const toggleBtn = document.getElementById('mobileMenuToggle');
+
+        if (!navContainer || !this.isOpen) return;
+
+        // Calculate required height
+        const viewportHeight = window.innerHeight;
+        const headerHeight = toggleBtn ? toggleBtn.getBoundingClientRect().bottom : 70;
+        const maxAllowedHeight = viewportHeight - headerHeight - 20;
+
+        // Get actual content height
+        const contentHeight = navContainer.scrollHeight;
+
+        // Set the height
+        navContainer.style.maxHeight = Math.min(contentHeight, maxAllowedHeight) + 'px';
+        navContainer.style.overflowY = contentHeight > maxAllowedHeight ? 'auto' : 'visible';
+      }
 
       toggleMenu() {
-        const toggleBtn = document.getElementById('mobileMenuToggle');
-        const overlay = document.querySelector('.mobile-menu-overlay');
-        const mobileNav = document.querySelector('.mobile-nav-container');
-
         if (this.isOpen) {
           this.closeMenu();
         } else {
-          this.isOpen = true;
-          toggleBtn.classList.add('active');
-          overlay.classList.add('active');
-          mobileNav.classList.add('active');
-          document.body.classList.add('menu-open');
+          this.openMenu();
         }
+      }
+
+      openMenu() {
+        const toggleBtn = document.getElementById('mobileMenuToggle');
+        const navContainer = document.getElementById('navContainer') ||
+                            document.querySelector('.nav-container');
+
+        if (!toggleBtn || !navContainer) return;
+
+        this.isOpen = true;
+        toggleBtn.classList.add('active');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        navContainer.classList.add('active');
+        document.body.classList.add('menu-open');
+
+        // Calculate and set appropriate height
+        this.updateMenuHeight();
+
+        // Focus management for accessibility
+        setTimeout(() => {
+          const firstFocusable = navContainer.querySelector('a, button');
+          if (firstFocusable) firstFocusable.focus();
+        }, 100);
+
+        console.log('📱 Mobile menu opened');
       }
 
       closeMenu() {
         const toggleBtn = document.getElementById('mobileMenuToggle');
-        const overlay = document.querySelector('.mobile-menu-overlay');
-        const mobileNav = document.querySelector('.mobile-nav-container');
+        const navContainer = document.getElementById('navContainer') ||
+                            document.querySelector('.nav-container');
+
+        if (!toggleBtn || !navContainer) return;
 
         this.isOpen = false;
         toggleBtn.classList.remove('active');
-        overlay.classList.remove('active');
-        mobileNav.classList.remove('active');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        navContainer.classList.remove('active');
         document.body.classList.remove('menu-open');
-      }
 
-      // Public method to close menu from outside
-      close() {
-        this.closeMenu();
-      }
+        // Reset height
+        navContainer.style.maxHeight = '';
+        navContainer.style.overflowY = '';
 
-      // Add this new method to the MobileNavigation class:
-      handleMobileAuthButtons(mobileNav) {
-            // Handle login buttons in mobile menu
-            const loginButtons = mobileNav.querySelectorAll('.login-btn, #mobileLoginBtn');
-            loginButtons.forEach(btn => {
-                // Remove existing listeners to avoid duplicates
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
+        // Return focus to toggle button
+        toggleBtn.focus();
 
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.closeMenu(); // Close mobile menu first
-
-                    // Wait a bit for menu to close, then open login modal
-                    setTimeout(() => {
-                        if (typeof openLoginModal === 'function') {
-                            openLoginModal();
-                        } else {
-                            // Fallback to direct modal display
-                            const loginModal = document.getElementById('loginModal');
-                            if (loginModal) {
-                                loginModal.style.display = 'flex';
-                                document.body.style.overflow = 'hidden';
-
-                                // Focus on email input
-                                const emailInput = loginModal.querySelector('#loginEmail');
-                                if (emailInput) {
-                                    setTimeout(() => emailInput.focus(), 100);
-                                }
-                            }
-                        }
-                    }, 300);
-                });
-            });
-
-            // Handle register buttons in mobile menu
-            const registerButtons = mobileNav.querySelectorAll('.register-btn, #mobileRegisterBtn');
-            registerButtons.forEach(btn => {
-                // Remove existing listeners to avoid duplicates
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.closeMenu(); // Close mobile menu first
-
-                    // Wait a bit for menu to close, then open register modal
-                    setTimeout(() => {
-                        if (typeof openRegisterModal === 'function') {
-                            openRegisterModal();
-                        } else {
-                            // Fallback to direct modal display
-                            const registerModal = document.getElementById('registerModal');
-                            if (registerModal) {
-                                registerModal.style.display = 'flex';
-                                document.body.style.overflow = 'hidden';
-
-                                // Focus on username input
-                                const usernameInput = registerModal.querySelector('#registerUsername');
-                                if (usernameInput) {
-                                    setTimeout(() => usernameInput.focus(), 100);
-                                }
-                            }
-                        }
-                    }, 300);
-                });
-            });
+        console.log('📱 Mobile menu closed');
       }
     }
 
@@ -3908,38 +3912,25 @@
     document.addEventListener('DOMContentLoaded', function() {
       // Only initialize mobile navigation on mobile devices
       if (window.innerWidth <= 991) {
+        console.log('📱 Initializing mobile navigation...');
+
         // Initialize mobile navigation
         window.mobileNav = new MobileNavigation();
 
-        // Update mobile navigation when screen resizes
+        // Update on screen resize
         window.addEventListener('resize', function() {
           if (window.innerWidth > 991) {
             // Close menu if resized to desktop
             if (window.mobileNav && window.mobileNav.isOpen) {
               window.mobileNav.close();
             }
-          }
-        });
-
-        // Close menu when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-          if (window.mobileNav && window.mobileNav.isOpen) {
-            const mobileNav = document.querySelector('.mobile-nav-container');
-            const toggleBtn = document.getElementById('mobileMenuToggle');
-
-            if (mobileNav && !mobileNav.contains(e.target) &&
-                toggleBtn && !toggleBtn.contains(e.target)) {
-              window.mobileNav.close();
+          } else {
+            // Update menu height if open
+            if (window.mobileNav && window.mobileNav.isOpen) {
+              window.mobileNav.updateMenuHeight();
             }
           }
         });
-
-        // Prevent body scroll when menu is open (iOS fix)
-        document.addEventListener('touchmove', function(e) {
-          if (window.mobileNav && window.mobileNav.isOpen) {
-            e.preventDefault();
-          }
-        }, { passive: false });
       }
     });
 
@@ -3951,408 +3942,6 @@
       if (window.mobileNav && window.mobileNav.close) {
         window.mobileNav.close();
       }
-    }
-
-    // ===========================================
-    // MOBILE-ONLY TESTIMONIAL TOUCH SYSTEM
-    // ===========================================
-
-    class MobileTestimonialTouch {
-        constructor() {
-            // Only run on mobile
-            if (window.innerWidth > 991) {
-                console.log('📱 Mobile testimonial: Desktop detected, skipping');
-                return;
-            }
-
-            this.track = document.getElementById('testimonialTrack');
-            this.cards = document.querySelectorAll('.testimonial-card');
-
-            if (!this.track || this.cards.length === 0) {
-                console.log('⚠️ Mobile testimonial: No elements found');
-                return;
-            }
-
-            this.currentIndex = 0;
-            this.isAnimating = false;
-            this.touchStartX = 0;
-            this.touchEndX = 0;
-            this.minSwipeDistance = 50;
-
-            console.log('📱 Mobile testimonial system initialized');
-            this.init();
-        }
-
-        init() {
-            // Add mobile-only classes
-            this.addMobileClasses();
-
-            // Setup touch events
-            this.setupTouchEvents();
-
-            // Setup card tap events
-            this.setupCardTapEvents();
-
-            // Add mobile indicator
-            this.addSwipeIndicator();
-        }
-
-        addMobileClasses() {
-            // Add mobile-specific classes
-            this.track.classList.add('mobile-track');
-            this.cards.forEach(card => {
-                card.classList.add('mobile-card');
-                card.setAttribute('data-mobile', 'true');
-            });
-        }
-
-        setupTouchEvents() {
-            // Touch start
-            this.track.addEventListener('touchstart', (e) => {
-                this.touchStartX = e.touches[0].clientX;
-                this.track.style.transition = 'none'; // Disable transition during swipe
-            }, { passive: true });
-
-            // Touch move - handle swipe
-            this.track.addEventListener('touchmove', (e) => {
-                if (this.isAnimating) return;
-
-                const currentX = e.touches[0].clientX;
-                const diff = this.touchStartX - currentX;
-
-                // Move track with finger
-                const currentTranslate = this.getCurrentTranslate();
-                this.track.style.transform = `translateX(${currentTranslate - diff}px)`;
-
-            }, { passive: true });
-
-            // Touch end - handle swipe completion
-            this.track.addEventListener('touchend', (e) => {
-                this.touchEndX = e.changedTouches[0].clientX;
-                this.track.style.transition = 'transform 0.3s ease'; // Re-enable transition
-
-                const swipeDistance = this.touchStartX - this.touchEndX;
-
-                if (Math.abs(swipeDistance) > this.minSwipeDistance) {
-                    if (swipeDistance > 0) {
-                        // Swiped left - next
-                        this.nextCard();
-                    } else {
-                        // Swiped right - previous
-                        this.prevCard();
-                    }
-                } else {
-                    // Return to current position if not enough swipe
-                    this.updatePosition();
-                }
-            }, { passive: true });
-        }
-
-        setupCardTapEvents() {
-            this.cards.forEach((card, index) => {
-                // Remove any existing click handlers
-                const newCard = card.cloneNode(true);
-                card.parentNode.replaceChild(newCard, card);
-
-                // Add tap handler
-                newCard.addEventListener('click', (e) => {
-                    // Don't trigger if clicking buttons
-                    if (e.target.closest('button') || e.target.closest('a')) {
-                        return;
-                    }
-
-                    // Open simple mobile modal
-                    this.openMobileModal(index);
-                });
-
-                // Add visual feedback
-                newCard.addEventListener('touchstart', () => {
-                    newCard.style.transform = 'scale(0.98)';
-                    newCard.style.opacity = '0.9';
-                }, { passive: true });
-
-                newCard.addEventListener('touchend', () => {
-                    newCard.style.transform = 'scale(1)';
-                    newCard.style.opacity = '1';
-                }, { passive: true });
-            });
-
-            // Update cards reference
-            this.cards = document.querySelectorAll('.testimonial-card');
-        }
-
-        openMobileModal(index) {
-            const card = this.cards[index];
-            if (!card) return;
-
-            // Get testimonial data
-            const content = card.querySelector('.testimonial-text')?.textContent || '';
-            const author = card.querySelector('.testimonial-author h4')?.textContent || 'User';
-
-            // Create simple mobile overlay
-            const overlay = document.createElement('div');
-            overlay.className = 'mobile-testimonial-overlay';
-            overlay.innerHTML = `
-                <div class="mobile-testimonial-modal">
-                    <div class="mobile-modal-header">
-                        <button class="mobile-modal-close">&times;</button>
-                        <h3>${author}'s Experience</h3>
-                    </div>
-                    <div class="mobile-modal-content">
-                        <p>${content}</p>
-                    </div>
-                    <div class="mobile-modal-footer">
-                        <button class="btn btn-primary mobile-modal-close-btn">Close</button>
-                    </div>
-                </div>
-            `;
-
-            // Add to body
-            document.body.appendChild(overlay);
-            document.body.style.overflow = 'hidden';
-
-            // Add close handlers
-            const closeBtns = overlay.querySelectorAll('.mobile-modal-close, .mobile-modal-close-btn');
-            closeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    overlay.remove();
-                    document.body.style.overflow = '';
-                });
-            });
-
-            // Close on overlay click
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    overlay.remove();
-                    document.body.style.overflow = '';
-                }
-            });
-
-            // Add CSS if not exists
-            this.addMobileModalStyles();
-        }
-
-        getCurrentTranslate() {
-            const style = window.getComputedStyle(this.track);
-            const matrix = new DOMMatrixReadOnly(style.transform);
-            return matrix.m41; // translateX value
-        }
-
-        nextCard() {
-            if (this.isAnimating || this.currentIndex >= this.cards.length - 1) return;
-
-            this.isAnimating = true;
-            this.currentIndex++;
-            this.updatePosition();
-
-            setTimeout(() => {
-                this.isAnimating = false;
-            }, 300);
-        }
-
-        prevCard() {
-            if (this.isAnimating || this.currentIndex <= 0) return;
-
-            this.isAnimating = true;
-            this.currentIndex--;
-            this.updatePosition();
-
-            setTimeout(() => {
-                this.isAnimating = false;
-            }, 300);
-        }
-
-        updatePosition() {
-            if (this.cards.length === 0) return;
-
-            const cardWidth = this.cards[0].offsetWidth;
-            const gap = 20; // Adjust based on your CSS
-            const translateX = -this.currentIndex * (cardWidth + gap);
-
-            this.track.style.transform = `translateX(${translateX}px)`;
-        }
-
-        addSwipeIndicator() {
-            // Add swipe hint for mobile users
-            const indicator = document.createElement('div');
-            indicator.className = 'mobile-swipe-indicator';
-            indicator.innerHTML = '👈 Swipe to browse • Tap to read 👉';
-
-            const carousel = this.track.closest('.testimonials-carousel, .carousel-container');
-            if (carousel) {
-                carousel.appendChild(indicator);
-            }
-        }
-
-        addMobileModalStyles() {
-            // Only add styles once
-            if (document.getElementById('mobile-testimonial-styles')) return;
-
-            const style = document.createElement('style');
-            style.id = 'mobile-testimonial-styles';
-            style.textContent = `
-                /* Mobile testimonial overlay */
-                .mobile-testimonial-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.9);
-                    backdrop-filter: blur(5px);
-                    z-index: 10000;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 20px;
-                }
-
-                .mobile-testimonial-modal {
-                    background: white;
-                    border-radius: 20px;
-                    width: 100%;
-                    max-width: 500px;
-                    max-height: 80vh;
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                }
-
-                .dark-mode .mobile-testimonial-modal {
-                    background: #1e293b;
-                }
-
-                .mobile-modal-header {
-                    padding: 20px;
-                    border-bottom: 1px solid #eee;
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                }
-
-                .dark-mode .mobile-modal-header {
-                    border-bottom-color: #334155;
-                }
-
-                .mobile-modal-header h3 {
-                    margin: 0;
-                    font-size: 1.3rem;
-                    color: #333;
-                    flex: 1;
-                }
-
-                .dark-mode .mobile-modal-header h3 {
-                    color: white;
-                }
-
-                .mobile-modal-close {
-                    background: none;
-                    border: none;
-                    font-size: 28px;
-                    color: #666;
-                    cursor: pointer;
-                    padding: 0;
-                    width: 40px;
-                    height: 40px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 50%;
-                }
-
-                .mobile-modal-close:hover {
-                    background: #f5f5f5;
-                }
-
-                .dark-mode .mobile-modal-close {
-                    color: #aaa;
-                }
-
-                .dark-mode .mobile-modal-close:hover {
-                    background: #334155;
-                }
-
-                .mobile-modal-content {
-                    padding: 25px;
-                    flex: 1;
-                    overflow-y: auto;
-                    font-size: 1.1rem;
-                    line-height: 1.6;
-                    color: #444;
-                }
-
-                .dark-mode .mobile-modal-content {
-                    color: #ddd;
-                }
-
-                .mobile-modal-footer {
-                    padding: 20px;
-                    border-top: 1px solid #eee;
-                    text-align: center;
-                }
-
-                .dark-mode .mobile-modal-footer {
-                    border-top-color: #334155;
-                }
-
-                /* Mobile swipe indicator */
-                .mobile-swipe-indicator {
-                    text-align: center;
-                    font-size: 12px;
-                    color: #666;
-                    margin-top: 15px;
-                    padding: 10px;
-                    background: rgba(0, 0, 0, 0.05);
-                    border-radius: 10px;
-                    display: block;
-                }
-
-                .dark-mode .mobile-swipe-indicator {
-                    color: #aaa;
-                    background: rgba(255, 255, 255, 0.05);
-                }
-
-                /* Mobile-only classes */
-                .mobile-track {
-                    user-select: none;
-                }
-
-                .mobile-card {
-                    touch-action: pan-y;
-                }
-
-                /* Only show on mobile */
-                @media (min-width: 992px) {
-                    .mobile-swipe-indicator,
-                    .mobile-testimonial-overlay {
-                        display: none !important;
-                    }
-                }
-            `;
-
-            document.head.appendChild(style);
-        }
-
-        destroy() {
-            // Remove mobile classes
-            if (this.track) {
-                this.track.classList.remove('mobile-track');
-            }
-
-            this.cards.forEach(card => {
-                card.classList.remove('mobile-card');
-                card.removeAttribute('data-mobile');
-            });
-
-            // Remove swipe indicator
-            const indicator = document.querySelector('.mobile-swipe-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-
-            console.log('📱 Mobile testimonial system cleaned up');
-        }
     }
 
      // Fix for user profile in mobile menu
