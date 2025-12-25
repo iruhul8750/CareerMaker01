@@ -3624,204 +3624,322 @@
         }, 500);
     });
 
-    // Enhanced Responsive Navigation System
-    class ResponsiveNavigation {
+    // =============================================
+    // ENHANCED MOBILE MENU SYSTEM WITH AUTH SUPPORT
+    // =============================================
+
+    class MobileMenu {
       constructor() {
-        this.isMobile = window.innerWidth <= 991;
-        this.isMenuOpen = false;
+        this.isOpen = false;
         this.navContainer = document.querySelector('.nav-container');
         this.mobileToggle = null;
         this.mobileOverlay = null;
+        this.isLoggedIn = false;
+        this.userData = null;
 
         this.init();
       }
 
       init() {
-        console.log('🌐 Initializing responsive navigation...');
-        this.setupNavigation();
+        console.log('📱 Initializing mobile menu...');
+        this.checkAuthStatus();
+        this.createMobileElements();
         this.bindEvents();
+        this.setupInitialState();
       }
 
-      setupNavigation() {
-        if (this.isMobile) {
-          this.setupMobileNavigation();
-        } else {
-          this.setupDesktopNavigation();
-        }
-      }
+      async checkAuthStatus() {
+        try {
+          const response = await fetch('/api/check-session', {
+            credentials: 'include'
+          });
 
-      setupDesktopNavigation() {
-        console.log('🖥️ Setting up desktop navigation...');
-
-        // Remove mobile classes and styles
-        if (this.navContainer) {
-          this.navContainer.classList.remove('mobile-active', 'active');
-          this.navContainer.style.cssText = '';
-
-          // Move back to navbar if needed
-          const navbar = document.querySelector('.navbar');
-          if (navbar && !this.navContainer.parentNode.isEqualNode(navbar)) {
-            navbar.appendChild(this.navContainer);
+          if (response.ok) {
+            const data = await response.json();
+            this.isLoggedIn = data.logged_in;
+            this.userData = data;
           }
-        }
-
-        // Hide mobile elements
-        if (this.mobileToggle) {
-          this.mobileToggle.style.display = 'none';
-        }
-        if (this.mobileOverlay) {
-          this.mobileOverlay.style.display = 'none';
-        }
-
-        // Close menu
-        this.closeMobileMenu();
-      }
-
-      setupMobileNavigation() {
-        console.log('📱 Setting up mobile navigation...');
-
-        // Create or get mobile toggle
-        this.mobileToggle = this.getOrCreateMobileToggle();
-
-        // Create or get mobile overlay
-        this.mobileOverlay = this.getOrCreateMobileOverlay();
-
-        // Setup nav container for mobile
-        if (this.navContainer) {
-          // Add mobile class
-          this.navContainer.classList.add('mobile-active');
-
-          // Move to body for proper positioning
-          document.body.appendChild(this.navContainer);
-
-          // Ensure it's hidden initially
-          this.navContainer.classList.remove('active');
-        }
-
-        // Show mobile elements
-        if (this.mobileToggle) {
-          this.mobileToggle.style.display = 'flex';
+        } catch (error) {
+          console.error('Error checking auth status:', error);
+          this.isLoggedIn = false;
         }
       }
 
-      getOrCreateMobileToggle() {
-        let toggle = document.getElementById('mobileMenuToggle');
-
-        if (!toggle) {
-          toggle = document.createElement('button');
-          toggle.id = 'mobileMenuToggle';
-          toggle.className = 'mobile-menu-toggle';
-          toggle.innerHTML = '<span class="hamburger"></span>';
-          toggle.setAttribute('aria-label', 'Toggle mobile menu');
-          toggle.setAttribute('aria-expanded', 'false');
+      createMobileElements() {
+        // Create mobile toggle button if it doesn't exist
+        this.mobileToggle = document.getElementById('mobileMenuToggle');
+        if (!this.mobileToggle) {
+          this.mobileToggle = document.createElement('button');
+          this.mobileToggle.id = 'mobileMenuToggle';
+          this.mobileToggle.className = 'mobile-menu-toggle';
+          this.mobileToggle.innerHTML = '<span class="hamburger"></span>';
+          this.mobileToggle.setAttribute('aria-label', 'Toggle mobile menu');
+          this.mobileToggle.setAttribute('aria-expanded', 'false');
 
           // Insert into navbar
           const navbar = document.querySelector('.navbar');
           if (navbar) {
-            navbar.appendChild(toggle);
+            const logo = navbar.querySelector('.logo');
+            if (logo) {
+              navbar.insertBefore(this.mobileToggle, logo.nextSibling);
+            } else {
+              navbar.appendChild(this.mobileToggle);
+            }
           }
         }
 
-        return toggle;
-      }
-
-      getOrCreateMobileOverlay() {
-        let overlay = document.querySelector('.mobile-overlay');
-
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.className = 'mobile-overlay';
-
-          // Insert into body
-          document.body.appendChild(overlay);
+        // Create mobile overlay if it doesn't exist
+        this.mobileOverlay = document.querySelector('.mobile-overlay');
+        if (!this.mobileOverlay) {
+          this.mobileOverlay = document.createElement('div');
+          this.mobileOverlay.className = 'mobile-overlay';
+          document.body.appendChild(this.mobileOverlay);
         }
 
-        return overlay;
+        // Ensure nav container has mobile-active class
+        if (this.navContainer) {
+          this.navContainer.classList.add('mobile-active');
+        }
+      }
+
+      setupInitialState() {
+        // Check if we're on mobile
+        const isMobile = window.innerWidth <= 991;
+
+        if (isMobile) {
+          this.hideDesktopNavigation();
+          this.updateMobileAuthButtons();
+        } else {
+          this.showDesktopNavigation();
+        }
+      }
+
+      updateMobileAuthButtons() {
+        if (!this.navContainer || !this.isLoggedIn) return;
+
+        // Find the auth buttons container or create it
+        let authContainer = this.navContainer.querySelector('.auth-buttons-container');
+        if (!authContainer) {
+          authContainer = document.createElement('div');
+          authContainer.className = 'auth-buttons-container';
+
+          // Insert after user profile section if it exists
+          const userProfile = this.navContainer.querySelector('.user-profile-nav');
+          if (userProfile) {
+            userProfile.parentNode.insertBefore(authContainer, userProfile.nextSibling);
+          } else {
+            // Insert at the end of nav-right
+            const navRight = this.navContainer.querySelector('.nav-right');
+            if (navRight) {
+              navRight.appendChild(authContainer);
+            }
+          }
+        }
+
+        // Clear existing buttons
+        authContainer.innerHTML = '';
+
+        if (this.isLoggedIn && this.userData) {
+          // Create user info section
+          const userInfoDiv = document.createElement('div');
+          userInfoDiv.className = 'user-info-mobile';
+          userInfoDiv.innerHTML = `
+            <div class="username">${this.userData.username || 'User'}</div>
+            <div class="email">${this.userData.email || ''}</div>
+          `;
+
+          // Insert user info at the beginning
+          authContainer.appendChild(userInfoDiv);
+
+          // Dashboard button
+          const dashboardBtn = document.createElement('a');
+          dashboardBtn.href = '/dashboard';
+          dashboardBtn.className = 'btn dashboard-btn';
+          dashboardBtn.innerHTML = '<i class="fas fa-tachometer-alt"></i> Dashboard';
+          authContainer.appendChild(dashboardBtn);
+
+          // Logout button
+          const logoutBtn = document.createElement('button');
+          logoutBtn.type = 'button';
+          logoutBtn.className = 'btn logout-btn';
+          logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+          logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.closeMenu();
+
+            // Trigger logout
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+              logoutModal.style.display = 'flex';
+              document.body.style.overflow = 'hidden';
+            }
+          });
+          authContainer.appendChild(logoutBtn);
+        } else {
+          // Login button
+          const loginBtn = document.createElement('button');
+          loginBtn.type = 'button';
+          loginBtn.className = 'btn login-btn';
+          loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+          loginBtn.addEventListener('click', () => {
+            this.closeMenu();
+            setTimeout(() => {
+              openLoginModal();
+            }, 300);
+          });
+          authContainer.appendChild(loginBtn);
+
+          // Register button
+          const registerBtn = document.createElement('button');
+          registerBtn.type = 'button';
+          registerBtn.className = 'btn register-btn';
+          registerBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register';
+          registerBtn.addEventListener('click', () => {
+            this.closeMenu();
+            setTimeout(() => {
+              openRegisterModal();
+            }, 300);
+          });
+          authContainer.appendChild(registerBtn);
+        }
       }
 
       bindEvents() {
-        // Window resize with debounce
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-          clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            const wasMobile = this.isMobile;
-            this.isMobile = window.innerWidth <= 991;
-
-            if (wasMobile !== this.isMobile) {
-              this.setupNavigation();
-              this.isMenuOpen = false;
-            }
-          }, 150);
-        });
-
         // Mobile toggle click
         if (this.mobileToggle) {
           this.mobileToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleMobileMenu();
+            this.toggleMenu();
           });
         }
 
         // Overlay click
         if (this.mobileOverlay) {
           this.mobileOverlay.addEventListener('click', () => {
-            this.closeMobileMenu();
+            this.closeMenu();
           });
         }
 
-        // Close on escape
+        // Close on escape key
         document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && this.isMenuOpen) {
-            this.closeMobileMenu();
+          if (e.key === 'Escape' && this.isOpen) {
+            this.closeMenu();
           }
         });
 
-        // Close when clicking outside
+        // Close when clicking outside on mobile
         document.addEventListener('click', (e) => {
-          if (this.isMenuOpen &&
+          if (this.isOpen &&
               this.navContainer &&
               !this.navContainer.contains(e.target) &&
               this.mobileToggle &&
               !this.mobileToggle.contains(e.target)) {
-            this.closeMobileMenu();
+            this.closeMenu();
           }
         });
 
-        // Close menu when clicking links
+        // Close menu when clicking links inside
         if (this.navContainer) {
           this.navContainer.addEventListener('click', (e) => {
-            const link = e.target.closest('a');
-            if (link && this.isMenuOpen) {
-              this.closeMobileMenu();
+            if (e.target.closest('a') && this.isOpen) {
+              setTimeout(() => {
+                this.closeMenu();
+              }, 300);
             }
           });
         }
+
+        // Window resize with debounce
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            const isMobile = window.innerWidth <= 991;
+
+            if (isMobile) {
+              this.hideDesktopNavigation();
+              this.updateMobileAuthButtons();
+            } else {
+              this.showDesktopNavigation();
+              this.closeMenu();
+            }
+          }, 150);
+        });
+
+        // Listen for login/logout events
+        document.addEventListener('userLoggedIn', () => {
+          this.isLoggedIn = true;
+          this.checkAuthStatus().then(() => {
+            this.updateMobileAuthButtons();
+          });
+        });
+
+        document.addEventListener('userLoggedOut', () => {
+          this.isLoggedIn = false;
+          this.userData = null;
+          this.updateMobileAuthButtons();
+        });
       }
 
-      toggleMobileMenu() {
-        if (!this.isMobile) return;
+      hideDesktopNavigation() {
+        // On mobile, ensure nav container is hidden initially
+        if (this.navContainer) {
+          this.navContainer.classList.remove('active');
+          this.navContainer.style.display = 'none';
+        }
 
-        if (this.isMenuOpen) {
-          this.closeMobileMenu();
-        } else {
-          this.openMobileMenu();
+        // Show mobile toggle
+        if (this.mobileToggle) {
+          this.mobileToggle.style.display = 'flex';
         }
       }
 
-      openMobileMenu() {
-        if (!this.isMobile || !this.navContainer || !this.mobileToggle || !this.mobileOverlay) return;
+      showDesktopNavigation() {
+        // On desktop, show nav container and hide mobile toggle
+        if (this.navContainer) {
+          this.navContainer.classList.remove('mobile-active', 'active');
+          this.navContainer.style.display = 'flex';
+          this.navContainer.style.transform = '';
+        }
+
+        // Hide mobile toggle
+        if (this.mobileToggle) {
+          this.mobileToggle.style.display = 'none';
+        }
+
+        // Hide overlay
+        if (this.mobileOverlay) {
+          this.mobileOverlay.classList.remove('active');
+        }
+
+        // Enable body scroll
+        document.body.classList.remove('menu-open');
+      }
+
+      toggleMenu() {
+        if (this.isOpen) {
+          this.closeMenu();
+        } else {
+          this.openMenu();
+        }
+      }
+
+      openMenu() {
+        if (!this.navContainer || !this.mobileToggle || !this.mobileOverlay) return;
 
         console.log('📱 Opening mobile menu...');
 
-        this.isMenuOpen = true;
+        this.isOpen = true;
 
-        // Update toggle
+        // Update toggle button
         this.mobileToggle.classList.add('active');
         this.mobileToggle.setAttribute('aria-expanded', 'true');
 
-        // Show nav container
-        this.navContainer.classList.add('active');
+        // Show nav container with slide-in animation
+        this.navContainer.style.display = 'flex';
+        setTimeout(() => {
+          this.navContainer.classList.add('active');
+        }, 10);
 
         // Show overlay
         this.mobileOverlay.classList.add('active');
@@ -3829,29 +3947,37 @@
         // Prevent body scroll
         document.body.classList.add('menu-open');
 
+        // Update auth buttons
+        this.updateMobileAuthButtons();
+
         // Focus management
         setTimeout(() => {
-          const firstFocusable = this.navContainer.querySelector('a, button');
+          const firstFocusable = this.navContainer.querySelector('a, button, input');
           if (firstFocusable) firstFocusable.focus();
         }, 100);
       }
 
-      closeMobileMenu() {
-        if (!this.isMenuOpen) return;
+      closeMenu() {
+        if (!this.isOpen) return;
 
         console.log('📱 Closing mobile menu...');
 
-        this.isMenuOpen = false;
+        this.isOpen = false;
 
-        // Update toggle
+        // Update toggle button
         if (this.mobileToggle) {
           this.mobileToggle.classList.remove('active');
           this.mobileToggle.setAttribute('aria-expanded', 'false');
         }
 
-        // Hide nav container
+        // Hide nav container with slide-out animation
         if (this.navContainer) {
           this.navContainer.classList.remove('active');
+          setTimeout(() => {
+            if (!this.isOpen) {
+              this.navContainer.style.display = 'none';
+            }
+          }, 300);
         }
 
         // Hide overlay
@@ -3862,21 +3988,22 @@
         // Allow body scroll
         document.body.classList.remove('menu-open');
 
-        // Return focus to toggle
+        // Return focus to toggle button
         if (this.mobileToggle) {
           this.mobileToggle.focus();
         }
       }
     }
 
-    // Initialize on page load
+    // Initialize mobile menu
     document.addEventListener('DOMContentLoaded', function() {
-      window.responsiveNav = new ResponsiveNavigation();
+      window.mobileMenu = new MobileMenu();
+
+      // Also initialize the logout functionality
+      setTimeout(() => {
+        if (typeof setupLogout === 'function') {
+          setupLogout();
+        }
+      }, 100);
     });
 
-    // Helper function to close mobile menu
-    function closeMobileMenu() {
-      if (window.responsiveNav && window.responsiveNav.closeMobileMenu) {
-        window.responsiveNav.closeMobileMenu();
-      }
-    }
