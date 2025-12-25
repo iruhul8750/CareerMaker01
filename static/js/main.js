@@ -3624,353 +3624,259 @@
         }, 500);
     });
 
-    // ===========================================
-    // ENHANCED MOBILE NAVIGATION WITH DYNAMIC HEIGHT
-    // ===========================================
-
-    class MobileNavigation {
+    // Enhanced Responsive Navigation System
+    class ResponsiveNavigation {
       constructor() {
-        this.isOpen = false;
+        this.isMobile = window.innerWidth <= 991;
+        this.isMenuOpen = false;
+        this.navContainer = document.querySelector('.nav-container');
+        this.mobileToggle = null;
+        this.mobileOverlay = null;
+
         this.init();
       }
 
       init() {
-        console.log('📱 Mobile navigation initializing...');
-
-        // Create mobile menu structure if it doesn't exist
-        this.createMobileMenu();
-
-        // Initialize event listeners
+        console.log('🌐 Initializing responsive navigation...');
+        this.setupNavigation();
         this.bindEvents();
-
-        // Calculate and set initial menu height
-        this.updateMenuHeight();
-
-        console.log('✅ Mobile navigation initialized');
       }
 
-      createMobileMenu() {
-        // Check if mobile toggle already exists
-        let toggleBtn = document.getElementById('mobileMenuToggle');
-        if (!toggleBtn) {
-          toggleBtn = document.createElement('button');
-          toggleBtn.id = 'mobileMenuToggle';
-          toggleBtn.className = 'mobile-menu-toggle';
-          toggleBtn.innerHTML = '<span class="hamburger"></span>';
-          toggleBtn.setAttribute('aria-label', 'Toggle mobile menu');
-          toggleBtn.setAttribute('aria-expanded', 'false');
+      setupNavigation() {
+        if (this.isMobile) {
+          this.setupMobileNavigation();
+        } else {
+          this.setupDesktopNavigation();
+        }
+      }
 
-          // Insert toggle button in navbar
+      setupDesktopNavigation() {
+        console.log('🖥️ Setting up desktop navigation...');
+
+        // Remove mobile classes and styles
+        if (this.navContainer) {
+          this.navContainer.classList.remove('mobile-active', 'active');
+          this.navContainer.style.cssText = '';
+
+          // Move back to navbar if needed
           const navbar = document.querySelector('.navbar');
-          if (navbar) {
-            navbar.appendChild(toggleBtn);
+          if (navbar && !this.navContainer.parentNode.isEqualNode(navbar)) {
+            navbar.appendChild(this.navContainer);
           }
         }
 
-        // Get the existing nav container
-        let navContainer = document.getElementById('navContainer') ||
-                          document.querySelector('.nav-container');
-
-        if (navContainer) {
-          // Ensure it has the mobile class
-          navContainer.classList.add('mobile-nav-container');
+        // Hide mobile elements
+        if (this.mobileToggle) {
+          this.mobileToggle.style.display = 'none';
         }
+        if (this.mobileOverlay) {
+          this.mobileOverlay.style.display = 'none';
+        }
+
+        // Close menu
+        this.closeMobileMenu();
+      }
+
+      setupMobileNavigation() {
+        console.log('📱 Setting up mobile navigation...');
+
+        // Create or get mobile toggle
+        this.mobileToggle = this.getOrCreateMobileToggle();
+
+        // Create or get mobile overlay
+        this.mobileOverlay = this.getOrCreateMobileOverlay();
+
+        // Setup nav container for mobile
+        if (this.navContainer) {
+          // Add mobile class
+          this.navContainer.classList.add('mobile-active');
+
+          // Move to body for proper positioning
+          document.body.appendChild(this.navContainer);
+
+          // Ensure it's hidden initially
+          this.navContainer.classList.remove('active');
+        }
+
+        // Show mobile elements
+        if (this.mobileToggle) {
+          this.mobileToggle.style.display = 'flex';
+        }
+      }
+
+      getOrCreateMobileToggle() {
+        let toggle = document.getElementById('mobileMenuToggle');
+
+        if (!toggle) {
+          toggle = document.createElement('button');
+          toggle.id = 'mobileMenuToggle';
+          toggle.className = 'mobile-menu-toggle';
+          toggle.innerHTML = '<span class="hamburger"></span>';
+          toggle.setAttribute('aria-label', 'Toggle mobile menu');
+          toggle.setAttribute('aria-expanded', 'false');
+
+          // Insert into navbar
+          const navbar = document.querySelector('.navbar');
+          if (navbar) {
+            navbar.appendChild(toggle);
+          }
+        }
+
+        return toggle;
+      }
+
+      getOrCreateMobileOverlay() {
+        let overlay = document.querySelector('.mobile-overlay');
+
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.className = 'mobile-overlay';
+
+          // Insert into body
+          document.body.appendChild(overlay);
+        }
+
+        return overlay;
       }
 
       bindEvents() {
-        const toggleBtn = document.getElementById('mobileMenuToggle');
-        const navContainer = document.getElementById('navContainer') ||
-                            document.querySelector('.nav-container');
-
-        if (!toggleBtn || !navContainer) {
-          console.error('❌ Mobile navigation elements not found');
-          return;
-        }
-
-        // Toggle menu
-        toggleBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.toggleMenu();
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-          if (this.isOpen) {
-            const isClickInsideMenu = navContainer.contains(e.target);
-            const isClickOnToggle = toggleBtn.contains(e.target);
-
-            if (!isClickInsideMenu && !isClickOnToggle) {
-              this.closeMenu();
-            }
-          }
-        });
-
-        // Close menu on escape key
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && this.isOpen) {
-            this.closeMenu();
-          }
-        });
-
-        // Handle navigation links - FIXED VERSION
-        this.setupNavigationLinks(navContainer);
-
-        // Handle auth buttons
-        this.setupMobileAuthButtons(navContainer);
-
-        // Update menu height on window resize
+        // Window resize with debounce
+        let resizeTimeout;
         window.addEventListener('resize', () => {
-          if (this.isOpen) {
-            this.updateMenuHeight();
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            const wasMobile = this.isMobile;
+            this.isMobile = window.innerWidth <= 991;
+
+            if (wasMobile !== this.isMobile) {
+              this.setupNavigation();
+              this.isMenuOpen = false;
+            }
+          }, 150);
+        });
+
+        // Mobile toggle click
+        if (this.mobileToggle) {
+          this.mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMobileMenu();
+          });
+        }
+
+        // Overlay click
+        if (this.mobileOverlay) {
+          this.mobileOverlay.addEventListener('click', () => {
+            this.closeMobileMenu();
+          });
+        }
+
+        // Close on escape
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.isMenuOpen) {
+            this.closeMobileMenu();
           }
         });
-      }
 
-      setupNavigationLinks(navContainer) {
-        // Find all navigation links in the container
-        const navLinks = navContainer.querySelectorAll('.nav-links a, .mobile-nav-links a');
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+          if (this.isMenuOpen &&
+              this.navContainer &&
+              !this.navContainer.contains(e.target) &&
+              this.mobileToggle &&
+              !this.mobileToggle.contains(e.target)) {
+            this.closeMobileMenu();
+          }
+        });
 
-        navLinks.forEach(link => {
-          // Remove existing click handlers
-          const newLink = link.cloneNode(true);
-          link.parentNode.replaceChild(newLink, link);
-
-          // Add new click handler
-          newLink.addEventListener('click', (e) => {
-            const href = newLink.getAttribute('href');
-
-            // Only handle hash links (#section)
-            if (href && href.startsWith('#')) {
-              e.preventDefault();
-              e.stopPropagation();
-
-              // Close the menu first
-              this.closeMenu();
-
-              // Wait for menu animation to complete, then scroll
-              setTimeout(() => {
-                const targetId = href.substring(1);
-                const targetElement = document.getElementById(targetId);
-
-                if (targetElement) {
-                  // Calculate scroll position
-                  const headerHeight = document.querySelector('header').offsetHeight;
-                  const targetPosition = targetElement.offsetTop - headerHeight;
-
-                  // Smooth scroll
-                  window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                  });
-
-                  // Update URL without page reload
-                  history.pushState(null, null, href);
-                }
-              }, 300);
+        // Close menu when clicking links
+        if (this.navContainer) {
+          this.navContainer.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && this.isMenuOpen) {
+              this.closeMobileMenu();
             }
-            // For non-hash links (like /dashboard), they will navigate normally
           });
-        });
-      }
-
-      setupMobileAuthButtons(navContainer) {
-        // Handle login buttons
-        const loginButtons = navContainer.querySelectorAll('.login-btn');
-        loginButtons.forEach(btn => {
-          // Remove existing listeners
-          const newBtn = btn.cloneNode(true);
-          btn.parentNode.replaceChild(newBtn, btn);
-
-          newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.closeMenu();
-
-            setTimeout(() => {
-              if (typeof openLoginModal === 'function') {
-                openLoginModal();
-              } else {
-                const loginModal = document.getElementById('loginModal');
-                if (loginModal) {
-                  loginModal.style.display = 'flex';
-                  document.body.style.overflow = 'hidden';
-                }
-              }
-            }, 300);
-          });
-        });
-
-        // Handle register buttons
-        const registerButtons = navContainer.querySelectorAll('.register-btn');
-        registerButtons.forEach(btn => {
-          // Remove existing listeners
-          const newBtn = btn.cloneNode(true);
-          btn.parentNode.replaceChild(newBtn, btn);
-
-          newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.closeMenu();
-
-            setTimeout(() => {
-              if (typeof openRegisterModal === 'function') {
-                openRegisterModal();
-              } else {
-                const registerModal = document.getElementById('registerModal');
-                if (registerModal) {
-                  registerModal.style.display = 'flex';
-                  document.body.style.overflow = 'hidden';
-                }
-              }
-            }, 300);
-          });
-        });
-      }
-
-      updateMenuHeight() {
-        const navContainer = document.getElementById('navContainer') ||
-                            document.querySelector('.nav-container');
-        const toggleBtn = document.getElementById('mobileMenuToggle');
-
-        if (!navContainer || !this.isOpen) return;
-
-        // Calculate required height
-        const viewportHeight = window.innerHeight;
-        const headerHeight = toggleBtn ? toggleBtn.getBoundingClientRect().bottom : 70;
-        const maxAllowedHeight = viewportHeight - headerHeight - 20;
-
-        // Get actual content height
-        const contentHeight = navContainer.scrollHeight;
-
-        // Set the height
-        navContainer.style.maxHeight = Math.min(contentHeight, maxAllowedHeight) + 'px';
-        navContainer.style.overflowY = contentHeight > maxAllowedHeight ? 'auto' : 'visible';
-      }
-
-      toggleMenu() {
-        if (this.isOpen) {
-          this.closeMenu();
-        } else {
-          this.openMenu();
         }
       }
 
-      openMenu() {
-        const toggleBtn = document.getElementById('mobileMenuToggle');
-        const navContainer = document.getElementById('navContainer') ||
-                            document.querySelector('.nav-container');
+      toggleMobileMenu() {
+        if (!this.isMobile) return;
 
-        if (!toggleBtn || !navContainer) return;
+        if (this.isMenuOpen) {
+          this.closeMobileMenu();
+        } else {
+          this.openMobileMenu();
+        }
+      }
 
-        this.isOpen = true;
-        toggleBtn.classList.add('active');
-        toggleBtn.setAttribute('aria-expanded', 'true');
-        navContainer.classList.add('active');
+      openMobileMenu() {
+        if (!this.isMobile || !this.navContainer || !this.mobileToggle || !this.mobileOverlay) return;
+
+        console.log('📱 Opening mobile menu...');
+
+        this.isMenuOpen = true;
+
+        // Update toggle
+        this.mobileToggle.classList.add('active');
+        this.mobileToggle.setAttribute('aria-expanded', 'true');
+
+        // Show nav container
+        this.navContainer.classList.add('active');
+
+        // Show overlay
+        this.mobileOverlay.classList.add('active');
+
+        // Prevent body scroll
         document.body.classList.add('menu-open');
 
-        // Calculate and set appropriate height
-        this.updateMenuHeight();
-
-        // Focus management for accessibility
+        // Focus management
         setTimeout(() => {
-          const firstFocusable = navContainer.querySelector('a, button');
+          const firstFocusable = this.navContainer.querySelector('a, button');
           if (firstFocusable) firstFocusable.focus();
         }, 100);
-
-        console.log('📱 Mobile menu opened');
       }
 
-      closeMenu() {
-        const toggleBtn = document.getElementById('mobileMenuToggle');
-        const navContainer = document.getElementById('navContainer') ||
-                            document.querySelector('.nav-container');
+      closeMobileMenu() {
+        if (!this.isMenuOpen) return;
 
-        if (!toggleBtn || !navContainer) return;
+        console.log('📱 Closing mobile menu...');
 
-        this.isOpen = false;
-        toggleBtn.classList.remove('active');
-        toggleBtn.setAttribute('aria-expanded', 'false');
-        navContainer.classList.remove('active');
+        this.isMenuOpen = false;
+
+        // Update toggle
+        if (this.mobileToggle) {
+          this.mobileToggle.classList.remove('active');
+          this.mobileToggle.setAttribute('aria-expanded', 'false');
+        }
+
+        // Hide nav container
+        if (this.navContainer) {
+          this.navContainer.classList.remove('active');
+        }
+
+        // Hide overlay
+        if (this.mobileOverlay) {
+          this.mobileOverlay.classList.remove('active');
+        }
+
+        // Allow body scroll
         document.body.classList.remove('menu-open');
 
-        // Reset height
-        navContainer.style.maxHeight = '';
-        navContainer.style.overflowY = '';
-
-        // Return focus to toggle button
-        toggleBtn.focus();
-
-        console.log('📱 Mobile menu closed');
-      }
-    }
-
-    // ===========================================
-    // MOBILE INITIALIZATION
-    // ===========================================
-
-    document.addEventListener('DOMContentLoaded', function() {
-      // Only initialize mobile navigation on mobile devices
-      if (window.innerWidth <= 991) {
-        console.log('📱 Initializing mobile navigation...');
-
-        // Initialize mobile navigation
-        window.mobileNav = new MobileNavigation();
-
-        // Update on screen resize
-        window.addEventListener('resize', function() {
-          if (window.innerWidth > 991) {
-            // Close menu if resized to desktop
-            if (window.mobileNav && window.mobileNav.isOpen) {
-              window.mobileNav.close();
-            }
-          } else {
-            // Update menu height if open
-            if (window.mobileNav && window.mobileNav.isOpen) {
-              window.mobileNav.updateMenuHeight();
-            }
-          }
-        });
-      }
-    });
-
-    // ===========================================
-    // HELPER FUNCTION FOR CLOSING MENU
-    // ===========================================
-
-    function closeMobileMenu() {
-      if (window.mobileNav && window.mobileNav.close) {
-        window.mobileNav.close();
-      }
-    }
-
-     // Fix for user profile in mobile menu
-    document.addEventListener('DOMContentLoaded', function() {
-      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-      const navContainer = document.getElementById('navContainer');
-
-      if (mobileMenuToggle && navContainer) {
-        // When mobile menu opens, make sure user dropdown is visible
-        mobileMenuToggle.addEventListener('click', function() {
-          const userDropdown = document.querySelector('.user-dropdown-nav');
-          if (userDropdown && window.innerWidth < 992) {
-            // Force display for mobile
-            userDropdown.style.display = 'flex';
-            userDropdown.style.opacity = '1';
-            userDropdown.style.visibility = 'visible';
-            userDropdown.style.position = 'static';
-          }
-        });
-
-        // Also fix on page load for mobile
-        if (window.innerWidth < 992) {
-          const userDropdown = document.querySelector('.user-dropdown-nav');
-          if (userDropdown) {
-            userDropdown.style.display = 'flex';
-            userDropdown.style.opacity = '1';
-            userDropdown.style.visibility = 'visible';
-            userDropdown.style.position = 'static';
-          }
+        // Return focus to toggle
+        if (this.mobileToggle) {
+          this.mobileToggle.focus();
         }
       }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      window.responsiveNav = new ResponsiveNavigation();
     });
+
+    // Helper function to close mobile menu
+    function closeMobileMenu() {
+      if (window.responsiveNav && window.responsiveNav.closeMobileMenu) {
+        window.responsiveNav.closeMobileMenu();
+      }
+    }
