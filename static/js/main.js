@@ -3802,6 +3802,10 @@
           });
           authContainer.appendChild(registerBtn);
         }
+         // After updating buttons, recalculate menu height
+        setTimeout(() => {
+          this.calculateMenuHeight();
+        }, 50);
       }
 
       bindEvents() {
@@ -3937,8 +3941,19 @@
 
         // Show nav container with slide-in animation
         this.navContainer.style.display = 'flex';
+
+        // Force a reflow to ensure proper rendering
+        void this.navContainer.offsetWidth;
+
+        // Add active class after display
         setTimeout(() => {
           this.navContainer.classList.add('active');
+
+          // Update auth buttons after menu is visible
+          this.updateMobileAuthButtons();
+
+          // Force a layout recalculation
+          this.calculateMenuHeight();
         }, 10);
 
         // Show overlay
@@ -3947,14 +3962,54 @@
         // Prevent body scroll
         document.body.classList.add('menu-open');
 
-        // Update auth buttons
-        this.updateMobileAuthButtons();
-
         // Focus management
         setTimeout(() => {
           const firstFocusable = this.navContainer.querySelector('a, button, input');
           if (firstFocusable) firstFocusable.focus();
         }, 100);
+      }
+
+      calculateMenuHeight() {
+        if (!this.navContainer || !this.isOpen) return;
+
+        // Calculate total height of all menu items
+        const navLinks = this.navContainer.querySelector('.nav-links');
+        const navRight = this.navContainer.querySelector('.nav-right');
+        const authContainer = this.navContainer.querySelector('.auth-buttons-container');
+
+        let totalHeight = 0;
+
+        if (navLinks) {
+          const linksHeight = navLinks.getBoundingClientRect().height;
+          totalHeight += linksHeight;
+        }
+
+        if (navRight) {
+          const rightHeight = navRight.getBoundingClientRect().height;
+          totalHeight += rightHeight;
+        }
+
+        if (authContainer) {
+          const authHeight = authContainer.getBoundingClientRect().height;
+          totalHeight += authHeight;
+        }
+
+        // Add padding and margins
+        totalHeight += 80; // Account for padding
+
+        // Get viewport height
+        const viewportHeight = window.innerHeight;
+        const availableHeight = viewportHeight - 70; // Subtract header height
+
+        // Set dynamic max-height
+        this.navContainer.style.maxHeight = Math.min(totalHeight, availableHeight) + 'px';
+
+        // Ensure overflow is visible if content fits
+        if (totalHeight <= availableHeight) {
+          this.navContainer.style.overflowY = 'hidden';
+        } else {
+          this.navContainer.style.overflowY = 'auto';
+        }
       }
 
       closeMenu() {
