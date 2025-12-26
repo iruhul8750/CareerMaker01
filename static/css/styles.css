@@ -55,6 +55,30 @@ header {
   z-index: 1000;
   transition: var(--transition);
   padding: 0 20px;
+  /* Add display flex to center content */
+  display: flex;
+  justify-content: center;
+}
+
+/* Make sure the header container is properly centered */
+header > .container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* For mobile */
+@media (max-width: 991px) {
+  header {
+    padding: 0; /* Remove padding on mobile */
+    display: block; /* Change back to block */
+  }
+
+  .navbar {
+    padding: 0 15px;
+    transform: none;
+  }
 }
 
 .dark-mode header {
@@ -70,10 +94,9 @@ header {
   position: relative;
   max-width: 1400px;
   margin: 0 auto;
-  /* Remove margin-left and add transform instead */
-  transform: translateX(50px); /* Adjust this value to shift right */
+  /* Remove this line completely */
+  /* transform: translateX(50px); */
 }
-
 .logo {
   display: flex;
   align-items: center;
