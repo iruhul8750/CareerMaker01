@@ -4383,3 +4383,284 @@ body {
 .dark-mode .course-description {
     color: #d1d5db;
 }
+/* ===== SIDEBAR SCROLLBAR ===== */
+
+.sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--primary-light) transparent;
+}
+
+/* Custom scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 5px 0;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 10px;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+  opacity: 1;
+}
+
+/* Hide scrollbar when not needed but keep functionality */
+.sidebar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: thin;     /* Firefox */
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+/* Ensure all menu items are visible with scroll */
+.sidebar-menu {
+  padding-bottom: 80px; /* Space for dark mode toggle at bottom */
+  min-height: min-content;
+}
+
+/* Fix for dark mode scrollbar */
+.admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Mobile-specific scrollbar improvements */
+@media (max-width: 768px) {
+  .sidebar {
+    scrollbar-width: none; /* Hide on mobile but keep scroll */
+  }
+
+  .sidebar::-webkit-scrollbar {
+    width: 3px; /* Thinner on mobile */
+  }
+
+  /* Show scrollbar only when scrolling on mobile */
+  .sidebar:not(:hover)::-webkit-scrollbar-thumb {
+    opacity: 0;
+  }
+
+  .sidebar:hover::-webkit-scrollbar-thumb {
+    opacity: 0.5;
+  }
+}
+
+/* Ensure dark mode toggle stays at bottom and visible */
+.dark-mode-item {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-sidebar);
+  padding-top: 10px;
+  margin-top: auto;
+  z-index: 10;
+}
+
+/* Make sure sidebar content doesn't get cut off */
+.sidebar-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg-sidebar);
+  z-index: 10;
+  padding: 20px 15px;
+}
+
+/* Smooth scrolling for sidebar */
+.sidebar {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar for Firefox when sidebar is collapsed on mobile */
+@media (max-width: 768px) {
+  .sidebar:not(.active) {
+    overflow-y: hidden;
+  }
+}
+
+/* Ensure all buttons are accessible */
+.menu-item {
+  min-height: 44px; /* Minimum touch target size */
+  display: flex;
+  align-items: center;
+}
+
+.menu-item a {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Add padding to bottom for better scrolling */
+.sidebar::after {
+  content: '';
+  display: block;
+  height: 20px;
+  width: 100%;
+}
+
+/* Make sure sidebar menu is properly positioned */
+.sidebar-menu {
+    position: relative !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* Hide native scrollbar */
+.sidebar-menu::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Custom scrollbar container */
+.menu-scrollbar {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    width: 6px;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+/* Show on mobile */
+@media (max-width: 768px) {
+    .menu-scrollbar {
+        opacity: 0.8 !important;
+        pointer-events: auto !important;
+        width: 8px;
+    }
+}
+
+/* Show on hover */
+.sidebar-menu:hover .menu-scrollbar,
+.sidebar-menu.scrolling .menu-scrollbar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Scrollbar track */
+.menu-scrollbar-track {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+/* Dark mode track */
+.admin-dashboard.dark-mode .menu-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Scrollbar thumb */
+.menu-scrollbar-thumb {
+    position: absolute;
+    right: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.2s ease, height 0.2s ease;
+    pointer-events: auto;
+    user-select: none;
+}
+
+.menu-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode thumb */
+.admin-dashboard.dark-mode .menu-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+.admin-dashboard.dark-mode .menu-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Active dragging state */
+.menu-scrollbar-thumb:active {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.admin-dashboard.dark-mode .menu-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .menu-scrollbar {
+        opacity: 0.8 !important;
+        pointer-events: auto !important;
+        width: 10px;
+    }
+
+    .menu-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .menu-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.4) !important;
+        min-height: 40px !important;
+    }
+
+    .admin-dashboard.dark-mode .menu-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .admin-dashboard.dark-mode .menu-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.4) !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .menu-scrollbar-track {
+        background: #000000 !important;
+        border: 1px solid #ffffff;
+    }
+
+    .menu-scrollbar-thumb {
+        background: #ffffff !important;
+        border: 1px solid #000000;
+    }
+}
+
+/* Ensure menu items are not hidden by scrollbar */
+.sidebar-menu a,
+.sidebar-menu li {
+    padding-right: 10px !important; /* Space for scrollbar */
+}
+
+/* RTL support */
+[dir="rtl"] .menu-scrollbar {
+    right: auto;
+    left: 0;
+}
+
+[dir="rtl"] .sidebar-menu a,
+[dir="rtl"] .sidebar-menu li {
+    padding-right: 0 !important;
+    padding-left: 10px !important;
+}

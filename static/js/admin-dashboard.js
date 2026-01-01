@@ -267,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupLogoPreview();
         setupExpirationDateFields();
         setupTestimonialsGlobalIntegration();
+        initSidebarMenuScrolling();
 
 
         // Load data and content
@@ -5185,4 +5186,348 @@ document.addEventListener('DOMContentLoaded', function() {
             hideLoading();
         });
     }
+
+    // ===== SIDEBAR MENU SCROLL MANAGER =====
+    class SidebarMenuScrollManager {
+        constructor() {
+            this.sidebarMenu = document.querySelector('.sidebar-menu');
+            this.sidebar = document.querySelector('.sidebar');
+            this.scrollbar = null;
+            this.scrollbarThumb = null;
+            this.isDragging = false;
+            this.isMobile = window.innerWidth <= 768;
+            this.scrollTimeout = null;
+
+            if (!this.sidebarMenu) {
+                console.warn('Sidebar menu not found');
+                return;
+            }
+
+            this.init();
+        }
+
+        init() {
+            console.log('🔄 Initializing sidebar menu scroll manager...');
+
+            // First, make sure menu is scrollable
+            this.setupMenuScrolling();
+
+            // Create custom scrollbar
+            this.createScrollbar();
+
+            // Setup event listeners
+            this.setupEventListeners();
+
+            // Initial update
+            this.updateScrollbar();
+
+            // Show on mobile immediately
+            if (this.isMobile) {
+                this.showScrollbar();
+            }
+        }
+
+        setupMenuScrolling() {
+            // Make menu scrollable
+            this.sidebarMenu.style.overflowY = 'auto';
+            this.sidebarMenu.style.overflowX = 'hidden';
+            this.sidebarMenu.style.maxHeight = 'calc(100vh - 150px)'; // Adjust based on your header/footer height
+            this.sidebarMenu.style.position = 'relative';
+            this.sidebarMenu.style.paddingRight = '8px'; // Space for scrollbar
+
+            // Hide native scrollbar
+            this.sidebarMenu.style.scrollbarWidth = 'none';
+            this.sidebarMenu.style.msOverflowStyle = 'none';
+
+            // For Webkit browsers
+            const style = document.createElement('style');
+            style.textContent = `
+                .sidebar-menu::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        createScrollbar() {
+            // Remove existing custom scrollbar
+            const existing = this.sidebarMenu.parentElement.querySelector('.menu-scrollbar');
+            if (existing) existing.remove();
+
+            // Create scrollbar container
+            this.scrollbar = document.createElement('div');
+            this.scrollbar.className = 'menu-scrollbar';
+            this.scrollbar.style.cssText = `
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 6px;
+                height: 100%;
+                z-index: 10;
+                opacity: ${this.isMobile ? '0.8' : '0'};
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            `;
+
+            // Create scrollbar track
+            const track = document.createElement('div');
+            track.className = 'menu-scrollbar-track';
+            track.style.cssText = `
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.05);
+                border-radius: 3px;
+            `;
+
+            // Create scrollbar thumb
+            this.scrollbarThumb = document.createElement('div');
+            this.scrollbarThumb.className = 'menu-scrollbar-thumb';
+            this.scrollbarThumb.style.cssText = `
+                position: absolute;
+                right: 0;
+                width: 100%;
+                background: rgba(0,0,0,0.3);
+                border-radius: 3px;
+                cursor: pointer;
+                transition: background 0.2s ease, height 0.2s ease;
+                pointer-events: auto;
+                user-select: none;
+            `;
+
+            // Dark mode adjustments
+            if (document.querySelector('.admin-dashboard.dark-mode')) {
+                track.style.background = 'rgba(255,255,255,0.05)';
+                this.scrollbarThumb.style.background = 'rgba(255,255,255,0.3)';
+            }
+
+            // Assemble
+            track.appendChild(this.scrollbarThumb);
+            this.scrollbar.appendChild(track);
+
+            // Position scrollbar relative to sidebar menu
+            const menuRect = this.sidebarMenu.getBoundingClientRect();
+            const sidebarRect = this.sidebarMenu.parentElement.getBoundingClientRect();
+
+            this.scrollbar.style.top = `${menuRect.top - sidebarRect.top}px`;
+            this.scrollbar.style.height = `${menuRect.height}px`;
+
+            // Add to sidebar (parent of menu)
+            this.sidebarMenu.parentElement.appendChild(this.scrollbar);
+
+            console.log('✅ Custom scrollbar created');
+        }
+
+        updateScrollbar() {
+            if (!this.scrollbarThumb || !this.sidebarMenu) return;
+
+            const menuHeight = this.sidebarMenu.clientHeight;
+            const scrollHeight = this.sidebarMenu.scrollHeight;
+            const scrollTop = this.sidebarMenu.scrollTop;
+
+            // Hide if no scrolling needed
+            if (scrollHeight <= menuHeight) {
+                this.scrollbar.style.opacity = '0';
+                this.scrollbar.style.pointerEvents = 'none';
+                return;
+            }
+
+            // Calculate thumb size and position
+            const ratio = menuHeight / scrollHeight;
+            const thumbHeight = Math.max(menuHeight * ratio, 20); // Minimum 20px
+            const maxScroll = scrollHeight - menuHeight;
+            const thumbTop = (scrollTop / maxScroll) * (menuHeight - thumbHeight);
+
+            // Update thumb
+            this.scrollbarThumb.style.height = `${thumbHeight}px`;
+            this.scrollbarThumb.style.top = `${thumbTop}px`;
+
+            // Show scrollbar
+            this.showScrollbar();
+
+            console.log('📏 Scrollbar updated:', { menuHeight, scrollHeight, thumbHeight, thumbTop });
+        }
+
+        showScrollbar() {
+            if (this.scrollbar) {
+                this.scrollbar.style.opacity = this.isMobile ? '0.8' : '1';
+                this.scrollbar.style.pointerEvents = 'auto';
+            }
+        }
+
+        hideScrollbar() {
+            if (this.scrollbar && !this.isDragging && !this.isMobile) {
+                this.scrollbar.style.opacity = '0';
+                this.scrollbar.style.pointerEvents = 'none';
+            }
+        }
+
+        setupEventListeners() {
+            // Menu scroll event
+            this.sidebarMenu.addEventListener('scroll', () => {
+                this.updateScrollbar();
+                this.showScrollbar();
+
+                // Auto-hide on desktop
+                if (!this.isMobile) {
+                    clearTimeout(this.scrollTimeout);
+                    this.scrollTimeout = setTimeout(() => this.hideScrollbar(), 1500);
+                }
+            });
+
+            // Mouse events for thumb dragging
+            this.scrollbarThumb.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                this.isDragging = true;
+                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
+
+                const startY = e.clientY;
+                const startTop = parseFloat(this.scrollbarThumb.style.top) || 0;
+                const menuHeight = this.sidebarMenu.clientHeight;
+                const thumbHeight = this.scrollbarThumb.offsetHeight;
+
+                const onMouseMove = (moveE) => {
+                    if (!this.isDragging) return;
+
+                    const deltaY = moveE.clientY - startY;
+                    const newTop = Math.max(0, Math.min(startTop + deltaY, menuHeight - thumbHeight));
+
+                    // Calculate scroll position
+                    const scrollRatio = newTop / (menuHeight - thumbHeight);
+                    const maxScroll = this.sidebarMenu.scrollHeight - menuHeight;
+                    this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
+
+                    // Update thumb position
+                    this.scrollbarThumb.style.top = `${newTop}px`;
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    this.isDragging = false;
+                    this.scrollbarThumb.style.background = '';
+
+                    if (!this.isMobile) {
+                        setTimeout(() => this.hideScrollbar(), 1000);
+                    }
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Hover events
+            this.sidebarMenu.addEventListener('mouseenter', () => {
+                if (!this.isMobile) this.showScrollbar();
+            });
+
+            this.sidebarMenu.addEventListener('mouseleave', () => {
+                if (!this.isDragging && !this.isMobile) {
+                    setTimeout(() => this.hideScrollbar(), 500);
+                }
+            });
+
+            // Touch events for mobile
+            this.scrollbarThumb.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.isDragging = true;
+                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!this.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const thumbRect = this.scrollbarThumb.getBoundingClientRect();
+                const menuRect = this.sidebarMenu.getBoundingClientRect();
+
+                // Calculate new position
+                const newTop = Math.max(0, Math.min(touch.clientY - menuRect.top - thumbRect.height/2, menuRect.height - thumbRect.height));
+
+                // Calculate scroll position
+                const scrollRatio = newTop / (menuRect.height - thumbRect.height);
+                const maxScroll = this.sidebarMenu.scrollHeight - menuRect.height;
+                this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
+            }, { passive: false });
+
+            document.addEventListener('touchend', () => {
+                this.isDragging = false;
+                this.scrollbarThumb.style.background = '';
+            });
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                this.isMobile = window.innerWidth <= 768;
+                this.updateScrollbar();
+
+                // Recreate scrollbar on resize to fix positioning
+                setTimeout(() => {
+                    this.createScrollbar();
+                    this.updateScrollbar();
+                }, 100);
+            });
+
+            // Also update when menu items change
+            const observer = new MutationObserver(() => {
+                setTimeout(() => this.updateScrollbar(), 100);
+            });
+
+            observer.observe(this.sidebarMenu, {
+                childList: true,
+                subtree: true,
+                attributes: false,
+                characterData: false
+            });
+        }
+
+        destroy() {
+            if (this.scrollbar) {
+                this.scrollbar.remove();
+            }
+
+            // Reset menu styles
+            this.sidebarMenu.style.overflowY = '';
+            this.sidebarMenu.style.maxHeight = '';
+            this.sidebarMenu.style.paddingRight = '';
+            this.sidebarMenu.style.position = '';
+
+            console.log('🗑️ Sidebar menu scroll manager destroyed');
+        }
+    }
+
+    // Initialize sidebar menu scrolling
+    let sidebarMenuScrollManager = null;
+
+    function initSidebarMenuScrolling() {
+        // Destroy existing
+        if (sidebarMenuScrollManager) {
+            sidebarMenuScrollManager.destroy();
+        }
+
+        // Initialize new
+        sidebarMenuScrollManager = new SidebarMenuScrollManager();
+
+        // Also update after a delay to ensure everything is loaded
+        setTimeout(() => {
+            if (sidebarMenuScrollManager) {
+                sidebarMenuScrollManager.updateScrollbar();
+            }
+        }, 1000);
+    }
+
+    // Re-initialize scrollbar on resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            initSidebarMenuScrolling();
+        }, 250);
+    });
+
 });
