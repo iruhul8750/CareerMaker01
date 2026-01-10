@@ -3329,6 +3329,11 @@
             initializeBadgeColors();
         }
 
+        // Initialize share modal theme listener
+        if (typeof initShareModalThemeListener === 'function') {
+            initShareModalThemeListener();
+        }
+
         console.log('🎯 Application fully initialized');
     });
 
