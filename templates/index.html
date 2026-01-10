@@ -187,9 +187,6 @@
                                 title="Bookmark">
                             <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
                         </button>
-                        <button class="btn btn-icon share-btn" data-type="course" data-id="{{ course.id }}" title="Share">
-                            <i class="fas fa-share-alt"></i>
-                        </button>
                         <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
                                 {% if not course.application_link %}disabled{% endif %}>
                             Enroll Now
@@ -293,9 +290,6 @@
                             data-type="job"
                             title="Bookmark">
                         <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-                    </button>
-                    <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
-                        <i class="fas fa-share-alt"></i>
                     </button>
                     <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
                             {% if not job.application_link %}disabled{% endif %}>
@@ -409,10 +403,6 @@
                             data-type="internship"
                             title="Bookmark">
                         <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-                    </button>
-                    <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}"
-                            title="Share">
-                        <i class="fas fa-share-alt"></i>
                     </button>
                     <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
                             {% if not internship.application_link %}disabled{% endif %}>
@@ -584,10 +574,6 @@
             <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
                 <i class="far fa-bookmark"></i>
                 <span class="bookmark-text">Bookmark</span>
-            </button>
-            <button class="btn btn-primary share-modal-btn" onclick="blogModal.shareBlog()">
-                <i class="fas fa-share-alt"></i>
-                Share Article
             </button>
         </div>
     </div>

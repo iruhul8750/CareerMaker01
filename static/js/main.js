@@ -466,23 +466,6 @@
             });
         }
 
-        // Add loading states to other buttons
-        document.querySelectorAll('.apply-btn, .share-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (!this.disabled) {
-                    const originalHTML = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    this.disabled = true;
-
-                    setTimeout(() => {
-                        if (this.disabled) {
-                            this.innerHTML = originalHTML;
-                            this.disabled = false;
-                        }
-                    }, 3000);
-                }
-            });
-        });
     }
 
     // =============================================
@@ -837,221 +820,6 @@
             });
         });
 
-        // Share buttons
-        document.querySelectorAll('.share-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const contentId = this.dataset.id;
-                const contentType = this.dataset.type;
-                shareContent(contentId, contentType, this);
-            });
-        });
-    }
-
-    // Share functionality - FIXED to open in same tab
-    async function shareContent(contentId, contentType, button) {
-        console.log('Share function called:', { contentType, contentId, button });
-
-        // Show loading state on the button
-        const loader = showLoader('Loading share options...');
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
-
-        try {
-            // Fetch share data from backend API
-            const response = await fetch(`/share/${contentType}/${contentId}`);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to load share data');
-            }
-
-            // Hide loader and show share modal
-            hideLoader();
-            showShareModal(data, contentType);
-
-        } catch (error) {
-            console.error('Share error:', error);
-            hideLoader();
-
-            // Fallback: construct URL manually if API fails
-            const fallbackData = {
-                share_url: `${window.location.origin}/${contentType}s/${contentId}`,
-                title: `Amazing ${contentType}`,
-                description: `Check out this ${contentType} on CareerMaker`
-            };
-
-            showShareModal(fallbackData, contentType);
-
-            // Show error notification
-            showToast('Share content loaded with limited information', 'info');
-        } finally {
-            // Reset button
-            button.innerHTML = originalHTML;
-            button.disabled = false;
-        }
-    }
-
-    // Enhanced showShareModal function - FIXED to open in same tab
-    function showShareModal(data, contentType) {
-        const modal = document.getElementById('shareModal');
-        const urlInput = document.getElementById('shareUrlInput');
-        const copyBtn = document.getElementById('copyShareUrl');
-        const closeBtn = document.querySelector('.share-modal-close');
-        const platformBtns = document.querySelectorAll('.share-platform-btn');
-        const successMessage = document.getElementById('shareSuccessMessage');
-
-        // Set share URL - use application_link if available, otherwise use share_url
-        const shareUrl = data.direct_link || data.share_url;
-        urlInput.value = shareUrl;
-
-        // Reset UI state
-        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-        copyBtn.classList.remove('copied');
-        successMessage.classList.remove('show');
-
-        // Apply dark mode if active
-        applyDarkModeToModal();
-
-        // Show modal
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-
-        // Store current active element for accessibility
-        const previousActiveElement = document.activeElement;
-
-        // Focus management for accessibility
-        modal.setAttribute('aria-hidden', 'false');
-        closeBtn.focus();
-
-        // Close modal handlers
-        function closeModal() {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-            modal.setAttribute('aria-hidden', 'true');
-
-            // Return focus to previous element
-            if (previousActiveElement) {
-                previousActiveElement.focus();
-            }
-
-            // Remove event listeners
-            modal.removeEventListener('click', handleBackdropClick);
-            closeBtn.removeEventListener('click', closeModal);
-            document.removeEventListener('keydown', handleEscape);
-        }
-
-        function handleBackdropClick(e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        }
-
-        function handleEscape(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        }
-
-        // Add event listeners
-        modal.addEventListener('click', handleBackdropClick);
-        closeBtn.addEventListener('click', closeModal);
-        document.addEventListener('keydown', handleEscape);
-
-        // Copy URL functionality
-        copyBtn.onclick = async function() {
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-
-                // Show success state
-                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                this.classList.add('copied');
-                successMessage.classList.add('show');
-
-                // Reset after 2 seconds
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-copy"></i> Copy';
-                    this.classList.remove('copied');
-                    successMessage.classList.remove('show');
-                }, 2000);
-
-            } catch (err) {
-                // Fallback for older browsers
-                urlInput.select();
-                urlInput.setSelectionRange(0, 99999);
-                document.execCommand('copy');
-
-                // Show success state
-                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                this.classList.add('copied');
-                successMessage.classList.add('show');
-
-                // Reset after 2 seconds
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-copy"></i> Copy';
-                    this.classList.remove('copied');
-                    successMessage.classList.remove('show');
-                }, 2000);
-            }
-        };
-
-        // Platform sharing functionality - OPEN IN NEW TAB (Better UX)
-        platformBtns.forEach(btn => {
-            btn.onclick = function() {
-                const platform = this.dataset.platform;
-                const shareTitle = encodeURIComponent(data.title || `Check out this ${contentType}`);
-                const shareText = encodeURIComponent(data.description || `I found this on CareerMaker!`);
-                const encodedUrl = encodeURIComponent(shareUrl);
-
-                let shareUrlToOpen;
-
-                switch (platform) {
-                    case 'twitter':
-                        shareUrlToOpen = `https://twitter.com/intent/tweet?text=${shareTitle}&url=${encodedUrl}`;
-                        break;
-                    case 'facebook':
-                        shareUrlToOpen = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
-                        break;
-                    case 'linkedin':
-                        shareUrlToOpen = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
-                        break;
-                    case 'whatsapp':
-                        shareUrlToOpen = `https://api.whatsapp.com/send?text=${shareTitle}%20${encodedUrl}`;
-                        break;
-                    case 'telegram':
-                        shareUrlToOpen = `https://t.me/share/url?url=${encodedUrl}&text=${shareTitle}`;
-                        break;
-                    default:
-                        return;
-                }
-
-                // Open in new tab (better UX - user doesn't lose current page)
-                if (platform === 'email') {
-                    // mailto links work differently
-                    window.location.href = shareUrlToOpen;
-                } else {
-                    // Open social platforms in new tab
-                    window.open(shareUrlToOpen, '_blank');
-                }
-            };
-        });
-    }
-
-    // Apply dark mode to modal
-    function applyDarkModeToModal() {
-        const modal = document.getElementById('shareModal');
-        const isDarkMode = document.body.classList.contains('dark-mode') ||
-                           document.documentElement.classList.contains('dark-mode') ||
-                           localStorage.getItem('theme') === 'dark';
-
-        if (isDarkMode) {
-            modal.classList.add('dark-mode');
-        } else {
-            modal.classList.remove('dark-mode');
-        }
     }
 
     // =============================================
@@ -1938,20 +1706,6 @@
             button.innerHTML = originalHTML;
         });
     }
-
-
-    // =============================================
-    // Share Functionality
-    // =============================================
-    document.addEventListener('click', function(e) {
-      const shareBtn = e.target.closest('.share-btn');
-      if (shareBtn) {
-        e.preventDefault();
-        const type = shareBtn.dataset.type;
-        const id = shareBtn.dataset.id;
-        window.location.href = `/share/${type}/${id}`;
-      }
-    });
 
     // =============================================
     // Dashboard Link Handling
@@ -3138,36 +2892,6 @@
             }
         },
 
-        shareBlog() {
-            if (!this.currentBlogId) return;
-
-            const title = document.getElementById('modalTitle').textContent;
-            const url = `${window.location.origin}/blog/${this.currentBlogId}`;
-
-            if (navigator.share) {
-                navigator.share({
-                    title: title,
-                    url: url
-                }).catch(error => {
-                    console.log('Share cancelled:', error);
-                });
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
-                    showToast('Link copied to clipboard!', 'success');
-                }).catch(() => {
-                    // Final fallback
-                    const textArea = document.createElement('textarea');
-                    textArea.value = `${title} - ${url}`;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                    showToast('Link copied to clipboard!', 'success');
-                });
-            }
-        },
-
         closeModal() {
             const modal = document.getElementById('blogDetailModal');
             if (modal) {
@@ -3328,9 +3052,9 @@
     updateActiveNav();
 
     // =============================================
-    // Smooth Scrolling for anchor links
+    // Smooth Scrolling for anchor links (excluding nav links)
     // =============================================
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    document.querySelectorAll('a[href^="#"]:not(.nav-links a)').forEach(anchor => {
       anchor.addEventListener('click', function(e) {
         e.preventDefault();
         const targetId = this.getAttribute('href');
@@ -3338,8 +3062,9 @@
 
         const targetElement = document.querySelector(targetId);
         if (targetElement) {
+          const headerHeight = document.querySelector('header').offsetHeight;
           window.scrollTo({
-            top: targetElement.offsetTop - 80,
+            top: targetElement.offsetTop - headerHeight,
             behavior: 'smooth'
           });
           history.pushState(null, null, targetId);
@@ -3602,11 +3327,6 @@
         // Initialize badge colors
         if (typeof initializeBadgeColors === 'function') {
             initializeBadgeColors();
-        }
-
-        // Initialize share modal theme listener
-        if (typeof initShareModalThemeListener === 'function') {
-            initShareModalThemeListener();
         }
 
         console.log('🎯 Application fully initialized');
