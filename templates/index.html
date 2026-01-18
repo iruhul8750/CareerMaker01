@@ -84,7 +84,8 @@
 
                     <!-- Default course image if no image available -->
                     <div class="course-image-placeholder"
-                         {% if course.image or (course.company_logo and course.company_logo != '/static/images/default-course.png') %}style="display: none;"{% endif %}>
+                         {% if course.image or (course.company_logo and course.company_logo
+                         !='/static/images/default-course.png' ) %}style="display: none;" {% endif %}>
                         <i class="fas fa-graduation-cap"></i>
                         <span>Course Image</span>
                     </div>
@@ -131,9 +132,9 @@
                         <div class="course-price">
                             <i class="fas fa-tag"></i>
                             {% if course.price and course.price != 'Free' %}
-                                ${{ course.price }}
+                            ${{ course.price }}
                             {% else %}
-                                Free
+                            Free
                             {% endif %}
                         </div>
                         <div class="course-level">
@@ -361,13 +362,13 @@
                     <div class="preview-meta">
                         <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
                         <span class="stipend">
-                            <i class="fas fa-money-bill-wave"></i>
-                            {% if internship.stipend and internship.stipend != 'Unpaid' %}
-                                {{ internship.stipend }}
-                            {% else %}
-                                Unpaid
-                            {% endif %}
-                        </span>
+<i class="fas fa-money-bill-wave"></i>
+{% if internship.stipend and internship.stipend != 'Unpaid' %}
+    {{ internship.stipend }}
+{% else %}
+    Unpaid
+{% endif %}
+</span>
                         {% if internship.work_type %}
                         <span class="work-type"><i class="fas fa-laptop"></i> {{ internship.work_type }}</span>
                         {% endif %}
@@ -462,8 +463,8 @@
                         <div class="blog-meta-vertical">
                             <span class="blog-date-vertical">{{ (post.published_at or post.created_at) | format_date }}</span>
                             <span class="blog-read-time-vertical">
-                                <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
-                            </span>
+    <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
+</span>
                         </div>
 
                         <h3 class="blog-title-vertical">{{ post.title }}</h3>
@@ -551,12 +552,12 @@
                         <span class="like-count" id="modalLikeCount">0</span>
                     </button>
                     <span class="read-time" id="modalReadTime">
-                        <i class="far fa-clock"></i> 5 min read
-                    </span>
+<i class="far fa-clock"></i> 5 min read
+</span>
                     <!-- Views Counter in Modal -->
                     <span class="views-count-modal" id="modalViewsCount">
-                        <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
-                    </span>
+<i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
+</span>
                 </div>
             </div>
         </div>
@@ -591,10 +592,6 @@
         </div>
 
         <div class="testimonials-carousel">
-            <button class="carousel-btn carousel-prev">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-
             <div class="testimonials-track" id="testimonialTrack">
                 <!-- Testimonials will be loaded here dynamically -->
                 <div class="loading-state">
@@ -602,16 +599,59 @@
                     <p>Loading experiences...</p>
                 </div>
             </div>
+        </div>
 
-            <button class="carousel-btn carousel-next">
+        <!-- Navigation Controls - Buttons with Dots in Center -->
+        <div class="carousel-nav-container">
+            <button class="carousel-btn carousel-prev" aria-label="Previous testimonial">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+
+            <div class="carousel-dots" id="carouselDots">
+                <!-- Dots will be generated dynamically -->
+            </div>
+
+            <button class="carousel-btn carousel-next" aria-label="Next testimonial">
                 <i class="fas fa-chevron-right"></i>
             </button>
 
-            <!-- ADD THIS: Dot navigation container -->
-            <div class="carousel-dots"></div>
+            <!-- Add this inside the testimonials-container after the carousel -->
+            <div class="swipe-instruction" id="swipeInstruction">
+                <i class="fas fa-hand-point-up"></i>
+                <span>Swipe left or right to navigate</span>
+            </div>
+
+            <!-- Auto-play indicator (optional) -->
+            <div class="auto-play-indicator" id="autoPlayIndicator">
+                <i class="fas fa-play-circle"></i>
+                <span>Auto</span>
+            </div>
         </div>
     </div>
 </section>
+
+<!-- Read Full Experience Modal  -->
+<div class="testimonial-detail-modal" id="testimonialDetailModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <button class="close-modal">&times;</button>
+        <div class="testimonial-detail-header">
+            <div class="author-info">
+                <img src="" alt="" class="author-avatar" id="detailAvatar">
+                <div>
+                    <h3 id="detailAuthorName"></h3>
+                    <p class="author-role" id="detailAuthorRole">CareerMaker User</p>
+                </div>
+            </div>
+            <div class="testimonial-rating" id="detailRating"></div>
+        </div>
+        <div class="testimonial-detail-content">
+            <div class="testimonial-quote">"</div>
+            <p class="testimonial-full-text" id="detailFullText"></p>
+            <p class="testimonial-date" id="detailDate"></p>
+        </div>
+    </div>
+</div>
 
 <!-- Testimonial Modal -->
 <div class="modal" id="testimonialModal" style="display: none;">

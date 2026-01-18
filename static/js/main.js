@@ -1792,7 +1792,7 @@
     }
 
     // =============================================
-    // ENHANCED TESTIMONIAL SYSTEM - FIXED CIRCULAR SLIDING
+    // TESTIMONIAL SYSTEM - UPDATED (No Clone Cards)
     // =============================================
 
     const testimonialSystem = {
@@ -1801,17 +1801,334 @@
         currentIndex: 0,
         autoSlideInterval: null,
         testimonialToDelete: null,
-        testimonialToEdit: null, // Track which testimonial is being edited
-        autoPlayDelay: 5000,
+        testimonialToEdit: null,
+        autoPlayDelay: 5000, // 5 seconds for smooth chain movement
         cardsPerView: 3,
         isAnimating: false,
+        isAutoPlay: true,
+        direction: 'forward', // Always left to right
+        trackWidth: 0,
+        testimonialDetailModal: null,
+        currentDetailTestimonial: null,
+
+        // Add new properties for touch/swipe
+        touchStartX: 0,
+        touchStartY: 0,
+        touchEndX: 0,
+        touchEndY: 0,
+        minSwipeDistance: 50,
+        isTouchDevice: false,
+        isDragging: false,
+        dragStartX: 0,
+        currentTranslateX: 0,
 
         init() {
             console.log('🚀 Initializing testimonial system...');
             this.loadTestimonials();
             this.bindEvents();
-            this.startAutoSlide();
+            this.setupDetailModal();
+            this.bindGlobalEventListeners();
+            this.setupSwipeGestures();
+            if (this.currentTestimonials.length > 3 && this.isAutoPlay) {
+                setTimeout(() => this.startAutoSlide(), 1000);
+            }
         },
+
+        detectTouchDevice() {
+            this.isTouchDevice = ('ontouchstart' in window) ||
+                                (navigator.maxTouchPoints > 0) ||
+                                (navigator.msMaxTouchPoints > 0);
+            console.log('📱 Touch device detected:', this.isTouchDevice);
+        },
+
+        setupSwipeGestures() {
+            const track = document.getElementById('testimonialTrack');
+            if (!track) return;
+
+            // Mouse events for desktop touchpad
+            track.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+            track.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+            track.addEventListener('mouseup', () => this.handleMouseUp());
+            track.addEventListener('mouseleave', () => this.handleMouseUp());
+
+            // Touch events for mobile devices
+            track.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
+            track.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+            track.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+
+            // Prevent text selection while dragging
+            track.addEventListener('selectstart', (e) => {
+                if (this.isDragging) e.preventDefault();
+            });
+        },
+
+        handleMouseDown(e) {
+            if (this.isAnimating) return;
+
+            this.isDragging = true;
+            this.dragStartX = e.clientX;
+            this.currentTranslateX = this.getCurrentTranslateX();
+
+            // Pause auto-slide during drag
+            this.pauseAutoSlide();
+
+            // Add dragging class for visual feedback
+            const track = document.getElementById('testimonialTrack');
+            if (track) track.classList.add('dragging');
+
+            // Prevent text selection
+            e.preventDefault();
+        },
+
+        handleMouseMove(e) {
+            if (!this.isDragging || this.isAnimating) return;
+
+            const dragCurrentX = e.clientX;
+            const dragDistance = dragCurrentX - this.dragStartX;
+
+            // Apply drag effect with resistance
+            const resistance = 0.5;
+            const newTranslateX = this.currentTranslateX + (dragDistance * resistance);
+
+            const track = document.getElementById('testimonialTrack');
+            if (track) {
+                track.style.transition = 'none';
+                track.style.transform = `translateX(${newTranslateX}px)`;
+            }
+
+            e.preventDefault();
+        },
+
+        handleMouseUp() {
+            if (!this.isDragging) return;
+
+            this.isDragging = false;
+
+            const track = document.getElementById('testimonialTrack');
+            if (track) {
+                track.classList.remove('dragging');
+
+                // Calculate final drag distance
+                const dragEndX = event ? event.clientX : 0;
+                const dragDistance = dragEndX - this.dragStartX;
+
+                // Determine if it's a swipe
+                if (Math.abs(dragDistance) > this.minSwipeDistance) {
+                    if (dragDistance < 0) {
+                        // Swipe left - next slide
+                        this.nextSlide();
+                    } else {
+                        // Swipe right - previous slide
+                        this.prevSlide();
+                    }
+                } else {
+                    // Not a swipe, snap back to current position
+                    this.updateCarousel();
+                }
+            }
+
+            // Resume auto-slide after a delay
+            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                setTimeout(() => this.startAutoSlide(), 1000);
+            }
+        },
+
+        handleTouchStart(e) {
+            if (this.isAnimating) return;
+
+            const touch = e.touches[0];
+            this.touchStartX = touch.clientX;
+            this.touchStartY = touch.clientY;
+            this.isDragging = true;
+
+            // Pause auto-slide during touch
+            this.pauseAutoSlide();
+
+            // Add dragging class
+            const track = document.getElementById('testimonialTrack');
+            if (track) track.classList.add('dragging');
+        },
+
+        handleTouchMove(e) {
+            if (!this.isDragging || this.isAnimating) return;
+
+            const touch = e.touches[0];
+            const touchCurrentX = touch.clientX;
+            const touchDistance = touchCurrentX - this.touchStartX;
+
+            // Only prevent default if horizontal movement is significant
+            if (Math.abs(touchDistance) > 10) {
+                e.preventDefault();
+            }
+
+            // Apply touch drag with resistance
+            const resistance = 0.7;
+            const newTranslateX = this.getCurrentTranslateX() + (touchDistance * resistance);
+
+            const track = document.getElementById('testimonialTrack');
+            if (track) {
+                track.style.transition = 'none';
+                track.style.transform = `translateX(${newTranslateX}px)`;
+            }
+        },
+
+        handleTouchEnd(e) {
+            if (!this.isDragging) return;
+
+            this.isDragging = false;
+
+            const touch = e.changedTouches[0];
+            this.touchEndX = touch.clientX;
+            this.touchEndY = touch.clientY;
+
+            const track = document.getElementById('testimonialTrack');
+            if (track) track.classList.remove('dragging');
+
+            // Calculate swipe distance and direction
+            const swipeDistanceX = this.touchEndX - this.touchStartX;
+            const swipeDistanceY = this.touchEndY - this.touchStartY;
+
+            // Check if it's a horizontal swipe (not vertical scroll)
+            if (Math.abs(swipeDistanceX) > Math.abs(swipeDistanceY) &&
+                Math.abs(swipeDistanceX) > this.minSwipeDistance) {
+
+                if (swipeDistanceX < 0) {
+                    // Swipe left - next slide
+                    this.nextSlide();
+                } else {
+                    // Swipe right - previous slide
+                    this.prevSlide();
+                }
+            } else {
+                // Not a valid swipe, snap back
+                this.updateCarousel();
+            }
+
+            // Resume auto-slide
+            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                setTimeout(() => this.startAutoSlide(), 1500);
+            }
+        },
+
+        getCurrentTranslateX() {
+            const track = document.getElementById('testimonialTrack');
+            if (!track) return 0;
+
+            const style = window.getComputedStyle(track);
+            const matrix = new DOMMatrixReadOnly(style.transform);
+            return matrix.m41; // The translateX value
+        },
+        // End Touch Functions //
+
+        // Detail modal :
+        setupDetailModal() {
+            this.testimonialDetailModal = document.getElementById('testimonialDetailModal');
+            if (this.testimonialDetailModal) {
+                // Close modal handlers
+                const closeBtn = this.testimonialDetailModal.querySelector('.close-modal');
+                const overlay = this.testimonialDetailModal.querySelector('.modal-overlay');
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.closeDetailModal();
+                    });
+                }
+
+                if (overlay) {
+                    overlay.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.closeDetailModal();
+                    });
+                }
+
+                // Close with escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.testimonialDetailModal.style.display === 'flex') {
+                        this.closeDetailModal();
+                    }
+                });
+            }
+        },
+
+        // Add this function to open detail modal:
+        openDetailModal(testimonial) {
+            if (!this.testimonialDetailModal) return;
+
+            this.currentDetailTestimonial = testimonial;
+
+            // Populate modal with testimonial data
+            const avatar = document.getElementById('detailAvatar');
+            const authorName = document.getElementById('detailAuthorName');
+            const rating = document.getElementById('detailRating');
+            const fullText = document.getElementById('detailFullText');
+            const date = document.getElementById('detailDate');
+
+            if (avatar) {
+                avatar.src = testimonial.profile_pic_url ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true`;
+                avatar.alt = testimonial.username;
+            }
+
+            if (authorName) {
+                authorName.textContent = testimonial.username;
+            }
+
+            if (rating) {
+                rating.innerHTML = Array.from({length: 5}, (_, i) =>
+                    `<span class="star ${i < testimonial.rating ? '' : 'empty'}">★</span>`
+                ).join('');
+            }
+
+            if (fullText) {
+                fullText.textContent = testimonial.content;
+            }
+
+            if (date && testimonial.created_at) {
+                const formattedDate = new Date(testimonial.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                date.textContent = `Shared on ${formattedDate}`;
+            }
+
+            // Show modal
+            this.testimonialDetailModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        },
+
+        // Add this function to handle Read More clicks:
+        setupReadMoreHandlers() {
+            const readMoreLinks = document.querySelectorAll('.read-more-link');
+            readMoreLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const testimonialId = link.getAttribute('data-testimonial-id');
+                    this.openTestimonialDetail(testimonialId);
+                });
+            });
+        },
+
+        // Add this function to open detail view:
+        openTestimonialDetail(testimonialId) {
+            const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
+            if (testimonial) {
+                this.openDetailModal(testimonial);
+            }
+        },
+
+        // Add this function to close detail modal:
+        closeDetailModal() {
+            if (!this.testimonialDetailModal) return;
+
+            this.testimonialDetailModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            this.currentDetailTestimonial = null;
+        },
+
 
         bindEvents() {
             // Main testimonial button
@@ -1823,38 +2140,69 @@
                 });
             }
 
-            // Carousel navigation
+            // Navigation buttons
             const prevBtn = document.querySelector('.carousel-prev');
             const nextBtn = document.querySelector('.carousel-next');
             if (prevBtn) prevBtn.addEventListener('click', () => this.prevSlide());
             if (nextBtn) nextBtn.addEventListener('click', () => this.nextSlide());
 
-            // Dot navigation
-            this.setupDotNavigation();
+            // Auto-play indicator click
+            const autoPlayIndicator = document.getElementById('autoPlayIndicator');
+            if (autoPlayIndicator) {
+                autoPlayIndicator.addEventListener('click', () => this.toggleAutoPlay());
+            }
 
             // Modal events
             this.setupModalEvents();
 
-            // Hover pause
-            const carousel = document.querySelector('.testimonials-carousel');
-            if (carousel) {
-                carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
-                carousel.addEventListener('mouseleave', () => this.startAutoSlide());
+            // Pause on hover (only for non-touch devices)
+            if (!this.isTouchDevice) {
+                const carousel = document.querySelector('.testimonials-carousel');
+                if (carousel) {
+                    carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
+                    carousel.addEventListener('mouseleave', () => {
+                        if (this.isAutoPlay && this.currentTestimonials.length > 3) this.startAutoSlide();
+                    });
+                }
             }
+
+            // Handle window resize
+            window.addEventListener('resize', () => this.handleResize());
+
+            // Handle wheel events for touchpad/mouse wheel
+            this.setupWheelNavigation();
         },
 
-        setupDotNavigation() {
-            const dotsContainer = document.querySelector('.carousel-dots');
-            if (dotsContainer) {
-                dotsContainer.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('carousel-dot')) {
-                        const index = parseInt(e.target.getAttribute('data-index'));
-                        if (!isNaN(index)) {
-                            this.goToSlide(index);
+        setupWheelNavigation() {
+            const carousel = document.querySelector('.testimonials-carousel');
+            if (!carousel) return;
+
+            let wheelTimeout;
+            let wheelDelta = 0;
+
+            carousel.addEventListener('wheel', (e) => {
+                // Only handle horizontal wheel events
+                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                    e.preventDefault();
+
+                    wheelDelta += e.deltaX;
+
+                    // Clear previous timeout
+                    clearTimeout(wheelTimeout);
+
+                    // Set a timeout to trigger navigation after wheel stops
+                    wheelTimeout = setTimeout(() => {
+                        if (Math.abs(wheelDelta) > 100) { // Sensitivity threshold
+                            if (wheelDelta > 0) {
+                                this.prevSlide(); // Wheel right = previous
+                            } else {
+                                this.nextSlide(); // Wheel left = next
+                            }
                         }
-                    }
-                });
-            }
+                        wheelDelta = 0; // Reset delta
+                    }, 150);
+                }
+            }, { passive: false });
         },
 
         setupModalEvents() {
@@ -2208,6 +2556,92 @@
             }
         },
 
+        bindGlobalEventListeners() {
+            // Use event delegation for all testimonial actions
+            document.addEventListener('click', async (e) => {
+                // Edit button
+                if (e.target.closest('.btn-edit')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const editBtn = e.target.closest('.btn-edit');
+                    const testimonialCard = editBtn.closest('.testimonial-card');
+
+                    if (testimonialCard) {
+                        const testimonialId = testimonialCard.dataset.testimonialId;
+                        if (testimonialId) {
+                            await this.handleEditClick(testimonialId);
+                        }
+                    }
+                }
+
+                // Delete button
+                if (e.target.closest('.btn-delete')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const deleteBtn = e.target.closest('.btn-delete');
+                    const testimonialCard = deleteBtn.closest('.testimonial-card');
+
+                    if (testimonialCard) {
+                        const testimonialId = testimonialCard.dataset.testimonialId;
+                        if (testimonialId) {
+                            this.deleteTestimonial(testimonialId);
+                        }
+                    }
+                }
+
+                // Read More button (updated to use event delegation for buttons)
+                if (e.target.closest('.read-more-link')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const link = e.target.closest('.read-more-link');
+                    const testimonialId = link.getAttribute('data-testimonial-id');
+                    if (testimonialId) {
+                        this.openTestimonialDetail(testimonialId);
+                    }
+                }
+            });
+        },
+
+        async handleEditClick(testimonialId) {
+            console.log('✏️ Edit button clicked for testimonial:', testimonialId);
+
+            try {
+                // First check if user is logged in
+                const authResponse = await fetch('/api/testimonial/auth-check');
+                const authData = await authResponse.json();
+
+                if (!authData.can_post) {
+                    this.showLoginPrompt();
+                    return;
+                }
+
+                // Find the testimonial in current list
+                const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
+
+                if (!testimonial) {
+                    console.error('Testimonial not found:', testimonialId);
+                    showToast('Testimonial not found', 'error');
+                    return;
+                }
+
+                // Check if user can edit this testimonial
+                if (!testimonial.can_edit) {
+                    showToast('You can only edit your own testimonials', 'error');
+                    return;
+                }
+
+                // Open modal with testimonial data
+                this.showModal(authData.username || 'User', testimonial);
+
+            } catch (error) {
+                console.error('Error checking edit permissions:', error);
+                showToast('Unable to edit testimonial', 'error');
+            }
+        },
+
         renderTestimonials() {
             const track = document.getElementById('testimonialTrack');
             if (!track) return;
@@ -2224,17 +2658,50 @@
                 return;
             }
 
-            // Create testimonial cards
-            track.innerHTML = this.currentTestimonials.map((testimonial, index) => `
-                <div class="testimonial-card" data-index="${index}" data-testimonial-id="${testimonial.id}">
+            // Create testimonial cards - ONE CARD PER TESTIMONIAL
+            const cardsHTML = this.currentTestimonials.map((testimonial, index) => {
+                const canEdit = testimonial.can_edit || false;
+                // Check if text is long enough to need truncation
+                const needsTruncation = testimonial.content.length > 300;
+                const truncatedText = needsTruncation ?
+                    testimonial.content.substring(0, 300) + '...' :
+                    testimonial.content;
+
+                return `
+                <div class="testimonial-card"
+                     data-index="${index}"
+                     data-testimonial-id="${testimonial.id}">
                     <div class="testimonial-card-inner">
                         <div class="testimonial-quote">"</div>
+
+                        ${canEdit ? `
+                        <div class="testimonial-actions">
+                            <button class="btn-edit" data-testimonial-id="${testimonial.id}" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-delete" data-testimonial-id="${testimonial.id}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        ` : ''}
+
                         <div class="testimonial-rating">
                             ${Array.from({length: 5}, (_, i) =>
                                 `<span class="star ${i < testimonial.rating ? '' : 'empty'}">★</span>`
                             ).join('')}
                         </div>
-                        <p class="testimonial-text">${testimonial.content}</p>
+
+                        <div class="testimonial-text-container">
+                            <p class="testimonial-text" title="${testimonial.content}">${truncatedText}</p>
+                        </div>
+
+                        <div class="read-more-section">
+                            <button class="read-more-link" data-testimonial-id="${testimonial.id}">
+                                <span>Read Full Experience</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+
                         <div class="testimonial-author">
                             <img src="${testimonial.profile_pic_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(testimonial.username) + '&background=10b981&color=fff&bold=true'}"
                                  alt="${testimonial.username}"
@@ -2245,185 +2712,284 @@
                                 <p>CareerMaker User</p>
                             </div>
                         </div>
-                        ${testimonial.can_edit ? `
-                        <div class="testimonial-actions">
-                            <button class="btn-edit" onclick="testimonialSystem.editTestimonial('${testimonial.id}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-delete" onclick="testimonialSystem.deleteTestimonial('${testimonial.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                        ` : ''}
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
 
-            // Setup hover events for individual cards
-            this.setupIndividualCardHover();
+            track.innerHTML = cardsHTML;
 
+            // Add click handlers for Read More links
+            this.setupReadMoreHandlers();
+
+            // Calculate track width
+            this.calculateTrackWidth();
+
+            // Set initial position
             this.currentIndex = 0;
             this.updateCarousel();
             this.updateDots();
-            this.startAutoSlide();
-        },
+            this.updateButtonStates();
 
-        setupIndividualCardHover() {
-            const cards = document.querySelectorAll('.testimonial-card');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', () => this.pauseAutoSlide());
-                card.addEventListener('mouseleave', () => this.startAutoSlide());
-            });
-        },
-
-        editTestimonial(testimonialId) {
-            const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
-            if (testimonial) {
-                this.showModal(testimonial.username, testimonial);
+            // Start auto-slide only if we have more than 3 testimonials
+            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                setTimeout(() => this.startAutoSlide(), 1000);
             }
+        },
+
+        calculateTrackWidth() {
+            const track = document.getElementById('testimonialTrack');
+            if (!track) return;
+
+            const cards = track.querySelectorAll('.testimonial-card');
+            const cardWidth = 340; // Fixed card width from CSS
+            const gap = 30; // Gap between cards from CSS
+
+            this.trackWidth = (cards.length * cardWidth) + ((cards.length - 1) * gap);
+            track.style.width = `${this.trackWidth}px`;
         },
 
         nextSlide() {
-            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
             this.isAnimating = true;
+            this.pauseAutoSlide();
 
-            // Move to next slide
-            this.currentIndex++;
+            // Move to next testimonial - chain movement
+            const nextIndex = this.currentIndex + 1;
 
-            // Check if we've reached the end
-            if (this.currentIndex > this.currentTestimonials.length - this.cardsPerView) {
+            // Check if we're at the end
+            if (nextIndex >= this.currentTestimonials.length) {
+                // We've reached the end - for chain effect, we should animate to show
+                // that we're wrapping around, but visually continue in same direction
                 this.currentIndex = 0;
+
+                // Reset transform position for seamless chain effect
+                const track = document.getElementById('testimonialTrack');
+                if (track) {
+                    // Quickly reset to start without animation
+                    track.style.transition = 'none';
+                    track.style.transform = 'translateX(0)';
+
+                    // Force reflow
+                    void track.offsetWidth;
+
+                    // Restore transition
+                    track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                }
+            } else {
+                this.currentIndex = nextIndex;
             }
 
             this.updateCarousel();
             this.updateDots();
+            this.updateButtonStates();
 
-            // Reset animation flag after transition
             setTimeout(() => {
                 this.isAnimating = false;
-            }, 500);
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    this.startAutoSlide();
+                }
+            }, 600);
         },
 
         prevSlide() {
-            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
             this.isAnimating = true;
+            this.pauseAutoSlide();
 
-            // Move to previous slide
-            this.currentIndex--;
+            // For chain movement in one direction, "previous" should actually show
+            // the last card to continue the visual flow
+            const prevIndex = this.currentIndex - 1;
 
-            // Check if we've reached the beginning
-            if (this.currentIndex < 0) {
-                this.currentIndex = this.currentTestimonials.length - this.cardsPerView;
+            if (prevIndex < 0) {
+                // Go to the last card to continue chain movement
+                this.currentIndex = this.currentTestimonials.length - 1;
+
+                // For visual continuity, we need to jump to a position that makes sense
+                const track = document.getElementById('testimonialTrack');
+                if (track) {
+                    const cardWidth = 340;
+                    const gap = 30;
+                    const totalCards = this.currentTestimonials.length;
+                    // Jump to a position that shows we're going "back" to the end
+                    const jumpPosition = -(totalCards * (cardWidth + gap));
+
+                    track.style.transition = 'none';
+                    track.style.transform = `translateX(${jumpPosition}px)`;
+
+                    // Force reflow
+                    void track.offsetWidth;
+
+                    // Restore transition and animate to correct position
+                    track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                }
+            } else {
+                this.currentIndex = prevIndex;
             }
 
             this.updateCarousel();
             this.updateDots();
+            this.updateButtonStates();
 
-            // Reset animation flag after transition
             setTimeout(() => {
                 this.isAnimating = false;
-            }, 500);
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    this.startAutoSlide();
+                }
+            }, 600);
         },
 
         goToSlide(index) {
-            if (this.currentTestimonials.length <= this.cardsPerView || this.isAnimating) return;
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
             this.isAnimating = true;
-            this.currentIndex = index;
+            this.pauseAutoSlide();
+
+            // Ensure index is within bounds
+            const targetIndex = Math.max(0, Math.min(index, this.currentTestimonials.length - 1));
+            this.currentIndex = targetIndex;
+
             this.updateCarousel();
             this.updateDots();
+            this.updateButtonStates();
 
             setTimeout(() => {
                 this.isAnimating = false;
-            }, 500);
+                if (this.isAutoPlay) {
+                    this.startAutoSlide();
+                }
+            }, 600);
         },
 
         updateCarousel() {
             const track = document.getElementById('testimonialTrack');
-            if (track && this.currentTestimonials.length > 0) {
-                const cardWidth = 100 / this.cardsPerView;
-                const translateX = -this.currentIndex * cardWidth;
-                track.style.transform = `translateX(${translateX}%)`;
+            if (!track || this.currentTestimonials.length === 0) return;
 
-                // Update card states
-                this.updateCardStates();
-            }
+            const cardWidth = 340;
+            const gap = 30;
+            const translateX = -(this.currentIndex * (cardWidth + gap));
+
+            track.style.transform = `translateX(${translateX}px)`;
+
+            // Update card states for chain effect
+            this.updateCardStates();
         },
 
         updateCardStates() {
             const cards = document.querySelectorAll('.testimonial-card');
-            const visibleIndices = this.getVisibleIndices();
 
             cards.forEach((card, index) => {
-                const isVisible = visibleIndices.includes(index);
-                card.style.opacity = isVisible ? '1' : '0.6';
-                card.style.transform = isVisible ? 'scale(1)' : 'scale(0.95)';
-                card.style.pointerEvents = isVisible ? 'all' : 'none';
-                card.style.transition = 'all 0.3s ease';
+                // Remove all state classes
+                card.classList.remove('active', 'prev-card', 'next-card');
+
+                if (index === this.currentIndex) {
+                    // Current active card
+                    card.classList.add('active');
+                } else if (index === (this.currentIndex + 1) % this.currentTestimonials.length) {
+                    // Next card
+                    card.classList.add('next-card');
+                } else if (index === (this.currentIndex - 1 + this.currentTestimonials.length) % this.currentTestimonials.length) {
+                    // Previous card
+                    card.classList.add('prev-card');
+                }
             });
         },
 
-        getVisibleIndices() {
-            const indices = [];
-            for (let i = 0; i < this.cardsPerView; i++) {
-                let index = this.currentIndex + i;
-                // Handle circular wrapping
-                if (index >= this.currentTestimonials.length) {
-                    index = index % this.currentTestimonials.length;
-                }
-                indices.push(index);
-            }
-            return indices;
-        },
-
         updateDots() {
-            const dotsContainer = document.querySelector('.carousel-dots');
-            if (!dotsContainer || this.currentTestimonials.length <= this.cardsPerView) return;
+            const dotsContainer = document.getElementById('carouselDots');
+            if (!dotsContainer) return;
 
-            const totalSlides = this.currentTestimonials.length - this.cardsPerView + 1;
+            // Only show dots when we have more than 3 testimonials
+            if (this.currentTestimonials.length <= 3) {
+                dotsContainer.style.display = 'none';
+                return;
+            }
 
-            // Clear existing dots
+            dotsContainer.style.display = 'flex';
             dotsContainer.innerHTML = '';
 
-            // Create dots based on number of slides
-            for (let i = 0; i < totalSlides; i++) {
+            // Create dots for each testimonial
+            for (let i = 0; i < this.currentTestimonials.length; i++) {
                 const dot = document.createElement('button');
                 dot.className = `carousel-dot ${i === this.currentIndex ? 'active' : ''}`;
                 dot.setAttribute('data-index', i);
-                dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                dot.setAttribute('aria-label', `Go to testimonial ${i + 1}`);
+                dot.title = i === this.currentIndex ? 'Current testimonial' : `Go to testimonial ${i + 1}`;
+
+                dot.addEventListener('click', () => this.goToSlide(i));
                 dotsContainer.appendChild(dot);
             }
+        },
 
-            // Re-bind dot click events
-            this.setupDotNavigation();
+        updateButtonStates() {
+            const prevBtn = document.querySelector('.carousel-prev');
+            const nextBtn = document.querySelector('.carousel-next');
+
+            if (prevBtn && nextBtn) {
+                // Only enable buttons when we have more than 3 testimonials
+                const canScroll = this.currentTestimonials.length > 3;
+                prevBtn.disabled = !canScroll;
+                nextBtn.disabled = !canScroll;
+
+                // Update tooltips
+                prevBtn.title = canScroll ? 'View previous testimonial' : 'No previous testimonials';
+                nextBtn.title = canScroll ? 'View next testimonial' : 'No more testimonials';
+            }
         },
 
         updateNavigation() {
-            const prevBtn = document.querySelector('.carousel-prev');
-            const nextBtn = document.querySelector('.carousel-next');
-            const dotsContainer = document.querySelector('.carousel-dots');
+            const navContainer = document.querySelector('.carousel-nav-container');
+            if (!navContainer) return;
 
-            const canScroll = this.currentTestimonials.length > this.cardsPerView;
+            // Show navigation only when we have more than 3 testimonials
+            const canScroll = this.currentTestimonials.length > 3;
+            navContainer.style.display = canScroll ? 'flex' : 'none';
 
-            if (prevBtn && nextBtn) {
-                prevBtn.style.display = canScroll ? 'flex' : 'none';
-                nextBtn.style.display = canScroll ? 'flex' : 'none';
-            }
+            // Also update button states
+            this.updateButtonStates();
+        },
 
-            if (dotsContainer) {
-                dotsContainer.style.display = canScroll ? 'flex' : 'none';
+        toggleAutoPlay() {
+            this.isAutoPlay = !this.isAutoPlay;
+
+            const indicator = document.getElementById('autoPlayIndicator');
+            if (indicator) {
+                const icon = indicator.querySelector('i');
+                const text = indicator.querySelector('span');
+
+                if (this.isAutoPlay) {
+                    icon.className = 'fas fa-play-circle';
+                    text.textContent = 'Auto';
+                    indicator.title = 'Auto-play enabled';
+                    if (this.currentTestimonials.length > 3) {
+                        this.startAutoSlide();
+                    }
+                } else {
+                    icon.className = 'fas fa-pause-circle';
+                    text.textContent = 'Paused';
+                    indicator.title = 'Auto-play paused';
+                    this.stopAutoSlide();
+                }
             }
         },
 
         startAutoSlide() {
             this.stopAutoSlide();
 
-            if (this.currentTestimonials.length > this.cardsPerView) {
+            // Only start auto-slide when we have more than 3 testimonials AND auto-play is enabled
+            if (this.currentTestimonials.length > 3 && this.isAutoPlay) {
                 this.autoSlideInterval = setInterval(() => {
                     this.nextSlide();
                 }, this.autoPlayDelay);
+
+                // Update indicator if exists
+                const indicator = document.getElementById('autoPlayIndicator');
+                if (indicator) {
+                    indicator.querySelector('i').className = 'fas fa-play-circle';
+                    indicator.querySelector('span').textContent = 'Auto';
+                    indicator.style.display = 'flex'; // Make sure it's visible
+                }
             }
         },
 
@@ -2436,6 +3002,12 @@
 
         pauseAutoSlide() {
             this.stopAutoSlide();
+        },
+
+        handleResize() {
+            // Recalculate on resize
+            this.calculateTrackWidth();
+            this.updateCarousel();
         }
     };
 
