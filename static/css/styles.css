@@ -5648,6 +5648,79 @@
       }
     }
 
+    /* MISSING MOBILE RESPONSIVE FIXES */
+
+    /* Override for mobile screens to fix oversized cards */
+    @media (max-width: 768px) {
+      /* CRITICAL FIX: Override the fixed card width for mobile */
+      .testimonial-card {
+        flex: 0 0 calc(100vw - 60px) !important; /* Responsive width */
+        min-width: 0; /* Allow cards to shrink */
+        height: auto !important; /* Auto height instead of fixed 420px */
+        min-height: 380px; /* Minimum height */
+      }
+
+      /* Adjust the carousel container width */
+      .testimonials-carousel {
+        width: calc(100% - 20px);
+        margin: 0 auto;
+      }
+
+      /* Ensure track doesn't overflow */
+      .testimonials-track {
+        width: 100%;
+      }
+    }
+
+    /* For smaller mobile screens */
+    @media (max-width: 480px) {
+      .testimonial-card {
+        flex: 0 0 calc(100vw - 40px) !important;
+        min-height: 350px;
+      }
+
+      /* Reduce gap between cards on small screens */
+      .testimonials-track {
+        gap: 15px;
+      }
+    }
+
+    /* For very small phones */
+    @media (max-width: 375px) {
+      .testimonial-card {
+        flex: 0 0 calc(100vw - 30px) !important;
+        min-height: 320px;
+      }
+
+      .testimonial-card-inner {
+        padding: 15px;
+      }
+    }
+
+    /* Fix for landscape mode on mobile */
+    @media (max-width: 768px) and (orientation: landscape) {
+      .testimonial-card {
+        flex: 0 0 calc(50vw - 40px) !important;
+        height: 300px !important;
+      }
+    }
+
+    /* Touch device optimizations */
+    @media (hover: none) and (pointer: coarse) {
+      .testimonial-card {
+        /* Make cards more touch-friendly */
+        margin: 5px 0;
+      }
+
+      /* Increase touch target for read more */
+      .read-more-link {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
     /* ==========================
        PRINT STYLES
        ========================== */
