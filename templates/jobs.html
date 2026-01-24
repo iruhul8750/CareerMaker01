@@ -51,9 +51,7 @@
                   title="Bookmark">
             <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="job" data-id="{{ job.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
+
           <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
                   {% if not job.application_link %}disabled{% endif %}>
             Apply Now

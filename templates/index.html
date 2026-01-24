@@ -211,6 +211,119 @@
     </div>
 </section>
 
+<!-- Internships Preview Section -->
+<section class="preview-section" id="internships">
+    <div class="container">
+        <div class="section-title">
+            <h2>Featured Internships</h2>
+            <p>Gain valuable experience with top companies</p>
+        </div>
+        <div class="preview-grid" id="internshipsGrid">
+            {% for internship in internships %}
+            <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
+                <div class="preview-image-container">
+                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
+                    %}
+                    <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    {% endif %}
+                    <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo
+                         !='/static/images/default-internship.png' %}style="display: none;" {% endif %}>
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+
+                    <!-- Expiration Badge -->
+                    {% if internship.expiration_date %}
+                    {% set exp_date = internship.expiration_date|string %}
+                    {% set current_time = now().isoformat() %}
+                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < current_time %}
+                        Expired
+                        {% else %}
+                        Expires: {{ internship.expiration_date|format_date('%b %d') }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="preview-content">
+                    <h3>{{ internship.title }}</h3>
+                    <p class="company">{{ internship.company or 'Unknown Company' }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not
+                        specified' }}</p>
+                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not
+                        specified' }}</p>
+                    <p class="description">{{ internship.description|default('No description available',
+                        true)|truncate(120) }}</p>
+
+                    <div class="preview-meta">
+                        <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
+                        <span class="stipend">
+                            <i class="fas fa-money-bill-wave"></i>
+                            {% if internship.stipend and internship.stipend != 'Unpaid' %}
+                            {{ internship.stipend }}
+                            {% else %}
+                            Unpaid
+                            {% endif %}
+                        </span>
+                        {% if internship.work_type %}
+                        <span class="work-type"><i class="fas fa-laptop"></i> {{ internship.work_type }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Additional Internship Details -->
+                    <div class="additional-details">
+                        {% if internship.required_skills %}
+                        <div class="detail-item">
+                            <i class="fas fa-tools"></i>
+                            <span>Skills: {{ internship.required_skills|join(', ') if internship.required_skills is iterable else internship.required_skills }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if internship.qualifications %}
+                        <div class="detail-item">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Qualifications: {{ internship.qualifications|truncate(50) }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if internship.start_date %}
+                        <div class="detail-item">
+                            <i class="fas fa-play-circle"></i>
+                            <span>Starts: {{ internship.start_date|format_date('%b %d') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
+                            data-id="{{ internship.id }}"
+                            data-type="internship"
+                            title="Bookmark">
+                        <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                    </button>
+                    <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
+                            {% if not internship.application_link %}disabled{% endif %}>
+                        Apply Now
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-graduate"></i>
+                <h4>No featured internships available</h4>
+                <p>Check back later for new opportunities</p>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="view-all">
+            <a href="/internships" class="btn btn-primary">
+                <i class="fas fa-arrow-right"></i> View All Internships
+            </a>
+        </div>
+    </div>
+</section>
+
 <!-- Jobs Preview Section -->
 <section class="preview-section" id="jobs">
     <div class="container">
@@ -314,119 +427,6 @@
     </div>
 </section>
 
-<!-- Internships Preview Section -->
-<section class="preview-section" id="internships">
-    <div class="container">
-        <div class="section-title">
-            <h2>Featured Internships</h2>
-            <p>Gain valuable experience with top companies</p>
-        </div>
-        <div class="preview-grid" id="internshipsGrid">
-            {% for internship in internships %}
-            <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
-                <div class="preview-image-container">
-                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
-                    %}
-                    <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    {% endif %}
-                    <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo
-                         !='/static/images/default-internship.png' %}style="display: none;" {% endif %}>
-                        <i class="fas fa-user-graduate"></i>
-                    </div>
-
-                    <!-- Expiration Badge -->
-                    {% if internship.expiration_date %}
-                    {% set exp_date = internship.expiration_date|string %}
-                    {% set current_time = now().isoformat() %}
-                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
-                        <i class="fas fa-clock"></i>
-                        {% if exp_date < current_time %}
-                        Expired
-                        {% else %}
-                        Expires: {{ internship.expiration_date|format_date('%b %d') }}
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="preview-content">
-                    <h3>{{ internship.title }}</h3>
-                    <p class="company">{{ internship.company or 'Unknown Company' }}</p>
-                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not
-                        specified' }}</p>
-                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not
-                        specified' }}</p>
-                    <p class="description">{{ internship.description|default('No description available',
-                        true)|truncate(120) }}</p>
-
-                    <div class="preview-meta">
-                        <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
-                        <span class="stipend">
-<i class="fas fa-money-bill-wave"></i>
-{% if internship.stipend and internship.stipend != 'Unpaid' %}
-    {{ internship.stipend }}
-{% else %}
-    Unpaid
-{% endif %}
-</span>
-                        {% if internship.work_type %}
-                        <span class="work-type"><i class="fas fa-laptop"></i> {{ internship.work_type }}</span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Additional Internship Details -->
-                    <div class="additional-details">
-                        {% if internship.required_skills %}
-                        <div class="detail-item">
-                            <i class="fas fa-tools"></i>
-                            <span>Skills: {{ internship.required_skills|join(', ') if internship.required_skills is iterable else internship.required_skills }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if internship.qualifications %}
-                        <div class="detail-item">
-                            <i class="fas fa-graduation-cap"></i>
-                            <span>Qualifications: {{ internship.qualifications|truncate(50) }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if internship.start_date %}
-                        <div class="detail-item">
-                            <i class="fas fa-play-circle"></i>
-                            <span>Starts: {{ internship.start_date|format_date('%b %d') }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="action-buttons">
-                    <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
-                            data-id="{{ internship.id }}"
-                            data-type="internship"
-                            title="Bookmark">
-                        <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-                    </button>
-                    <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
-                            {% if not internship.application_link %}disabled{% endif %}>
-                        Apply Now
-                    </button>
-                </div>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-user-graduate"></i>
-                <h4>No featured internships available</h4>
-                <p>Check back later for new opportunities</p>
-            </div>
-            {% endfor %}
-        </div>
-        <div class="view-all">
-            <a href="/internships" class="btn btn-primary">
-                <i class="fas fa-arrow-right"></i> View All Internships
-            </a>
-        </div>
-    </div>
-</section>
-
 <!-- Professional Blog Section -->
 <section class="professional-blog-section" id="blog">
     <div class="container">
@@ -463,8 +463,8 @@
                         <div class="blog-meta-vertical">
                             <span class="blog-date-vertical">{{ (post.published_at or post.created_at) | format_date }}</span>
                             <span class="blog-read-time-vertical">
-    <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
-</span>
+                                <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
+                            </span>
                         </div>
 
                         <h3 class="blog-title-vertical">{{ post.title }}</h3>
@@ -552,12 +552,12 @@
                         <span class="like-count" id="modalLikeCount">0</span>
                     </button>
                     <span class="read-time" id="modalReadTime">
-<i class="far fa-clock"></i> 5 min read
-</span>
+                        <i class="far fa-clock"></i> 5 min read
+                    </span>
                     <!-- Views Counter in Modal -->
                     <span class="views-count-modal" id="modalViewsCount">
-<i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
-</span>
+                        <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
+                    </span>
                 </div>
             </div>
         </div>

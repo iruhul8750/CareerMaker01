@@ -52,9 +52,6 @@
                   title="Bookmark">
             <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
           </button>
-          <button class="btn btn-icon share-btn" data-type="internship" data-id="{{ internship.id }}" title="Share">
-            <i class="fas fa-share-alt"></i>
-          </button>
           <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
                   {% if not internship.application_link %}disabled{% endif %}>
             Apply Now
