@@ -168,17 +168,24 @@ def generate_otp():
     return otp, expires_at.isoformat()
 
 
-def send_email_smtp(to_email, subject, message):
-    """Send email with SSL/TLS fallback and proper Unicode support"""
+def send_email_smtp(to_email, subject, plain_text, html_content=None):
+    """Send email with SSL/TLS fallback, Unicode support, and HTML capability"""
     try:
         # Create message with proper encoding
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('alternative')
         msg['From'] = SMTP_EMAIL
         msg['To'] = to_email
         msg['Subject'] = subject
+        msg['Reply-To'] = SMTP_EMAIL
 
-        # Add message body with UTF-8 encoding
-        msg.attach(MIMEText(message, 'plain', 'utf-8'))
+        # Add plain text part with UTF-8 encoding
+        text_part = MIMEText(plain_text, 'plain', 'utf-8')
+        msg.attach(text_part)
+
+        # Add HTML part if provided
+        if html_content:
+            html_part = MIMEText(html_content, 'html', 'utf-8')
+            msg.attach(html_part)
 
         # First try SSL
         try:
@@ -3519,44 +3526,197 @@ logger = logging.getLogger(__name__)
 
 # =============== EMAIL HELPERS ===============
 def send_newsletter_welcome(email):
-    """Send welcome email"""
+    """Send professional welcome email with unsubscribe button"""
     try:
-        subject = "Welcome to CareerMaker Newsletter"
-        message = f"""Hello,
+        subject = "🎉 Welcome to CareerMaker Newsletter!"
 
-Thank you for subscribing to the CareerMaker Newsletter! 🎉
+        # Create unsubscribe URL
+        unsubscribe_url = f"{request.host_url.rstrip('/')}/unsubscribe?email={email}"
 
-You'll now receive updates on:
-- New courses
-- Jobs and internships
-- Tech blogs & news
-- Exclusive content for subscribers
+        # Plain text version
+        plain_text = f"""Welcome to CareerMaker Newsletter! 🎉
 
-If this wasn't you, you can unsubscribe anytime.
+Hello!
 
-Best regards,  
-CareerMaker Team
+Thank you for subscribing to the CareerMaker Newsletter. We're excited to have you onboard!
+
+WHAT YOU'LL RECEIVE:
+✓ Course Updates - New learning opportunities
+✓ Job Alerts - Latest career opportunities  
+✓ Career Tips - Industry insights and advice
+✓ Exclusive Content - Subscriber-only resources
+
+Ready to boost your career? Visit: {request.host_url}
+
+---
+You received this email because you subscribed to CareerMaker Newsletter.
+If you no longer wish to receive these emails, unsubscribe here:
+{unsubscribe_url}
+
+Stay Connected:
+Facebook: https://facebook.com/careermaker
+Twitter: https://twitter.com/careermaker
+LinkedIn: https://linkedin.com/company/careermaker
+
+CareerMaker • 123 Career Street • Tech City
+© {datetime.now().year} CareerMaker. All rights reserved.
+Privacy Policy: {request.host_url.rstrip('/')}/privacy
+Terms of Service: {request.host_url.rstrip('/')}/terms
 """
-        return send_email_smtp(email, subject, message)
+
+        # HTML version
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to CareerMaker Newsletter</title>
+    <style>
+        /* Email styles */
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f8f9fa; }}
+        .email-container {{ max-width: 600px; margin: 0 auto; background: white; }}
+        .email-header {{ background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%); padding: 40px 20px; text-align: center; color: white; }}
+        .logo {{ font-size: 36px; font-weight: bold; margin-bottom: 10px; }}
+        .content-section {{ padding: 30px; border-bottom: 1px solid #eee; }}
+        .section-title {{ color: #4361ee; margin-bottom: 20px; font-size: 22px; }}
+        .benefit-item {{ display: flex; align-items: center; gap: 10px; margin: 10px 0; }}
+        .benefit-icon {{ width: 40px; height: 40px; background: #4361ee; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; }}
+        .cta-section {{ text-align: center; padding: 40px 30px; background: #f8f9fa; }}
+        .cta-button {{ display: inline-block; background: #4361ee; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }}
+        .email-footer {{ padding: 30px; background: #f1f3f5; text-align: center; }}
+        .unsubscribe-button {{ display: inline-block; background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; margin: 15px 0; }}
+        @media (max-width: 600px) {{ .content-section {{ padding: 20px; }} }}
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+            <div class="logo">🎓 CareerMaker</div>
+            <h1>Welcome Aboard!</h1>
+            <p>Your career journey just got better</p>
+        </div>
+
+        <!-- Welcome Message -->
+        <div class="content-section">
+            <h2 class="section-title">Hello Future Leader!</h2>
+            <p>We're thrilled to have you join the CareerMaker community! Get ready for regular updates packed with career-boosting resources.</p>
+        </div>
+
+        <!-- What You'll Get -->
+        <div class="content-section">
+            <h2 class="section-title">What You'll Receive</h2>
+            <div class="benefit-item">
+                <div class="benefit-icon">📚</div>
+                <div><strong>Course Updates</strong><br>New learning opportunities</div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">💼</div>
+                <div><strong>Job Alerts</strong><br>Latest opportunities</div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">📈</div>
+                <div><strong>Career Tips</strong><br>Industry insights</div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">⭐</div>
+                <div><strong>Exclusive Content</strong><br>Subscriber-only resources</div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="cta-section">
+            <h2>Ready to Boost Your Career?</h2>
+            <p>Explore our platform and discover amazing opportunities waiting for you.</p>
+            <a href="{request.host_url}" class="cta-button">🚀 Explore CareerMaker</a>
+        </div>
+
+        <!-- Footer with Unsubscribe -->
+        <div class="email-footer">
+            <p>You received this email because you subscribed to CareerMaker Newsletter.</p>
+            <p>If you no longer wish to receive these emails:</p>
+            <a href="{unsubscribe_url}" class="unsubscribe-button">✋ Unsubscribe</a>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                © {datetime.now().year} CareerMaker. All rights reserved.<br>
+                <a href="{request.host_url.rstrip('/')}/privacy" style="color: #666;">Privacy Policy</a> • 
+                <a href="{request.host_url.rstrip('/')}/terms" style="color: #666;">Terms of Service</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+        return send_email_smtp(email, subject, plain_text, html_content)
     except Exception as e:
         logger.error(f"❌ Failed to send welcome email to {email}: {str(e)}")
         return False
 
 
 def send_newsletter_goodbye(email):
-    """Send goodbye email"""
+    """Send goodbye email with both plain text and HTML"""
     try:
-        subject = "You've unsubscribed from CareerMaker Newsletter"
-        message = f"""Hello,
+        subject = "👋 You've unsubscribed from CareerMaker Newsletter"
+
+        # Plain text version
+        plain_text = f"""You've been unsubscribed
+
+Hello,
 
 We're sorry to see you go! You have been unsubscribed from the CareerMaker Newsletter.
 
 If this was a mistake, you can subscribe again anytime on our website.
 
-Thank you for being with us,  
+Thank you for being with us.
+
+Best regards,
 CareerMaker Team
+
+---
+If you have any questions, please contact us at support@careermaker.tech
 """
-        return send_email_smtp(email, subject, message)
+
+        # HTML version
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsubscribed from CareerMaker</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f8f9fa; }}
+        .email-container {{ max-width: 600px; margin: 0 auto; background: white; }}
+        .email-header {{ background: #6c757d; padding: 30px 20px; text-align: center; color: white; }}
+        .content {{ padding: 40px; text-align: center; }}
+        .goodbye-icon {{ font-size: 48px; margin-bottom: 20px; color: #6c757d; }}
+        .resubscribe-btn {{ display: inline-block; background: #4361ee; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }}
+        .footer {{ padding: 20px; background: #f1f3f5; text-align: center; font-size: 12px; color: #666; }}
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>👋 Goodbye</h1>
+        </div>
+        <div class="content">
+            <div class="goodbye-icon">💔</div>
+            <h2>You've been unsubscribed</h2>
+            <p>We're sorry to see you go! You have been unsubscribed from the CareerMaker Newsletter.</p>
+            <p>If this was a mistake, you can subscribe again anytime:</p>
+            <a href="{request.host_url}" class="resubscribe-btn">Subscribe Again</a>
+            <p>Thank you for being with us.</p>
+            <p><strong>CareerMaker Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>© {datetime.now().year} CareerMaker. All rights reserved.</p>
+            <p>If you have any questions, contact us at support@careermaker.com</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+        return send_email_smtp(email, subject, plain_text, html_content)
     except Exception as e:
         logger.error(f"❌ Failed to send goodbye email to {email}: {str(e)}")
         return False
@@ -3615,12 +3775,14 @@ def subscribe_newsletter():
         return jsonify({"status": "error", "message": "Failed to subscribe. Please try again."}), 500
 
 
-@app.route('/api/unsubscribe', methods=['POST'])
+@app.route('/api/unsubscribe', methods=['GET', 'POST'])
 def unsubscribe_newsletter():
     email = None
     try:
-        # Extract email
-        if request.is_json:
+        # Extract email from different sources
+        if request.method == 'GET':
+            email = request.args.get('email')
+        elif request.is_json:
             data = request.get_json(silent=True) or {}
             email = data.get("email")
         else:
@@ -3628,6 +3790,9 @@ def unsubscribe_newsletter():
 
         # Validate email
         if not email or "@" not in email:
+            if request.method == 'GET':
+                flash('Please provide a valid email address', 'error')
+                return redirect(url_for('unsubscribe_page'))
             return jsonify({"status": "error", "message": "Please provide a valid email address"}), 400
 
         # Check if subscriber exists
@@ -3637,9 +3802,15 @@ def unsubscribe_newsletter():
             .maybe_single().execute()
 
         if not existing or not existing.data:
+            if request.method == 'GET':
+                flash('Email not found in our subscription list', 'error')
+                return redirect(url_for('unsubscribe_page', email=email))
             return jsonify({"status": "error", "message": "Email not found in our subscription list"}), 404
 
         if not existing.data.get("is_active", True):
+            if request.method == 'GET':
+                flash('You are already unsubscribed', 'info')
+                return redirect(url_for('unsubscribe_page', email=email))
             return jsonify({"status": "success", "message": "You are already unsubscribed."})
 
         # Mark as unsubscribed
@@ -3647,13 +3818,46 @@ def unsubscribe_newsletter():
             .update({"is_active": False, "unsubscribed_at": get_current_utc_time().isoformat()}) \
             .eq("email", email).execute()
 
+        # Send goodbye email
         send_newsletter_goodbye(email)
+
+        if request.method == 'GET':
+            flash('You have been successfully unsubscribed from CareerMaker newsletter.', 'success')
+            return redirect(url_for('unsubscribe_page', email=email))
+
         return jsonify({"status": "success", "message": "You have been unsubscribed from the newsletter."})
 
     except Exception as e:
         logger.error(f"❌ Newsletter unsubscribe error for {email}: {str(e)}", exc_info=True)
+        if request.method == 'GET':
+            flash('Failed to unsubscribe. Please try again.', 'error')
+            return redirect(url_for('unsubscribe_page', email=email or ''))
         return jsonify({"status": "error", "message": "Failed to unsubscribe. Please try again."}), 500
 
+
+@app.route('/unsubscribe', methods=['GET', 'POST'])
+def unsubscribe_page():
+    """Render unsubscribe page"""
+    try:
+        if request.method == 'POST':
+            # Handle form submission - let the API route handle it
+            email = request.form.get('email', '').strip()
+            if not email or "@" not in email:
+                flash('Please provide a valid email address', 'error')
+                return redirect(url_for('unsubscribe_page', email=email))
+
+            # The actual unsubscription is handled by /api/unsubscribe
+            # This route just redirects to show the form
+            return redirect(url_for('unsubscribe_page', email=email))
+
+        # GET request - show unsubscribe form
+        email = request.args.get('email', '')
+        return render_template('unsubscribe.html', email=email)
+
+    except Exception as e:
+        logger.error(f"❌ Unsubscribe page error: {str(e)}")
+        flash('An error occurred. Please try again later.', 'error')
+        return redirect(url_for('unsubscribe_page'))
 
 # ===== ADMIN ROUTES =====
 

@@ -3476,6 +3476,270 @@
     };
 
     // =============================================
+    // NEWSLETTER SUBSCRIPTION SYSTEM
+    // =============================================
+
+    function initializeNewsletter() {
+        const newsletterForm = document.getElementById('newsletterForm');
+        if (!newsletterForm) return;
+
+        newsletterForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const emailInput = this.querySelector('input[type="email"]');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const responseDiv = document.getElementById('newsletterResponse');
+
+            if (!emailInput || !submitBtn) return;
+
+            const email = emailInput.value.trim();
+
+            // Validate email
+            if (!validateEmail(email)) {
+                showToast('Please enter a valid email address', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            // Get button text and loading icon
+            const btnText = submitBtn.querySelector('.btn-text');
+            const loadingIcon = submitBtn.querySelector('.loading-icon');
+
+            // Show loading state
+            if (btnText) btnText.style.display = 'none';
+            if (loadingIcon) loadingIcon.style.display = 'inline-block';
+            submitBtn.disabled = true;
+
+            // Hide any previous response
+            if (responseDiv) {
+                responseDiv.style.display = 'none';
+                responseDiv.textContent = '';
+                responseDiv.className = 'form-response';
+            }
+
+            try {
+                const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Success - show message
+                    if (responseDiv) {
+                        responseDiv.className = 'form-response success';
+                        responseDiv.textContent = data.message;
+                        responseDiv.style.display = 'block';
+                    }
+
+                    // Show toast notification
+                    showToast(data.message, 'success');
+
+                    // Clear form
+                    emailInput.value = '';
+
+                    // Reset form state
+                    const formGroup = emailInput.closest('.form-group');
+                    if (formGroup) {
+                        formGroup.classList.remove('has-value');
+                    }
+
+                    // Auto-hide success message after 5 seconds
+                    if (responseDiv) {
+                        setTimeout(() => {
+                            responseDiv.style.display = 'none';
+                        }, 5000);
+                    }
+                } else {
+                    // Error from backend
+                    throw new Error(data.message || 'Subscription failed');
+                }
+
+            } catch (error) {
+                console.error('Newsletter subscription error:', error);
+
+                // Show error message
+                if (responseDiv) {
+                    responseDiv.className = 'form-response error';
+                    responseDiv.textContent = error.message || 'Failed to subscribe. Please try again.';
+                    responseDiv.style.display = 'block';
+                }
+
+                showToast(error.message || 'Failed to subscribe. Please try again.', 'error');
+
+                // Focus on email field for correction
+                emailInput.focus();
+                emailInput.select();
+
+            } finally {
+                // Always reset button state
+                if (btnText) btnText.style.display = 'inline-block';
+                if (loadingIcon) loadingIcon.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // =============================================
+    // UNSUBSCRIBE PAGE FUNCTIONALITY
+    // =============================================
+
+    function initializeUnsubscribePage() {
+        const unsubscribeForm = document.querySelector('.unsubscribe-form');
+        if (!unsubscribeForm) return;
+
+        unsubscribeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const emailInput = unsubscribeForm.querySelector('input[type="email"]');
+            const submitBtn = unsubscribeForm.querySelector('button[type="submit"]');
+
+            if (!emailInput || !submitBtn) return;
+
+            const email = emailInput.value.trim();
+
+            // Validate email
+            if (!validateEmail(email)) {
+                showToast('Please enter a valid email address', 'error');
+                emailInput.focus();
+                return;
+            }
+
+            // Show loading state
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            submitBtn.disabled = true;
+
+            // Submit the form via POST to /api/unsubscribe
+            // But let the backend handle the redirect
+            const formData = new FormData();
+            formData.append('email', email);
+
+            fetch('/api/unsubscribe', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // If backend redirects (to /unsubscribe page), follow it
+                    window.location.href = response.url;
+                } else {
+                    // Handle JSON response
+                    return response.json().then(data => {
+                        if (data.status === 'success') {
+                            // Show success and reload page to show flash message
+                            showToast(data.message, 'success');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            throw new Error(data.message);
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Unsubscribe error:', error);
+
+                // Re-enable button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+                // Show error
+                showToast(error.message || 'Failed to unsubscribe. Please try again.', 'error');
+
+                // Focus on email field
+                emailInput.focus();
+                emailInput.select();
+            });
+        });
+    }
+
+    // =============================================
+    // EMAIL VALIDATION HELPER
+    // =============================================
+
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // =============================================
+    // FLASH MESSAGE HANDLER FOR UNSUBSCRIBE PAGE
+    // =============================================
+
+    function handleUnsubscribeFlashMessages() {
+        // If on unsubscribe page and there are flash messages, show them
+        if (window.location.pathname.includes('/unsubscribe')) {
+            const flashMessages = document.querySelectorAll('.flash');
+            flashMessages.forEach(message => {
+                // Make sure flash messages are visible
+                message.style.display = 'block';
+                message.style.opacity = '1';
+
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        message.remove();
+                    }, 300);
+                }, 10000);
+
+                // Add close button functionality
+                const closeBtn = message.querySelector('.flash-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        message.style.opacity = '0';
+                        setTimeout(() => message.remove(), 300);
+                    });
+                }
+            });
+
+            // If there's a success message, update the page UI
+            const successMessage = document.querySelector('.flash-success');
+            if (successMessage) {
+                // You can add additional success UI updates here
+                const emailInput = document.getElementById('email');
+                if (emailInput) {
+                    emailInput.disabled = true;
+                }
+            }
+        }
+    }
+
+    // =============================================
+    // ONE-CLICK UNSUBSCRIBE HANDLER
+    // =============================================
+
+    function handleOneClickUnsubscribe() {
+        // Check if we're on unsubscribe page with email parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+
+        if (email && window.location.pathname.includes('/unsubscribe')) {
+            // Auto-fill the email field
+            const emailInput = document.getElementById('email');
+            if (emailInput) {
+                emailInput.value = email;
+
+                // Auto-submit if there's a query parameter for one-click
+                if (urlParams.get('auto') === 'true') {
+                    setTimeout(() => {
+                        const submitBtn = document.querySelector('.unsubscribe-form button[type="submit"]');
+                        if (submitBtn) {
+                            submitBtn.click();
+                        }
+                    }, 1000);
+                }
+            }
+        }
+    }
+
+    // =============================================
     // Flash Message Handling
     // =============================================
     function initFlashMessages() {
@@ -3804,6 +4068,24 @@
         // Initialize testimonial system
         if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {
             testimonialSystem.init();
+        }
+
+        // Initialize newsletter subscription
+        initializeNewsletter();
+
+        // Initialize unsubscribe page
+        if (window.location.pathname.includes('/unsubscribe')) {
+            initializeUnsubscribePage();
+            handleUnsubscribeFlashMessages();
+            handleOneClickUnsubscribe();
+
+            // Auto-focus email field if empty
+            const emailInput = document.getElementById('email');
+            if (emailInput && !emailInput.value) {
+                setTimeout(() => {
+                    emailInput.focus();
+                }, 500);
+            }
         }
 
         // Add this as a backup logout handler
