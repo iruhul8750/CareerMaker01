@@ -3632,7 +3632,34 @@
         });
     }
 
-     // =============================================
+    // =============================================
+    // MOBILE DETECTION HELPER
+    // =============================================
+
+    function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    // =============================================
+    // NETWORK STATUS MONITOR
+    // =============================================
+
+    function setupNetworkMonitor() {
+        if (!navigator.onLine) {
+            showToast('You are offline. Please check your connection.', 'warning');
+        }
+
+        window.addEventListener('online', () => {
+            showToast('You are back online!', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            showToast('You are offline. Some features may not work.', 'warning');
+        });
+    }
+
+
+    // =============================================
     // UNSUBSCRIBE PAGE FUNCTIONALITY - DYNAMIC PAGE UPDATE
     // =============================================
 
@@ -4256,6 +4283,9 @@
         // Initialize newsletter subscription
         initializeNewsletter();
 
+        // Setup network monitor
+        setupNetworkMonitor();
+
         // Initialize unsubscribe page
         if (window.location.pathname.includes('/unsubscribe')) {
             initializeUnsubscribePage();
@@ -4269,6 +4299,28 @@
                     emailInput.focus();
                 }, 500);
             }
+        }
+
+        // Add retry logic for mobile devices
+        if (isMobileDevice()) {
+            console.log('Mobile device detected - enabling mobile optimizations');
+
+            // Add a global error handler for fetch requests
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                try {
+                    return await originalFetch.apply(this, args);
+                } catch (error) {
+                    console.error('Fetch error on mobile:', error);
+
+                    // Only show toast for network errors
+                    if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                        showToast('Network error. Please check your connection.', 'error');
+                    }
+
+                    throw error;
+                }
+            };
         }
 
         // Add this as a backup logout handler
