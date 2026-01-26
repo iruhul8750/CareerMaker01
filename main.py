@@ -3790,10 +3790,10 @@ def unsubscribe_newsletter():
 
         # Validate email
         if not email or "@" not in email:
-            if request.method == 'GET':
-                flash('Please provide a valid email address', 'error')
-                return redirect(url_for('unsubscribe_page'))
-            return jsonify({"status": "error", "message": "Please provide a valid email address"}), 400
+            return jsonify({
+                "status": "error",
+                "message": "Please provide a valid email address"
+            }), 400
 
         # Check if subscriber exists
         existing = supabase_admin.table("newsletter_subscribers") \
@@ -3802,16 +3802,16 @@ def unsubscribe_newsletter():
             .maybe_single().execute()
 
         if not existing or not existing.data:
-            if request.method == 'GET':
-                flash('Email not found in our subscription list', 'error')
-                return redirect(url_for('unsubscribe_page', email=email))
-            return jsonify({"status": "error", "message": "Email not found in our subscription list"}), 404
+            return jsonify({
+                "status": "error",
+                "message": "Email not found in our subscription list"
+            }), 404
 
         if not existing.data.get("is_active", True):
-            if request.method == 'GET':
-                flash('You are already unsubscribed', 'info')
-                return redirect(url_for('unsubscribe_page', email=email))
-            return jsonify({"status": "success", "message": "You are already unsubscribed."})
+            return jsonify({
+                "status": "success",
+                "message": "You are already unsubscribed"
+            })
 
         # Mark as unsubscribed
         supabase_admin.table("newsletter_subscribers") \
@@ -3821,19 +3821,17 @@ def unsubscribe_newsletter():
         # Send goodbye email
         send_newsletter_goodbye(email)
 
-        if request.method == 'GET':
-            flash('You have been successfully unsubscribed from CareerMaker newsletter.', 'success')
-            return redirect(url_for('unsubscribe_page', email=email))
-
-        return jsonify({"status": "success", "message": "You have been unsubscribed from the newsletter."})
+        return jsonify({
+            "status": "success",
+            "message": "You have been successfully unsubscribed from CareerMaker newsletter!"
+        })
 
     except Exception as e:
         logger.error(f"❌ Newsletter unsubscribe error for {email}: {str(e)}", exc_info=True)
-        if request.method == 'GET':
-            flash('Failed to unsubscribe. Please try again.', 'error')
-            return redirect(url_for('unsubscribe_page', email=email or ''))
-        return jsonify({"status": "error", "message": "Failed to unsubscribe. Please try again."}), 500
-
+        return jsonify({
+            "status": "error",
+            "message": "Failed to unsubscribe. Please try again."
+        }), 500
 
 @app.route('/unsubscribe', methods=['GET', 'POST'])
 def unsubscribe_page():
@@ -3858,6 +3856,45 @@ def unsubscribe_page():
         logger.error(f"❌ Unsubscribe page error: {str(e)}")
         flash('An error occurred. Please try again later.', 'error')
         return redirect(url_for('unsubscribe_page'))
+
+
+@app.after_request
+def after_request(response):
+    """Ensure API endpoints return JSON with proper headers"""
+    # Only apply to API routes
+    if request.path.startswith('/api/'):
+        # Ensure content type is JSON
+        if 'application/json' not in response.headers.get('Content-Type', ''):
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+
+        # Add CORS headers for mobile
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+
+    return response
+
+
+@app.errorhandler(500)
+def handle_500_error(error):
+    """Handle 500 errors with JSON response for API routes"""
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error. Please try again later.'
+        }), 500
+    return error
+
+
+@app.errorhandler(404)
+def handle_404_error(error):
+    """Handle 404 errors with JSON response for API routes"""
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'status': 'error',
+            'message': 'Endpoint not found.'
+        }), 404
+    return error
 
 # ===== ADMIN ROUTES =====
 

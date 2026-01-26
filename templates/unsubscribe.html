@@ -6,110 +6,9 @@
 
 {% block content %}
 <div class="container unsubscribe-container">
-    <div class="unsubscribe-card">
-        <!-- Flash Messages Section -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages-section">
-                    {% for category, message in messages %}
-                        <div class="flash flash-{{ category }}" role="alert">
-                            <div class="flash-content">
-                                <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
-                                <span>{{ message }}</span>
-                            </div>
-                            <button class="flash-close" aria-label="Close message">&times;</button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <!-- Check if user is already unsubscribed (based on flash messages) -->
-        {% set has_success = false %}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                {% if category == 'success' and ('unsubscribed' in message|lower or 'already unsubscribed' in message|lower) %}
-                    {% set has_success = true %}
-                {% endif %}
-            {% endfor %}
-        {% endwith %}
-
-        {% if has_success %}
-        <!-- Success State (Already Unsubscribed) -->
-        <div class="unsubscribe-success">
-            <div class="success-icon">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <h1>Successfully Unsubscribed</h1>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% for category, message in messages %}
-                    {% if category == 'success' %}
-                        <p>{{ message }}</p>
-                    {% endif %}
-                {% endfor %}
-            {% endwith %}
-            <p>We're sorry to see you go!</p>
-            <div class="unsubscribe-actions">
-                <a href="/" class="btn btn-primary">
-                    <i class="fas fa-home"></i> Return to Homepage
-                </a>
-                <a href="/contact" class="btn btn-outline">
-                    <i class="fas fa-question-circle"></i> Need Help?
-                </a>
-            </div>
-        </div>
-
-        {% elif get_flashed_messages(category_filter=['error']) %}
-        <!-- Error State -->
-        <div class="unsubscribe-error">
-            <div class="error-icon">
-                <i class="fas fa-exclamation-circle"></i>
-            </div>
-            <h1>Unable to Unsubscribe</h1>
-            {% with messages = get_flashed_messages(category_filter=['error']) %}
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            {% endwith %}
-            <form method="POST" action="/unsubscribe" class="unsubscribe-form">
-                <div class="form-group floating-label-group">
-                    <input type="email" id="email" name="email" placeholder=" " required value="{{ email or '' }}">
-                    <label for="email">Your email address</label>
-                </div>
-                <button type="submit" class="btn btn-danger btn-block">
-                    <i class="fas fa-ban"></i> Try Again
-                </button>
-            </form>
-            <a href="/" class="back-link">Return to Homepage</a>
-        </div>
-
-        {% elif get_flashed_messages(category_filter=['info']) %}
-        <!-- Info State -->
-        <div class="unsubscribe-info">
-            <div class="info-icon">
-                <i class="fas fa-info-circle"></i>
-            </div>
-            <h1>Notice</h1>
-            {% with messages = get_flashed_messages(category_filter=['info']) %}
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            {% endwith %}
-            <div class="unsubscribe-actions">
-                <a href="/" class="btn btn-primary">
-                    <i class="fas fa-home"></i> Return to Homepage
-                </a>
-                {% if not logged_in %}
-                <a href="/login" class="btn btn-outline">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </a>
-                {% endif %}
-            </div>
-        </div>
-
-        {% else %}
-        <!-- Default Unsubscribe Form -->
-        <div class="unsubscribe-form-container">
+    <div class="unsubscribe-card" id="unsubscribeCard">
+        <!-- Only show the form initially -->
+        <div class="unsubscribe-form-state" id="unsubscribeFormState">
             <div class="unsubscribe-header">
                 <div class="unsubscribe-icon">
                     <i class="fas fa-envelope-slash"></i>
@@ -118,19 +17,19 @@
                 <p class="subtitle">Enter your email address to unsubscribe from CareerMaker newsletter and email updates.</p>
             </div>
 
-            <form method="POST" action="/unsubscribe" class="unsubscribe-form">
+            <form method="POST" class="unsubscribe-form" id="unsubscribeForm">
                 <div class="form-group floating-label-group">
                     <input type="email" id="email" name="email" placeholder=" " required value="{{ email or '' }}">
                     <label for="email">Your email address</label>
                     <div class="form-hint">We need this to find your subscription</div>
                 </div>
 
-                <button type="submit" class="btn btn-danger btn-block">
+                <button type="submit" class="btn btn-danger btn-block" id="unsubscribeBtn">
                     <i class="fas fa-ban"></i> Unsubscribe Now
                 </button>
             </form>
 
-            <div class="unsubscribe-warning">
+            <div class="warning-section">
                 <h3><i class="fas fa-exclamation-triangle"></i> What You'll Miss</h3>
                 <div class="warning-grid">
                     <div class="warning-item">
@@ -172,25 +71,20 @@
                 </div>
             </div>
 
-            <div class="unsubscribe-alternatives">
-                <h3>Alternative Options</h3>
-                <p>Instead of unsubscribing completely:</p>
-                <div class="alternative-buttons">
-                    <a href="/" class="btn btn-outline">
-                        <i class="fas fa-home"></i> Return to Homepage
-                    </a>
-                </div>
+            <div class="consider-section">
+                <h3>Consider This First</h3>
+                <p>Before unsubscribing, you might want to:</p>
+                <ul class="consider-list">
+                    <li><i class="fas fa-check-circle"></i> Check if you're receiving too many emails</li>
+                    <li><i class="fas fa-check-circle"></i> Mark our emails as important</li>
+                    <li><i class="fas fa-check-circle"></i> Create a filter for CareerMaker emails</li>
+                </ul>
             </div>
 
             <div class="unsubscribe-footer">
-                <p>Changed your mind? <a href="/" class="link">Stay subscribed</a></p>
-                <p class="small-note"><small>You can resubscribe anytime from our homepage.</small></p>
+                <p>Changed your mind? <a href="/" class="stay-link">Stay subscribed and return to homepage</a></p>
+                <p class="small-note"><small>You won't be able to receive any future newsletters after unsubscribing.</small></p>
             </div>
-        </div>
-        {% endif %}
-
-        <div class="unsubscribe-terms">
-            <p><small>CareerMaker respects your privacy. Read our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.</small></p>
         </div>
     </div>
 </div>

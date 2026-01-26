@@ -3476,7 +3476,7 @@
     };
 
     // =============================================
-    // NEWSLETTER SUBSCRIPTION SYSTEM
+    // NEWSLETTER SUBSCRIPTION SYSTEM - FIXED FOR MOBILE
     // =============================================
 
     function initializeNewsletter() {
@@ -3518,15 +3518,50 @@
             }
 
             try {
+                // Add timeout for mobile networks
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
                 const response = await fetch('/api/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ email: email })
+                    body: JSON.stringify({ email: email }),
+                    signal: controller.signal
                 });
 
-                const data = await response.json();
+                clearTimeout(timeoutId);
+
+                // Check if response is okay
+                if (!response.ok) {
+                    // Try to get error message from response
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        // If can't parse JSON, try to get text
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 100) { // Only use if it's short text
+                                errorMessage = text;
+                            }
+                        } catch (textError) {
+                            // Ignore text parsing errors
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Try to parse JSON response
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    console.error('JSON parsing error:', jsonError);
+                    throw new Error('Server returned invalid response. Please try again.');
+                }
 
                 if (data.status === 'success') {
                     // Success - show message
@@ -3562,14 +3597,27 @@
             } catch (error) {
                 console.error('Newsletter subscription error:', error);
 
+                let userErrorMessage = 'Failed to subscribe. Please try again.';
+
+                // Handle specific error types
+                if (error.name === 'AbortError') {
+                    userErrorMessage = 'Request timeout. Please check your connection and try again.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    userErrorMessage = 'Network error. Please check your internet connection.';
+                } else if (error.message.includes('HTTP')) {
+                    userErrorMessage = error.message;
+                } else {
+                    userErrorMessage = error.message || userErrorMessage;
+                }
+
                 // Show error message
                 if (responseDiv) {
                     responseDiv.className = 'form-response error';
-                    responseDiv.textContent = error.message || 'Failed to subscribe. Please try again.';
+                    responseDiv.textContent = userErrorMessage;
                     responseDiv.style.display = 'block';
                 }
 
-                showToast(error.message || 'Failed to subscribe. Please try again.', 'error');
+                showToast(userErrorMessage, 'error');
 
                 // Focus on email field for correction
                 emailInput.focus();
@@ -3584,21 +3632,22 @@
         });
     }
 
-    // =============================================
-    // UNSUBSCRIBE PAGE FUNCTIONALITY
+     // =============================================
+    // UNSUBSCRIBE PAGE FUNCTIONALITY - DYNAMIC PAGE UPDATE
     // =============================================
 
     function initializeUnsubscribePage() {
         const unsubscribeForm = document.querySelector('.unsubscribe-form');
         if (!unsubscribeForm) return;
 
-        unsubscribeForm.addEventListener('submit', function(e) {
+        unsubscribeForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const emailInput = unsubscribeForm.querySelector('input[type="email"]');
-            const submitBtn = unsubscribeForm.querySelector('button[type="submit"]');
+            const emailInput = this.querySelector('input[type="email"]');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const unsubscribeCard = document.querySelector('.unsubscribe-card');
 
-            if (!emailInput || !submitBtn) return;
+            if (!emailInput || !submitBtn || !unsubscribeCard) return;
 
             const email = emailInput.value.trim();
 
@@ -3614,35 +3663,28 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             submitBtn.disabled = true;
 
-            // Submit the form via POST to /api/unsubscribe
-            // But let the backend handle the redirect
-            const formData = new FormData();
-            formData.append('email', email);
+            try {
+                // Submit to API
+                const formData = new FormData();
+                formData.append('email', email);
 
-            fetch('/api/unsubscribe', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.redirected) {
-                    // If backend redirects (to /unsubscribe page), follow it
-                    window.location.href = response.url;
+                const response = await fetch('/api/unsubscribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // SUCCESS: Transform the page into success state
+                    transformToSuccessPage(unsubscribeCard, data.message);
+                    showToast(data.message, 'success');
                 } else {
-                    // Handle JSON response
-                    return response.json().then(data => {
-                        if (data.status === 'success') {
-                            // Show success and reload page to show flash message
-                            showToast(data.message, 'success');
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        } else {
-                            throw new Error(data.message);
-                        }
-                    });
+                    // ERROR: Show error message
+                    throw new Error(data.message || 'Unsubscribe failed');
                 }
-            })
-            .catch(error => {
+
+            } catch (error) {
                 console.error('Unsubscribe error:', error);
 
                 // Re-enable button
@@ -3655,8 +3697,149 @@
                 // Focus on email field
                 emailInput.focus();
                 emailInput.select();
-            });
+            }
         });
+    }
+
+    // =============================================
+    // PAGE TRANSFORMATION FUNCTION
+    // =============================================
+
+    function transformToSuccessPage(container, successMessage) {
+        // Clear the container with fade out animation
+        container.style.opacity = '0.5';
+        container.style.transition = 'opacity 0.3s ease';
+
+        setTimeout(() => {
+            // Replace entire content with success state
+            container.innerHTML = `
+                <div class="unsubscribe-success-state animated-fade-in">
+                    <!-- Big Success Icon -->
+                    <div class="success-icon-large">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+
+                    <!-- Big Success Message -->
+                    <h1 class="success-title-large">SUCCESSFULLY UNSUBSCRIBED</h1>
+
+                    <!-- Confirmation Message -->
+                    <div class="success-confirmation">
+                        <p class="confirmation-text">${successMessage || 'You have been successfully unsubscribed from CareerMaker newsletter.'}</p>
+                        <p class="goodbye-text">We're sorry to see you go!</p>
+                    </div>
+
+                    <!-- What You'll Miss Section -->
+                    <div class="missed-section">
+                        <h2><i class="fas fa-exclamation-triangle"></i> What You'll No Longer Receive</h2>
+                        <div class="missed-grid">
+                            <div class="missed-item-large">
+                                <div class="missed-icon">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                                <h3>Course Updates</h3>
+                                <p>New learning opportunities</p>
+                            </div>
+                            <div class="missed-item-large">
+                                <div class="missed-icon">
+                                    <i class="fas fa-briefcase"></i>
+                                </div>
+                                <h3>Job Alerts</h3>
+                                <p>Latest opportunities</p>
+                            </div>
+                            <div class="missed-item-large">
+                                <div class="missed-icon">
+                                    <i class="fas fa-blog"></i>
+                                </div>
+                                <h3>Tech Insights</h3>
+                                <p>Industry news and tips</p>
+                            </div>
+                            <div class="missed-item-large">
+                                <div class="missed-icon">
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <h3>Exclusive Content</h3>
+                                <p>Subscriber-only resources</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirmation Notice -->
+                    <div class="final-notice">
+                        <div class="notice-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <p>This change takes effect immediately. You may receive one final confirmation email.</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="success-actions">
+                        <a href="/" class="btn btn-primary btn-large">
+                            <i class="fas fa-home"></i> Return to Homepage
+                        </a>
+                    </div>
+
+                    <!-- Terms -->
+                    <div class="success-terms">
+                        <p><small>CareerMaker respects your privacy. Read our <a href="/privacy">Privacy Policy</a> and <a href="/terms">Terms of Service</a>.</small></p>
+                    </div>
+                </div>
+            `;
+
+            // Fade in new content
+            container.style.opacity = '1';
+
+            // Add confetti effect for celebration
+            setTimeout(() => {
+                triggerConfettiEffect();
+            }, 500);
+
+        }, 300);
+    }
+
+    // =============================================
+    // CONFETTI EFFECT FOR SUCCESS
+    // =============================================
+
+    function triggerConfettiEffect() {
+        // Create confetti elements
+        const colors = ['#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0'];
+
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.cssText = `
+                position: fixed;
+                width: 10px;
+                height: 10px;
+                background: ${colors[Math.floor(Math.random() * colors.length)]};
+                border-radius: 50%;
+                top: -20px;
+                left: ${Math.random() * 100}vw;
+                opacity: 0.7;
+                z-index: 9999;
+                pointer-events: none;
+            `;
+
+            document.body.appendChild(confetti);
+
+            // Animate confetti
+            const animation = confetti.animate([
+                {
+                    transform: `translateY(0px) rotate(0deg)`,
+                    opacity: 0.7
+                },
+                {
+                    transform: `translateY(${window.innerHeight + 100}px) rotate(${Math.random() * 360}deg)`,
+                    opacity: 0
+                }
+            ], {
+                duration: 2000 + Math.random() * 1000,
+                easing: 'cubic-bezier(0.215, 0.610, 0.355, 1)'
+            });
+
+            // Remove confetti after animation
+            animation.onfinish = () => confetti.remove();
+        }
     }
 
     // =============================================
