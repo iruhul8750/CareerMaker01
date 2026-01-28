@@ -1847,6 +1847,218 @@
         }
     }
 
+    /* View All pages responsive styles */
+    @media (max-width: 768px) {
+      /* CRITICAL: Make filters stack vertically */
+      .filters .search-form {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .search-form input,
+      .search-form select {
+        width: 100%;
+        font-size: 16px; /* Prevents iOS zoom */
+        padding: 0.9rem;
+      }
+
+      .search-form button {
+        width: 100%;
+        padding: 0.9rem;
+      }
+    }
+    @media (max-width: 576px) {
+      /* CRITICAL: Fix course card layout for mobile */
+      .course-card-layout {
+        min-height: 420px;
+        flex-direction: column;
+      }
+
+      .course-image-section {
+        height: 45%;
+        min-height: 180px;
+      }
+
+      .course-details-section {
+        height: 55%;
+        padding: 1rem;
+        overflow-y: auto; /* Allow scrolling */
+      }
+
+      /* Fix action buttons stacking */
+      .action-buttons {
+        flex-direction: row; /* Keep buttons side by side */
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .action-buttons .btn {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .action-buttons .btn-icon {
+        flex: 0 0 auto;
+      }
+    }
+    @media (max-width: 576px) {
+      /* CRITICAL: Ensure grid doesn't overflow horizontally */
+      .preview-grid {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 0 5px;
+      }
+
+      .preview-card {
+        width: 100%;
+        margin: 0 auto;
+        min-height: 380px;
+        height: auto;
+      }
+
+      /* Prevent content cutoff */
+      .preview-content {
+        overflow: visible;
+        max-height: none;
+      }
+
+      .description {
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        min-height: 4.2em;
+      }
+    }
+    @media (max-width: 992px) and (min-width: 577px) {
+      /* CRITICAL: 2-column layout for tablets */
+      .preview-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .course-card-layout {
+        min-height: 400px;
+      }
+
+      /* Adjust filters for tablet */
+      .search-form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      .search-form input[type="search"] {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      /* CRITICAL: Better touch targets */
+      .btn,
+      .action-buttons .btn,
+      .bookmark-btn,
+      .apply-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.75rem;
+      }
+
+      /* Increase tap area */
+      .preview-card {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Prevent accidental swipes */
+      .preview-grid {
+        touch-action: pan-y;
+      }
+    }
+    @media (max-width: 375px) {
+      /* CRITICAL: Ultra-compact layout */
+      .container {
+        padding: 0 10px;
+      }
+
+      .preview-card {
+        min-height: 360px;
+        margin: 0 0 1rem 0;
+      }
+
+      .course-card-layout {
+        min-height: 380px;
+      }
+
+      .course-image-section {
+        height: 40%;
+      }
+
+      .course-details-section {
+        height: 60%;
+        padding: 0.75rem;
+      }
+
+      /* Compact text */
+      .preview-content h3,
+      .course-header h3 {
+        font-size: 1rem;
+        min-height: 2.4em;
+      }
+
+      .description,
+      .course-description {
+        font-size: 0.85rem;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        min-height: 2.8em;
+      }
+
+      /* Stack action buttons on very small screens */
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .action-buttons .btn,
+      .action-buttons .btn-icon {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+    @media (max-width: 768px) and (orientation: landscape) {
+      /* CRITICAL: Landscape optimizations */
+      .preview-card {
+        min-height: 300px;
+        max-height: 320px;
+      }
+
+      .course-card-layout {
+        flex-direction: row;
+        min-height: 200px;
+        max-height: 250px;
+      }
+
+      .course-image-section {
+        width: 40%;
+        height: 100%;
+      }
+
+      .course-details-section {
+        width: 60%;
+        height: 100%;
+        overflow-y: auto;
+      }
+
+      /* Compact filters in landscape */
+      .search-form {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .search-form input,
+      .search-form select {
+        flex: 1 1 calc(50% - 0.5rem);
+        min-width: 120px;
+      }
+    }
+
     /* COURSE , INTERNSHIP AND JOBS SECTIONS END */
 
     /* Modal */
