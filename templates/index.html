@@ -5,15 +5,15 @@
 <section class="hero">
     <div class="hero-content">
         <div class="hero-text">
-            <h1>Empower Your Career Journey</h1>
-            <p>Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and
+            <h1 class="animate-fade-in-up delay-100">Empower Your Career Journey</h1>
+            <p class="animate-fade-in-up delay-300">Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and
                 professionals who have transformed their careers with CareerMaker.</p>
-            <div class="hero-buttons">
+            <div class="hero-buttons animate-fade-in-up delay-500">
                 <a href="/courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
                 <a href="/jobs" class="btn btn-outline"><i class="fas fa-briefcase"></i> Find Jobs</a>
             </div>
         </div>
-        <div class="hero-image">
+        <div class="hero-image animate-fade-in-up delay-700">
             <img src="/static/images/hero-image.jpg" alt="Career growth illustration"
                  onerror="this.src='/static/images/default-hero.jpg'">
         </div>
@@ -23,33 +23,33 @@
 <!-- Features Section -->
 <section class="features" id="features">
     <div class="container">
-        <div class="section-title">
+        <div class="section-title scroll-animate">
             <h2>Why Choose CareerMaker</h2>
             <p>We provide high-quality content and career opportunities to help you succeed</p>
         </div>
-        <div class="feature-grid">
-            <div class="feature-card">
+        <div class="feature-grid scroll-animate stagger-scroll">
+            <div class="feature-card animated-card">
                 <div class="feature-icon">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Verified Content</h3>
                 <p>All our courses and opportunities are thoroughly vetted to ensure quality and relevance.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card animated-card">
                 <div class="feature-icon">
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <h3>Career Growth</h3>
                 <p>Our programs are designed to help you advance in your current career or switch to a new one.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card animated-card">
                 <div class="feature-icon">
                     <i class="fas fa-briefcase"></i>
                 </div>
                 <h3>Job Opportunities</h3>
                 <p>Get access to exclusive job listings from top companies in various industries.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card animated-card">
                 <div class="feature-icon">
                     <i class="fas fa-headset"></i>
                 </div>
@@ -63,13 +63,13 @@
 <!-- Courses Preview Section -->
 <section class="preview-section" id="courses">
     <div class="container">
-        <div class="section-title">
+        <div class="section-title scroll-animate">
             <h2>Popular Courses</h2>
             <p>Enhance your skills with our top-rated courses</p>
         </div>
-        <div class="preview-grid" id="coursesGrid">
+        <div class="preview-grid scroll-animate" id="coursesGrid">
             {% for course in courses %}
-            <div class="preview-card course-card-layout" data-id="{{ course.id }}" data-type="course">
+            <div class="preview-card course-card-layout animated-card" data-id="{{ course.id }}" data-type="course">
                 <!-- Image Section (Left Half) -->
                 <div class="course-image-section">
                     {% if course.image %}
@@ -196,14 +196,14 @@
                 </div>
             </div>
             {% else %}
-            <div class="empty-state">
+            <div class="empty-state animate-fade-in">
                 <i class="fas fa-book"></i>
                 <h4>No featured courses available</h4>
                 <p>Check back later for new courses</p>
             </div>
             {% endfor %}
         </div>
-        <div class="view-all">
+        <div class="view-all scroll-animate">
             <a href="/courses" class="btn btn-primary">
                 <i class="fas fa-arrow-right"></i> View All Courses
             </a>
@@ -214,13 +214,13 @@
 <!-- Internships Preview Section -->
 <section class="preview-section" id="internships">
     <div class="container">
-        <div class="section-title">
+        <div class="section-title scroll-animate">
             <h2>Featured Internships</h2>
             <p>Gain valuable experience with top companies</p>
         </div>
-        <div class="preview-grid" id="internshipsGrid">
+        <div class="preview-grid scroll-animate" id="internshipsGrid">
             {% for internship in internships %}
-            <div class="preview-card" data-id="{{ internship.id }}" data-type="internship">
+            <div class="preview-card animated-card" data-id="{{ internship.id }}" data-type="internship">
                 <div class="preview-image-container">
                     {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
                     %}
@@ -309,14 +309,14 @@
                 </div>
             </div>
             {% else %}
-            <div class="empty-state">
+            <div class="empty-state animate-fade-in">
                 <i class="fas fa-user-graduate"></i>
                 <h4>No featured internships available</h4>
                 <p>Check back later for new opportunities</p>
             </div>
             {% endfor %}
         </div>
-        <div class="view-all">
+        <div class="view-all scroll-animate">
             <a href="/internships" class="btn btn-primary">
                 <i class="fas fa-arrow-right"></i> View All Internships
             </a>
@@ -327,13 +327,13 @@
 <!-- Jobs Preview Section -->
 <section class="preview-section" id="jobs">
     <div class="container">
-        <div class="section-title">
+        <div class="section-title scroll-animate">
             <h2>Featured Jobs</h2>
             <p>Find your dream job from our curated listings</p>
         </div>
-        <div class="preview-grid" id="jobsGrid">
+        <div class="preview-grid scroll-animate" id="jobsGrid">
             {% for job in jobs %}
-            <div class="preview-card" data-id="{{ job.id }}" data-type="job">
+            <div class="preview-card animated-card" data-id="{{ job.id }}" data-type="job">
                 <div class="preview-image-container">
                     {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}
                     <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
@@ -412,14 +412,14 @@
                 </div>
             </div>
             {% else %}
-            <div class="empty-state">
+            <div class="empty-state animate-fade-in">
                 <i class="fas fa-briefcase"></i>
                 <h4>No featured jobs available</h4>
                 <p>Check back later for new opportunities</p>
             </div>
             {% endfor %}
         </div>
-        <div class="view-all">
+        <div class="view-all scroll-animate">
             <a href="/jobs" class="btn btn-primary">
                 <i class="fas fa-arrow-right"></i> View All Jobs
             </a>
@@ -431,13 +431,13 @@
 <section class="professional-blog-section" id="blog">
     <div class="container">
         <div class="section-header">
-            <h2 class="section-title">Latest Career Insights</h2>
-            <p class="section-subtitle">Expert advice to boost your career journey</p>
+            <h2 class="section-title scroll-animate">Latest Career Insights</h2>
+            <p class="section-subtitle scroll-animate">Expert advice to boost your career journey</p>
         </div>
 
-        <div class="blog-grid-vertical" id="blogGrid">
+        <div class="blog-grid-vertical scroll-animate" id="blogGrid">
             {% for post in blogs %}
-            <article class="blog-card-vertical" data-id="{{ post.id }}">
+            <article class="blog-card-vertical animated-card" data-id="{{ post.id }}">
                 <div class="blog-card-inner-vertical">
                     <!-- Blog Image (Top Half) -->
                     <div class="blog-image-container-vertical">
@@ -516,7 +516,7 @@
 
         <!-- View All Blogs Button - Always show if there are any blogs -->
         {% if blogs and blogs|length > 0 %}
-        <div class="blog-section-footer" style="display: block; text-align: center; margin-top: 40px;">
+        <div class="blog-section-footer scroll-animate" style="display: block; text-align: center; margin-top: 40px;">
             <a href="/blogs.html" class="btn btn-primary view-all-blogs">
                 View All Articles
                 <i class="fas fa-arrow-right"></i>
@@ -584,17 +584,17 @@
 <section class="testimonials-section" id="testimonials">
     <div class="testimonials-container">
         <div class="testimonials-header">
-            <h2>What Our Users Say</h2>
-            <p>Join thousands of professionals who have transformed their careers with CareerMaker</p>
-            <button class="btn btn-primary" id="testimonialBtn">
+            <h2 class="scroll-animate">What Our Users Say</h2>
+            <p class="scroll-animate">Join thousands of professionals who have transformed their careers with CareerMaker</p>
+            <button class="btn btn-primary scroll-animate" id="testimonialBtn">
                 <i class="fas fa-plus"></i> Share Your Experience
             </button>
         </div>
 
-        <div class="testimonials-carousel">
+        <div class="testimonials-carousel scroll-animate">
             <div class="testimonials-track" id="testimonialTrack">
                 <!-- Testimonials will be loaded here dynamically -->
-                <div class="loading-state">
+                <div class="loading-state animate-pulse">
                     <i class="fas fa-spinner fa-spin"></i>
                     <p>Loading experiences...</p>
                 </div>
@@ -602,7 +602,7 @@
         </div>
 
         <!-- Navigation Controls - Buttons with Dots in Center -->
-        <div class="carousel-nav-container">
+        <div class="carousel-nav-container scroll-animate">
             <button class="carousel-btn carousel-prev" aria-label="Previous testimonial">
                 <i class="fas fa-chevron-left"></i>
             </button>
@@ -616,13 +616,13 @@
             </button>
 
             <!-- Add this inside the testimonials-container after the carousel -->
-            <div class="swipe-instruction" id="swipeInstruction">
+            <div class="swipe-instruction animate-pulse" id="swipeInstruction">
                 <i class="fas fa-hand-point-up"></i>
                 <span>Swipe left or right to navigate</span>
             </div>
 
             <!-- Auto-play indicator (optional) -->
-            <div class="auto-play-indicator" id="autoPlayIndicator">
+            <div class="auto-play-indicator animate-pulse" id="autoPlayIndicator">
                 <i class="fas fa-play-circle"></i>
                 <span>Auto</span>
             </div>
@@ -731,14 +731,14 @@
 <!-- Contact Section -->
 <section class="contact-section" id="contact">
     <div class="container">
-        <div class="section-title">
+        <div class="section-title scroll-animate">
             <h2>Get In Touch</h2>
             <p>Have questions? We're here to help you with your career journey</p>
         </div>
-        <div class="contact-container">
+        <div class="contact-container scroll-animate stagger-scroll">
             <div class="contact-info">
-                <h2 class="box-heading">Contact Info</h2>
-                <div class="info-card">
+                <h2 class="box-heading scroll-animate-left">Contact Info</h2>
+                <div class="info-card scroll-animate-left">
                     <div class="info-icon">
                         <i class="fas fa-map-marker-alt"></i>
                     </div>
@@ -747,7 +747,7 @@
                         <p>123 Career Street, Tech City, TC 12345</p>
                     </div>
                 </div>
-                <div class="info-card">
+                <div class="info-card scroll-animate-left">
                     <div class="info-icon">
                         <i class="fas fa-envelope"></i>
                     </div>
@@ -756,7 +756,7 @@
                         <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
                     </div>
                 </div>
-                <div class="info-card">
+                <div class="info-card scroll-animate-left">
                     <div class="info-icon">
                         <i class="fas fa-phone-alt"></i>
                     </div>
@@ -767,7 +767,7 @@
                 </div>
             </div>
 
-            <div class="contact-form">
+            <div class="contact-form scroll-animate-right">
                 <h2 class="box-heading">Send a Message</h2>
                 <form id="contactForm" action="/api/contact" method="POST">
                     <div class="form-group floating-label-group">
@@ -800,14 +800,14 @@
 <!-- Support Us Section - With Working PayPal -->
 <section class="support-section compact" id="support">
     <div class="container">
-        <div class="support-header">
+        <div class="support-header scroll-animate">
             <h3>Support Our Mission</h3>
             <p>Help us continue providing free career resources and opportunities</p>
         </div>
 
-        <div class="support-row">
+        <div class="support-row scroll-animate stagger-scroll">
             <!-- Description -->
-            <div class="support-item description-box">
+            <div class="support-item description-box scroll-animate-left">
                 <div class="support-icon">
                     <i class="fas fa-hands-helping"></i>
                 </div>
@@ -821,7 +821,7 @@
             </div>
 
             <!-- Simple PayPal.me Link -->
-            <div class="support-item payment-box">
+            <div class="support-item payment-box scroll-animate">
                 <div class="support-icon">
                     <i class="fab fa-paypal"></i>
                 </div>
@@ -833,7 +833,7 @@
             </div>
 
             <!-- QR Code -->
-            <div class="support-item qr-box">
+            <div class="support-item qr-box scroll-animate-right">
                 <div class="support-icon">
                     <i class="fas fa-qrcode"></i>
                 </div>
@@ -847,7 +847,7 @@
             </div>
         </div>
 
-        <div class="support-footer compact">
+        <div class="support-footer compact scroll-animate">
             <i class="fas fa-heart"></i>
             <span>Thank you for your support!</span>
         </div>

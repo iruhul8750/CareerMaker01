@@ -4422,8 +4422,15 @@
         if (typeof initShareModalThemeListener === 'function') {
             initShareModalThemeListener();
         }
-
         console.log('🎯 Application fully initialized');
+
+        // Initialize animations if not already initialized
+        if (typeof initializeAnimations === 'function') {
+            initializeAnimations();
+        }
+
+        // Add animation styles
+        addAnimationStyles();
     });
 
     // Also run when hash changes (in case of direct navigation)
@@ -4876,3 +4883,242 @@
       }, 100);
     });
 
+    // ===========================================
+    // ANIMATION FUNCTIONS
+    // ===========================================
+
+    /**
+     * Initialize all scroll-triggered animations
+     */
+    function initializeAnimations() {
+        console.log('Initializing animations...');
+
+        // Get all elements that need scroll animation
+        const animatedElements = document.querySelectorAll(
+            '.scroll-animate, .scroll-animate-left, .scroll-animate-right, ' +
+            '.scroll-animate-scale, .stagger-scroll, ' +
+            '.section-title, .feature-grid, .preview-grid, ' +
+            '.blog-grid-vertical, .testimonials-carousel, ' +
+            '.view-all, .support-header, .contact-container, ' +
+            '.contact-info, .contact-form, .filters'
+        );
+
+        // Create Intersection Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Add active class when element comes into view
+                    entry.target.classList.add('active');
+
+                    // For staggered animations
+                    if (entry.target.classList.contains('stagger-scroll')) {
+                        const children = entry.target.children;
+                        Array.from(children).forEach((child, index) => {
+                            child.style.transitionDelay = `${(index + 1) * 100}ms`;
+                        });
+                    }
+
+                    // Stop observing after animation triggers
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1, // Trigger when 10% of element is visible
+            rootMargin: '0px 0px -50px 0px' // Adjust trigger point
+        });
+
+        // Observe all animated elements
+        animatedElements.forEach(element => {
+            observer.observe(element);
+        });
+
+        // Initialize card hover effects
+        initializeCardHoverEffects();
+
+        // Initialize button ripple effects
+        initializeButtonRippleEffects();
+    }
+
+    /**
+     * Initialize card hover effects
+     */
+    function initializeCardHoverEffects() {
+        const cards = document.querySelectorAll('.preview-card, .feature-card, .blog-card-vertical, .course-card-layout');
+
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.classList.add('hover-animate');
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.classList.remove('hover-animate');
+            });
+        });
+    }
+
+    /**
+     * Initialize button ripple effects
+     */
+    function initializeButtonRippleEffects() {
+        const buttons = document.querySelectorAll('.btn:not(.bookmark-btn):not(.btn-icon), .apply-btn, .btn-primary, .btn-outline, .btn-success, .btn-danger');
+
+        buttons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                // Skip if button is disabled
+                if (this.disabled || this.classList.contains('bookmark-btn')) return;
+
+                createRippleEffect(this, e);
+            });
+        });
+    }
+
+    /**
+     * Create ripple effect on button click
+     */
+    function createRippleEffect(button, e) {
+        // Check if ripple already exists
+        if (button.querySelector('.ripple-effect')) return;
+
+        const ripple = document.createElement('span');
+        const rect = button.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+
+        ripple.className = 'ripple-effect';
+        ripple.style.cssText = `
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            width: ${size}px;
+            height: ${size}px;
+            top: ${y}px;
+            left: ${x}px;
+            pointer-events: none;
+            z-index: 1;
+        `;
+
+        button.style.position = 'relative';
+        button.style.overflow = 'hidden';
+        button.appendChild(ripple);
+
+        // Remove ripple after animation
+        setTimeout(() => {
+            if (ripple.parentNode === button) {
+                button.removeChild(ripple);
+            }
+        }, 600);
+    }
+
+    /**
+     * Add animation styles dynamically
+     */
+    function addAnimationStyles() {
+        // Check if styles already exist
+        if (document.getElementById('animation-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'animation-styles';
+        style.textContent = `
+            /* Ripple animation */
+            @keyframes ripple-animation {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+
+            /* Card hover animations */
+            .preview-card.hover-animate,
+            .feature-card.hover-animate,
+            .blog-card-vertical.hover-animate,
+            .course-card-layout.hover-animate {
+                transform: translateY(-10px) scale(1.02);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+                z-index: 10;
+            }
+
+            /* Button hover effects */
+            .btn:not(.bookmark-btn):hover {
+                transform: translateY(-2px);
+            }
+
+            /* Mobile adjustments */
+            @media (max-width: 768px) {
+                .preview-card.hover-animate,
+                .feature-card.hover-animate,
+                .blog-card-vertical.hover-animate,
+                .course-card-layout.hover-animate {
+                    transform: translateY(-5px) scale(1.01);
+                }
+
+                .btn:hover {
+                    transform: translateY(-1px);
+                }
+            }
+
+            /* Reduced motion support */
+            @media (prefers-reduced-motion: reduce) {
+                .scroll-animate,
+                .scroll-animate-left,
+                .scroll-animate-right,
+                .scroll-animate-scale,
+                .stagger-scroll {
+                    opacity: 1 !important;
+                    transform: none !important;
+                    transition: none !important;
+                }
+
+                .ripple-effect {
+                    display: none !important;
+                }
+
+                .preview-card.hover-animate,
+                .feature-card.hover-animate,
+                .blog-card-vertical.hover-animate,
+                .course-card-layout.hover-animate {
+                    transform: none !important;
+                }
+
+                .btn:hover {
+                    transform: none !important;
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Reset animations for dynamic content (AJAX loaded)
+     */
+    function resetAnimations() {
+        // Remove active class from all animated elements
+        const animatedElements = document.querySelectorAll(
+            '.scroll-animate, .scroll-animate-left, .scroll-animate-right, ' +
+            '.scroll-animate-scale, .stagger-scroll'
+        );
+
+        animatedElements.forEach(element => {
+            element.classList.remove('active');
+        });
+
+        // Reinitialize animations
+        setTimeout(initializeAnimations, 100);
+    }
+
+    // Make functions available globally
+    window.animationManager = {
+        initialize: initializeAnimations,
+        reset: resetAnimations,
+        createRipple: createRippleEffect
+    };
+
+    // Auto-initialize on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAnimations);
+    } else {
+        initializeAnimations();
+    }
