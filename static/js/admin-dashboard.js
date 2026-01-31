@@ -1,4 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
+
+
     // ===== DARK MODE FUNCTIONALITY =====
     class DarkMode {
         constructor() {
@@ -126,9 +127,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let allNotifications = [];
     let showAllNotifications = false;
 
-    // Initialize the dashboard
-    initDashboard();
-
     // Add this function to handle logo previews
     function setupLogoPreview() {
         // Listen for input on company fields in all modals
@@ -247,49 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorDiv.style.gap = '8px';
                 }
             });
-    }
-
-    // Updated the initDashboard function
-    function initDashboard() {
-        // Display time-based welcome message
-        displayWelcomeMessage();
-
-        // Setup all navigation and UI components
-        setupNavigation();
-        setupNotificationEvents();
-        setupModals();
-        setupForms();
-        setupBulkActions();
-        setupBulkActionButtons();
-        setupSearchFilters();
-        setupPagination();
-        setupBlogCategories();
-        setupLogoPreview();
-        setupExpirationDateFields();
-        setupTestimonialsGlobalIntegration();
-        initSidebarMenuScrolling();
-
-
-        // Load data and content
-        loadDashboardStats();
-        loadNotifications();
-        loadExpiredContentStats();
-        setupExpiredContentSection();
-
-        // Enhanced section restoration with history support
-        restoreCurrentSection();
-        initializeHistory();
-
-        // Check session every 5 minutes (less intrusive)
-        setInterval(checkAdminSession, 5 * 60 * 1000);
-
-        // Setup dashboard refresh button
-        document.getElementById('refreshDashboardBtn')?.addEventListener('click', function() {
-            refreshDashboard();
-        });
-
-        // Setup global AJAX error handling
-        setupGlobalErrorHandling();
     }
 
      function initializeHistory() {
@@ -462,9 +417,10 @@ document.addEventListener('DOMContentLoaded', function() {
             sessionStorage.setItem('currentSection', targetSection);
 
             // Load section data for ALL sections including dashboard
+            showLoading();
+
             if (targetSection === 'dashboard') {
-                // Show loader and refresh dashboard stats when dashboard is clicked
-                showLoading();
+                // ALWAYS refresh dashboard stats when dashboard is shown
                 Promise.all([
                     loadDashboardStats(),
                     loadNotifications(),
@@ -473,7 +429,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     hideLoading();
                 });
             } else {
-                showLoading();
                 loadSectionData(targetSection).finally(() => {
                     hideLoading();
                 });
@@ -2084,29 +2039,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close modal when clicking on close button only
-    document.addEventListener('DOMContentLoaded', function() {
-        // Close modal only with close button
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('close-modal')) {
-                closeModal();
-            }
-        });
-
-        // Close modal with escape key (optional - remove if you don't want this either)
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        });
-
-        // PREVENT outside click closing - remove any existing outside click handlers
-        document.querySelectorAll('.modal').forEach(modal => {
-            // Remove any existing click event listeners
-            modal.replaceWith(modal.cloneNode(true));
-        });
-    });
-
     // Perform actual delete operation
     function performDelete(section, id) {
         showLoading();
@@ -2192,30 +2124,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Initialize course modal when it's opened via edit
-        document.addEventListener('DOMContentLoaded', function() {
-            // Pre-initialize course image upload for when modal opens
-            const courseModal = document.getElementById('courseModal');
-            if (courseModal) {
-                // Observe when course modal becomes visible
-                const observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                            const displayStyle = courseModal.style.display;
-                            if (displayStyle === 'block') {
-                                // Initialize course image upload when modal opens
-                                initCourseImageUpload();
-                            }
-                        }
-                    });
-                });
-
-                observer.observe(courseModal, {
-                    attributes: true,
-                    attributeFilter: ['style']
-                });
-            }
-        });
     }
 
     // Initialize course image upload functionality
@@ -3219,20 +3127,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ===== TESTIMONIAL INTEGRATION WITH DASHBOARD =====
-
-    // Initialize testimonial manager when DOM is loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Initializing testimonial manager...');
-        window.testimonialManager = new TestimonialManager();
-
-        // Initialize immediately if testimonials section is active
-        setTimeout(() => {
-            if (window.testimonialManager.isSectionActive()) {
-                window.testimonialManager.init();
-            }
-        }, 100);
-    });
-
     // Add testimonials to global section loading system
     function setupTestimonialsGlobalIntegration() {
         // Add to section navigation
@@ -4118,21 +4012,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Make sure the form submission is properly bound
-    document.addEventListener('DOMContentLoaded', function() {
-        const replyForm = document.getElementById('messageReplyForm');
-        if (replyForm) {
-            replyForm.addEventListener('submit', handleMessageReplySubmit);
-        }
-
-        // Add input event listener for character count
-        const replyMessage = document.getElementById('replyMessage');
-        if (replyMessage) {
-            replyMessage.addEventListener('input', updateCharCount);
-        }
-
-    });
-
     function viewMessage(id) {
         fetch(`/api/admin/messages/${id}`, {
             credentials: 'include'
@@ -4386,7 +4265,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-   // Enhanced form submission
+    // Enhanced form submission
     function handleMessageReplySubmit(e) {
         e.preventDefault();
 
@@ -5530,4 +5409,140 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 250);
     });
 
-});
+    // ===== COMPLETE DASHBOARD INITIALIZATION =====
+    function initializeDashboard() {
+        console.log('🚀 Starting Admin Dashboard Initialization...');
+
+        try {
+            // === 1. INITIALIZE MANAGERS ===
+            window.adminDarkMode = new DarkMode();
+            console.log('✅ Dark Mode initialized');
+
+            // === 2. DISPLAY UI MESSAGES ===
+            displayWelcomeMessage();
+            console.log('✅ Welcome message displayed');
+
+            // === 3. SETUP ALL EVENT LISTENERS ===
+            setupNavigation();
+            console.log('✅ Navigation setup complete');
+
+            setupNotificationEvents();
+            console.log('✅ Notification events setup complete');
+
+            setupModals();
+            console.log('✅ Modals setup complete');
+
+            setupForms();
+            console.log('✅ Forms setup complete');
+
+            setupBulkActions();
+            console.log('✅ Bulk actions setup complete');
+
+            setupBulkActionButtons();
+            console.log('✅ Bulk action buttons setup complete');
+
+            setupSearchFilters();
+            console.log('✅ Search filters setup complete');
+
+            setupPagination();
+            console.log('✅ Pagination setup complete');
+
+            setupBlogCategories();
+            console.log('✅ Blog categories setup complete');
+
+            setupLogoPreview();
+            console.log('✅ Logo preview setup complete');
+
+            setupExpirationDateFields();
+            console.log('✅ Expiration date fields setup complete');
+
+            setupTestimonialsGlobalIntegration();
+            console.log('✅ Testimonials global integration complete');
+
+            initSidebarMenuScrolling();
+            console.log('✅ Sidebar menu scrolling initialized');
+
+            // === 4. SETUP EXPIRED CONTENT SECTION ===
+            setupExpiredContentEvents();
+            console.log('✅ Expired content events setup complete');
+
+            setupExpiredContentCheckButton();
+            console.log('✅ Expired content check button setup complete');
+
+            // === 5. SETUP DASHBOARD REFRESH BUTTON ===
+            const refreshBtn = document.getElementById('refreshDashboardBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', refreshDashboard);
+                console.log('✅ Refresh dashboard button setup complete');
+            }
+
+            // === 6. SETUP GLOBAL ERROR HANDLING ===
+            setupGlobalErrorHandling();
+            console.log('✅ Global error handling setup complete');
+
+            // === 7. LOAD INITIAL DATA ===
+            loadDashboardStats();
+            console.log('✅ Dashboard stats loading started');
+
+            loadNotifications();
+            console.log('✅ Notifications loading started');
+
+            loadExpiredContentStats();
+            console.log('✅ Expired content stats loading started');
+
+            setupExpiredContentSection();
+            console.log('✅ Expired content section setup complete');
+
+            // === 8. RESTORE SESSION STATE ===
+            restoreCurrentSection();
+            console.log('✅ Current section restored');
+
+            initializeHistory();
+            console.log('✅ History initialized');
+
+            // === 9. SETUP SESSION CHECK ===
+            setInterval(checkAdminSession, 5 * 60 * 1000);
+            console.log('✅ Session check interval set');
+
+            // === 10. FIX SPECIFIC ISSUES ===
+
+            // FIX 1: Dashboard loading after login
+            setTimeout(() => {
+                console.log('📊 Force loading dashboard data after login...');
+                loadDashboardStats();
+            }, 1000);
+
+            // FIX 2: Testimonial Manager initialization
+            setTimeout(() => {
+                console.log('🎯 Initializing Testimonial Manager...');
+                window.testimonialManager = new TestimonialManager();
+
+                // Setup testimonial refresh button
+                const refreshTestimonialsBtn = document.getElementById('refreshTestimonialsBtn');
+                if (refreshTestimonialsBtn && window.testimonialManager.loadTestimonialsData) {
+                    refreshTestimonialsBtn.addEventListener('click', function() {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    });
+                    console.log('✅ Testimonial refresh button setup complete');
+                }
+
+                // Load testimonials if section is active
+                const testimonialsSection = document.getElementById('testimonials');
+                if (testimonialsSection && testimonialsSection.classList.contains('active')) {
+                    window.testimonialManager.loadTestimonialsData(1);
+                }
+            }, 1500);
+
+            console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
+
+        } catch (error) {
+            console.error('❌❌❌ Dashboard initialization failed:', error);
+            showNotification('Dashboard initialization failed. Please refresh.', 'error');
+        }
+    }
+
+    // ===== SINGLE DOMContentLoaded LISTENER =====
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM Content Loaded');
+        initializeDashboard();
+    });
