@@ -5409,6 +5409,103 @@
         }, 250);
     });
 
+    // ===== ADMIN DASHBOARD MOBILE MENU (Matches main site) =====
+    function setupMobileMenu() {
+        console.log('📱 Setting up admin mobile menu...');
+
+        // Create mobile menu toggle button (matches your main site)
+        const mobileToggle = document.createElement('button');
+        mobileToggle.className = 'mobile-menu-toggle';
+        mobileToggle.innerHTML = '<span class="hamburger"></span>';
+        mobileToggle.setAttribute('aria-label', 'Toggle Menu');
+
+        // Create overlay (matches your main site)
+        const overlay = document.createElement('div');
+        overlay.className = 'mobile-overlay';
+
+        // Get elements
+        const adminHeader = document.querySelector('.admin-header');
+        const sidebar = document.querySelector('.sidebar');
+
+        if (!adminHeader || !sidebar) {
+            console.error('❌ Required elements not found');
+            return;
+        }
+
+        // Add toggle button to header (left side)
+        adminHeader.insertBefore(mobileToggle, adminHeader.firstChild);
+
+        // Add overlay to body
+        document.body.appendChild(overlay);
+
+        // Functions to toggle menu
+        function openMenu() {
+            console.log('📱 Opening admin mobile menu');
+            mobileToggle.classList.add('active');
+            sidebar.classList.add('mobile-active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMenu() {
+            console.log('📱 Closing admin mobile menu');
+            mobileToggle.classList.remove('active');
+            sidebar.classList.remove('mobile-active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Event listeners
+        mobileToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (sidebar.classList.contains('mobile-active')) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
+
+        overlay.addEventListener('click', closeMenu);
+
+        // Close menu when clicking menu items
+        const menuItems = document.querySelectorAll('.sidebar-menu a');
+        menuItems.forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    setTimeout(closeMenu, 300);
+                }
+            });
+        });
+
+        // Handle window resize
+        function handleResize() {
+            if (window.innerWidth > 768) {
+                // Desktop - hide mobile elements
+                closeMenu();
+                mobileToggle.style.display = 'none';
+                overlay.style.display = 'none';
+            } else {
+                // Mobile - show toggle button
+                mobileToggle.style.display = 'flex';
+                overlay.style.display = 'block';
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+
+        // Initialize
+        handleResize();
+
+        // Close menu with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMenu();
+            }
+        });
+
+        console.log('✅ Admin mobile menu setup complete');
+    }
+
     // ===== COMPLETE DASHBOARD INITIALIZATION =====
     function initializeDashboard() {
         console.log('🚀 Starting Admin Dashboard Initialization...');
@@ -5534,6 +5631,10 @@
             }, 1500);
 
             console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
+
+            // === MOBILE & TOUCH SUPPORT (ADD THIS) ===
+            setupMobileMenu();
+            console.log('✅ Mobile menu setup complete');
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);
