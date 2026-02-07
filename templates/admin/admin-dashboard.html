@@ -100,75 +100,125 @@
                 <h2>Admin Dashboard</h2>
                 <div class="dashboard-actions">
                     <button class="btn btn-outline" id="refreshDashboardBtn">
-                        <i class="fas fa-sync-alt"></i> Refresh
+                        <i class="fas fa-sync-alt"></i> Refresh Dashboard
                     </button>
-                    <button class="btn btn-outline" id="checkExpiredContentBtn">
+                    <button class="btn btn-outline warning" id="checkExpiredContentBtn">
                         <i class="fas fa-clock"></i> Check Expired Now
                     </button>
                 </div>
             </div>
 
             <div class="stats-grid">
-
-                <div class="stat-card success">
-                    <h3>Total Courses</h3>
-                    <p id="coursesCount">0</p>
-                    <a href="#courses">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Users Card -->
+                <div id="usersCard" class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Users</h3>
+                        <div class="stat-number" id="usersCount">0</div>
+                    </div>
+                    <a href="#users" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card warning">
-                    <h3>Total Jobs</h3>
-                    <p id="jobsCount">0</p>
-                    <a href="#jobs">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Courses Card -->
+                <div id="coursesCard" class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Courses</h3>
+                        <div class="stat-number" id="coursesCount">0</div>
+                    </div>
+                    <a href="#courses" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card danger">
-                    <h3>Total Internships</h3>
-                    <p id="internshipsCount">0</p>
-                    <a href="#internships">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Jobs Card -->
+                <div id="jobsCard" class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Jobs</h3>
+                        <div class="stat-number" id="jobsCount">0</div>
+                    </div>
+                    <a href="#jobs" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card info">
-                    <h3>Blog Posts</h3>
-                    <p id="blogPostsCount">0</p>
-                    <a href="#blog">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Internships Card -->
+                <div id="internshipsCard" class="stat-card danger">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Internships</h3>
+                        <div class="stat-number" id="internshipsCount">0</div>
+                    </div>
+                    <a href="#internships" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card secondary">
-                    <h3>Newsletter Subscribers</h3>
-                    <p id="subscribersCount">0</p>
-                    <a href="#newsletter">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Blog Posts Card -->
+                <div id="blogPostsCard" class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-blog"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Blog Posts</h3>
+                        <div class="stat-number" id="blogPostsCount">0</div>
+                    </div>
+                    <a href="#blog" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card info">
-                    <h3>Total Testimonials</h3>
-                    <p id="testimonialsCount">0</p>
-                    <a href="#testimonials" id="viewTestimonialsLink">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Messages Card -->
+                <div id="messagesCard" class="stat-card secondary">
+                    <div class="stat-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Unread Messages</h3>
+                        <div class="stat-number" id="messagesCount">0</div>
+                    </div>
+                    <a href="#messages" class="stat-link">View All</a>
                 </div>
 
-                <!-- New Expired Content Card -->
-                <div class="stat-card warning" id="expiredContentCard">
-                    <h3>Expired Content</h3>
-                    <p id="expiredContentCount">0</p>
-                    <a href="#expired-content" id="viewExpiredLink" class="view-link">View All <i
-                            class="fas fa-arrow-right"></i></a>
+                <!-- Subscribers Card -->
+                <div id="subscribersCard" class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Newsletter Subscribers</h3>
+                        <div class="stat-number" id="subscribersCount">0</div>
+                    </div>
+                    <a href="#newsletter" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card primary">
-                    <h3>Total Users</h3>
-                    <p id="usersCount">0</p>
-                    <a href="#users">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Testimonials Card -->
+                <div id="testimonialsCard" class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-comment"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Testimonials</h3>
+                        <div class="stat-number" id="testimonialsCount">0</div>
+                    </div>
+                    <a href="#testimonials" class="stat-link">View All</a>
                 </div>
 
-                <div class="stat-card info">
-                    <h3>Unread Messages</h3>
-                    <p id="messagesCount">0</p>
-                    <a href="#messages">View All <i class="fas fa-arrow-right"></i></a>
+                <!-- Expired Content Card -->
+                <div id="expiredContentCard" class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Expired Content</h3>
+                        <div class="stat-number" id="expiredContentCount">0</div>
+                    </div>
+                    <a href="#expired-content" class="stat-link">View All</a>
                 </div>
-
-
             </div>
 
+            <!-- Recent Activity Section -->
             <div class="recent-activity">
                 <h3>Recent Activities</h3>
                 <div class="activity-list">
@@ -737,132 +787,136 @@
         </div>
 
         <!-- Modals -->
-<!-- Course Modal - Updated with Image URL -->
-<div id="courseModal" class="modal">
-    <div class="modal-content large">
-        <span class="close-modal">&times;</span>
-        <h2 id="courseModalTitle">Add Course</h2>
-        <div class="form-container">
-            <form id="courseForm">
-                <input type="hidden" name="id" value="">
+        <!-- Course Modal - Updated with Image URL -->
+        <div id="courseModal" class="modal">
+            <div class="modal-content large">
+                <span class="close-modal">&times;</span>
+                <h2 id="courseModalTitle">Add Course</h2>
+                <div class="form-container">
+                    <form id="courseForm">
+                        <input type="hidden" name="id" value="">
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="courseTitle">Title *</label>
-                        <input type="text" id="courseTitle" name="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="courseCategory">Category *</label>
-                        <select id="courseCategory" name="category" required>
-                            <option value="">Select Category</option>
-                            <option value="Programming">Programming</option>
-                            <option value="Design">Design</option>
-                            <option value="Business">Business</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Data Science">Data Science</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="courseInstructor">Instructor *</label>
-                        <input type="text" id="courseInstructor" name="instructor" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="courseLevel">Level</label>
-                        <select id="courseLevel" name="level">
-                            <option value="Beginner">Beginner</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Advanced">Advanced</option>
-                            <option value="All Levels">All Levels</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="coursePrice">Price *</label>
-                        <input type="text" id="coursePrice" name="price" value="Free" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="courseDuration">Duration</label>
-                        <input type="text" id="courseDuration" name="duration" placeholder="e.g., 10 hours">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="courseLink">Application Link *</label>
-                        <input type="url" id="courseLink" name="application_link" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="courseRating">Rating</label>
-                        <input type="number" id="courseRating" name="rating" min="0" max="5" step="0.1" value="0">
-                    </div>
-                </div>
-
-                <!-- Image Upload Section -->
-                <div class="form-group">
-                    <label for="courses">Course Image</label>
-                    <div class="image-upload-container">
-                        <div class="image-preview-container" id="courseImagePreviewContainer" style="display: none;">
-                            <img id="courseImagePreview" src="" alt="Course Image Preview" class="image-preview">
-                            <button type="button" class="btn-remove-image" id="removeCourseImage">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="image-upload-options">
-                            <div class="upload-option">
-                                <input type="url" id="courseImageUrl" name="image"
-                                       placeholder="Enter image URL" class="image-url-input">
-                                <small class="form-help">Or paste an image URL</small>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="courseTitle">Title *</label>
+                                <input type="text" id="courseTitle" name="title" required>
                             </div>
-                            <div class="upload-option">
-                                <button type="button" class="btn btn-outline" id="uploadCourseImageBtn">
-                                    <i class="fas fa-upload"></i> Upload Image
-                                </button>
-                                <input type="file" id="courseImageUpload" accept="image/*" style="display: none;">
-                                <small class="form-help">Upload from your computer</small>
+                            <div class="form-group">
+                                <label for="courseCategory">Category *</label>
+                                <select id="courseCategory" name="category" required>
+                                    <option value="">Select Category</option>
+                                    <option value="Programming">Programming</option>
+                                    <option value="Design">Design</option>
+                                    <option value="Business">Business</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Data Science">Data Science</option>
+                                </select>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="courseExpirationDate">Expiration Date</label>
-                        <input type="datetime-local" id="courseExpirationDate" name="expiration_date">
-                        <small class="form-help">Leave empty for no expiration</small>
-                    </div>
-                </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="courseInstructor">Instructor *</label>
+                                <input type="text" id="courseInstructor" name="instructor" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="courseLevel">Level</label>
+                                <select id="courseLevel" name="level">
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="All Levels">All Levels</option>
+                                </select>
+                            </div>
+                        </div>
 
-                <div class="form-group">
-                    <label for="courseDescription">Description *</label>
-                    <textarea id="courseDescription" name="description" rows="4" required></textarea>
-                </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="coursePrice">Price *</label>
+                                <input type="text" id="coursePrice" name="price" value="Free" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="courseDuration">Duration</label>
+                                <input type="text" id="courseDuration" name="duration" placeholder="e.g., 10 hours">
+                            </div>
+                        </div>
 
-                <div class="form-row">
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" name="is_featured"> Featured Course
-                        </label>
-                    </div>
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" name="is_active" checked> Active
-                        </label>
-                    </div>
-                </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="courseLink">Application Link *</label>
+                                <input type="url" id="courseLink" name="application_link" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="courseRating">Rating</label>
+                                <input type="number" id="courseRating" name="rating" min="0" max="5" step="0.1"
+                                       value="0">
+                            </div>
+                        </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Course</button>
+                        <!-- Image Upload Section -->
+                        <div class="form-group">
+                            <label for="courses">Course Image</label>
+                            <div class="image-upload-container">
+                                <div class="image-preview-container" id="courseImagePreviewContainer"
+                                     style="display: none;">
+                                    <img id="courseImagePreview" src="" alt="Course Image Preview"
+                                         class="image-preview">
+                                    <button type="button" class="btn-remove-image" id="removeCourseImage">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="image-upload-options">
+                                    <div class="upload-option">
+                                        <input type="url" id="courseImageUrl" name="image"
+                                               placeholder="Enter image URL" class="image-url-input">
+                                        <small class="form-help">Or paste an image URL</small>
+                                    </div>
+                                    <div class="upload-option">
+                                        <button type="button" class="btn btn-outline" id="uploadCourseImageBtn">
+                                            <i class="fas fa-upload"></i> Upload Image
+                                        </button>
+                                        <input type="file" id="courseImageUpload" accept="image/*"
+                                               style="display: none;">
+                                        <small class="form-help">Upload from your computer</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="courseExpirationDate">Expiration Date</label>
+                                <input type="datetime-local" id="courseExpirationDate" name="expiration_date">
+                                <small class="form-help">Leave empty for no expiration</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="courseDescription">Description *</label>
+                            <textarea id="courseDescription" name="description" rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" name="is_featured"> Featured Course
+                                </label>
+                            </div>
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" name="is_active" checked> Active
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Course</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
-</div>
         <!-- Job Modal -->
         <div id="jobModal" class="modal">
             <div class="modal-content medium">

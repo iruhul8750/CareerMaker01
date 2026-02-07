@@ -1,5 +1,3 @@
-
-
     // ===== DARK MODE FUNCTIONALITY =====
     class DarkMode {
         constructor() {
@@ -259,18 +257,22 @@
         }
     }
 
-    // Dashboard refresh function
+    // Silent dashboard refresh function (no blur, only micro loaders)
     function refreshDashboard() {
         const button = document.getElementById('refreshDashboardBtn');
-        const originalHtml = button?.innerHTML;
-
-        // Show loading state on button
-        if (button) {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-            button.disabled = true;
+        if (!button) {
+            console.error('❌ Refresh dashboard button not found');
+            return;
         }
 
-        showLoading();
+        // Store original HTML
+        const originalHTML = button.innerHTML;
+
+        // Show loading state
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        button.disabled = true;
+
+        console.log('🔄 Silent dashboard refresh started...');
 
         // Refresh all dashboard data
         Promise.all([
@@ -283,20 +285,19 @@
             console.error('Error refreshing dashboard:', error);
             showNotification('Failed to refresh dashboard', 'error');
         }).finally(() => {
-            hideLoading();
-
             // Restore button state
-            if (button) {
-                button.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
-                button.disabled = false;
-            }
+            button.innerHTML = originalHTML;
+            button.disabled = false;
         });
     }
 
      // Enhanced section restoration
     function restoreCurrentSection() {
+        console.log('🔄 restoreCurrentSection() called');
+
         // Check if this is a fresh login (no previous session)
         const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
+        console.log('Fresh login detected:', isFreshLogin);
 
         // If fresh login, always start with dashboard and set session flag
         if (isFreshLogin) {
@@ -311,6 +312,41 @@
                 isInitial: true
             };
             history.replaceState(initialState, '', '#dashboard');
+
+            // Show greeting message immediately
+            displayWelcomeMessage();
+
+            // Force dashboard regardless of URL/history - with micro loaders
+            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+            const dashboardSection = document.getElementById('dashboard');
+
+            if (dashboardItem && dashboardSection) {
+                // Remove active class from all menu items and sections first
+                document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelectorAll('.admin-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                // Activate dashboard
+                dashboardItem.classList.add('active');
+                dashboardSection.classList.add('active');
+
+                // Update page title
+                document.getElementById('pageTitle').textContent = 'Dashboard Management';
+
+                // Show micro loaders on dashboard stats immediately
+                console.log('📊 Showing micro loaders on dashboard stats...');
+                loadDashboardStats();
+
+                // Also load notifications and expired content stats
+                loadNotifications();
+                loadExpiredContentStats();
+
+                console.log('✅ Fresh login: Dashboard loaded with micro loaders');
+                return;
+            }
         }
 
         // First, remove active class from all menu items and sections
@@ -320,17 +356,6 @@
         document.querySelectorAll('.admin-section').forEach(section => {
             section.classList.remove('active');
         });
-
-        // For fresh login, force dashboard regardless of URL/history
-        if (isFreshLogin) {
-            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
-            const dashboardSection = document.getElementById('dashboard');
-
-            if (dashboardItem && dashboardSection) {
-                navigateToSection('dashboard', dashboardItem, true);
-                return;
-            }
-        }
 
         // Priority 1: Check browser history state
         if (history.state && history.state.section) {
@@ -356,27 +381,49 @@
         }
 
         // Priority 3: Check session storage
-        if (currentSection && currentSection !== 'dashboard') {
-            const menuItem = document.querySelector(`.sidebar-menu a[href="#${currentSection}"]`);
-            const targetSection = document.getElementById(currentSection);
+        const savedSection = sessionStorage.getItem('currentSection');
+        if (savedSection && savedSection !== 'dashboard') {
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${savedSection}"]`);
+            const targetSection = document.getElementById(savedSection);
 
             if (menuItem && targetSection) {
-                navigateToSection(currentSection, menuItem, true);
+                navigateToSection(savedSection, menuItem, true);
                 return;
             }
         }
 
-        // Default: Dashboard - ALWAYS refresh when showing dashboard
+        // Default: Dashboard - Show with micro loaders
         const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
         const dashboardSection = document.getElementById('dashboard');
 
         if (dashboardItem && dashboardSection) {
-            navigateToSection('dashboard', dashboardItem, true);
+            // Activate dashboard
+            dashboardItem.classList.add('active');
+            dashboardSection.classList.add('active');
+
+            // Update page title
+            document.getElementById('pageTitle').textContent = 'Dashboard Management';
+
+            // Update current section
+            currentSection = 'dashboard';
+
+            // Show greeting message for returning users too
+            displayWelcomeMessage();
+
+            // Show micro loaders on dashboard stats
+            console.log('📊 Loading dashboard with micro loaders...');
+            loadDashboardStats();
+            loadNotifications();
+            loadExpiredContentStats();
+
+            console.log('✅ Default dashboard loaded with micro loaders');
         }
     }
 
-    // Navigate to specific section with history management
+    // Navigate to specific section with history management - UPDATED for micro loaders
     function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
+        console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
+
         // Update menu active state
         const menuItems = document.querySelectorAll('.sidebar-menu a');
         menuItems.forEach(i => i.classList.remove('active'));
@@ -417,18 +464,17 @@
             sessionStorage.setItem('currentSection', targetSection);
 
             // Load section data for ALL sections including dashboard
-            showLoading();
-
             if (targetSection === 'dashboard') {
-                // ALWAYS refresh dashboard stats when dashboard is shown
-                Promise.all([
-                    loadDashboardStats(),
-                    loadNotifications(),
-                    loadExpiredContentStats()
-                ]).finally(() => {
-                    hideLoading();
-                });
+                // Use micro loaders for dashboard - NO overlay
+                console.log('📊 Dashboard loading with micro loaders...');
+
+                // Show micro loaders and load data
+                loadDashboardStats();
+                loadNotifications();
+                loadExpiredContentStats();
             } else {
+                // Use regular loader for other sections
+                showLoading();
                 loadSectionData(targetSection).finally(() => {
                     hideLoading();
                 });
@@ -445,6 +491,8 @@
 
                 history.pushState(state, title, url);
             }
+
+            console.log(`✅ Navigated to ${targetSection} with appropriate loader`);
         }
     }
 
@@ -1045,8 +1093,13 @@
         });
     }
 
-    // Update the loadDashboardStats function to include blog count
+    // loadDashboardStats
     function loadDashboardStats() {
+        console.log('📊 Loading dashboard stats with micro loaders...');
+
+        // Show micro loaders on all cards
+        showDashboardCardsLoading();
+
         return fetch('/api/admin/dashboard-stats', {
             credentials: 'include'
         })
@@ -1059,52 +1112,52 @@
         .then(data => {
             console.log('📊 Dashboard stats received:', data);
 
-            // Update all stats with proper fallbacks
-            const stats = {
-                'usersCount': data.users || 0,
-                'coursesCount': data.courses || 0,
-                'jobsCount': data.jobs || 0,
-                'internshipsCount': data.internships || 0,
-                'blogPostsCount': data.blog_posts || 0,
-                'messagesCount': data.unread_messages || 0,
-                'subscribersCount': data.subscribers || 0,
-                'testimonialsCount': data.testimonials || 0,
-                'expiredContentCount': data.total_expired || 0
+            // Update each card with new value
+            const cardUpdates = {
+                'usersCard': { value: data.users || 0, id: 'usersCount' },
+                'coursesCard': { value: data.courses || 0, id: 'coursesCount' },
+                'jobsCard': { value: data.jobs || 0, id: 'jobsCount' },
+                'internshipsCard': { value: data.internships || 0, id: 'internshipsCount' },
+                'blogPostsCard': { value: data.blog_posts || 0, id: 'blogPostsCount' },
+                'messagesCard': { value: data.unread_messages || 0, id: 'messagesCount' },
+                'subscribersCard': { value: data.subscribers || 0, id: 'subscribersCount' },
+                'testimonialsCard': { value: data.testimonials || 0, id: 'testimonialsCount' },
+                'expiredContentCard': { value: data.total_expired || 0, id: 'expiredContentCount' }
             };
 
-            // Update each stat element safely
-            Object.keys(stats).forEach(statId => {
-                const element = document.getElementById(statId);
-                if (element) {
-                    element.textContent = stats[statId];
-                    console.log(`✅ Updated ${statId}: ${stats[statId]}`);
-                } else {
-                    console.warn(`❌ Element with id '${statId}' not found`);
+            // Update each card
+            Object.keys(cardUpdates).forEach(cardId => {
+                const cardData = cardUpdates[cardId];
+                hideCardLoading(cardId, cardData.value);
+
+                // Also update the individual stat element if needed
+                const statElement = document.getElementById(cardData.id);
+                if (statElement) {
+                    statElement.textContent = cardData.value;
                 }
+
+                console.log(`✅ Updated ${cardId}: ${cardData.value}`);
             });
 
         })
         .catch(error => {
             console.error('❌ Error loading dashboard stats:', error);
 
-            // Set all stats to 0 on error
-            const statIds = [
-                'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
-                'blogPostsCount', 'messagesCount', 'subscribersCount',
-                'testimonialsCount', 'expiredContentCount'
+            // Hide loaders and set to 0 on error
+            const cardIds = [
+                'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
+                'blogPostsCard', 'messagesCard', 'subscribersCard',
+                'testimonialsCard', 'expiredContentCard'
             ];
 
-            statIds.forEach(statId => {
-                const element = document.getElementById(statId);
-                if (element) {
-                    element.textContent = '0';
-                }
+            cardIds.forEach(cardId => {
+                hideCardLoading(cardId, '0');
             });
 
-            showNotification('Failed to load dashboard statistics', 'error');
-            throw error; // Re-throw to handle in Promise.all
+            throw error;
         });
     }
+
 
     function loadSectionData(section, page = 1, search = '', filters = {}) {
         console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}"`);
@@ -1412,6 +1465,83 @@
         }
 
         return html;
+    }
+
+    // Micro loading functions
+    function showCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.classList.add('loading');
+
+            // Add micro loader to the stat number
+            const statNumber = card.querySelector('.stat-number');
+            if (statNumber) {
+                // Store original value
+                if (!statNumber.dataset.originalValue) {
+                    statNumber.dataset.originalValue = statNumber.textContent;
+                }
+
+                // Create micro loader
+                const loader = document.createElement('div');
+                loader.className = 'micro-loader';
+                loader.innerHTML = `
+                    <div class="micro-loader-dots">
+                        <div class="micro-loader-dot"></div>
+                        <div class="micro-loader-dot"></div>
+                        <div class="micro-loader-dot"></div>
+                    </div>
+                `;
+
+                // Replace content with loader
+                statNumber.innerHTML = '';
+                statNumber.appendChild(loader);
+            }
+        }
+    }
+
+    function hideCardLoading(cardId, newValue = null) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.classList.remove('loading');
+
+            // Restore or update value
+            const statNumber = card.querySelector('.stat-number');
+            if (statNumber) {
+                const value = newValue !== null ? newValue : (statNumber.dataset.originalValue || '0');
+                statNumber.textContent = value;
+
+                // Clear stored value
+                if (statNumber.dataset.originalValue) {
+                    delete statNumber.dataset.originalValue;
+                }
+            }
+        }
+    }
+
+    // Show loading on all dashboard cards
+    function showDashboardCardsLoading() {
+        const cardIds = [
+            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
+            'blogPostsCard', 'messagesCard', 'subscribersCard',
+            'testimonialsCard', 'expiredContentCard'
+        ];
+
+        cardIds.forEach(cardId => {
+            showCardLoading(cardId);
+        });
+    }
+
+    // Hide loading from all dashboard cards
+    function hideDashboardCardsLoading() {
+        const cardIds = [
+            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
+            'blogPostsCard', 'messagesCard', 'subscribersCard',
+            'testimonialsCard', 'expiredContentCard'
+        ];
+
+        cardIds.forEach(cardId => {
+            hideCardLoading(cardId);
+        });
     }
 
     // View modal function
@@ -3175,112 +3305,195 @@
 
     // Initialize expired content section
     function setupExpiredContentSection() {
-        // Load expired content when section is activated
+        console.log('🔄 Setting up expired content section...');
+
+        // Load expired content when section is activated - FIXED
         const expiredContentSection = document.getElementById('expired-content');
         if (expiredContentSection) {
+            console.log('✅ Found expired content section, setting up observer');
+
             const observer = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         if (expiredContentSection.classList.contains('active')) {
-                            loadExpiredContentData(currentExpiredPage);
+                            console.log('🎯 Expired content section activated - loading data');
+                            currentExpiredPage = 1; // Reset to first page
+                            loadExpiredContentData(1);
                         }
                     }
                 });
             });
 
             observer.observe(expiredContentSection, { attributes: true });
+
+            // Also check if section is already active on page load
+            if (expiredContentSection.classList.contains('active')) {
+                console.log('📊 Expired content section already active, loading data...');
+                currentExpiredPage = 1;
+                loadExpiredContentData(1);
+            }
         }
 
-        // Navigation
+        // Navigation - FIXED
         const expiredContentLink = document.querySelector('a[href="#expired-content"]');
         if (expiredContentLink) {
-            expiredContentLink.addEventListener('click', function(e) {
+            console.log('✅ Found expired content navigation link');
+
+            // Clone to remove existing listeners
+            const newLink = expiredContentLink.cloneNode(true);
+            expiredContentLink.parentNode.replaceChild(newLink, expiredContentLink);
+
+            newLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                loadExpiredContentSection();
+                e.stopPropagation();
+
+                // Use global navigation function
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('expired-content', this);
+                } else {
+                    // Fallback navigation
+                    console.log('🔄 Navigating to expired content via fallback');
+
+                    // Update active states
+                    document.querySelectorAll('.sidebar-menu a').forEach(item => item.classList.remove('active'));
+                    document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
+
+                    this.classList.add('active');
+                    const section = document.getElementById('expired-content');
+                    if (section) {
+                        section.classList.add('active');
+                        document.getElementById('pageTitle').textContent = 'Expired Content Management';
+
+                        // Load data
+                        currentExpiredPage = 1;
+                        loadExpiredContentData(1);
+                    }
+                }
             });
         }
 
         // Setup event listeners
         setupExpiredContentEvents();
 
-        // Load stats
+        // Always load stats
         loadExpiredContentStats();
+
+        console.log('✅ Expired content section setup complete');
     }
 
+
     function setupExpiredContentEvents() {
-        // Refresh button
-        document.getElementById('refreshExpiredContentBtn')?.addEventListener('click', function() {
-            loadExpiredContentData(currentExpiredPage);
-        });
+        console.log('🔄 Setting up expired content events...');
 
-        // Reactivate all button
-        document.getElementById('reactivateAllExpiredBtn')?.addEventListener('click', function() {
-            reactivateAllExpiredContent();
-        });
+        // Refresh button - FIXED
+        const refreshBtn = document.getElementById('refreshExpiredContentBtn');
+        if (refreshBtn) {
+            console.log('✅ Setting up expired content refresh button');
 
-        // Search functionality
-        const searchInput = document.getElementById('expiredContentSearch');
-        let searchTimeout;
-        searchInput?.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                loadExpiredContentData(1, this.value);
-            }, 500);
-        });
+            // Clone to remove existing listeners
+            const newBtn = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
 
-        // Filter functionality
-        document.getElementById('expiredContentTypeFilter')?.addEventListener('change', function() {
-            loadExpiredContentData(1);
-        });
-
-        // Bulk actions
-        document.getElementById('applyExpiredContentBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('expiredContentBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performExpiredBulkAction(action);
-        });
-
-        // Select all checkbox
-        const selectAllCheckbox = document.getElementById('selectAllExpired');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-                updateExpiredBulkActionButton();
-                updateSelectedExpiredItems();
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔄 Manual refresh of expired content');
+                loadExpiredContentData(currentExpiredPage);
             });
         }
 
-        // Pagination
-        document.getElementById('prevExpiredContentPage')?.addEventListener('click', function() {
-            if (currentExpiredPage > 1) {
-                currentExpiredPage--;
+        // Reactivate all button
+        const reactivateAllBtn = document.getElementById('reactivateAllExpiredBtn');
+        if (reactivateAllBtn) {
+            const newBtn = reactivateAllBtn.cloneNode(true);
+            reactivateAllBtn.parentNode.replaceChild(newBtn, reactivateAllBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                reactivateAllExpiredContent();
+            });
+        }
+
+        // Search functionality - FIXED
+        const searchInput = document.getElementById('expiredContentSearch');
+        if (searchInput) {
+            console.log('✅ Setting up expired content search');
+
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const searchTerm = this.value.trim();
+
+                searchTimeout = setTimeout(() => {
+                    console.log(`🔍 Searching expired content: "${searchTerm}"`);
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                }, 500);
+            });
+        }
+
+        // Filter functionality - FIXED
+        const filterSelect = document.getElementById('expiredContentTypeFilter');
+        if (filterSelect) {
+            console.log('✅ Setting up expired content filter');
+
+            filterSelect.addEventListener('change', function() {
+                const filterValue = this.value;
+                console.log(`🎯 Filtering expired content by: ${filterValue}`);
+                currentExpiredPage = 1;
+                loadExpiredContentData(1, '', filterValue);
+            });
+        }
+
+        // Bulk actions
+        const bulkActionBtn = document.getElementById('applyExpiredContentBulkAction');
+        if (bulkActionBtn) {
+            const newBtn = bulkActionBtn.cloneNode(true);
+            bulkActionBtn.parentNode.replaceChild(newBtn, bulkActionBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const action = document.getElementById('expiredContentBulkAction').value;
+                if (!action) {
+                    showNotification('Please select a bulk action first', 'warning');
+                    return;
+                }
+                performExpiredBulkAction(action);
+            });
+        }
+
+        // Pagination - FIXED
+        const prevBtn = document.getElementById('prevExpiredContentPage');
+        if (prevBtn) {
+            const newBtn = prevBtn.cloneNode(true);
+            prevBtn.parentNode.replaceChild(newBtn, prevBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentExpiredPage > 1) {
+                    currentExpiredPage--;
+                    loadExpiredContentData(currentExpiredPage);
+                }
+            });
+        }
+
+        const nextBtn = document.getElementById('nextExpiredContentPage');
+        if (nextBtn) {
+            const newBtn = nextBtn.cloneNode(true);
+            nextBtn.parentNode.replaceChild(newBtn, nextBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                currentExpiredPage++;
                 loadExpiredContentData(currentExpiredPage);
-            }
-        });
+            });
+        }
 
-        document.getElementById('nextExpiredContentPage')?.addEventListener('click', function() {
-            currentExpiredPage++;
-            loadExpiredContentData(currentExpiredPage);
-        });
-
-        // Manual expiration check button
-        setupExpiredContentCheckButton();
-
-        // View Expired Content Button
-        document.getElementById('viewExpiredContentBtn')?.addEventListener('click', function() {
-            loadExpiredContentSection();
-        });
-        // Add this to your setupExpiredContentEvents function or similar
-        document.getElementById('viewExpiredLink')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            loadExpiredContentSection();
-        });
+        console.log('✅ Expired content events setup complete');
     }
 
     function setupExpiredContentCheckButton() {
@@ -3435,39 +3648,82 @@
     }
 
     // Load expired content data
-    function loadExpiredContentData(page = 1, search = '') {
-        showLoading();
+    function loadExpiredContentData(page = 1, search = '', typeFilter = '') {
+        console.log(`📋 Loading expired content data: page=${page}, search="${search}", type="${typeFilter}"`);
 
+        showLoading(); // Show loading overlay
+
+        // Get values if not provided
         const searchValue = search || document.getElementById('expiredContentSearch')?.value || '';
-        const typeFilter = document.getElementById('expiredContentTypeFilter')?.value || '';
+        const filterValue = typeFilter || document.getElementById('expiredContentTypeFilter')?.value || '';
 
-        let url = `/api/admin/expired-content?page=${page}`;
+        let url = `/api/admin/expired-content?page=${page}&per_page=${expiredItemsPerPage}`;
         if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
-        if (typeFilter) url += `&type=${encodeURIComponent(typeFilter)}`;
+        if (filterValue) url += `&type=${encodeURIComponent(filterValue)}`;
+
+        console.log(`📡 Fetching from: ${url}`);
 
         fetch(url, {
             credentials: 'include'
         })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch expired content');
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Session expired. Please login again.');
+                }
+                throw new Error(`HTTP ${response.status}: Failed to fetch expired content`);
+            }
             return response.json();
         })
         .then(data => {
-            hideLoading();
+            console.log('📋 Expired content data received:', data);
+
             if (data.success) {
-                renderExpiredContentTable(data.data || data.expired_content);
-                updateExpiredPaginationInfo(data.count, page, data.per_page);
-                updateExpiredContentStats(data.count);
+                renderExpiredContentTable(data.data || data.expired_content || []);
+                updateExpiredPaginationInfo(data.count || data.total_count || 0, page, data.per_page || expiredItemsPerPage);
+
+                // Show notification only if we have items
+                if (data.data && data.data.length > 0) {
+                    showNotification(`Loaded ${data.data.length} expired items`, 'info');
+                }
             } else {
-                showNotification('Failed to load expired content', 'error');
-                document.getElementById('expiredContentTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Error loading expired content</td></tr>';
+                throw new Error(data.error || 'Failed to load expired content');
             }
         })
         .catch(error => {
-            hideLoading();
-            console.error('Error loading expired content:', error);
-            showNotification('Failed to load expired content', 'error');
-            document.getElementById('expiredContentTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Error loading expired content</td></tr>';
+            console.error('❌ Error loading expired content:', error);
+
+            // Show user-friendly error message
+            let errorMessage = 'Failed to load expired content';
+            if (error.message.includes('Session expired')) {
+                errorMessage = 'Your session has expired. Please refresh the page.';
+            } else if (error.message.includes('401')) {
+                errorMessage = 'Authentication required. Please login again.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later.';
+            }
+
+            showNotification(errorMessage, 'error');
+
+            // Show empty state in table
+            const tableBody = document.getElementById('expiredContentTableBody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-exclamation-triangle" style="color: #ffc107; font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3 style="color: #6c757d; margin: 0;">Failed to Load Data</h3>
+                            <p style="color: #6c757d; margin: 10px 0 0 0;">${errorMessage}</p>
+                            <button onclick="loadExpiredContentData(1)" style="margin-top: 15px; padding: 8px 16px; background: #4a6cf7; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .finally(() => {
+            hideLoading(); // Hide loading overlay
         });
     }
 
@@ -5512,14 +5768,18 @@
 
         try {
             // === 1. INITIALIZE MANAGERS ===
+            console.log('🔄 Step 1: Initializing managers...');
             window.adminDarkMode = new DarkMode();
             console.log('✅ Dark Mode initialized');
 
-            // === 2. DISPLAY UI MESSAGES ===
+            // === 2. DISPLAY WELCOME MESSAGE ===
+            console.log('🔄 Step 2: Displaying welcome message...');
             displayWelcomeMessage();
             console.log('✅ Welcome message displayed');
 
             // === 3. SETUP ALL EVENT LISTENERS ===
+            console.log('🔄 Step 3: Setting up event listeners...');
+
             setupNavigation();
             console.log('✅ Navigation setup complete');
 
@@ -5559,57 +5819,86 @@
             initSidebarMenuScrolling();
             console.log('✅ Sidebar menu scrolling initialized');
 
-            // === 4. SETUP EXPIRED CONTENT SECTION ===
+            // === 4. SETUP DASHBOARD SPECIFIC FUNCTIONALITY ===
+            console.log('🔄 Step 4: Setting up dashboard functionality...');
+
+            // Setup dashboard refresh button
+            const refreshBtn = document.getElementById('refreshDashboardBtn');
+            if (refreshBtn) {
+                // Remove existing listeners by cloning
+                const newBtn = refreshBtn.cloneNode(true);
+                refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    refreshDashboard();
+                });
+                console.log('✅ Refresh dashboard button setup complete');
+            }
+
+            // Setup expired content check button (on dashboard)
+            const checkExpiredBtn = document.getElementById('checkExpiredContentBtn');
+            if (checkExpiredBtn) {
+                // Remove existing listeners by cloning
+                const newExpiredBtn = checkExpiredBtn.cloneNode(true);
+                checkExpiredBtn.parentNode.replaceChild(newExpiredBtn, checkExpiredBtn);
+
+                newExpiredBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    checkExpiredContentNow();
+                });
+                console.log('✅ Check expired content button setup complete');
+            }
+
+            // === 5. SETUP EXPIRED CONTENT SECTION ===
+            console.log('🔄 Step 5: Setting up expired content section...');
             setupExpiredContentEvents();
             console.log('✅ Expired content events setup complete');
 
             setupExpiredContentCheckButton();
             console.log('✅ Expired content check button setup complete');
 
-            // === 5. SETUP DASHBOARD REFRESH BUTTON ===
-            const refreshBtn = document.getElementById('refreshDashboardBtn');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', refreshDashboard);
-                console.log('✅ Refresh dashboard button setup complete');
-            }
-
             // === 6. SETUP GLOBAL ERROR HANDLING ===
+            console.log('🔄 Step 6: Setting up global error handling...');
             setupGlobalErrorHandling();
             console.log('✅ Global error handling setup complete');
 
-            // === 7. LOAD INITIAL DATA ===
-            loadDashboardStats();
-            console.log('✅ Dashboard stats loading started');
+            // === 7. LOAD INITIAL DASHBOARD DATA ===
+            console.log('🔄 Step 7: Loading initial dashboard data...');
 
-            loadNotifications();
-            console.log('✅ Notifications loading started');
+            // Check if we're on dashboard section
+            const dashboardSection = document.getElementById('dashboard');
+            const isDashboardActive = dashboardSection && dashboardSection.classList.contains('active');
 
-            loadExpiredContentStats();
-            console.log('✅ Expired content stats loading started');
+            if (isDashboardActive) {
+                // Load dashboard stats with micro loaders
+                console.log('📊 Dashboard is active, loading stats...');
+                loadDashboardStats();
+                loadNotifications();
+                loadExpiredContentStats();
+            }
 
-            setupExpiredContentSection();
-            console.log('✅ Expired content section setup complete');
+            console.log('✅ Initial data loading started');
 
             // === 8. RESTORE SESSION STATE ===
+            console.log('🔄 Step 8: Restoring session state...');
             restoreCurrentSection();
             console.log('✅ Current section restored');
 
+            // === 9. INITIALIZE HISTORY ===
+            console.log('🔄 Step 9: Initializing history...');
             initializeHistory();
             console.log('✅ History initialized');
 
-            // === 9. SETUP SESSION CHECK ===
+            // === 10. SETUP SESSION CHECK ===
+            console.log('🔄 Step 10: Setting up session check...');
             setInterval(checkAdminSession, 5 * 60 * 1000);
             console.log('✅ Session check interval set');
 
-            // === 10. FIX SPECIFIC ISSUES ===
-
-            // FIX 1: Dashboard loading after login
-            setTimeout(() => {
-                console.log('📊 Force loading dashboard data after login...');
-                loadDashboardStats();
-            }, 1000);
-
-            // FIX 2: Testimonial Manager initialization
+            // === 11. SETUP TESTIMONIAL MANAGER ===
+            console.log('🔄 Step 11: Setting up testimonial manager...');
             setTimeout(() => {
                 console.log('🎯 Initializing Testimonial Manager...');
                 window.testimonialManager = new TestimonialManager();
@@ -5630,15 +5919,47 @@
                 }
             }, 1500);
 
-            console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
+            // === 12. SETUP EXPIRED CONTENT SECTION LOADER ===
+            console.log('🔄 Step 12: Setting up expired content section loader...');
+            setupExpiredContentSection();
+            console.log('✅ Expired content section loader setup complete');
 
-            // === MOBILE & TOUCH SUPPORT (ADD THIS) ===
+            // === 13. SETUP MOBILE MENU ===
+            console.log('🔄 Step 13: Setting up mobile menu...');
             setupMobileMenu();
             console.log('✅ Mobile menu setup complete');
 
+            console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
+
+            // === 14. FINAL CHECKS ===
+            setTimeout(() => {
+                console.log('🔍 Running final checks...');
+
+                // Check if any section is active (should be after restoreCurrentSection)
+                const activeSection = document.querySelector('.admin-section.active');
+                if (!activeSection) {
+                    console.warn('⚠️ No active section found, defaulting to dashboard');
+                    const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+                    if (dashboardItem) {
+                        dashboardItem.click();
+                    }
+                }
+
+                console.log('✅ Final checks completed');
+            }, 2000);
+
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);
-            showNotification('Dashboard initialization failed. Please refresh.', 'error');
+            showNotification('Dashboard initialization failed. Please refresh the page.', 'error');
+
+            // Try to at least show dashboard on error
+            setTimeout(() => {
+                const dashboardSection = document.getElementById('dashboard');
+                if (dashboardSection) {
+                    dashboardSection.classList.add('active');
+                    loadDashboardStats();
+                }
+            }, 1000);
         }
     }
 
