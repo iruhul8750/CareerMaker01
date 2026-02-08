@@ -261,34 +261,28 @@
     function refreshDashboard() {
         const button = document.getElementById('refreshDashboardBtn');
         if (!button) {
-            console.error('❌ Refresh dashboard button not found');
+            console.error('❌ Refresh button not found');
             return;
         }
 
-        // Store original HTML
         const originalHTML = button.innerHTML;
-
-        // Show loading state
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
         button.disabled = true;
 
-        console.log('🔄 Silent dashboard refresh started...');
+        console.log('🔄 Refreshing dashboard data...');
 
-        // Refresh all dashboard data
-        Promise.all([
-            loadDashboardStats(),
-            loadNotifications(),
-            loadExpiredContentStats()
-        ]).then(() => {
-            showNotification('Dashboard refreshed successfully', 'success');
-        }).catch(error => {
-            console.error('Error refreshing dashboard:', error);
-            showNotification('Failed to refresh dashboard', 'error');
-        }).finally(() => {
-            // Restore button state
-            button.innerHTML = originalHTML;
-            button.disabled = false;
-        });
+        loadDashboardStats()
+            .then(() => {
+                showNotification('Dashboard refreshed successfully', 'success');
+            })
+            .catch(error => {
+                console.error('Dashboard refresh error:', error);
+                showNotification('Failed to refresh dashboard', 'error');
+            })
+            .finally(() => {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+            });
     }
 
      // Enhanced section restoration
@@ -1095,66 +1089,55 @@
 
     // loadDashboardStats
     function loadDashboardStats() {
-        console.log('📊 Loading dashboard stats with micro loaders...');
+        console.log('📊 Loading dashboard stats and activities...');
 
-        // Show micro loaders on all cards
-        showDashboardCardsLoading();
+        // Show loading state on stats
+        showStatsLoading();
+
+        // Show loading in activities area
+        showActivitiesLoadingState();
 
         return fetch('/api/admin/dashboard-stats', {
             credentials: 'include'
         })
         .then(response => {
             if (!response.ok) {
+                console.error(`❌ HTTP ${response.status}: Failed to fetch dashboard stats`);
                 throw new Error(`HTTP ${response.status}: Failed to fetch dashboard stats`);
             }
             return response.json();
         })
         .then(data => {
-            console.log('📊 Dashboard stats received:', data);
+            console.log('✅ Dashboard stats received');
 
-            // Update each card with new value
-            const cardUpdates = {
-                'usersCard': { value: data.users || 0, id: 'usersCount' },
-                'coursesCard': { value: data.courses || 0, id: 'coursesCount' },
-                'jobsCard': { value: data.jobs || 0, id: 'jobsCount' },
-                'internshipsCard': { value: data.internships || 0, id: 'internshipsCount' },
-                'blogPostsCard': { value: data.blog_posts || 0, id: 'blogPostsCount' },
-                'messagesCard': { value: data.unread_messages || 0, id: 'messagesCount' },
-                'subscribersCard': { value: data.subscribers || 0, id: 'subscribersCount' },
-                'testimonialsCard': { value: data.testimonials || 0, id: 'testimonialsCount' },
-                'expiredContentCard': { value: data.total_expired || 0, id: 'expiredContentCount' }
-            };
+            // Update all dashboard stats
+            updateDashboardStats(data);
 
-            // Update each card
-            Object.keys(cardUpdates).forEach(cardId => {
-                const cardData = cardUpdates[cardId];
-                hideCardLoading(cardId, cardData.value);
+            // Update activities if available
+            if (data.activities && Array.isArray(data.activities)) {
+                console.log(`📝 Found ${data.activities.length} activities`);
+                updateActivitiesDisplay(data.activities);
+            } else {
+                console.log('📝 No activities data in response');
+                showNoActivitiesMessage();
+            }
 
-                // Also update the individual stat element if needed
-                const statElement = document.getElementById(cardData.id);
-                if (statElement) {
-                    statElement.textContent = cardData.value;
-                }
-
-                console.log(`✅ Updated ${cardId}: ${cardData.value}`);
-            });
-
+            return data;
         })
         .catch(error => {
-            console.error('❌ Error loading dashboard stats:', error);
+            console.error('❌ Error in loadDashboardStats:', error);
 
-            // Hide loaders and set to 0 on error
-            const cardIds = [
-                'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
-                'blogPostsCard', 'messagesCard', 'subscribersCard',
-                'testimonialsCard', 'expiredContentCard'
-            ];
+            // Show error state in activities
+            showActivitiesErrorState();
 
-            cardIds.forEach(cardId => {
-                hideCardLoading(cardId, '0');
-            });
+            // Set stats to 0 on error
+            setStatsToZero();
 
             throw error;
+        })
+        .finally(() => {
+            // Hide loading states
+            hideStatsLoading();
         });
     }
 
@@ -1542,6 +1525,300 @@
         cardIds.forEach(cardId => {
             hideCardLoading(cardId);
         });
+    }
+
+    // Helper function: Show loading on stats
+    function showStatsLoading() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                // Store original value before showing loader
+                if (!element.dataset.originalValue) {
+                    element.dataset.originalValue = element.textContent;
+                }
+                element.textContent = '...';
+                element.classList.add('loading');
+            }
+        });
+    }
+
+    // Helper function: Hide loading on stats
+    function hideStatsLoading() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.classList.remove('loading');
+            }
+        });
+    }
+
+    // Helper function: Update dashboard stats
+    function updateDashboardStats(data) {
+        const stats = {
+            'usersCount': data.users || 0,
+            'coursesCount': data.courses || 0,
+            'jobsCount': data.jobs || 0,
+            'internshipsCount': data.internships || 0,
+            'blogPostsCount': data.blog_posts || 0,
+            'messagesCount': data.unread_messages || 0,
+            'subscribersCount': data.subscribers || 0,
+            'testimonialsCount': data.testimonials || 0,
+            'expiredContentCount': data.total_expired || 0
+        };
+
+        Object.keys(stats).forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.textContent = stats[statId];
+                // Clear stored value
+                if (element.dataset.originalValue) {
+                    delete element.dataset.originalValue;
+                }
+            }
+        });
+    }
+
+    // Helper function: Set stats to 0 on error
+    function setStatsToZero() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.textContent = '0';
+                if (element.dataset.originalValue) {
+                    delete element.dataset.originalValue;
+                }
+            }
+        });
+    }
+
+    // Helper function: Show loading in activities area
+     function showActivitiesLoadingState() {
+        const activityList = document.querySelector('.activity-list');
+        if (!activityList) return;
+
+        activityList.innerHTML = `
+            <div class="activity-item loading">
+                <div class="activity-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <div class="activity-content">
+                    <p>Loading activities...</p>
+                    <small>Fetching recent updates</small>
+                </div>
+            </div>
+            <div class="activity-item loading">
+                <div class="activity-icon">
+                    <div class="pulse-dot"></div>
+                </div>
+                <div class="activity-content">
+                    <p class="placeholder-text"></p>
+                    <small class="placeholder-text"></small>
+                </div>
+            </div>
+            <div class="activity-item loading">
+                <div class="activity-icon">
+                    <div class="pulse-dot"></div>
+                </div>
+                <div class="activity-content">
+                    <p class="placeholder-text"></p>
+                    <small class="placeholder-text"></small>
+                </div>
+            </div>
+        `;
+    }
+
+    // Initialize activity scrollbar
+    function initActivityScrollbar() {
+        const activityContainer = document.querySelector('.activity-container');
+        const activityList = document.querySelector('.activity-list');
+
+        if (!activityContainer || !activityList) return;
+
+        // Calculate if we need scrollbar
+        const containerHeight = activityContainer.clientHeight;
+        const contentHeight = activityList.scrollHeight;
+
+        // Show scrollbar only if content overflows
+        if (contentHeight > containerHeight) {
+            activityContainer.classList.add('scrollable');
+            console.log(`📜 Scrollbar enabled (Content: ${contentHeight}px, Container: ${containerHeight}px)`);
+        } else {
+            activityContainer.classList.remove('scrollable');
+        }
+
+        // Update on window resize
+        window.addEventListener('resize', initActivityScrollbar);
+    }
+
+    // Helper function: Update activities display
+    function updateActivitiesDisplay(activities) {
+        const activityList = document.querySelector('.activity-list');
+        const activityCount = document.getElementById('activityCount');
+
+        if (!activityList) {
+            console.error('❌ Cannot update activities: .activity-list element not found');
+            return;
+        }
+
+        // Update activity count
+        if (activityCount) {
+            activityCount.textContent = activities?.length || 0;
+        }
+
+        if (!activities || activities.length === 0) {
+            showNoActivitiesMessage();
+            return;
+        }
+
+        console.log(`🔄 Rendering ${activities.length} activities in scrollable container`);
+
+        activityList.innerHTML = activities.map(activity => {
+            const icon = activity.icon || getActivityIcon(activity.type);
+            const message = escapeHTML(activity.message || 'No message');
+            const timeAgo = formatActivityTime(activity.time || activity.timestamp || activity.created_at);
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p class="activity-message">${message}</p>
+                        <small class="activity-time">${timeAgo}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Initialize scrollbar after content is loaded
+        setTimeout(initActivityScrollbar, 100);
+    }
+
+    // Helper function: Show no activities message
+    function showNoActivitiesMessage() {
+        const activityList = document.querySelector('.activity-list');
+        const activityCount = document.getElementById('activityCount');
+
+        if (activityList) {
+            activityList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>No recent activities</p>
+                        <small>Activities will appear here automatically</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Check Messages</p>
+                        <small>View and reply to user messages</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Manage Users</p>
+                        <small>View recent user registrations</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (activityCount) {
+            activityCount.textContent = '0';
+        }
+    }
+
+    // Helper function: Show error in activities
+    function showActivitiesErrorState() {
+        const activityList = document.querySelector('.activity-list');
+        if (!activityList) return;
+
+        activityList.innerHTML = `
+            <div class="activity-item error">
+                <div class="activity-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="activity-content">
+                    <p>Failed to load activities</p>
+                    <small>Please try refreshing</small>
+                </div>
+            </div>
+        `;
+    }
+
+    // Helper function: Get icon for activity type
+    function getActivityIcon(type) {
+        const icons = {
+            'user': 'user-plus',
+            'job': 'briefcase',
+            'course': 'book',
+            'internship': 'user-graduate',
+            'message': 'envelope',
+            'blog': 'blog',
+            'newsletter': 'newspaper',
+            'testimonial': 'comment',
+            'default': 'info-circle'
+        };
+        return icons[type] || icons.default;
+    }
+
+    // Helper function: Format activity time
+    function formatActivityTime(timestamp) {
+        if (!timestamp) return 'Recently';
+
+        try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) {
+                return 'Recently';
+            }
+
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} min ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+            // For older dates, show formatted date
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: diffDays > 365 ? 'numeric' : undefined
+            });
+        } catch (error) {
+            console.warn('Error formatting activity time:', error);
+            return 'Recently';
+        }
     }
 
     // View modal function

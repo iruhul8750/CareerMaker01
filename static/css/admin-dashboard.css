@@ -3752,6 +3752,277 @@
         display: inline-block;
     }
 
+    /* Activity Section with Scrollable Container */
+    .recent-activity {
+        margin-top: 30px;
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        height: 380px; /* Fixed height */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dark-mode .recent-activity {
+        background: #1e1e2d;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eaeaea;
+    }
+
+    .dark-mode .activity-header {
+        border-bottom: 1px solid #2d2d44;
+    }
+
+    .activity-header h3 {
+        margin: 0;
+        color: #333;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .dark-mode .activity-header h3 {
+        color: #e0e0e0;
+    }
+
+    .activity-count {
+        font-size: 12px;
+        color: #6c757d;
+        background: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 12px;
+    }
+
+    .dark-mode .activity-count {
+        background: #252538;
+        color: #a0a0a0;
+    }
+
+    .activity-count span {
+        font-weight: bold;
+        color: #4a6cf7;
+    }
+
+    .dark-mode .activity-count span {
+        color: #6c8cff;
+    }
+
+    /* Scrollable Container */
+    .activity-container {
+        flex: 1; /* Take remaining space */
+        overflow-y: auto; /* Enable vertical scroll */
+        padding-right: 5px; /* Space for scrollbar */
+        max-height: 300px; /* Maximum height before scrolling */
+    }
+
+    /* Custom Scrollbar Styling */
+    .activity-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .activity-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .dark-mode .activity-container::-webkit-scrollbar-track {
+        background: #2d2d44;
+    }
+
+    .activity-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+        transition: background 0.2s ease;
+    }
+
+    .dark-mode .activity-container::-webkit-scrollbar-thumb {
+        background: #4a5568;
+    }
+
+    .activity-container::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    .dark-mode .activity-container::-webkit-scrollbar-thumb:hover {
+        background: #5a6578;
+    }
+
+    /* Hide scrollbar when not needed */
+    .activity-container:not(.scrollable)::-webkit-scrollbar {
+        display: none;
+    }
+
+    .activity-container:not(.scrollable) {
+        overflow-y: hidden;
+    }
+
+    /* Activity List */
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Activity Item */
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 3px solid #4a6cf7;
+        transition: all 0.2s ease;
+    }
+
+    .dark-mode .activity-item {
+        background: #252538;
+    }
+
+    .activity-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .activity-item.loading {
+        opacity: 0.7;
+    }
+
+    .activity-item.error {
+        border-left-color: #dc3545;
+    }
+
+    .activity-item.error .activity-icon {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    /* Activity Icon */
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 50%;
+        background: rgba(74, 108, 247, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        color: #4a6cf7;
+    }
+
+    .activity-icon .fa-spinner {
+        animation: spin 1s linear infinite;
+    }
+
+    /* Pulse dot for loading */
+    .pulse-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #4a6cf7;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* Activity Content */
+    .activity-content {
+        flex: 1;
+        min-width: 0; /* Prevent overflow */
+    }
+
+    .activity-message {
+        margin: 0 0 4px 0;
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+        line-height: 1.4;
+        word-break: break-word; /* Handle long messages */
+    }
+
+    .dark-mode .activity-message {
+        color: #e0e0e0;
+    }
+
+    .activity-time {
+        color: #6c757d;
+        font-size: 12px;
+        display: block;
+    }
+
+    .dark-mode .activity-time {
+        color: #a0a0a0;
+    }
+
+    /* Placeholder text for loading */
+    .placeholder-text {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        color: transparent !important;
+        display: inline-block;
+        min-height: 1em;
+    }
+
+    .dark-mode .placeholder-text {
+        background: linear-gradient(90deg, #2d2d44 25%, #3a3a52 50%, #2d2d44 75%);
+    }
+
+    .activity-content p.placeholder-text {
+        width: 80%;
+        height: 16px;
+        margin-bottom: 6px;
+    }
+
+    .activity-content small.placeholder-text {
+        width: 50%;
+        height: 12px;
+    }
+
+    /* Animations */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+    }
+
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .recent-activity {
+            height: 320px; /* Slightly smaller on mobile */
+            padding: 15px;
+        }
+
+        .activity-container {
+            max-height: 240px;
+        }
+
+        .activity-item {
+            padding: 10px 12px;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+        }
+    }
+
     /* ===== TESTIMONIAL CONTENT FIELD DARK MODE FIX ===== */
     .admin-dashboard.dark-mode .testimonial-content-field .view-content,
     .admin-dashboard.dark-mode .testimonial-content-field .field-value,

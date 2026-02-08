@@ -4125,9 +4125,8 @@ def admin_dashboard():
 @app.route('/api/admin/dashboard-stats')
 @admin_required
 def admin_dashboard_stats():
-    """Get dashboard statistics with robust error handling"""
+    """Get dashboard statistics with activities - SIMPLIFIED"""
     try:
-        # Initialize default stats
         stats = {
             'users': 0,
             'courses': 0,
@@ -4258,6 +4257,73 @@ def admin_dashboard_stats():
 
         logger.info(f"🎯 Final dashboard stats: {stats}")
 
+        # ========== SIMPLE ACTIVITIES FETCHING ==========
+        activities = []
+
+        try:
+            # 1. Get 5 most recent users
+            recent_users = supabase_admin.table('users') \
+                               .select('id, username, email, created_at') \
+                               .order('created_at', desc=True) \
+                               .limit(3) \
+                               .execute().data or []
+
+            for user in recent_users:
+                activities.append({
+                    'type': 'user',
+                    'icon': 'user-plus',
+                    'message': f"New user: {user.get('username', 'Unknown')}",
+                    'time': user.get('created_at', '')
+                })
+        except Exception as e:
+            print(f"Error getting users for activities: {str(e)}")
+
+        try:
+            # 2. Get 5 most recent jobs (active)
+            recent_jobs = supabase_admin.table('jobs') \
+                              .select('id, title, company, created_at, is_active') \
+                              .order('created_at', desc=True) \
+                              .limit(3) \
+                              .execute().data or []
+
+            for job in recent_jobs:
+                if job.get('is_active', False):
+                    activities.append({
+                        'type': 'job',
+                        'icon': 'briefcase',
+                        'message': f"New job: {job.get('title', 'Unknown')} at {job.get('company', 'Unknown')}",
+                        'time': job.get('created_at', '')
+                    })
+        except Exception as e:
+            print(f"Error getting jobs for activities: {str(e)}")
+
+        try:
+            # 3. Get 5 most recent messages
+            recent_messages = supabase_admin.table('contact_messages') \
+                                  .select('id, name, email, created_at, status') \
+                                  .order('created_at', desc=True) \
+                                  .limit(3) \
+                                  .execute().data or []
+
+            for msg in recent_messages:
+                activities.append({
+                    'type': 'message',
+                    'icon': 'envelope',
+                    'message': f"New message from {msg.get('name', 'Unknown')}",
+                    'time': msg.get('created_at', '')
+                })
+        except Exception as e:
+            print(f"Error getting messages for activities: {str(e)}")
+
+        # Sort activities by time (newest first)
+        activities.sort(key=lambda x: x.get('time', ''), reverse=True)
+
+        # Keep only last 5 activities
+        stats['activities'] = activities[:5]
+        # ========== END ACTIVITIES ==========
+
+        print(f"✅ Dashboard stats with {len(stats.get('activities', []))} activities")
+
         return jsonify(stats)
 
     except Exception as e:
@@ -4273,7 +4339,8 @@ def admin_dashboard_stats():
             'subscribers': 0,
             'testimonials': 0,
             'blog_posts': 0,
-            'total_expired': 0
+            'total_expired': 0,
+            'activities': []
         })
 
 
