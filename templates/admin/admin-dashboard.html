@@ -608,17 +608,35 @@
             </div>
         </div>
 
-        <!-- Expired Content Section -->
+        <!-- Expired Content Section - FIXED -->
         <div class="admin-section" id="expired-content">
             <div class="section-header">
                 <h2>Expired Content Management</h2>
                 <div class="section-actions">
-                    <button class="btn btn-primary" id="refreshExpiredContentBtn">
+                    <button class="btn btn-outline" id="refreshExpiredContentBtn">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                     <button class="btn btn-success" id="reactivateAllExpiredBtn">
                         <i class="fas fa-play-circle"></i> Reactivate All
                     </button>
+                    <button class="btn btn-danger" id="deleteAllExpiredBtn" style="display: none;">
+                        <i class="fas fa-trash"></i> Delete All
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-row" style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div class="stat-mini-card">
+                    <span class="stat-label">Expired Courses:</span>
+                    <span class="stat-value" id="expiredCoursesCount">0</span>
+                </div>
+                <div class="stat-mini-card">
+                    <span class="stat-label">Expired Jobs:</span>
+                    <span class="stat-value" id="expiredJobsCount">0</span>
+                </div>
+                <div class="stat-mini-card">
+                    <span class="stat-label">Expired Internships:</span>
+                    <span class="stat-value" id="expiredInternshipsCount">0</span>
                 </div>
             </div>
 
@@ -647,14 +665,20 @@
                         <th>Type</th>
                         <th>Title</th>
                         <th>Company</th>
-                        <th>Expired Date</th>
-                        <th>Original Created</th>
-                        <th>Status</th>
+                        <th>Expiration Date</th>
+                        <th>Created</th>
+                        <th>Current Status</th>
                         <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody id="expiredContentTableBody">
                     <!-- Expired content will be loaded here -->
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-clock" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3 style="color: #6c757d; margin: 0;">Loading expired content...</h3>
+                        </td>
+                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -663,7 +687,7 @@
                 <div class="bulk-actions">
                     <select id="expiredContentBulkAction" class="bulk-action-select">
                         <option value="">Bulk Actions</option>
-                        <option value="reactivate">Reactivate</option>
+                        <option value="reactivate">Reactivate (Set as Active & Featured)</option>
                         <option value="delete">Delete Permanently</option>
                     </select>
                     <button class="btn btn-outline" id="applyExpiredContentBulkAction">Apply</button>
@@ -677,6 +701,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Users Section -->
         <div class="admin-section" id="users">
             <div class="section-header">

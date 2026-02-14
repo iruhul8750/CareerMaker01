@@ -2241,7 +2241,7 @@
         }
     }
 
-    // Toggle status (active/inactive) - FIXED for blog posts
+    // Toggle status (active/inactive) - For all contents
     function toggleStatus(section, id, isActive) {
         showLoading();
 

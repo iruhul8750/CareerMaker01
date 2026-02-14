@@ -92,16 +92,15 @@
 
                     <!-- Expiration Badge -->
                     {% if course.expiration_date %}
-                    {% set exp_date = course.expiration_date|string %}
-                    {% set current_time = now().isoformat() %}
-                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
-                        <i class="fas fa-clock"></i>
-                        {% if exp_date < current_time %}
-                        Expired
-                        {% else %}
-                        Expires: {{ course.expiration_date|format_date('%b %d') }}
-                        {% endif %}
-                    </div>
+                        {% set exp_date = course.expiration_date|string %}
+                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
+                            <i class="fas fa-clock"></i>
+                            {% if exp_date < now.isoformat() %}
+                                Expired
+                            {% else %}
+                                Expires: {{ course.expiration_date|format_date('%b %d, %Y') }}
+                            {% endif %}
+                        </div>
                     {% endif %}
 
                     <!-- Category Badge -->
@@ -222,8 +221,7 @@
             {% for internship in internships %}
             <div class="preview-card animated-card" data-id="{{ internship.id }}" data-type="internship">
                 <div class="preview-image-container">
-                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
-                    %}
+                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}
                     <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% endif %}
@@ -232,29 +230,25 @@
                         <i class="fas fa-user-graduate"></i>
                     </div>
 
-                    <!-- Expiration Badge -->
-                    {% if internship.expiration_date %}
-                    {% set exp_date = internship.expiration_date|string %}
-                    {% set current_time = now().isoformat() %}
-                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
-                        <i class="fas fa-clock"></i>
-                        {% if exp_date < current_time %}
-                        Expired
-                        {% else %}
-                        Expires: {{ internship.expiration_date|format_date('%b %d') }}
-                        {% endif %}
-                    </div>
+                    <!-- Expiration Badge - SAFE VERSION -->
+                    {% if internship.expiration_date and internship.expiration_date is not none %}
+                        {% set exp_date = internship.expiration_date|string %}
+                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
+                            <i class="fas fa-clock"></i>
+                            {% if exp_date < now.isoformat() %}
+                                Expired
+                            {% else %}
+                                Expires: {{ internship.expiration_date|format_date('%b %d, %Y') }}
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ internship.title }}</h3>
                     <p class="company">{{ internship.company or 'Unknown Company' }}</p>
-                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not
-                        specified' }}</p>
-                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not
-                        specified' }}</p>
-                    <p class="description">{{ internship.description|default('No description available',
-                        true)|truncate(120) }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not specified' }}</p>
+                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not specified' }}</p>
+                    <p class="description">{{ internship.description|default('No description available', true)|truncate(120) }}</p>
 
                     <div class="preview-meta">
                         <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
@@ -344,27 +338,24 @@
                         <i class="fas fa-briefcase"></i>
                     </div>
 
-                    <!-- Expiration Badge -->
-                    {% if job.expiration_date %}
-                    {% set exp_date = job.expiration_date|string %}
-                    {% set current_time = now().isoformat() %}
-                    <div class="expiration-badge {% if exp_date < current_time %}expired{% else %}active{% endif %}">
-                        <i class="fas fa-clock"></i>
-                        {% if exp_date < current_time %}
-                        Expired
-                        {% else %}
-                        Expires: {{ job.expiration_date|format_date('%b %d') }}
-                        {% endif %}
-                    </div>
+                    <!-- Expiration Badge - SAFE VERSION -->
+                    {% if job.expiration_date and job.expiration_date is not none %}
+                        {% set exp_date = job.expiration_date|string %}
+                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
+                            <i class="fas fa-clock"></i>
+                            {% if exp_date < now.isoformat() %}
+                                Expired
+                            {% else %}
+                                Expires: {{ job.expiration_date|format_date('%b %d, %Y') }}
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ job.title }}</h3>
                     <p class="company">{{ job.company or 'Unknown Company' }}</p>
-                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location or 'Location not
-                        specified' }}</p>
-                    <p class="description">{{ job.description|default('No description available', true)|truncate(120)
-                        }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location or 'Location not specified' }}</p>
+                    <p class="description">{{ job.description|default('No description available', true)|truncate(120) }}</p>
 
                     <div class="preview-meta">
                         <span class="salary"><i class="fas fa-money-bill-wave"></i> {{ job.salary or 'Salary not specified' }}</span>

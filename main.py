@@ -998,27 +998,42 @@ def enhance_content_with_logo(content_data, content_type, content_id):
         logger.error(f"Error enhancing content with logo: {str(e)}")
         return apply_default_logo(content_data, content_type)
 
+
 def get_or_fetch_logo_optimized(company_name, content_type, content_id):
     """
-    Optimized version of logo fetching with better caching
+    Optimized version of logo fetching with better error handling
     """
     try:
+        if not company_name:
+            return None
+
         # First, check if we already have a logo for this company (fuzzy match)
-        existing_logo = find_similar_company_logo(company_name)
-        if existing_logo:
-            return existing_logo
+        try:
+            existing_logo = find_similar_company_logo(company_name)
+            if existing_logo:
+                return existing_logo
+        except Exception as e:
+            logger.warning(f"Error finding similar company logo: {str(e)}")
 
         # If no existing logo, fetch new one with optimized method
-        logo_url = fetch_company_logo(company_name)
-        if not logo_url:
+        try:
+            logo_url = fetch_company_logo(company_name)
+            if not logo_url:
+                return None
+        except Exception as e:
+            logger.warning(f"Error fetching company logo: {str(e)}")
             return None
 
         # Download and store the logo
-        stored_logo_url = download_and_store_logo(logo_url, company_name, content_type, content_id)
-        if not stored_logo_url:
-            return None
+        try:
+            stored_logo_url = download_and_store_logo(logo_url, company_name, content_type, content_id)
+            if not stored_logo_url:
+                return None
+        except Exception as e:
+            logger.warning(f"Error storing logo: {str(e)}")
+            return logo_url  # Return the original URL if storage fails
 
-        # Store logo reference in database
+        # Store logo reference in database (don't fail if this doesn't work)
         try:
             logo_data = {
                 'company_name': company_name.lower(),
@@ -1031,17 +1046,15 @@ def get_or_fetch_logo_optimized(company_name, content_type, content_id):
 
             supabase.table('company_logos').insert(logo_data).execute()
             logger.info(f"✅ Logo stored in database for {company_name}")
-
-            return stored_logo_url
-
         except Exception as e:
-            logger.error(f"Error storing logo in database for {company_name}: {str(e)}")
-            return stored_logo_url  # Still return the URL even if DB storage fails
+            logger.warning(f"Error storing logo in database: {str(e)}")
+            # Still return the URL even if DB storage fails
+
+        return stored_logo_url
 
     except Exception as e:
         logger.error(f"Error in optimized logo fetch for {company_name}: {str(e)}")
         return None
-
 
 def find_similar_company_logo(company_name):
     """
@@ -1375,40 +1388,214 @@ def index():
     try:
         user_id = session.get('user_id')
 
-        # FIX: Fetch only 4 items for each content type (1 row)
-        courses = supabase.table('courses').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
-        jobs = supabase.table('jobs').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
-        internships = supabase.table('internships').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
-        blogs = supabase.table('blog_posts').select('*').eq('is_featured', True).eq('is_active', True).limit(4).execute().data or []
+        # Get current time in UTC for expiration comparison
+        current_time = get_current_utc_time().isoformat()
+        logger.info(f"🕐 Current time for expiration check: {current_time}")
 
-        # Enhance content with logos
-        enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses]
-        enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs]
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship in internships]
+        # Initialize empty lists for all sections
+        enhanced_courses = []
+        enhanced_jobs = []
+        enhanced_internships = []
+        blogs = []
+        testimonials = []
 
-        # If user is logged in, get their bookmarks and add bookmark status to content
+        # ===== FETCH COURSES - Most recent first =====
+        try:
+            # Get active and featured courses that are NOT expired
+            courses_query = supabase.table('courses') \
+                .select('*') \
+                .eq('is_featured', True) \
+                .eq('is_active', True) \
+                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                .order('created_at', desc=True) \
+                .limit(4)
+
+            courses = courses_query.execute().data or []
+            logger.info(f"📚 Found {len(courses)} active featured courses for homepage")
+
+            # Enhance courses with logos
+            for course in courses:
+                try:
+                    # Simple enhancement without complex logo fetching that might fail
+                    if course.get('company'):
+                        # Try to get logo but don't fail if it doesn't work
+                        try:
+                            logo_url = get_or_fetch_logo_optimized(course['company'], 'course', course.get('id'))
+                            if logo_url:
+                                course['company_logo'] = logo_url
+                            else:
+                                course['company_logo'] = '/static/images/default-course.png'
+                        except:
+                            course['company_logo'] = '/static/images/default-course.png'
+                    else:
+                        course['company_logo'] = '/static/images/default-course.png'
+
+                    enhanced_courses.append(course)
+                except Exception as e:
+                    logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
+                    # Add course with default image rather than failing
+                    course['company_logo'] = '/static/images/default-course.png'
+                    enhanced_courses.append(course)
+
+        except Exception as e:
+            logger.error(f"Error loading courses for homepage: {str(e)}")
+            # Keep enhanced_courses as empty list
+
+        # ===== FETCH JOBS - Most recent first =====
+        try:
+            jobs_query = supabase.table('jobs') \
+                .select('*') \
+                .eq('is_featured', True) \
+                .eq('is_active', True) \
+                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                .order('created_at', desc=True) \
+                .limit(4)
+
+            jobs = jobs_query.execute().data or []
+            logger.info(f"💼 Found {len(jobs)} active featured jobs for homepage")
+
+            for job in jobs:
+                try:
+                    # Simple enhancement for jobs
+                    if job.get('company'):
+                        try:
+                            logo_url = get_or_fetch_logo_optimized(job['company'], 'job', job.get('id'))
+                            if logo_url:
+                                job['company_logo'] = logo_url
+                            else:
+                                job['company_logo'] = '/static/images/default-job.png'
+                        except:
+                            job['company_logo'] = '/static/images/default-job.png'
+                    else:
+                        job['company_logo'] = '/static/images/default-job.png'
+
+                    # Ensure all required fields exist
+                    job.setdefault('description', 'No description available')
+                    job.setdefault('location', 'Location not specified')
+                    job.setdefault('salary', 'Not specified')
+                    job.setdefault('type', 'Full-time')
+
+                    enhanced_jobs.append(job)
+                except Exception as e:
+                    logger.error(f"Error enhancing job {job.get('id')}: {str(e)}")
+                    # Add job with defaults rather than failing
+                    job['company_logo'] = '/static/images/default-job.png'
+                    enhanced_jobs.append(job)
+
+        except Exception as e:
+            logger.error(f"Error loading jobs for homepage: {str(e)}")
+            # Keep enhanced_jobs as empty list
+
+        # ===== FETCH INTERNSHIPS - Most recent first =====
+        try:
+            internships_query = supabase.table('internships') \
+                .select('*') \
+                .eq('is_featured', True) \
+                .eq('is_active', True) \
+                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                .order('created_at', desc=True) \
+                .limit(4)
+
+            internships = internships_query.execute().data or []
+            logger.info(f"🎓 Found {len(internships)} active featured internships for homepage")
+
+            for internship in internships:
+                try:
+                    # Simple enhancement for internships
+                    if internship.get('company'):
+                        try:
+                            logo_url = get_or_fetch_logo_optimized(internship['company'], 'internship',
+                                                                   internship.get('id'))
+                            if logo_url:
+                                internship['company_logo'] = logo_url
+                            else:
+                                internship['company_logo'] = '/static/images/default-internship.png'
+                        except:
+                            internship['company_logo'] = '/static/images/default-internship.png'
+                    else:
+                        internship['company_logo'] = '/static/images/default-internship.png'
+
+                    # Ensure all required fields exist
+                    internship.setdefault('description', 'No description available')
+                    internship.setdefault('location', 'Location not specified')
+                    internship.setdefault('stipend', 'Unpaid')
+                    internship.setdefault('duration', 'Flexible')
+                    internship.setdefault('type', 'Internship')
+
+                    enhanced_internships.append(internship)
+                except Exception as e:
+                    logger.error(f"Error enhancing internship {internship.get('id')}: {str(e)}")
+                    # Add internship with defaults rather than failing
+                    internship['company_logo'] = '/static/images/default-internship.png'
+                    enhanced_internships.append(internship)
+
+        except Exception as e:
+            logger.error(f"Error loading internships for homepage: {str(e)}")
+
+        # ===== FETCH BLOGS - Most recent first =====
+        try:
+            blogs_query = supabase.table('blog_posts') \
+                .select('*') \
+                .eq('is_featured', True) \
+                .eq('is_active', True) \
+                .order('created_at', desc=True) \
+                .limit(4)
+
+            blogs = blogs_query.execute().data or []
+            logger.info(f"📝 Found {len(blogs)} active featured blogs for homepage")
+
+        except Exception as e:
+            logger.error(f"Error loading blogs for homepage: {str(e)}")
+
+        # ===== FETCH TESTIMONIALS =====
+        try:
+            testimonials_query = supabase.table('testimonials') \
+                .select('*') \
+                .eq('is_active', True) \
+                .order('created_at', desc=True) \
+                .limit(3)
+
+            testimonials = testimonials_query.execute().data or []
+            logger.info(f"💬 Found {len(testimonials)} testimonials for homepage")
+
+        except Exception as e:
+            logger.error(f"Error loading testimonials for homepage: {str(e)}")
+
+        # ===== ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
-            user_bookmarks = get_user_bookmarks(user_id)
-            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            try:
+                user_bookmarks = get_user_bookmarks(user_id)
+                bookmark_map = {}
 
-            for course in enhanced_courses:
-                course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
+                # Create a map of (content_type, id) -> True for faster lookup
+                for item in user_bookmarks:
+                    content_type = item.get('content_type')
+                    item_id = item.get('id')
+                    if content_type and item_id:
+                        bookmark_map[(content_type, item_id)] = True
 
-            for job in enhanced_jobs:
-                job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
+                # Add bookmark status to courses
+                for course in enhanced_courses:
+                    course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
 
-            for internship in enhanced_internships:
-                internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
+                # Add bookmark status to jobs
+                for job in enhanced_jobs:
+                    job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
 
-            for blog in blogs:
-                blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
+                # Add bookmark status to internships
+                for internship in enhanced_internships:
+                    internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
 
-        # Fetch testimonials - keep 3 for testimonials section
-        testimonials = supabase.table('blog_posts').select('id, title, author, description, image').eq('is_featured', True).eq('is_active', True).limit(3).execute().data or []
+                # Add bookmark status to blogs
+                for blog in blogs:
+                    blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
 
-        logger.info(f"Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}")
+                logger.info(f"🔖 Added bookmark status for user {user_id}")
 
-        # Get user profile picture if logged in
+            except Exception as e:
+                logger.error(f"Error loading bookmarks for homepage: {str(e)}")
+
+        # ===== GET USER PROFILE PICTURE IF LOGGED IN =====
         profile_pic_data = None
         if user_id:
             try:
@@ -1417,12 +1604,10 @@ def index():
                 if user_response.data:
                     user = user_response.data[0]
 
-                    # Generate profile picture URL with cache busting
                     if user.get('profile_pic'):
                         timestamp = int(datetime.now().timestamp())
-                        profile_pic_path = user['profile_pic']
                         project_ref = supabase_url.split('//')[1].split('.')[0]
-                        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}?t={timestamp}"
+                        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={timestamp}"
 
                         profile_pic_data = {
                             'url': profile_pic_url,
@@ -1441,7 +1626,12 @@ def index():
                 logger.error(f"Error fetching user data for index: {str(e)}")
                 profile_pic_data = None
 
-        logger.info(f"Homepage loaded - User logged in: {bool(user_id)}, Profile data: {bool(profile_pic_data)}")
+        # Log final counts
+        logger.info(
+            f"🏠 Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(blogs)}")
+
+        # Add current time to template for expiration badge comparison
+        now = datetime.now()
 
         return render_template('index.html',
                                courses=enhanced_courses,
@@ -1449,19 +1639,21 @@ def index():
                                internships=enhanced_internships,
                                blogs=blogs,
                                testimonials=testimonials,
-                               profile_pic_data=profile_pic_data)  # Pass to template
+                               profile_pic_data=profile_pic_data,
+                               now=now)
 
     except Exception as e:
-        logger.error(f"Error loading index: {str(e)}")
-        enhanced_courses, enhanced_jobs, enhanced_internships, blogs, testimonials = [], [], [], [], []
-
-    return render_template('index.html',
-                           courses=enhanced_courses,
-                           jobs=enhanced_jobs,
-                           internships=enhanced_internships,
-                           blogs=blogs,
-                           testimonials=testimonials,
-                           profile_pic_data=None)
+        logger.error(f"❌ Critical error in index route: {str(e)}", exc_info=True)
+        # Return template with empty lists rather than crashing
+        now = datetime.now()
+        return render_template('index.html',
+                               courses=[],
+                               jobs=[],
+                               internships=[],
+                               blogs=[],
+                               testimonials=[],
+                               profile_pic_data=None,
+                               now=now)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
