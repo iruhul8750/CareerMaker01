@@ -1240,11 +1240,14 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100px;
-      padding: 15px;
+      height: 150px; /* Fixed height */
+      min-height: 150px; /* Ensure consistent height */
+      max-height: 150px; /* Prevent stretching */
+      padding: 10px;
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border-bottom: 1px solid #e9ecef;
       position: relative;
+      overflow: hidden; /* Hide overflow, but we'll handle images properly */
     }
 
     .dark-mode .preview-image-container {
@@ -1254,16 +1257,17 @@
 
     /* Company Logo - Only show fetched logos */
     .company-logo {
-      max-width: 70px;
-      max-height: 70px;
+      max-width: 100%;
+      max-height: 100%;
       width: auto;
       height: auto;
-      object-fit: contain;
+      object-fit: contain; /* This ensures the whole image fits without cropping */
       border-radius: 8px;
       background: white;
-      padding: 8px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+      padding: 5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       border: 1px solid #e9ecef;
+      transition: transform 0.3s ease;
     }
 
     .dark-mode .company-logo {
@@ -1275,13 +1279,16 @@
     .default-logo {
       width: 70px;
       height: 70px;
+      min-width: 70px; /* Prevent shrinking */
+      min-height: 70px; /* Prevent shrinking */
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
       color: white;
       font-size: 24px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0; /* Prevent shrinking */
     }
 
     .course-logo {
@@ -1657,199 +1664,338 @@
 
     /* MAIN CARD */
     .course-card-layout {
-        width: 100%;
-        border-radius: 12px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        border: 1px solid #e5e7eb;
-        background: var(--light-color);
-        min-height: 420px; /* ensures good layout */
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #e5e7eb;
+      background: var(--light-color);
+      height: 420px; /* Fixed total height */
+      min-height: 420px;
+      max-height: 420px;
     }
 
     .dark-mode .course-card-layout {
-        background: var(--dark-mode-card);
-        border-color: #374151;
+      background: var(--dark-mode-card);
+      border-color: #374151;
     }
 
     /* =====================
-       TOP HALF (IMAGE)
+       TOP HALF (IMAGE) - FIXED HEIGHT
     ===================== */
     .course-image-section {
-        height: 50%;
-        width: 100%;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      height: 180px; /* Fixed height for image section */
+      min-height: 180px;
+      max-height: 180px;
+      width: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-bottom: 1px solid #e5e7eb;
+      overflow: hidden;
+      flex-shrink: 0; /* Prevent shrinking */
     }
 
+    .dark-mode .course-image-section {
+      background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+      border-bottom-color: #374151;
+    }
+
+    /* Course image - fits perfectly within fixed area */
     .course-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain; /* Ensures full image visible without cropping */
+      border-radius: 4px;
+      padding: 10px;
     }
 
+    /* Image placeholder when no image */
     .course-image-placeholder {
-        width: 100%;
-        height: 100%;
-        font-size: 1.1rem;
-        opacity: 0.6;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #6c757d;
+      font-size: 1rem;
     }
 
-    /* BADGES */
-    .category-badge,
-    .expiration-badge {
-        position: absolute;
-        padding: 5px 10px;
-        font-size: 0.75rem;
-        border-radius: 6px;
-        color: #fff;
-        background: rgba(0,0,0,0.65);
-        top: 10px;
+    .course-image-placeholder i {
+      font-size: 3rem;
+      margin-bottom: 10px;
+      color: var(--primary-color);
     }
 
-    .category-badge {
-        left: 10px;
-    }
-
-    .expiration-badge {
-        right: 10px;
-    }
-
-    .expiration-badge.expired {
-        background: rgba(255,0,0,0.7);
+    .dark-mode .course-image-placeholder {
+      color: #adb5bd;
     }
 
     /* =====================
-       BOTTOM HALF (DETAILS)
+       BOTTOM SECTION - FLEXIBLE CONTENT AREA
     ===================== */
     .course-details-section {
-        height: 50%;
-        padding: 15px 18px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
+      flex: 1; /* Take remaining space */
+      display: flex;
+      flex-direction: column;
+      padding: 16px 18px 12px 18px;
+      background: inherit;
+      min-height: 0; /* Important for flex children to respect parent height */
     }
 
-    /* Title + Instructor */
+    /* Title with truncation */
     .course-header h3 {
-        font-size: 1.15rem;
-        margin-bottom: 5px;
+      font-size: 1.15rem;
+      margin: 0 0 4px 0;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--dark-color);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      /* No fixed height - uses line-clamp */
     }
 
+    .dark-mode .course-header h3 {
+      color: var(--dark-mode-text);
+    }
+
+    /* Instructor/Company line */
     .course-instructor {
-        font-size: 0.85rem;
-        opacity: 0.75;
+      font-size: 0.85rem;
+      color: var(--primary-color);
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
     }
 
-    /* Description */
-    .course-description {
-        font-size: 0.9rem;
-        line-height: 1.35;
-        margin: 10px 0;
-        flex-grow: 1;
-        overflow: hidden;
+    .dark-mode .course-instructor {
+      color: var(--accent-color);
     }
 
-    /* Meta info */
+    /* Meta info row */
     .course-meta {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
+      display: flex;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
     }
 
     .course-meta div {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #6c757d;
+      white-space: nowrap;
     }
 
-    /* Extra details */
+    .dark-mode .course-meta div {
+      color: #adb5bd;
+    }
+
+    /* Description - limited to 2 lines with line-clamp */
+    .course-description {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #5d6d7e;
+      margin: 8px 0 8px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2; /* Show only 2 lines */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex-shrink: 0; /* Prevent shrinking */
+    }
+
+    .dark-mode .course-description {
+      color: #9ca3af;
+    }
+
+    /* Additional details - fixed at bottom before buttons */
     .additional-details {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px 16px;
-        font-size: 0.85rem;
-        margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 0.8rem;
+      margin: 4px 0;
+      flex-shrink: 0;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #6c757d;
+      white-space: nowrap;
+    }
+
+    .dark-mode .detail-item {
+      color: #9ca3af;
+    }
+
+    .detail-item i {
+      color: var(--primary-color);
+      font-size: 0.75rem;
     }
 
     /* =====================
-       ACTION BUTTONS
+       CARD FOOTER - ALWAYS AT BOTTOM WITH AUTO MARGIN
     ===================== */
+    .card-footer {
+      margin-top: auto; /* Pushes footer to bottom */
+      padding: 12px 18px 16px 18px;
+      border-top: 1px solid #e5e7eb;
+      background: inherit;
+      flex-shrink: 0; /* Prevent footer from shrinking */
+    }
+
+    .dark-mode .card-footer {
+      border-top-color: #374151;
+    }
+
+    /* Action buttons container */
     .action-buttons {
-        display: flex;
-        gap: 10px;
-        margin-top: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
     .action-buttons .btn-icon {
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 100&;
+      color: #666;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .dark-mode .action-buttons .btn-icon {
+      background: var(--dark-mode-card);
+      border-color: #4b5563;
+      color: #d1d5db;
     }
 
     .action-buttons .btn-primary {
-        flex: 1;
-        height: 36px;
+      flex: 1;
+      height: 36px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 10px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+    }
+
+    .dark-mode .action-buttons .btn-primary {
+      background: var(--accent-color);
+    }
+
+    /* Category and expiration badges */
+    .category-badge,
+    .expiration-badge {
+      position: absolute;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      border-radius: 4px;
+      color: #fff;
+      background: rgba(0,0,0,0.65);
+      top: 8px;
+      z-index: 2;
+      max-width: 50%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .category-badge {
+      left: 8px;
+    }
+
+    .expiration-badge {
+      right: 8px;
+    }
+
+    .expiration-badge.expired {
+      background: rgba(239, 68, 68, 0.9);
     }
 
     /* =====================
-    MOBILE FIXES
+       MOBILE RESPONSIVE
     ===================== */
-    @media (max-width: 480px) {
-        .course-card-layout {
-            min-height: 380px;
-        }
-
-        .course-image-section {
-            height: 45%;
-        }
-
-        .course-details-section {
-            height: 55%;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-    }
-
-    /* In your CSS file */
-    .featured-courses-grid,
-    .featured-jobs-grid,
-    .featured-internships-grid,
-    .featured-blogs-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr); /* 4 columns */
-        gap: 20px;
-        margin-bottom: 40px;
-    }
-
-    /* For mobile responsiveness */
-    @media (max-width: 1024px) {
-        .featured-courses-grid,
-        .featured-jobs-grid,
-        .featured-internships-grid,
-        .featured-blogs-grid {
-            grid-template-columns: repeat(2, 1fr); /* 2 columns on tablet */
-        }
-    }
-
     @media (max-width: 768px) {
-        .featured-courses-grid,
-        .featured-jobs-grid,
-        .featured-internships-grid,
-        .featured-blogs-grid {
-            grid-template-columns: 1fr; /* 1 column on mobile */
-        }
+      .course-card-layout {
+        height: 400px;
+        min-height: 400px;
+        max-height: 400px;
+      }
+
+      .course-image-section {
+        height: 160px;
+        min-height: 160px;
+        max-height: 160px;
+      }
+
+      .course-details-section {
+        padding: 12px 14px 8px 14px;
+      }
+
+      .card-footer {
+        padding: 10px 14px 14px 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .course-card-layout {
+        height: 380px;
+        min-height: 380px;
+        max-height: 380px;
+      }
+
+      .course-image-section {
+        height: 140px;
+        min-height: 140px;
+        max-height: 140px;
+      }
+
+      .course-details-section {
+        padding: 10px 12px 6px 12px;
+      }
+
+      .course-meta {
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .course-description {
+        -webkit-line-clamp: 1; /* Show only 1 line on mobile */
+      }
+
+      .action-buttons .btn-primary {
+        font-size: 0.8rem;
+      }
+
+      .card-footer {
+        padding: 8px 12px 12px 12px;
+      }
     }
 
     /* View All pages responsive styles */
@@ -8082,13 +8228,14 @@
     .preview-card {
       background-color: white;
       border-radius: 12px;
-      overflow: visible; /* Changed from hidden */
+      overflow: hidden;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
-      height: auto; /* Changed from fixed height */
-      min-height: 420px; /* Minimum height instead of fixed */
+      height: auto; /* Auto height based on content */
+      min-height: 420px; /* Minimum height */
+      max-height: none; /* No maximum height */
       border: 1px solid #e9ecef;
       position: relative;
     }
@@ -8319,8 +8466,9 @@
       padding: 1rem 1.25rem;
       background: #f8f9fa;
       border-top: 1px solid #e9ecef;
-      margin-top: auto;
-      flex-shrink: 0; /* Prevent buttons from being cut off */
+      margin-top: auto; /* Push to bottom */
+      flex-shrink: 0; /* Prevent shrinking */
+      width: 100%;
     }
 
     .dark-mode .action-buttons {
