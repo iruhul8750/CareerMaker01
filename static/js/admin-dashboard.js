@@ -490,132 +490,67 @@
         }
     }
 
-    // Professional multi-select dropdown for blog categories
+    // Simple single category dropdown for blog posts
     function setupBlogCategories() {
-        console.log('Setting up professional blog categories dropdown');
+        console.log('Setting up blog category dropdown');
 
-        const header = document.getElementById('blogCategoriesHeader');
-        const options = document.getElementById('blogCategoriesOptions');
-        const tagsContainer = document.getElementById('blogCategoriesTags');
+        const categorySelect = document.getElementById('blogCategory');
         const hiddenInput = document.getElementById('blogCategoriesHidden');
 
-        if (!header || !options) {
-            console.log('Blog categories elements not found');
-            return;
+        if (!categorySelect) {
+            console.log('Blog category select not found');
+            return null;
         }
 
-        let selectedCategories = [];
-
-        // Toggle dropdown
-        header.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const isOpen = options.style.display === 'block';
-            options.style.display = isOpen ? 'none' : 'block';
-            this.querySelector('i').className = isOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!header.contains(e.target) && !options.contains(e.target)) {
-                options.style.display = 'none';
-                header.querySelector('i').className = 'fas fa-chevron-down';
-            }
-        });
-
-        // Handle checkbox selection
-        options.addEventListener('change', function(e) {
-            if (e.target.type === 'checkbox') {
-                const value = e.target.value;
-                const isChecked = e.target.checked;
-
-                if (isChecked) {
-                    if (!selectedCategories.includes(value)) {
-                        selectedCategories.push(value);
-                    }
-                } else {
-                    selectedCategories = selectedCategories.filter(cat => cat !== value);
+        // Function to set the selected category
+        function setCategory(category) {
+            if (category) {
+                categorySelect.value = category;
+                if (hiddenInput) {
+                    hiddenInput.value = JSON.stringify([category]);
                 }
-
-                updateSelectedTags();
-                updateHiddenInput();
             }
-        });
-
-        // Remove tag when X is clicked
-        tagsContainer.addEventListener('click', function(e) {
-            if (e.target.classList.contains('tag-remove')) {
-                const value = e.target.getAttribute('data-value');
-                selectedCategories = selectedCategories.filter(cat => cat !== value);
-
-                // Uncheck the corresponding checkbox
-                const checkbox = options.querySelector(`input[value="${value}"]`);
-                if (checkbox) {
-                    checkbox.checked = false;
-                }
-
-                updateSelectedTags();
-                updateHiddenInput();
-            }
-        });
-
-        function updateSelectedTags() {
-            if (selectedCategories.length === 0) {
-                tagsContainer.innerHTML = '';
-                header.querySelector('.selected-text').textContent = 'Select categories...';
-                return;
-            }
-
-            // Update header text
-            header.querySelector('.selected-text').textContent = `${selectedCategories.length} category${selectedCategories.length > 1 ? 'ies' : ''} selected`;
-
-            // Update tags display
-            tagsContainer.innerHTML = selectedCategories.map(category => `
-                <span class="selected-tag">
-                    ${category}
-                    <span class="tag-remove" data-value="${category}">×</span>
-                </span>
-            `).join('');
-        }
-
-        function updateHiddenInput() {
-            hiddenInput.value = JSON.stringify(selectedCategories);
         }
 
         // Initialize with any existing values (for edit mode)
         function initializeWithValues(categories) {
-            if (categories && Array.isArray(categories)) {
-                selectedCategories = [...categories];
-
-                // Check the corresponding checkboxes
-                categories.forEach(category => {
-                    const checkbox = options.querySelector(`input[value="${category}"]`);
-                    if (checkbox) {
-                        checkbox.checked = true;
-                    }
-                });
-
-                updateSelectedTags();
-                updateHiddenInput();
+            console.log('Setting category with:', categories);
+            if (categories && Array.isArray(categories) && categories.length > 0) {
+                // Take the first category since we only support single now
+                const category = categories[0];
+                setCategory(category);
+            } else if (typeof categories === 'string') {
+                setCategory(categories);
             }
         }
 
-        // Clear all selections
+        // Clear selection
         function clearSelections() {
-            selectedCategories = [];
-            const checkboxes = options.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            updateSelectedTags();
-            updateHiddenInput();
+            console.log('Clearing category selection');
+            categorySelect.value = '';
+            if (hiddenInput) {
+                hiddenInput.value = '';
+            }
         }
 
-        console.log('✅ Professional blog categories dropdown setup complete');
+        // Handle category change
+        categorySelect.addEventListener('change', function(e) {
+            const selectedCategory = e.target.value;
+            if (hiddenInput) {
+                if (selectedCategory) {
+                    hiddenInput.value = JSON.stringify([selectedCategory]);
+                } else {
+                    hiddenInput.value = '';
+                }
+            }
+        });
+
+        console.log('✅ Blog category dropdown setup complete');
 
         return {
-            initializeWithValues,
-            clearSelections,
-            getSelectedCategories: () => selectedCategories
+            initializeWithValues: initializeWithValues,
+            clearSelections: clearSelections,
+            getSelectedCategory: () => categorySelect.value
         };
     }
 
@@ -2798,66 +2733,170 @@
         modal.style.display = 'block';
     }
 
-    // Enhanced blog edit modal function
+    // Enhanced edit modal function
     function openEditModal(section, id) {
+        console.log(`Opening edit modal for ${section} with ID: ${id}`);
+
+        // Determine modal and form IDs
+        const modalId = section === 'blog' ? 'blogModal' : `${section.slice(0, -1)}Modal`;
+        const modal = document.getElementById(modalId);
+
+        if (!modal) {
+            console.error(`Modal not found: ${modalId}`);
+            showNotification(`Could not find edit modal`, 'error');
+            return;
+        }
+
+        const formId = section === 'blog' ? 'blogForm' : `${section.slice(0, -1)}Form`;
+        const form = document.getElementById(formId);
+
+        if (!form) {
+            console.error(`Form not found: ${formId}`);
+            return;
+        }
+
+        // Show loading
+        showLoading();
+
+        // Fetch the item data
         fetch(`/api/admin/${section}/${id}`, {
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to fetch ${section} item`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${section} item`);
+            }
             return response.json();
         })
         .then(item => {
-            const modalId = `${section.slice(0, -1)}Modal`;
-            const modal = document.getElementById(modalId);
-            if (!modal) return;
+            console.log(`Received ${section} data:`, item);
 
-            const form = document.getElementById(`${section.slice(0, -1)}Form`);
-            if (form) {
-                const idField = form.querySelector('input[type="hidden"]');
-                if (idField) idField.value = item.id;
+            // Set the ID field
+            const idField = form.querySelector('input[name="id"]');
+            if (idField) {
+                idField.value = item.id;
+            }
 
-                Object.keys(item).forEach(key => {
-                    const field = form.querySelector(`[name="${key}"]`);
-                    if (field) {
-                        if (field.type === 'checkbox') {
-                            field.checked = item[key];
-                        } else if (key === 'categories' && Array.isArray(item[key])) {
-                            // Handle categories array for blog posts
-                            if (section === 'blog' && blogCategoriesManager) {
-                                blogCategoriesManager.initializeWithValues(item[key]);
+            // Handle blog section separately
+            if (section === 'blog') {
+                // Set text fields directly
+                const titleField = document.getElementById('blogTitle');
+                if (titleField) titleField.value = item.title || '';
+
+                const authorField = document.getElementById('blogAuthor');
+                if (authorField) authorField.value = item.author || '';
+
+                const contentField = document.getElementById('blogContent');
+                if (contentField) contentField.value = item.content || '';
+
+                const imageField = document.getElementById('blogImage');
+                if (imageField) imageField.value = item.image || '';
+
+                // Set checkboxes
+                const isFeaturedCheckbox = form.querySelector('input[name="is_featured"]');
+                if (isFeaturedCheckbox) isFeaturedCheckbox.checked = item.is_featured === true;
+
+                const isPublishedCheckbox = form.querySelector('input[name="is_published"]');
+                if (isPublishedCheckbox) isPublishedCheckbox.checked = item.is_published === true;
+
+                const isActiveCheckbox = form.querySelector('input[name="is_active"]');
+                if (isActiveCheckbox) isActiveCheckbox.checked = item.is_active === true;
+
+                // Handle single category - FIXED
+                if (item.categories) {
+                    let categoryValue = '';
+
+                    // Extract category from different possible formats
+                    if (Array.isArray(item.categories) && item.categories.length > 0) {
+                        categoryValue = item.categories[0];
+                    } else if (typeof item.categories === 'string') {
+                        // Try to parse if it's a JSON string
+                        try {
+                            const parsed = JSON.parse(item.categories);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                categoryValue = parsed[0];
                             } else {
-                                field.value = item[key].join(', ');
+                                categoryValue = item.categories;
                             }
-                        } else if (key === 'expiration_date' && item[key]) {
-                            // Format expiration date for datetime-local input
+                        } catch (e) {
+                            // Not JSON, use as is
+                            categoryValue = item.categories;
+                        }
+                    }
+
+                    console.log('Setting category to:', categoryValue);
+
+                    // Set the select dropdown value
+                    const categorySelect = document.getElementById('blogCategory');
+                    if (categorySelect && categoryValue) {
+                        categorySelect.value = categoryValue;
+                    }
+
+                    // Update hidden input if it exists
+                    const hiddenInput = document.getElementById('blogCategoriesHidden');
+                    if (hiddenInput) {
+                        hiddenInput.value = JSON.stringify([categoryValue]);
+                    }
+                }
+
+                // Set modal title
+                const titleElement = document.getElementById('blogModalTitle');
+                if (titleElement) {
+                    titleElement.textContent = 'Edit Blog Post';
+                }
+            } else {
+                // For all other sections, reset form first then populate
+                form.reset();
+
+                // Populate all form fields
+                Array.from(form.elements).forEach(element => {
+                    if (element.name && element.name !== 'id') {
+                        const value = item[element.name];
+
+                        if (element.type === 'checkbox') {
+                            element.checked = value === true || value === 'true' || value === 1;
+                        } else if (element.type === 'datetime-local' && value) {
                             try {
-                                const date = new Date(item[key]);
+                                const date = new Date(value);
                                 if (!isNaN(date.getTime())) {
-                                    field.value = date.toISOString().slice(0, 16);
-                                } else {
-                                    field.value = '';
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    element.value = `${year}-${month}-${day}T${hours}:${minutes}`;
                                 }
                             } catch (e) {
-                                field.value = '';
+                                element.value = value || '';
                             }
                         } else {
-                            field.value = item[key] || '';
+                            element.value = value !== null && value !== undefined ? value : '';
                         }
                     }
                 });
 
-                const titleElement = document.getElementById(`${section.slice(0, -1)}ModalTitle`);
+                // Set modal title
+                const sectionType = section.slice(0, -1);
+                const titleElement = modal.querySelector('h2');
                 if (titleElement) {
-                    titleElement.textContent = `Edit ${section.charAt(0).toUpperCase() + section.slice(1, -1)}`;
+                    titleElement.textContent = `Edit ${sectionType.charAt(0).toUpperCase() + sectionType.slice(1)}`;
                 }
             }
 
+            // Show the modal
             modal.style.display = 'block';
+            hideLoading();
+
+            console.log(`✅ Edit modal opened for ${section} ID: ${id}`);
         })
         .catch(error => {
             console.error(`Error loading ${section} item:`, error);
             showNotification(`Failed to load ${section} item`, 'error');
+            hideLoading();
         });
     }
 
@@ -4677,94 +4716,192 @@
         const data = Object.fromEntries(formData.entries());
         const id = data.id;
 
-        // Convert checkbox values to boolean
-        Object.keys(data).forEach(key => {
-            if (data[key] === 'on') {
-                data[key] = true;
-            } else if (data[key] === 'off') {
-                data[key] = false;
-            } else if (data[key] === '') {
-                // Remove empty fields except for text areas and certain fields
-                if (!['description', 'content', 'image', 'salary'].includes(key)) {
+        console.log('Form data before processing:', data);
+        console.log('Type:', type);
+        console.log('ID:', id);
+
+        // Handle blog posts separately - they have different fields
+        if (type === 'blog') {
+            // Convert checkbox values to boolean
+            const blogData = {
+                id: data.id || null,
+                title: data.title || '',
+                author: data.author || '',
+                content: data.content || '',
+                image: data.image || '',
+                categories: []
+            };
+
+            // Handle single category from select dropdown
+            if (data.category) {
+                blogData.categories = [data.category];
+            } else if (data.categories) {
+                // Fallback to handle if categories hidden input is used
+                try {
+                    const parsed = JSON.parse(data.categories);
+                    blogData.categories = Array.isArray(parsed) ? parsed : [parsed];
+                } catch (e) {
+                    blogData.categories = [];
+                }
+            }
+
+            // Handle checkboxes
+            blogData.is_featured = data.is_featured === 'on';
+            blogData.is_published = data.is_published === 'on';
+            blogData.is_active = data.is_active === 'on';
+
+            // Remove id if it's empty or null for new posts
+            if (!blogData.id || blogData.id === '') {
+                delete blogData.id;
+            }
+
+            // Validate required fields
+            if (!blogData.title || blogData.title.trim() === '') {
+                showNotification('Title is required', 'error');
+                return;
+            }
+            if (!blogData.author || blogData.author.trim() === '') {
+                showNotification('Author is required', 'error');
+                return;
+            }
+            if (!blogData.content || blogData.content.trim() === '') {
+                showNotification('Content is required', 'error');
+                return;
+            }
+            if (!blogData.categories || blogData.categories.length === 0) {
+                showNotification('Please select a category', 'error');
+                return;
+            }
+
+            // Use blogData for the request
+            Object.assign(data, blogData);
+
+            // Remove any fields that shouldn't be sent
+            const allowedFields = ['id', 'title', 'author', 'content', 'image', 'categories', 'is_featured', 'is_published', 'is_active'];
+            Object.keys(data).forEach(key => {
+                if (!allowedFields.includes(key)) {
                     delete data[key];
                 }
-            }
+            });
 
-            // Convert numeric fields
-            if (['rating', 'enrollments', 'duration_hours'].includes(key) && data[key]) {
-                data[key] = parseFloat(data[key]) || 0;
-            }
-        });
-
-        // Handle categories array for blog posts
-        if (type === 'blog' && data.categories) {
-            try {
-                data.categories = JSON.parse(data.categories);
-            } catch (e) {
-                data.categories = [];
-            }
+            console.log('Cleaned blog data:', data);
         }
-
-        // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
-        // Keep is_active as false until manual reactivation
-        if (id && currentSection === 'expired-content') {
-            // If we're editing from expired section, preserve the inactive state
-            // unless explicitly changing it
-            if (typeof data.is_active === 'undefined') {
-                data.is_active = false;
-            }
-        } else {
-            // For normal edits, sync featured state with active state for new items
-            if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
-                data.is_featured = data.is_active;
-            }
-        }
-
-        // For new items, remove the ID field completely
-        if (!id || id === '') {
-            delete data.id;
-        }
-
-        // Validate required fields
-        const required_fields = {
-            'course': ['title', 'category', 'instructor', 'application_link'],
-            'job': ['title', 'company', 'location', 'application_link'],
-            'internship': ['title', 'company', 'location', 'application_link'],
-            'blog': ['title', 'author', 'content', 'categories']
-        };
-
-        if (type in required_fields) {
-            for (const field of required_fields[type]) {
-                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
-                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
-                    return;
+        // Handle courses
+        else if (type === 'courses') {
+            // Convert checkbox values to boolean
+            Object.keys(data).forEach(key => {
+                if (data[key] === 'on') {
+                    data[key] = true;
+                } else if (data[key] === 'off') {
+                    data[key] = false;
+                } else if (data[key] === '') {
+                    // Keep empty strings for description, content, etc.
+                    if (!['description', 'content', 'image'].includes(key)) {
+                        delete data[key];
+                    }
                 }
+            });
+
+            // Ensure price is properly handled
+            if (data.price === '' || data.price === undefined) {
+                data.price = 'Free';
+            }
+
+            // For new items, remove the ID field completely
+            if (!id || id === '') {
+                delete data.id;
+            }
+        }
+        // Handle jobs
+        else if (type === 'jobs') {
+            // Convert checkbox values to boolean
+            Object.keys(data).forEach(key => {
+                if (data[key] === 'on') {
+                    data[key] = true;
+                } else if (data[key] === 'off') {
+                    data[key] = false;
+                } else if (data[key] === '') {
+                    // Keep empty strings for description
+                    if (!['description'].includes(key)) {
+                        delete data[key];
+                    }
+                }
+            });
+
+            // For new items, remove the ID field completely
+            if (!id || id === '') {
+                delete data.id;
+            }
+        }
+        // Handle internships
+        else if (type === 'internships') {
+            // Convert checkbox values to boolean
+            Object.keys(data).forEach(key => {
+                if (data[key] === 'on') {
+                    data[key] = true;
+                } else if (data[key] === 'off') {
+                    data[key] = false;
+                } else if (data[key] === '') {
+                    // Keep empty strings for description
+                    if (!['description'].includes(key)) {
+                        delete data[key];
+                    }
+                }
+            });
+
+            // For new items, remove the ID field completely
+            if (!id || id === '') {
+                delete data.id;
+            }
+        }
+        // Handle other sections (users, messages, newsletter)
+        else {
+            // Convert checkbox values to boolean
+            Object.keys(data).forEach(key => {
+                if (data[key] === 'on') {
+                    data[key] = true;
+                } else if (data[key] === 'off') {
+                    data[key] = false;
+                } else if (data[key] === '') {
+                    delete data[key];
+                }
+            });
+
+            // For new items, remove the ID field completely
+            if (!id || id === '') {
+                delete data.id;
             }
         }
 
+        // Determine the correct endpoint
         const url = id ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
         const method = id ? 'PUT' : 'POST';
 
-        // Show loading state
+        console.log(`Sending ${method} request to ${url} with data:`, data);
+
         showLoading();
 
         fetch(url, {
             method: method,
             credentials: 'include',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(data)
         })
         .then(response => {
+            console.log('Response status:', response.status);
             if (!response.ok) {
                 return response.json().then(errorData => {
-                    throw new Error(errorData.message || `Failed to ${id ? 'update' : 'create'} ${type}`);
+                    console.error('Error response:', errorData);
+                    throw new Error(errorData.message || errorData.error || `Failed to ${id ? 'update' : 'create'} ${type}`);
                 });
             }
             return response.json();
         })
         .then(result => {
+            console.log('Success response:', result);
             if (result.success) {
                 showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
 
@@ -4772,21 +4909,19 @@
                 closeModal();
                 form.reset();
 
-                // Clear categories if it's a blog form
+                // Clear category if it's a blog form
                 if (type === 'blog' && blogCategoriesManager) {
                     blogCategoriesManager.clearSelections();
                 }
 
                 // Reload the appropriate section
                 if (currentSection === 'expired-content') {
-                    // If we're in expired section, reload expired content
                     loadExpiredContentData(currentExpiredPage);
                 } else {
-                    // Otherwise reload the current section
                     loadSectionData(type, currentPage[type]);
                 }
             } else {
-                showNotification(result.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+                showNotification(result.message || result.error || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
             }
         })
         .catch(error => {

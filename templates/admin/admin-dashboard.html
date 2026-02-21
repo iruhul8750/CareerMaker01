@@ -1128,50 +1128,21 @@
                             </div>
                         </div>
 
-                        <!-- PROFESSIONAL MULTI-SELECT DROPDOWN -->
+                        <!-- PROFESSIONAL SELECT DROPDOWN -->
                         <div class="form-group">
-                            <div class="custom-multi-select">
-                                <div class="select-header" id="blogCategoriesHeader">
-                                    <span class="selected-text">Select categories...</span>
-                                    <i class="fas fa-chevron-down"></i>
-                                </div>
-                                <div class="select-options" id="blogCategoriesOptions">
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_career" value="Career Advice">
-                                        <label for="cat_career">Career Advice</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_resume" value="Resume Tips">
-                                        <label for="cat_resume">Resume Tips</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_interview" value="Interviewing">
-                                        <label for="cat_interview">Interviewing</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_news" value="Industry News">
-                                        <label for="cat_news">Industry News</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_development" value="Professional Development">
-                                        <label for="cat_development">Professional Development</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_jobsearch" value="Job Search">
-                                        <label for="cat_jobsearch">Job Search</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_skills" value="Skills Development">
-                                        <label for="cat_skills">Skills Development</label>
-                                    </div>
-                                    <div class="option-item">
-                                        <input type="checkbox" id="cat_workplace" value="Workplace Tips">
-                                        <label for="cat_workplace">Workplace Tips</label>
-                                    </div>
-                                </div>
-                                <div class="selected-tags" id="blogCategoriesTags"></div>
-                                <input type="hidden" name="categories" id="blogCategoriesHidden">
-                            </div>
+                            <label for="blogCategory">Category</label>
+                            <select id="blogCategory" name="category" required>
+                                <option value="">Select a category...</option>
+                                <option value="Career Advice">Career Advice</option>
+                                <option value="Resume Tips">Resume Tips</option>
+                                <option value="Interviewing">Interviewing</option>
+                                <option value="Industry News">Industry News</option>
+                                <option value="Professional Development">Professional Development</option>
+                                <option value="Job Search">Job Search</option>
+                                <option value="Skills Development">Skills Development</option>
+                                <option value="Workplace Tips">Workplace Tips</option>
+                            </select>
+                            <input type="hidden" name="categories" id="blogCategoriesHidden">
                         </div>
 
                         <div class="form-group">
