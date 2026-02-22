@@ -3213,12 +3213,13 @@ def testimonial_auth_check():
 
 @app.route('/api/testimonial/list')
 def testimonial_list():
-    """Get all testimonials with profile pictures - FIXED VERSION"""
+    """Get all testimonials with profile pictures - EXCLUDE SOFT DELETED"""
     try:
-        # Get testimonials
+        # Get testimonials - ONLY ACTIVE AND NOT DELETED
         response = supabase_admin.table('testimonials') \
             .select('*') \
             .eq('is_active', True) \
+            .eq('is_deleted', False) \
             .order('created_at', desc=True) \
             .limit(12) \
             .execute()
@@ -3235,14 +3236,12 @@ def testimonial_list():
             # Get username
             username = item.get('username', 'Anonymous')
 
-            # Get profile picture - FIXED: Use the profile_pic stored in testimonials table
+            # Get profile picture
             profile_pic_path = item.get('profile_pic')
 
             if profile_pic_path:
-                # Generate URL for profile-pictures bucket
                 item['profile_pic_url'] = generate_profile_pic_url(profile_pic_path)
             else:
-                # If no profile pic in testimonials, try to get from users table
                 user_id = item.get('user_id')
                 if user_id:
                     user_profile_pic = get_user_profile_pic_from_users_table(user_id)
@@ -3394,11 +3393,14 @@ def update_testimonial(testimonial_id):
 
 
 @app.route('/api/testimonial/delete/<testimonial_id>', methods=['DELETE'])
+@login_required
 def delete_testimonial(testimonial_id):
-    """Delete a testimonial"""
+    """Delete a testimonial - Soft delete for user testimonials"""
     try:
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+        user_id = session['user_id']
 
         # Verify ownership
         testimonial = supabase_admin.table('testimonials') \
@@ -3410,17 +3412,28 @@ def delete_testimonial(testimonial_id):
         if not testimonial.data:
             return jsonify({'success': False, 'message': 'Testimonial not found'}), 404
 
-        if str(testimonial.data['user_id']) != str(session['user_id']):
+        if str(testimonial.data['user_id']) != str(user_id):
             return jsonify({'success': False, 'message': 'Not authorized'}), 403
 
-        # Delete testimonial
+        # Soft delete - mark as deleted and inactive but keep in database
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
         result = supabase_admin.table('testimonials') \
-            .delete() \
+            .update(update_data) \
             .eq('id', testimonial_id) \
             .execute()
 
         if result.data:
-            return jsonify({'success': True, 'message': 'Testimonial deleted successfully'})
+            logger.info(f"✅ User {user_id} deleted testimonial {testimonial_id}")
+            return jsonify({
+                'success': True,
+                'message': 'Testimonial deleted successfully'
+            })
         else:
             return jsonify({'success': False, 'message': 'Failed to delete testimonial'}), 500
 
@@ -4979,7 +4992,7 @@ def toggle_resource_featured(resource, id):
 def bulk_delete_resources(resource):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
         if resource not in valid_resources:
             return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
 
@@ -4993,17 +5006,42 @@ def bulk_delete_resources(resource):
         table_map = {
             'blog': 'blog_posts',
             'messages': 'contact_messages',
-            'newsletter': 'newsletter_subscribers'
+            'newsletter': 'newsletter_subscribers',
+            'testimonials': 'testimonials'
         }
         table_name = table_map.get(resource, resource)
 
-        # Delete items from database
-        response = supabase_admin.table(table_name).delete().in_('id', ids).execute()
+        # For content that should go to trash, soft delete
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']
 
-        return jsonify({
-            'success': True,
-            'message': f'{len(response.data) if response.data else 0} {resource} deleted successfully'
-        })
+        if table_name in trash_tables:
+            # Soft delete - move to trash
+            update_data = {
+                'is_deleted': True,
+                'deleted_at': get_current_utc_time().isoformat(),
+                'updated_at': get_current_utc_time().isoformat()
+            }
+
+            if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+                update_data['is_active'] = False
+                update_data['is_featured'] = False
+
+            response = supabase_admin.table(table_name).update(update_data).in_('id', ids).execute()
+            updated_count = len(response.data) if response.data else 0
+
+            return jsonify({
+                'success': True,
+                'message': f'{updated_count} {resource} moved to trash',
+                'moved_to_trash': True
+            })
+        else:
+            # For other tables, permanent delete
+            response = supabase_admin.table(table_name).delete().in_('id', ids).execute()
+
+            return jsonify({
+                'success': True,
+                'message': f'{len(response.data) if response.data else 0} {resource} deleted successfully'
+            })
 
     except Exception as e:
         logger.error(f"Error bulk deleting {resource}: {str(e)}")
@@ -5085,7 +5123,7 @@ def bulk_update_resource_status(resource):
 def get_admin_resources(resource):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
         if resource not in valid_resources:
             return jsonify({'error': 'Invalid resource type'}), 400
 
@@ -5097,12 +5135,17 @@ def get_admin_resources(resource):
         table_map = {
             'blog': 'blog_posts',
             'messages': 'contact_messages',
-            'newsletter': 'newsletter_subscribers'
+            'newsletter': 'newsletter_subscribers',
+            'testimonials': 'testimonials'
         }
         table_name = table_map.get(resource, resource)
 
-        # Build base query - NO EXPIRATION FILTER for admin
+        # Build base query - EXCLUDE soft-deleted items
         query = supabase_admin.table(table_name).select('*')
+
+        # Add is_deleted = False filter for tables that support soft delete
+        if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']:
+            query = query.eq('is_deleted', False)
 
         # Apply search filters
         if search:
@@ -5120,8 +5163,10 @@ def get_admin_resources(resource):
                 query = query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
                 query = query.ilike('email', f'%{search}%')
+            elif resource == 'testimonials':
+                query = query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
 
-        # Apply ordering - NO EXPIRATION FILTER for admin
+        # Apply ordering
         if resource == 'messages':
             query = query.order('created_at', desc=True)
         elif resource == 'newsletter':
@@ -5134,23 +5179,33 @@ def get_admin_resources(resource):
         end_idx = start_idx + per_page - 1
         data_response = query.range(start_idx, end_idx).execute()
 
-        # Count query - NO EXPIRATION FILTER for admin
+        # Count query - EXCLUDE soft-deleted items
         count_query = supabase_admin.table(table_name).select('id', count='exact')
+
+        if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']:
+            count_query = count_query.eq('is_deleted', False)
+
         if search:
             if resource == 'courses':
-                count_query = count_query.or_(f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
+                count_query = count_query.or_(
+                    f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
             elif resource == 'jobs':
-                count_query = count_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
+                count_query = count_query.or_(
+                    f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'internships':
-                count_query = count_query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
+                count_query = count_query.or_(
+                    f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'blog':
-                count_query = count_query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
+                count_query = count_query.or_(
+                    f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
             elif resource == 'users':
                 count_query = count_query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
             elif resource == 'messages':
                 count_query = count_query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
                 count_query = count_query.ilike('email', f'%{search}%')
+            elif resource == 'testimonials':
+                count_query = count_query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
 
         count_response = count_query.execute()
         total_count = count_response.count or 0
@@ -5204,7 +5259,7 @@ def get_admin_resource(resource, id):
 def delete_admin_resource(resource, id):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
         if resource not in valid_resources:
             return jsonify({'error': 'Invalid resource type'}), 400
 
@@ -5212,17 +5267,62 @@ def delete_admin_resource(resource, id):
         table_map = {
             'blog': 'blog_posts',
             'messages': 'contact_messages',
-            'newsletter': 'newsletter_subscribers'
+            'newsletter': 'newsletter_subscribers',
+            'testimonials': 'testimonials'
         }
-        table_name = table_map.get(resource, resource)
 
-        # Delete item from database
-        response = supabase_admin.table(table_name).delete().eq('id', id).execute()
+        # Handle plural resources vs table names
+        if resource in ['courses', 'jobs', 'internships']:
+            table_name = resource
+        else:
+            table_name = table_map.get(resource, resource)
 
-        if not response.data:
-            return jsonify({'error': f'{resource[:-1]} not found'}), 404
+        logger.info(f"Delete request - Resource: {resource}, Table: {table_name}, ID: {id}")
 
-        return jsonify({'success': True, 'message': f'{resource[:-1]} deleted successfully'})
+        # Check if item exists
+        existing = supabase_admin.table(table_name).select('id').eq('id', id).execute()
+        if not existing.data:
+            return jsonify({'error': f'{resource} not found'}), 404
+
+        # For content that should go to trash, soft delete
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']
+
+        if table_name in trash_tables:
+            # Soft delete - move to trash
+            update_data = {
+                'is_deleted': True,
+                'deleted_at': get_current_utc_time().isoformat(),
+                'updated_at': get_current_utc_time().isoformat()
+            }
+
+            # For content that uses is_active, set to inactive
+            if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+                update_data['is_active'] = False
+                update_data['is_featured'] = False
+
+            # For testimonials, also set is_active to False
+            if table_name == 'testimonials':
+                update_data['is_active'] = False
+
+            response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
+
+            if response.data:
+                logger.info(f"✅ Moved {resource} {id} to trash")
+                return jsonify({
+                    'success': True,
+                    'message': f'{resource} moved to trash',
+                    'moved_to_trash': True
+                })
+            else:
+                return jsonify({'error': f'Failed to delete {resource}'}), 500
+        else:
+            # For other tables (users, messages, newsletter), permanent delete
+            response = supabase_admin.table(table_name).delete().eq('id', id).execute()
+
+            if response.data:
+                return jsonify({'success': True, 'message': f'{resource} deleted successfully'})
+            else:
+                return jsonify({'error': f'Failed to delete {resource}'}), 500
 
     except Exception as e:
         logger.error(f"Error deleting {resource}: {str(e)}")
@@ -5976,59 +6076,46 @@ def get_testimonial_stats():
 @app.route('/api/admin/testimonials')
 @admin_required
 def get_admin_testimonials():
-    """Get all testimonials for admin management - COMPLETELY REWRITTEN"""
+    """Get all testimonials for admin management - EXCLUDE SOFT DELETED by default"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = 10
         search = request.args.get('search', '')
         status = request.args.get('status', '')  # active, inactive, all
+        show_deleted = request.args.get('show_deleted', 'false')  # For trash view
 
-        logger.info(f"Fetching testimonials - page: {page}, search: '{search}', status: '{status}'")
+        logger.info(
+            f"Fetching testimonials - page: {page}, search: '{search}', status: '{status}', show_deleted: {show_deleted}")
 
-        # SIMPLE APPROACH: Get all testimonials and handle filtering/pagination manually
-        response = supabase_admin.table('testimonials').select('*').execute()
+        # Base query
+        query = supabase_admin.table('testimonials').select('*')
 
-        if not hasattr(response, 'data'):
-            logger.warning("No data attribute in response")
-            return jsonify({
-                'success': True,
-                'testimonials': [],
-                'total_count': 0,
-                'per_page': per_page,
-                'page': page
-            })
-
-        all_testimonials = response.data
-        logger.info(f"Retrieved {len(all_testimonials)} testimonials from database")
-
-        # Apply search filter
-        if search:
-            search_lower = search.lower()
-            all_testimonials = [
-                t for t in all_testimonials
-                if (t.get('username', '').lower().find(search_lower) >= 0 or
-                    t.get('content', '').lower().find(search_lower) >= 0)
-            ]
-            logger.info(f"After search filter: {len(all_testimonials)} testimonials")
+        # Filter out deleted items unless specifically requested (for trash)
+        if show_deleted != 'true':
+            query = query.eq('is_deleted', False)
 
         # Apply status filter
         if status == 'active':
-            all_testimonials = [t for t in all_testimonials if t.get('is_active', True)]
-            logger.info(f"After active filter: {len(all_testimonials)} testimonials")
+            query = query.eq('is_active', True)
         elif status == 'inactive':
-            all_testimonials = [t for t in all_testimonials if not t.get('is_active', True)]
-            logger.info(f"After inactive filter: {len(all_testimonials)} testimonials")
+            query = query.eq('is_active', False)
 
-        # Sort by creation date (newest first)
+        # Apply search
+        if search:
+            query = query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
+
+        # Get total count
+        count_response = query.execute()
+        all_testimonials = count_response.data
+        total_count = len(all_testimonials)
+
+        # Sort by created_at (newest first)
         all_testimonials.sort(key=lambda x: x.get('created_at', ''), reverse=True)
 
         # Manual pagination
-        total_count = len(all_testimonials)
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         paginated_testimonials = all_testimonials[start_idx:end_idx]
-
-        logger.info(f"Pagination: showing {len(paginated_testimonials)} of {total_count} testimonials")
 
         # Enhance testimonials with additional data
         enhanced_testimonials = []
@@ -6057,7 +6144,6 @@ def get_admin_testimonials():
             profile_pic_path = testimonial.get('profile_pic')
             if profile_pic_path:
                 try:
-                    # Extract project reference from your supabase_url
                     project_ref = supabase_url.split('//')[1].split('.')[0]
                     enhanced[
                         'profile_pic_url'] = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{profile_pic_path}"
@@ -6071,8 +6157,6 @@ def get_admin_testimonials():
 
             enhanced_testimonials.append(enhanced)
 
-        logger.info(f"Successfully processed {len(enhanced_testimonials)} testimonials")
-
         return jsonify({
             'success': True,
             'testimonials': enhanced_testimonials,
@@ -6083,10 +6167,7 @@ def get_admin_testimonials():
 
     except Exception as e:
         logger.error(f"Error getting admin testimonials: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': f'Server error: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/admin/testimonials/<testimonial_id>')
 @admin_required
@@ -6143,10 +6224,53 @@ def update_testimonial_status(testimonial_id):
         return jsonify({'success': False, 'error': 'Failed to update testimonial status'}), 500
 
 
+@app.route('/api/admin/testimonials/<testimonial_id>', methods=['DELETE'])
+@admin_required
+def delete_admin_testimonial(testimonial_id):
+    """Admin delete testimonial - Soft delete (move to trash)"""
+    try:
+        # Check if testimonial exists
+        testimonial = supabase_admin.table('testimonials') \
+            .select('*') \
+            .eq('id', testimonial_id) \
+            .single() \
+            .execute()
+
+        if not testimonial.data:
+            return jsonify({'success': False, 'error': 'Testimonial not found'}), 404
+
+        # Soft delete - mark as deleted but keep in database
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        result = supabase_admin.table('testimonials') \
+            .update(update_data) \
+            .eq('id', testimonial_id) \
+            .execute()
+
+        if result.data:
+            logger.info(f"✅ Admin deleted testimonial {testimonial_id} (soft delete)")
+            return jsonify({
+                'success': True,
+                'message': 'Testimonial moved to trash',
+                'moved_to_trash': True
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to delete testimonial'}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting testimonial: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/testimonials/bulk-delete', methods=['POST'])
 @admin_required
 def bulk_delete_testimonials():
-    """Bulk delete testimonials"""
+    """Bulk soft delete testimonials"""
     try:
         data = request.get_json()
         testimonial_ids = data.get('ids', [])
@@ -6154,9 +6278,16 @@ def bulk_delete_testimonials():
         if not testimonial_ids:
             return jsonify({'success': False, 'error': 'No testimonials selected'}), 400
 
-        # Delete testimonials
+        # Soft delete testimonials (mark as deleted)
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
         result = supabase_admin.table('testimonials') \
-            .delete() \
+            .update(update_data) \
             .in_('id', testimonial_ids) \
             .execute()
 
@@ -6164,8 +6295,9 @@ def bulk_delete_testimonials():
 
         return jsonify({
             'success': True,
-            'message': f'{deleted_count} testimonials deleted successfully',
-            'deleted_count': deleted_count
+            'message': f'{deleted_count} testimonials moved to trash',
+            'deleted_count': deleted_count,
+            'moved_to_trash': True
         })
 
     except Exception as e:
@@ -6901,6 +7033,441 @@ def bulk_delete_expired_content():
     except Exception as e:
         logger.error(f"Error in bulk delete expired content: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to delete items'}), 500
+
+
+# ===== TRASH MANAGEMENT ROUTES =====
+
+@app.route('/api/admin/trash/stats')
+@admin_required
+def trash_stats():
+    """Get statistics of items in trash - EXCLUDE HIDDEN ITEMS"""
+    try:
+        stats = {
+            'courses': 0,
+            'jobs': 0,
+            'internships': 0,
+            'blog_posts': 0,
+            'testimonials': 0,
+            'total': 0
+        }
+
+        # Get count of soft-deleted items that are NOT hidden from trash
+        try:
+            courses = supabase_admin.table('courses') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['courses'] = courses.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted courses: {str(e)}")
+
+        try:
+            jobs = supabase_admin.table('jobs') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['jobs'] = jobs.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted jobs: {str(e)}")
+
+        try:
+            internships = supabase_admin.table('internships') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['internships'] = internships.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted internships: {str(e)}")
+
+        try:
+            blog_posts = supabase_admin.table('blog_posts') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['blog_posts'] = blog_posts.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted blog posts: {str(e)}")
+
+        try:
+            testimonials = supabase_admin.table('testimonials') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['testimonials'] = testimonials.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted testimonials: {str(e)}")
+
+        stats['total'] = stats['courses'] + stats['jobs'] + stats['internships'] + stats['blog_posts'] + stats[
+            'testimonials']
+
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting trash stats: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash')
+@admin_required
+def get_trash_items():
+    """Get all items in trash with pagination - EXCLUDE HIDDEN ITEMS"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        search = request.args.get('search', '')
+        content_type = request.args.get('type', '')
+
+        all_trash_items = []
+
+        # Get trash items from each table - EXCLUDE hidden items
+        tables = [
+            ('courses', 'course', ['title', 'company']),
+            ('jobs', 'job', ['title', 'company']),
+            ('internships', 'internship', ['title', 'company']),
+            ('blog_posts', 'blog', ['title', 'author']),
+            ('testimonials', 'testimonial', ['content', 'username'])
+        ]
+
+        for table, type_name, search_fields in tables:
+            if not content_type or content_type == type_name + 's' or content_type == 'all':
+                try:
+                    # Only get items that are deleted AND NOT hidden from trash
+                    query = supabase_admin.table(table) \
+                        .select('*') \
+                        .eq('is_deleted', True) \
+                        .eq('hidden_from_trash', False)  # Add this filter
+
+                    if search:
+                        if table == 'testimonials':
+                            query = query.or_(f"content.ilike.%{search}%,username.ilike.%{search}%")
+                        elif table == 'blog_posts':
+                            query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%")
+                        else:
+                            query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
+
+                    items = query.order('deleted_at', desc=True).execute().data or []
+
+                    for item in items:
+                        all_trash_items.append({
+                            'id': item['id'],
+                            'content_type': type_name,
+                            'table_name': table,
+                            'title': item.get('title') or item.get('content', 'Untitled')[:50],
+                            'subtitle': item.get('company') or item.get('author') or item.get('username', 'Unknown'),
+                            'deleted_at': item.get('deleted_at'),
+                            'created_at': item.get('created_at'),
+                            'data': item
+                        })
+                except Exception as e:
+                    logger.warning(f"Error fetching {table} trash: {str(e)}")
+
+        # Sort by deletion date (newest first)
+        all_trash_items.sort(key=lambda x: x['deleted_at'] or '', reverse=True)
+
+        # Pagination
+        total_count = len(all_trash_items)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_items = all_trash_items[start_idx:end_idx]
+
+        return jsonify({
+            'success': True,
+            'data': paginated_items,
+            'count': total_count,
+            'per_page': per_page,
+            'page': page
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting trash items: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash/restore/<string:content_type>/<string:content_id>', methods=['POST'])
+@admin_required
+def restore_trash_item(content_type, content_id):
+    """Restore a single item from trash"""
+    try:
+        table_map = {
+            'course': 'courses',
+            'job': 'jobs',
+            'internship': 'internships',
+            'blog': 'blog_posts',
+            'testimonial': 'testimonials'
+        }
+
+        if content_type not in table_map:
+            return jsonify({'success': False, 'error': 'Invalid content type'}), 400
+
+        table_name = table_map[content_type]
+
+        # Check if item exists and is deleted
+        item = supabase_admin.table(table_name).select('*').eq('id', content_id).eq('is_deleted', True).execute()
+
+        if not item.data:
+            return jsonify({'success': False, 'error': 'Item not found in trash'}), 404
+
+        # Restore the item
+        update_data = {
+            'is_deleted': False,
+            'deleted_at': None,
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        # For content that uses is_active, set to active on restore
+        if content_type in ['course', 'job', 'internship', 'blog']:
+            update_data['is_active'] = True
+            update_data['is_featured'] = False  # Not featured by default on restore
+
+        result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
+
+        if result.data:
+            logger.info(f"✅ Restored {content_type} {content_id} from trash")
+            return jsonify({
+                'success': True,
+                'message': f'{content_type.title()} restored successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to restore item'}), 500
+
+    except Exception as e:
+        logger.error(f"Error restoring trash item: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash/bulk-restore', methods=['POST'])
+@admin_required
+def bulk_restore_trash_items():
+    """Bulk restore multiple items from trash"""
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+
+        if not items:
+            return jsonify({'success': False, 'error': 'No items selected'}), 400
+
+        results = {
+            'successful': [],
+            'failed': []
+        }
+
+        for item in items:
+            content_type = item.get('content_type')
+            content_id = item.get('content_id')
+            table_name = item.get('table_name')
+
+            if not content_type or not content_id or not table_name:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': 'Missing required data'
+                })
+                continue
+
+            try:
+                update_data = {
+                    'is_deleted': False,
+                    'deleted_at': None,
+                    'updated_at': get_current_utc_time().isoformat()
+                }
+
+                if content_type in ['course', 'job', 'internship', 'blog']:
+                    update_data['is_active'] = True
+                    update_data['is_featured'] = False
+
+                result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
+
+                if result.data:
+                    results['successful'].append({
+                        'content_type': content_type,
+                        'content_id': content_id
+                    })
+                else:
+                    results['failed'].append({
+                        'content_type': content_type,
+                        'content_id': content_id,
+                        'reason': 'Update failed'
+                    })
+            except Exception as e:
+                results['failed'].append({
+                    'content_type': content_type,
+                    'content_id': content_id,
+                    'reason': str(e)
+                })
+
+        return jsonify({
+            'success': len(results['failed']) == 0,
+            'message': f"Restored {len(results['successful'])} items successfully",
+            'results': results
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk restoring trash items: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash/empty', methods=['POST'])
+@admin_required
+def empty_trash():
+    """Permanently delete all items in trash"""
+    try:
+        data = request.get_json()
+        content_type = data.get('type', 'all')  # 'all' or specific type
+
+        deleted_counts = {}
+        tables_to_empty = []
+
+        if content_type == 'all':
+            tables_to_empty = [
+                ('courses', 'course'),
+                ('jobs', 'job'),
+                ('internships', 'internship'),
+                ('blog_posts', 'blog'),
+                ('testimonials', 'testimonial')
+            ]
+        else:
+            table_map = {
+                'courses': ('courses', 'course'),
+                'jobs': ('jobs', 'job'),
+                'internships': ('internships', 'internship'),
+                'blog_posts': ('blog_posts', 'blog'),
+                'testimonials': ('testimonials', 'testimonial')
+            }
+            if content_type in table_map:
+                tables_to_empty.append(table_map[content_type])
+
+        for table_name, type_name in tables_to_empty:
+            try:
+                # Delete all items marked as deleted
+                result = supabase_admin.table(table_name).delete().eq('is_deleted', True).execute()
+                deleted_counts[type_name] = len(result.data) if result.data else 0
+            except Exception as e:
+                logger.warning(f"Error emptying {table_name} trash: {str(e)}")
+                deleted_counts[type_name] = 0
+
+        total_deleted = sum(deleted_counts.values())
+
+        return jsonify({
+            'success': True,
+            'message': f'Permanently deleted {total_deleted} items from trash',
+            'deleted_counts': deleted_counts
+        })
+
+    except Exception as e:
+        logger.error(f"Error emptying trash: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash/clear-old', methods=['POST'])
+@admin_required
+def clear_old_trash_items():
+    """Permanently delete trash items older than specified days"""
+    try:
+        data = request.get_json()
+        days = data.get('days', 30)  # Default: delete items older than 30 days
+
+        cutoff_date = (get_current_utc_time() - timedelta(days=days)).isoformat()
+
+        tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']
+        deleted_counts = {}
+
+        for table_name in tables:
+            try:
+                result = supabase_admin.table(table_name).delete().eq('is_deleted', True).lt('deleted_at',
+                                                                                             cutoff_date).execute()
+                deleted_counts[table_name] = len(result.data) if result.data else 0
+            except Exception as e:
+                logger.warning(f"Error clearing old {table_name} trash: {str(e)}")
+                deleted_counts[table_name] = 0
+
+        total_deleted = sum(deleted_counts.values())
+
+        return jsonify({
+            'success': True,
+            'message': f'Permanently deleted {total_deleted} items older than {days} days',
+            'deleted_counts': deleted_counts
+        })
+
+    except Exception as e:
+        logger.error(f"Error clearing old trash: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/trash/hide-permanently', methods=['POST'])
+@admin_required
+def hide_trash_items_permanently():
+    """Hide items from trash permanently (mark as hidden)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        items = data.get('items', [])
+
+        if not items:
+            return jsonify({'success': False, 'error': 'No items provided'}), 400
+
+        results = {
+            'successful': [],
+            'failed': []
+        }
+
+        for item in items:
+            content_type = item.get('content_type')
+            content_id = item.get('content_id')
+            table_name = item.get('table_name')
+
+            if not content_type or not content_id or not table_name:
+                results['failed'].append({
+                    'content_id': content_id,
+                    'reason': 'Missing required data'
+                })
+                continue
+
+            try:
+                # Mark as hidden from trash (but keep in database)
+                update_data = {
+                    'hidden_from_trash': True,
+                    'updated_at': get_current_utc_time().isoformat()
+                }
+
+                result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
+
+                if result.data:
+                    results['successful'].append({
+                        'content_type': content_type,
+                        'content_id': content_id
+                    })
+                    logger.info(f"✅ Item {content_id} hidden from trash")
+                else:
+                    results['failed'].append({
+                        'content_id': content_id,
+                        'reason': 'Update failed - no data returned'
+                    })
+            except Exception as e:
+                logger.error(f"Error hiding item {content_id}: {str(e)}")
+                results['failed'].append({
+                    'content_id': content_id,
+                    'reason': str(e)
+                })
+
+        return jsonify({
+            'success': len(results['failed']) == 0 or len(results['successful']) > 0,
+            'message': f"Hidden {len(results['successful'])} items from trash",
+            'results': results
+        })
+
+    except Exception as e:
+        logger.error(f"Error hiding trash items: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Terms and condition routes
 @app.route('/privacy')

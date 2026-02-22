@@ -106,7 +106,10 @@
         blog: 1,
         users: 1,
         messages: 1,
-        newsletter: 1
+        newsletter: 1,
+        testimonials: 1,
+        'expired-content': 1,
+        trash: 1  // Add this line
     };
     let currentSection = sessionStorage.getItem('currentSection') || 'dashboard';
     const itemsPerPage = 10;
@@ -293,6 +296,15 @@
         const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
         console.log('Fresh login detected:', isFreshLogin);
 
+        // Define valid sections including ALL sections
+        const validSections = [
+            'dashboard', 'courses', 'jobs', 'internships',
+            'blog', 'newsletter', 'testimonials',
+            'expired-content', 'users', 'messages', 'trash'
+        ];
+
+        console.log('Valid sections:', validSections);
+
         // If fresh login, always start with dashboard and set session flag
         if (isFreshLogin) {
             sessionStorage.setItem('adminSessionStarted', 'true');
@@ -310,7 +322,7 @@
             // Show greeting message immediately
             displayWelcomeMessage();
 
-            // Force dashboard regardless of URL/history - with micro loaders
+            // Force dashboard
             const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
             const dashboardSection = document.getElementById('dashboard');
 
@@ -333,50 +345,61 @@
                 // Show micro loaders on dashboard stats immediately
                 console.log('📊 Showing micro loaders on dashboard stats...');
                 loadDashboardStats();
-
-                // Also load notifications and expired content stats
                 loadNotifications();
                 loadExpiredContentStats();
+                loadTrashStats(true);
 
                 console.log('✅ Fresh login: Dashboard loaded with micro loaders');
                 return;
             }
         }
 
-        // First, remove active class from all menu items and sections
-        document.querySelectorAll('.sidebar-menu a').forEach(item => {
-            item.classList.remove('active');
-        });
-        document.querySelectorAll('.admin-section').forEach(section => {
-            section.classList.remove('active');
-        });
+        // Priority 1: Check URL hash FIRST (most reliable on refresh)
+        const hash = window.location.hash.substring(1);
+        console.log('Current URL hash:', hash);
 
-        // Priority 1: Check browser history state
-        if (history.state && history.state.section) {
-            const menuItem = document.querySelector(`.sidebar-menu a[href="#${history.state.section}"]`);
-            const targetSection = document.getElementById(history.state.section);
+        if (hash && validSections.includes(hash)) {
+            console.log(`🔗 Restoring from URL hash: ${hash}`);
 
-            if (menuItem && targetSection) {
-                navigateToSection(history.state.section, menuItem, true);
-                return;
+            // Check if the section exists in DOM
+            const sectionExists = document.getElementById(hash) !== null;
+            console.log(`Section "${hash}" exists in DOM:`, sectionExists);
+
+            if (sectionExists) {
+                const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
+
+                if (menuItem) {
+                    navigateToSection(hash, menuItem, true);
+                    return;
+                } else {
+                    console.warn(`Menu item for "${hash}" not found`);
+                }
+            } else {
+                console.warn(`Section element for "${hash}" not found in DOM`);
             }
         }
 
-        // Priority 2: Check URL hash (user manually entered URL or bookmark)
-        const hash = window.location.hash.substring(1);
-        if (hash) {
-            const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
-            const targetSection = document.getElementById(hash);
+        // Priority 2: Check browser history state
+        if (history.state && history.state.section) {
+            const section = history.state.section;
+            console.log('History state section:', section);
 
-            if (menuItem && targetSection) {
-                navigateToSection(hash, menuItem, true);
-                return;
+            if (validSections.includes(section)) {
+                const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
+                const targetSection = document.getElementById(section);
+
+                if (menuItem && targetSection) {
+                    navigateToSection(section, menuItem, true);
+                    return;
+                }
             }
         }
 
         // Priority 3: Check session storage
         const savedSection = sessionStorage.getItem('currentSection');
-        if (savedSection && savedSection !== 'dashboard') {
+        console.log('Saved section from sessionStorage:', savedSection);
+
+        if (savedSection && validSections.includes(savedSection)) {
             const menuItem = document.querySelector(`.sidebar-menu a[href="#${savedSection}"]`);
             const targetSection = document.getElementById(savedSection);
 
@@ -386,11 +409,20 @@
             }
         }
 
-        // Default: Dashboard - Show with micro loaders
+        // Default: Dashboard
+        console.log('🏠 No saved section found, defaulting to dashboard');
         const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
         const dashboardSection = document.getElementById('dashboard');
 
         if (dashboardItem && dashboardSection) {
+            // Remove active class from all menu items and sections first
+            document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.admin-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
             // Activate dashboard
             dashboardItem.classList.add('active');
             dashboardSection.classList.add('active');
@@ -400,6 +432,7 @@
 
             // Update current section
             currentSection = 'dashboard';
+            sessionStorage.setItem('currentSection', 'dashboard');
 
             // Show greeting message for returning users too
             displayWelcomeMessage();
@@ -409,6 +442,7 @@
             loadDashboardStats();
             loadNotifications();
             loadExpiredContentStats();
+            loadTrashStats(true);
 
             console.log('✅ Default dashboard loaded with micro loaders');
         }
@@ -419,75 +453,166 @@
         console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
 
         // Update menu active state
-        const menuItems = document.querySelectorAll('.sidebar-menu a');
-        menuItems.forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.sidebar-menu a').forEach(item => {
+            item.classList.remove('active');
+        });
 
         if (menuItem) {
             menuItem.classList.add('active');
         } else {
-            // Find the corresponding menu item for the section
             const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
             if (correspondingMenuItem) {
                 correspondingMenuItem.classList.add('active');
             }
         }
 
-        // Hide all sections and show target section
+        // Hide all sections
         document.querySelectorAll('.admin-section').forEach(section => {
             section.classList.remove('active');
         });
 
         const sectionElement = document.getElementById(targetSection);
-        if (sectionElement) {
-            sectionElement.classList.add('active');
+        if (!sectionElement) {
+            console.error(`❌ Section element not found: ${targetSection}`);
+            // Fallback to dashboard
+            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+            if (dashboardItem) dashboardItem.click();
+            return;
+        }
 
-            // Update page title
-            let sectionName = 'Dashboard';
-            if (menuItem) {
-                sectionName = menuItem.querySelector('span').textContent;
-            } else {
-                const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
-                if (correspondingMenuItem) {
-                    sectionName = correspondingMenuItem.querySelector('span').textContent;
-                }
-            }
-            document.getElementById('pageTitle').textContent = sectionName + ' Management';
+        // Show target section
+        sectionElement.classList.add('active');
 
-            // Update current section and session storage
-            currentSection = targetSection;
-            sessionStorage.setItem('currentSection', targetSection);
+        // Helper function to get proper section name
+        function getSectionDisplayName(section) {
+            const names = {
+                'dashboard': 'Dashboard',
+                'courses': 'Courses',
+                'jobs': 'Jobs',
+                'internships': 'Internships',
+                'blog': 'Blog',
+                'newsletter': 'Newsletter',
+                'testimonials': 'Testimonials',
+                'expired-content': 'Expired Content',
+                'users': 'Users',
+                'messages': 'Messages',
+                'trash': 'Trash'
+            };
+            return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
+        }
 
-            // Load section data for ALL sections including dashboard
-            if (targetSection === 'dashboard') {
-                // Use micro loaders for dashboard - NO overlay
-                console.log('📊 Dashboard loading with micro loaders...');
+        // Update page title
+        const sectionName = getSectionDisplayName(targetSection);
+        document.getElementById('pageTitle').textContent = sectionName + ' Management';
 
-                // Show micro loaders and load data
+        // Update current section and session storage - THIS IS CRITICAL
+        currentSection = targetSection;
+        sessionStorage.setItem('currentSection', targetSection);
+        console.log(`💾 Saved to sessionStorage: ${targetSection}`);
+
+        // Initialize page number if not set
+        if (currentPage[targetSection] === undefined) {
+            currentPage[targetSection] = 1;
+        }
+
+        // Update browser history if not from popstate
+        if (!fromPopState) {
+            const state = {
+                section: targetSection,
+                page: currentPage[targetSection],
+                timestamp: Date.now()
+            };
+            history.pushState(state, '', `#${targetSection}`);
+            console.log(`📝 Updated URL hash to: #${targetSection}`);
+        }
+
+        // Load section data based on type
+        switch(targetSection) {
+            case 'dashboard':
+                console.log('📊 Loading dashboard...');
                 loadDashboardStats();
                 loadNotifications();
                 loadExpiredContentStats();
-            } else {
-                // Use regular loader for other sections
-                showLoading();
-                loadSectionData(targetSection).finally(() => {
-                    hideLoading();
-                });
-            }
+                loadTrashStats(true);
+                break;
 
-            // Update browser history if not from popstate event
-            if (!fromPopState) {
-                const state = {
-                    section: targetSection,
-                    timestamp: Date.now()
-                };
-                const title = `${sectionName} Management`;
-                const url = `#${targetSection}`;
+            case 'trash':
+                console.log('🗑️ Loading trash section, page:', currentPage.trash);
+                // Show loading in table
+                const trashTableBody = document.getElementById('trashTableBody');
+                if (trashTableBody) {
+                    trashTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
+                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+                // Load trash items with current page
+                loadTrashItems(currentPage.trash);
+                loadTrashStats(false);
+                break;
 
-                history.pushState(state, title, url);
-            }
+            case 'expired-content':
+                console.log('⏰ Loading expired content section, page:', currentPage['expired-content']);
+                const expiredTableBody = document.getElementById('expiredContentTableBody');
+                if (expiredTableBody) {
+                    expiredTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
+                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading expired content...</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+                if (typeof loadExpiredContentData === 'function') {
+                    loadExpiredContentData(currentPage['expired-content']);
+                }
+                break;
 
-            console.log(`✅ Navigated to ${targetSection} with appropriate loader`);
+            case 'testimonials':
+                console.log('💬 Loading testimonials section...');
+                if (window.testimonialManager) {
+                    if (!window.testimonialManager.isInitialized) {
+                        window.testimonialManager.init();
+                    } else {
+                        window.testimonialManager.loadTestimonialsData(currentPage.testimonials);
+                    }
+                }
+                break;
+
+            default:
+                // Handle all other sections (courses, jobs, internships, blog, users, messages, newsletter)
+                console.log(`📋 Loading ${targetSection} section, page:`, currentPage[targetSection]);
+
+                // Show loading in table
+                const tableBody = document.getElementById(`${targetSection}TableBody`);
+                if (tableBody) {
+                    const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="${colSpan}" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
+                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading ${sectionName.toLowerCase()}...</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Load section data
+                if (typeof loadSectionData === 'function') {
+                    loadSectionData(targetSection, currentPage[targetSection])
+                        .catch(error => {
+                            console.error(`Error loading ${targetSection}:`, error);
+                        });
+                }
+                break;
         }
+
+        console.log(`✅ Navigated to ${targetSection}`);
     }
 
     // Simple single category dropdown for blog posts
@@ -760,10 +885,11 @@
 
         // Enhanced browser back/forward button handling - No logout allowed
         window.addEventListener('popstate', function(event) {
+            console.log('🔙 Popstate event:', event.state);
+
             // If we're at the initial state and user tries to go back further
-            if (history.state && history.state.isInitial) {
+            if (event.state && event.state.isInitial) {
                 // We're at the beginning - prevent going back to login
-                // Push current state again to stay in the dashboard
                 const currentState = {
                     section: currentSection || 'dashboard',
                     timestamp: Date.now(),
@@ -775,20 +901,27 @@
                 return;
             }
 
-            // If no state (shouldn't happen with our setup), go to dashboard
-            if (!event.state) {
+            // If no state, go to dashboard
+            if (!event.state || !event.state.section) {
                 navigateToSection('dashboard', null, true);
                 return;
             }
 
-            // Normal navigation between sections
-            if (event.state.section) {
-                navigateToSection(event.state.section, null, true);
+            // Navigate to the section from history
+            const section = event.state.section;
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
+
+            if (menuItem) {
+                navigateToSection(section, menuItem, true);
+
+                // If page info exists in state, update current page
+                if (event.state.page && currentPage[section] !== undefined) {
+                    currentPage[section] = event.state.page;
+                }
             } else {
                 navigateToSection('dashboard', null, true);
             }
         });
-
         // Remove beforeunload warning for internal navigation
         window.addEventListener('beforeunload', function(e) {
             // Only show warning if not logging out intentionally
@@ -1073,6 +1206,9 @@
         .finally(() => {
             // Hide loading states
             hideStatsLoading();
+
+            // Always load trash stats separately (with micro loader)
+            loadTrashStats(true);
         });
     }
 
@@ -1080,22 +1216,15 @@
     function loadSectionData(section, page = 1, search = '', filters = {}) {
         console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}"`);
 
-        // Handle testimonials section separately using the testimonial manager
+        // Handle testimonials section separately
         if (section === 'testimonials') {
             console.log('🎯 Using testimonial manager for testimonials section');
-
             if (window.testimonialManager) {
                 if (!window.testimonialManager.isInitialized) {
-                    console.log('🔧 Initializing testimonial manager...');
                     window.testimonialManager.init();
                 } else {
-                    console.log('📥 Loading testimonials data...');
                     window.testimonialManager.loadTestimonialsData(page);
                 }
-            } else {
-                console.log('🚀 Creating new testimonial manager instance...');
-                window.testimonialManager = new TestimonialManager();
-                window.testimonialManager.init();
             }
             return Promise.resolve();
         }
@@ -1139,10 +1268,6 @@
             case 'newsletter':
                 endpoint = '/api/admin/newsletter';
                 break;
-            case 'testimonials':
-                // This case should not be reached due to early return above
-                endpoint = '/api/admin/testimonials';
-                break;
             default:
                 console.warn(`❌ Unknown section: ${section}`);
                 hideLoading();
@@ -1154,7 +1279,8 @@
         return fetch(`${endpoint}?${params.toString()}`, {
             credentials: 'include',
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
         .then(response => {
@@ -1168,11 +1294,9 @@
             renderTableData(section, data);
             updatePaginationInfo(section, data.count, page);
 
-            // Show success notification for non-dashboard sections
-            if (section !== 'dashboard') {
-                const itemCount = data.data ? data.data.length : 0;
-                showNotification(`Loaded ${itemCount} ${section} items`, 'success');
-            }
+            // Show success notification
+            const itemCount = data.data ? data.data.length : 0;
+            showNotification(`Loaded ${itemCount} ${section} items`, 'success');
         })
         .catch(error => {
             console.error(`❌ Error loading ${section}:`, error);
@@ -1182,6 +1306,7 @@
             hideLoading();
         });
     }
+
     function renderTableData(section, data) {
         const tableBody = document.getElementById(`${section}TableBody`);
         if (!tableBody) return;
@@ -1189,7 +1314,7 @@
         tableBody.innerHTML = '';
 
         if (!data.data || data.data.length === 0) {
-            const colSpan = document.querySelector(`#${section} thead tr`).cells.length;
+            const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
             tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data found</td></tr>`;
             return;
         }
@@ -1204,6 +1329,7 @@
 
         selectedItems[section] = [];
         updateSelectAllCheckbox(section);
+        updateBulkActionButton(section);
     }
 
     function generateTableRowHTML(section, item, index) {
@@ -2381,33 +2507,74 @@
         });
     }
 
-    // Perform actual delete operation
+    // Perform soft delete operation
     function performDelete(section, id) {
         showLoading();
 
-        fetch(`/api/admin/${section}/${id}`, {
+        // Map section to API endpoint
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog';
+        if (section === 'testimonials') apiSection = 'testimonials';
+        if (section === 'courses') apiSection = 'courses';
+        if (section === 'jobs') apiSection = 'jobs';
+        if (section === 'internships') apiSection = 'internships';
+        if (section === 'users') apiSection = 'users';
+        if (section === 'messages') apiSection = 'messages';
+        if (section === 'newsletter') apiSection = 'newsletter';
+
+        console.log(`Deleting ${section} with ID: ${id} using endpoint: ${apiSection}`);
+
+        fetch(`/api/admin/${apiSection}/${id}`, {
             method: 'DELETE',
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to delete ${section}`);
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.error || `Failed to delete ${section}`);
+                });
+            }
             return response.json();
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} deleted successfully`, 'success');
+                // Show success message
+                const itemName = section.charAt(0).toUpperCase() + section.slice(1);
+                showNotification(`${itemName} moved to trash`, 'success');
 
                 // Remove the item from the UI immediately
-                const row = document.querySelector(`tr .row-checkbox[data-id="${id}"]`)?.closest('tr');
-                if (row) {
-                    row.remove();
+                const tableBody = document.getElementById(`${section}TableBody`);
+                if (tableBody) {
+                    const row = tableBody.querySelector(`tr .row-checkbox[data-id="${id}"]`)?.closest('tr');
+                    if (row) {
+                        row.remove();
+                    }
+
+                    // Check if table is empty and show message
+                    if (tableBody.children.length === 0) {
+                        const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
+                        tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data found</td></tr>`;
+                    }
                 }
 
-                // Check if table is empty and show message
-                const tableBody = document.getElementById(`${section}TableBody`);
-                if (tableBody && tableBody.children.length === 0) {
-                    const colSpan = document.querySelector(`#${section} thead tr`).cells.length;
-                    tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data found</td></tr>`;
+                // Update dashboard stats (including trash count)
+                loadDashboardStats();
+                loadTrashStats(true);
+
+                // If we're in the trash section, refresh it
+                if (currentSection === 'trash') {
+                    loadTrashItems(currentTrashPage);
+                }
+
+                // Clear from selected items
+                if (selectedItems[section]) {
+                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                    updateSelectAllCheckbox(section);
+                    updateBulkActionButton(section);
                 }
             } else {
                 showNotification(result.message || `Failed to delete ${section}`, 'error');
@@ -2415,7 +2582,7 @@
         })
         .catch(error => {
             console.error(`Error deleting ${section}:`, error);
-            showNotification(`Failed to delete ${section}`, 'error');
+            showNotification(error.message || `Failed to delete ${section}`, 'error');
         })
         .finally(() => {
             hideLoading();
@@ -3327,34 +3494,70 @@
         }
 
         deleteTestimonial(testimonialId) {
-            showConfirmation('delete', 'Are you sure you want to delete this testimonial? This action cannot be undone.', async () => {
-                try {
-                    showLoading();
+            showConfirmation('delete',
+                'Are you sure you want to delete this testimonial? It will be moved to trash.',
+                async () => {
+                    try {
+                        showLoading();
 
-                    const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
-                        method: 'DELETE',
-                        credentials: 'include'
-                    });
+                        const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
+                            method: 'DELETE',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `HTTP ${response.status}`);
+                        }
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            showNotification('Testimonial moved to trash', 'success');
+
+                            // Remove from UI
+                            const row = document.querySelector(`#testimonialsTableBody tr .delete-testimonial[data-id="${testimonialId}"]`)?.closest('tr');
+                            if (row) {
+                                row.remove();
+                            }
+
+                            // Check if table is empty
+                            const tableBody = document.getElementById('testimonialsTableBody');
+                            if (tableBody && tableBody.children.length === 0) {
+                                tableBody.innerHTML = `
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; padding: 40px;">
+                                            <i class="fas fa-comment-slash" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
+                                            <h3 style="color: #6c757d; margin: 0;">No Testimonials Found</h3>
+                                            <p style="color: #6c757d; margin: 10px 0 0 0;">No testimonials match your search criteria.</p>
+                                        </td>
+                                    </tr>
+                                `;
+                            }
+
+                            // Update counts
+                            this.loadTestimonialsData(this.currentPage);
+                            loadDashboardStats();
+                            loadTrashStats(true);
+
+                            // Clear from selected items
+                            this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
+                            this.updateBulkActionButton();
+                        } else {
+                            throw new Error(result.error || 'Failed to delete testimonial');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error deleting testimonial:', error);
+                        showNotification('Failed to delete testimonial', 'error');
+                    } finally {
+                        hideLoading();
                     }
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        showNotification('Testimonial deleted successfully', 'success');
-                        this.loadTestimonialsData(this.currentPage);
-                    } else {
-                        throw new Error(result.error || 'Failed to delete testimonial');
-                    }
-                } catch (error) {
-                    console.error('❌ Error deleting testimonial:', error);
-                    showNotification('Failed to delete testimonial', 'error');
-                } finally {
-                    hideLoading();
                 }
-            });
+            );
         }
 
         async viewTestimonial(testimonialId) {
@@ -3466,6 +3669,7 @@
                     credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ ids: this.selectedIds })
                 });
@@ -3477,9 +3681,12 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification(`Deleted ${result.deleted_count || this.selectedIds.length} testimonial(s) successfully`, 'success');
+                    showNotification(`${result.deleted_count || this.selectedIds.length} testimonial(s) moved to trash`, 'success');
                     this.selectedIds = [];
+                    this.updateBulkActionButton();
                     this.loadTestimonialsData(this.currentPage);
+                    loadDashboardStats();
+                    loadTrashStats(true);
                 } else {
                     throw new Error(result.error || 'Failed to delete testimonials');
                 }
@@ -5291,7 +5498,7 @@
         }
     }
 
-    // Enhanced bulk delete function
+    // Soft bulk delete function
     function performBulkDelete(section, ids) {
         if (!ids || ids.length === 0) {
             showNotification('No items selected for deletion', 'warning');
@@ -5300,38 +5507,63 @@
 
         showLoading();
 
-        // Fix section names for API endpoints
+        // Map section to API endpoint
         let apiSection = section;
-        if (section === 'blog') apiSection = 'blog_posts';
-        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+        if (section === 'blog') apiSection = 'blog';
+        if (section === 'testimonials') apiSection = 'testimonials';
+        if (section === 'courses') apiSection = 'courses';
+        if (section === 'jobs') apiSection = 'jobs';
+        if (section === 'internships') apiSection = 'internships';
+        if (section === 'users') apiSection = 'users';
+        if (section === 'messages') apiSection = 'messages';
+        if (section === 'newsletter') apiSection = 'newsletter';
+
+        console.log(`Bulk deleting ${ids.length} items from ${section} using endpoint: ${apiSection}`);
 
         fetch(`/api/admin/${apiSection}/bulk-delete`, {
             method: 'POST',
             credentials: 'include',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({ ids: ids })
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json().then(err => {
+                    throw new Error(err.message || `Failed to delete ${section}`);
+                });
             }
             return response.json();
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${ids.length} ${section} deleted successfully`, 'success');
-                // Clear selection and reload data
+                showNotification(`${ids.length} ${section} moved to trash`, 'success');
+
+                // Clear selection
                 selectedItems[section] = [];
+                updateSelectAllCheckbox(section);
+                updateBulkActionButton(section);
+
+                // Reload the current section to reflect changes
                 loadSectionData(section, currentPage[section]);
+
+                // Update dashboard stats (including trash count)
+                loadDashboardStats();
+                loadTrashStats(true);
+
+                // If we're in the trash section, refresh it
+                if (currentSection === 'trash') {
+                    loadTrashItems(currentTrashPage);
+                }
             } else {
                 showNotification(result.message || `Failed to delete ${section}`, 'error');
             }
         })
         .catch(error => {
             console.error(`Error bulk deleting ${section}:`, error);
-            showNotification(`Failed to delete ${section}. Please try again.`, 'error');
+            showNotification(error.message || `Failed to delete ${section}. Please try again.`, 'error');
         })
         .finally(() => {
             hideLoading();
@@ -6077,6 +6309,1244 @@
         }, 250);
     });
 
+    // ===== TRASH MANAGEMENT =====
+
+    // Global variables for trash
+    let currentTrashPage = 1;
+    const trashItemsPerPage = 10;
+    let selectedTrashItems = [];
+    let isLoadingTrash = false;
+    let hasInitializedTrash = false;
+
+    // Helper function to get days ago text
+    function getDaysAgo(dateString) {
+        if (!dateString) return '';
+
+        try {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+
+            if (diffMinutes < 1) return 'Just now';
+            if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+            if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+            return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`;
+        } catch (error) {
+            console.warn('Error calculating days ago:', error);
+            return '';
+        }
+    }
+
+    // Load trash stats and update dashboard card with micro loader
+    function loadTrashStats(showMicroLoader = true) {
+        // Show micro loader on trash card if requested
+        if (showMicroLoader) {
+            const trashCard = document.getElementById('trashCard');
+            const trashCount = document.getElementById('trashCount');
+            if (trashCard && trashCount) {
+                // Store original value
+                if (!trashCount.dataset.originalValue) {
+                    trashCount.dataset.originalValue = trashCount.textContent;
+                }
+
+                // Add micro loader
+                trashCard.classList.add('loading');
+                trashCount.innerHTML = `
+                    <div class="micro-loader">
+                        <div class="micro-loader-dots">
+                            <div class="micro-loader-dot"></div>
+                            <div class="micro-loader-dot"></div>
+                            <div class="micro-loader-dot"></div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        return fetch('/api/admin/trash/stats', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch trash stats');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const totalTrash = data.stats.total || 0;
+                const trashCountElement = document.getElementById('trashCount');
+                const trashCard = document.getElementById('trashCard');
+
+                if (trashCountElement) {
+                    // Remove micro loader and update value
+                    trashCountElement.innerHTML = totalTrash;
+                    if (trashCountElement.dataset.originalValue) {
+                        delete trashCountElement.dataset.originalValue;
+                    }
+                }
+
+                if (trashCard) {
+                    trashCard.classList.remove('loading');
+                }
+
+                // Update menu badge
+                updateTrashMenuBadge(totalTrash);
+
+                // Update card appearance
+                if (trashCard) {
+                    if (totalTrash > 0) {
+                        trashCard.classList.remove('info');
+                        trashCard.classList.add('warning');
+                    } else {
+                        trashCard.classList.remove('warning');
+                        trashCard.classList.add('info');
+                    }
+                }
+
+                // Update view link
+                const viewLink = document.getElementById('viewTrashLink');
+                if (viewLink) {
+                    viewLink.style.display = 'block';
+                    viewLink.style.pointerEvents = 'auto';
+                    viewLink.style.opacity = '1';
+
+                    if (totalTrash > 0) {
+                        viewLink.innerHTML = `<i class="fas fa-trash"></i> View Trash (${totalTrash})`;
+                    } else {
+                        viewLink.innerHTML = '<i class="fas fa-trash"></i> Trash is Empty';
+                    }
+                }
+            }
+            return data;
+        })
+        .catch(error => {
+            console.error('Error loading trash stats:', error);
+
+            // Remove micro loader on error
+            const trashCountElement = document.getElementById('trashCount');
+            const trashCard = document.getElementById('trashCard');
+
+            if (trashCountElement) {
+                trashCountElement.innerHTML = '0';
+                if (trashCountElement.dataset.originalValue) {
+                    delete trashCountElement.dataset.originalValue;
+                }
+            }
+
+            if (trashCard) {
+                trashCard.classList.remove('loading');
+            }
+        });
+    }
+
+    // Update trash menu badge
+    function updateTrashMenuBadge(count) {
+        const menuBadge = document.getElementById('trashMenuBadge');
+        if (menuBadge) {
+            if (count > 0) {
+                menuBadge.textContent = count > 99 ? '99+' : count;
+                menuBadge.style.display = 'inline-block';
+            } else {
+                menuBadge.style.display = 'none';
+            }
+        }
+    }
+
+    // Load trash items
+    function loadTrashItems(page = 1, search = '', typeFilter = '') {
+        // Prevent multiple simultaneous loads
+        if (isLoadingTrash) {
+            console.log('⏳ Trash load already in progress, skipping...');
+            return Promise.reject('Already loading');
+        }
+
+        isLoadingTrash = true;
+        console.log(`📋 Loading trash items: page=${page}, search="${search}", type="${typeFilter}"`);
+
+        const searchValue = search || document.getElementById('trashSearch')?.value || '';
+        const filterValue = typeFilter || document.getElementById('trashTypeFilter')?.value || 'all';
+
+        let url = `/api/admin/trash?page=${page}&per_page=${trashItemsPerPage}`;
+        if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
+        if (filterValue && filterValue !== 'all') url += `&type=${encodeURIComponent(filterValue)}`;
+
+        return fetch(url, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Trash data received:', data);
+
+            if (data.success) {
+                renderTrashTable(data.data || []);
+                updateTrashPaginationInfo(data.count || 0, page, data.per_page || trashItemsPerPage);
+
+                // Update current page in global state
+                currentPage.trash = page;
+                currentTrashPage = page;
+
+                // Update URL hash with page info if needed
+                const currentHash = window.location.hash.substring(1);
+                if (currentHash === 'trash') {
+                    const state = {
+                        section: 'trash',
+                        page: page,
+                        timestamp: Date.now()
+                    };
+                    history.replaceState(state, '', '#trash');
+                }
+
+                // Update trash menu badge
+                updateTrashMenuBadge(data.count || 0);
+
+                // Show notification
+                if (data.data && data.data.length > 0) {
+                    showNotification(`Loaded ${data.data.length} trash items`, 'info', 2000);
+                }
+            } else {
+                throw new Error(data.error || 'Failed to load trash items');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading trash items:', error);
+
+            const tableBody = document.getElementById('trashTableBody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--danger); font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3 style="color: var(--text-primary); margin: 0;">Failed to Load Trash</h3>
+                            <p style="color: var(--text-secondary); margin: 10px 0 0 0;">${error.message}</p>
+                            <button onclick="retryLoadTrash()" class="btn btn-primary" style="margin-top: 20px;">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            showNotification('Failed to load trash items', 'error');
+            return Promise.reject(error);
+        })
+        .finally(() => {
+            isLoadingTrash = false;
+        });
+    }
+
+    // Retry function for error state
+    window.retryLoadTrash = function() {
+        loadTrashItems(1);
+    };
+
+    // Update trash pagination info
+    function updateTrashPaginationInfo(totalItems, currentPage, perPage) {
+        const pageInfo = document.getElementById('trashPageInfo');
+        const prevBtn = document.getElementById('prevTrashPage');
+        const nextBtn = document.getElementById('nextTrashPage');
+
+        if (!pageInfo) return;
+
+        const totalPages = Math.ceil(totalItems / perPage) || 1;
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+        if (prevBtn) {
+            prevBtn.disabled = currentPage === 1;
+        }
+
+        if (nextBtn) {
+            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+    }
+
+    // Render trash table
+    function renderTrashTable(items) {
+        const tableBody = document.getElementById('trashTableBody');
+        if (!tableBody) return;
+
+        // Reset selected items
+        selectedTrashItems = [];
+
+        if (!items || items.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash. Deleted items will appear here.</p>
+                    </td>
+                </tr>
+            `;
+
+            // Reset select all and selected count
+            const selectAll = document.getElementById('selectAllTrash');
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                selectAll.disabled = true;
+            }
+
+            const selectedCountEl = document.getElementById('selectedTrashCount');
+            if (selectedCountEl) {
+                selectedCountEl.textContent = '0 selected';
+            }
+
+            const bulkActionBtn = document.getElementById('applyTrashBulkAction');
+            if (bulkActionBtn) {
+                bulkActionBtn.disabled = true;
+            }
+
+            return;
+        }
+
+        // Enable select all
+        const selectAll = document.getElementById('selectAllTrash');
+        if (selectAll) {
+            selectAll.disabled = false;
+        }
+
+        tableBody.innerHTML = items.map((item, index) => {
+            const serialNo = ((currentTrashPage - 1) * trashItemsPerPage) + index + 1;
+
+            // Map content type to icon
+            const iconMap = {
+                'course': 'fa-book',
+                'job': 'fa-briefcase',
+                'internship': 'fa-user-graduate',
+                'blog': 'fa-blog',
+                'testimonial': 'fa-comment'
+            };
+            const icon = iconMap[item.content_type] || 'fa-file';
+
+            // Format dates with safe fallbacks
+            const deletedDate = item.deleted_at ? formatDate(item.deleted_at, true) : 'Unknown';
+            const createdDate = item.created_at ? formatDate(item.created_at) : 'Unknown';
+
+            // Safely get days ago text
+            let daysAgoText = '';
+            if (item.deleted_at) {
+                try {
+                    daysAgoText = getDaysAgo(item.deleted_at);
+                } catch (e) {
+                    console.warn('Error formatting days ago:', e);
+                    daysAgoText = '';
+                }
+            }
+
+            return `
+                <tr>
+                    <td><input type="checkbox" class="trash-item-checkbox" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}"></td>
+                    <td class="serial-no">${serialNo}</td>
+                    <td>
+                        <span class="content-type-badge ${item.content_type}">
+                            <i class="fas ${icon}"></i>
+                            ${item.content_type ? item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1) : 'Unknown'}
+                        </span>
+                    </td>
+                    <td>${escapeHTML(item.title || 'Untitled')}</td>
+                    <td>${escapeHTML(item.subtitle || 'N/A')}</td>
+                    <td>
+                        <span class="text-danger" title="${deletedDate}">
+                            <i class="fas fa-clock"></i> ${daysAgoText || deletedDate}
+                        </span>
+                    </td>
+                    <td>${createdDate}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon restore-item" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}" title="Restore Item">
+                                <i class="fas fa-undo-alt"></i>
+                            </button>
+                            <button class="btn-icon view-item" data-type="${item.content_type}" data-id="${item.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon permanent-delete-item" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}" title="Delete Permanently">
+                                <i class="fas fa-trash-alt" style="color: var(--danger);"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Add event listeners to the new rows
+        addTrashRowEventListeners();
+
+        // Update UI state
+        updateSelectedTrashItems();
+        updateTrashBulkActionButton();
+        updateSelectAllTrashCheckbox();
+    }
+
+    // event listeners to trash table rows
+    function addTrashRowEventListeners() {
+        // Individual checkboxes
+        document.querySelectorAll('#trashTableBody .trash-item-checkbox').forEach(checkbox => {
+            // Remove existing listeners by cloning
+            const newCheckbox = checkbox.cloneNode(true);
+            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+            newCheckbox.addEventListener('change', function(e) {
+                e.stopPropagation();
+                updateSelectedTrashItems();
+                updateTrashBulkActionButton();
+                updateSelectAllTrashCheckbox();
+            });
+        });
+
+        // Restore buttons
+        document.querySelectorAll('#trashTableBody .restore-item').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                const tableName = this.getAttribute('data-table');
+                restoreSingleTrashItem(contentType, contentId, tableName);
+            });
+        });
+
+        // View buttons
+        document.querySelectorAll('#trashTableBody .view-item').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                // Add 's' for plural table name
+                const tableName = contentType + 's';
+                openViewModal(tableName, contentId);
+            });
+        });
+
+        // Permanent delete buttons
+        document.querySelectorAll('#trashTableBody .permanent-delete-item').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const contentType = this.getAttribute('data-type');
+                const contentId = this.getAttribute('data-id');
+                const tableName = this.getAttribute('data-table');
+                console.log('Delete button clicked:', { contentType, contentId, tableName });
+                permanentlyDeleteSingleItem(contentType, contentId, tableName);
+            });
+        });
+    }
+
+    // Update selected trash items array
+    function updateSelectedTrashItems() {
+        selectedTrashItems = [];
+        document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(checkbox => {
+            selectedTrashItems.push({
+                content_type: checkbox.getAttribute('data-type'),
+                content_id: checkbox.getAttribute('data-id'),
+                table_name: checkbox.getAttribute('data-table')
+            });
+        });
+
+        // Update selected count display
+        const selectedCountEl = document.getElementById('selectedTrashCount');
+        if (selectedCountEl) {
+            const count = selectedTrashItems.length;
+            selectedCountEl.textContent = count === 0 ? '0 selected' : `${count} selected`;
+        }
+    }
+
+    // Update trash bulk action button state
+    function updateTrashBulkActionButton() {
+        const selectedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
+        const bulkActionBtn = document.getElementById('applyTrashBulkAction');
+
+        if (bulkActionBtn) {
+            bulkActionBtn.disabled = selectedCount === 0;
+        }
+    }
+
+    // Update select all checkbox
+    function updateSelectAllTrashCheckbox() {
+        const selectAll = document.getElementById('selectAllTrash');
+        if (!selectAll) return;
+
+        const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
+        const checkedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
+
+        if (checkboxes.length > 0) {
+            selectAll.checked = checkedCount === checkboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        } else {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        }
+    }
+
+    // Setup trash event listeners - FIXED to prevent duplicates
+    function setupTrashEvents() {
+        console.log('Setting up trash events...');
+
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshTrashBtn');
+        if (refreshBtn) {
+            // Remove all existing listeners
+            const newBtn = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Refreshing trash...');
+                loadTrashItems(currentTrashPage);
+            });
+        }
+
+        // Empty trash button
+        const emptyTrashBtn = document.getElementById('emptyTrashBtn');
+        if (emptyTrashBtn) {
+            const newBtn = emptyTrashBtn.cloneNode(true);
+            emptyTrashBtn.parentNode.replaceChild(newBtn, emptyTrashBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                emptyTrash();
+            });
+        }
+
+        // Clear old trash button
+        const clearOldTrashBtn = document.getElementById('clearOldTrashBtn');
+        if (clearOldTrashBtn) {
+            const newBtn = clearOldTrashBtn.cloneNode(true);
+            clearOldTrashBtn.parentNode.replaceChild(newBtn, clearOldTrashBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                clearOldTrash();
+            });
+        }
+
+        // Search
+        const searchInput = document.getElementById('trashSearch');
+        if (searchInput) {
+            const newInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newInput, searchInput);
+
+            let searchTimeout;
+            newInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, this.value);
+                }, 500);
+            });
+        }
+
+        // Type filter
+        const filterSelect = document.getElementById('trashTypeFilter');
+        if (filterSelect) {
+            const newSelect = filterSelect.cloneNode(true);
+            filterSelect.parentNode.replaceChild(newSelect, filterSelect);
+
+            newSelect.addEventListener('change', function() {
+                currentTrashPage = 1;
+                loadTrashItems(1, '', this.value);
+            });
+        }
+
+        // Select All checkbox
+        const selectAll = document.getElementById('selectAllTrash');
+        if (selectAll) {
+            const newSelectAll = selectAll.cloneNode(true);
+            selectAll.parentNode.replaceChild(newSelectAll, selectAll);
+
+            newSelectAll.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateSelectedTrashItems();
+                updateTrashBulkActionButton();
+            });
+        }
+
+        // Bulk action button
+        const bulkActionBtn = document.getElementById('applyTrashBulkAction');
+        if (bulkActionBtn) {
+            const newBtn = bulkActionBtn.cloneNode(true);
+            bulkActionBtn.parentNode.replaceChild(newBtn, bulkActionBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const action = document.getElementById('trashBulkAction').value;
+                if (!action) {
+                    showNotification('Please select a bulk action first', 'warning');
+                    return;
+                }
+                performTrashBulkAction(action);
+            });
+        }
+
+        // Pagination
+        const prevBtn = document.getElementById('prevTrashPage');
+        if (prevBtn) {
+            const newBtn = prevBtn.cloneNode(true);
+            prevBtn.parentNode.replaceChild(newBtn, prevBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentTrashPage > 1) {
+                    currentTrashPage--;
+                    loadTrashItems(currentTrashPage);
+                }
+            });
+        }
+
+        const nextBtn = document.getElementById('nextTrashPage');
+        if (nextBtn) {
+            const newBtn = nextBtn.cloneNode(true);
+            nextBtn.parentNode.replaceChild(newBtn, nextBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                currentTrashPage++;
+                loadTrashItems(currentTrashPage);
+            });
+        }
+    }
+
+    // Initialize trash section - FIXED to prevent multiple initializations
+    function initTrashSection() {
+        if (hasInitializedTrash) {
+            console.log('Trash section already initialized, skipping...');
+            return;
+        }
+
+        console.log('Initializing trash section...');
+        hasInitializedTrash = true;
+
+        // Load trash stats on dashboard with micro loader
+        const dashboardSection = document.getElementById('dashboard');
+        if (dashboardSection && dashboardSection.classList.contains('active')) {
+            loadTrashStats(true);
+        }
+
+        // Setup trash section navigation
+        const trashLink = document.querySelector('a[href="#trash"]');
+        if (trashLink) {
+            const newLink = trashLink.cloneNode(true);
+            trashLink.parentNode.replaceChild(newLink, trashLink);
+
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Update active states
+                document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                // Hide all sections
+                document.querySelectorAll('.admin-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                // Show trash section
+                const trashSection = document.getElementById('trash');
+                if (trashSection) {
+                    trashSection.classList.add('active');
+                    document.getElementById('pageTitle').textContent = 'Trash Management';
+
+                    // Load trash items
+                    currentTrashPage = 1;
+                    loadTrashItems(1);
+                    loadTrashStats(false);
+                }
+            });
+        }
+
+        // Setup trash section observer
+        const trashSection = document.getElementById('trash');
+        if (trashSection) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (trashSection.classList.contains('active') && !isLoadingTrash) {
+                            console.log('Trash section activated via observer');
+                            currentTrashPage = 1;
+                            loadTrashItems(1);
+                            loadTrashStats(false);
+                        }
+                    }
+                });
+            });
+            observer.observe(trashSection, { attributes: true });
+        }
+
+        // Setup event listeners
+        setupTrashEvents();
+    }
+
+    // Clear old trash items (older than 30 days) - UI only
+    function clearOldTrash() {
+        showConfirmation('bulk_action',
+            'Remove items older than 30 days from trash view? They will be kept in our records.',
+            () => {
+                console.log('Clearing old items from trash UI');
+
+                // Get all rows and check their deleted date
+                const rows = document.querySelectorAll('#trashTableBody tr');
+                let removedCount = 0;
+
+                rows.forEach(row => {
+                    const deletedCell = row.querySelector('td:nth-child(6)'); // Deleted column
+                    if (deletedCell) {
+                        const deletedText = deletedCell.textContent;
+                        // Check if it's older than 30 days (you can implement actual date logic)
+                        // For now, we'll just remove items with "month" or "year" in the text
+                        if (deletedText.includes('month') || deletedText.includes('year')) {
+                            row.remove();
+                            removedCount++;
+                        }
+                    }
+                });
+
+                if (removedCount > 0) {
+                    showNotification(`Removed ${removedCount} old items from trash view`, 'success');
+
+                    // Check if table is empty
+                    const tableBody = document.getElementById('trashTableBody');
+                    if (tableBody && tableBody.children.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px;">
+                                    <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                    <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                    <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                                </td>
+                            </tr>
+                        `;
+
+                        // Disable select all
+                        const selectAll = document.getElementById('selectAllTrash');
+                        if (selectAll) {
+                            selectAll.checked = false;
+                            selectAll.indeterminate = false;
+                            selectAll.disabled = true;
+                        }
+                    }
+
+                    // Update trash count
+                    const trashCountElement = document.getElementById('trashCount');
+                    if (trashCountElement) {
+                        const currentCount = parseInt(trashCountElement.textContent) || 0;
+                        trashCountElement.textContent = Math.max(0, currentCount - removedCount);
+                    }
+
+                    // Update menu badge
+                    const menuBadge = document.getElementById('trashMenuBadge');
+                    if (menuBadge) {
+                        const currentBadgeCount = parseInt(menuBadge.textContent) || 0;
+                        const newCount = Math.max(0, currentBadgeCount - removedCount);
+                        if (newCount <= 0) {
+                            menuBadge.style.display = 'none';
+                        } else {
+                            menuBadge.textContent = newCount;
+                        }
+                    }
+                } else {
+                    showNotification('No old items found to remove', 'info');
+                }
+            }
+        );
+    }
+
+    // Restore single item from trash
+    function restoreSingleTrashItem(contentType, contentId, tableName) {
+        showConfirmation('restore',
+            `Restore this ${contentType} from trash? It will be restored with active status but not featured.`,
+            () => {
+                showLoading();
+
+                console.log(`Restoring ${contentType} with ID: ${contentId} from table: ${tableName}`);
+
+                fetch(`/api/admin/trash/restore/${contentType}/${contentId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || err.message || 'Failed to restore item');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.success) {
+                        showNotification(`${contentType.charAt(0).toUpperCase() + contentType.slice(1)} restored successfully`, 'success');
+
+                        // Remove the item from UI
+                        const row = document.querySelector(`#trashTableBody tr .restore-item[data-id="${contentId}"]`)?.closest('tr');
+                        if (row) {
+                            row.remove();
+                        }
+
+                        // Check if table is empty
+                        const tableBody = document.getElementById('trashTableBody');
+                        if (tableBody && tableBody.children.length === 0) {
+                            tableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                                    </td>
+                                </tr>
+                            `;
+
+                            // Disable select all
+                            const selectAll = document.getElementById('selectAllTrash');
+                            if (selectAll) {
+                                selectAll.checked = false;
+                                selectAll.indeterminate = false;
+                                selectAll.disabled = true;
+                            }
+                        }
+
+                        // Update counts
+                        loadTrashStats(true);
+                        loadDashboardStats();
+
+                        // Clear from selected items
+                        selectedTrashItems = selectedTrashItems.filter(item =>
+                            !(item.content_id === contentId && item.content_type === contentType)
+                        );
+                        updateTrashBulkActionButton();
+                        updateSelectAllTrashCheckbox();
+                        updateSelectedTrashItems();
+
+                    } else {
+                        showNotification(result.error || 'Failed to restore item', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restoring item:', error);
+                    showNotification(error.message || 'Failed to restore item', 'error');
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+            }
+        );
+    }
+
+    // "Permanently delete" from trash - mark as hidden in database
+    function permanentlyDeleteSingleItem(contentType, contentId, tableName) {
+        showConfirmation('delete',
+            `Remove this ${contentType} from trash permanently? It will be hidden forever.`,
+            async () => {
+                showLoading();
+
+                try {
+                    const response = await fetch('/api/admin/trash/hide-permanently', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            items: [{
+                                content_type: contentType,
+                                content_id: contentId,
+                                table_name: tableName
+                            }]
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to hide item');
+                    }
+
+                    if (data.success) {
+                        // Remove the item from UI
+                        const row = document.querySelector(`#trashTableBody tr .permanent-delete-item[data-id="${contentId}"]`)?.closest('tr');
+                        if (row) {
+                            row.remove();
+                        }
+
+                        showNotification(`${contentType} permanently removed from trash`, 'success');
+
+                        // Check if table is empty
+                        const tableBody = document.getElementById('trashTableBody');
+                        if (tableBody && tableBody.children.length === 0) {
+                            tableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                                    </td>
+                                </tr>
+                            `;
+
+                            // Disable select all
+                            const selectAll = document.getElementById('selectAllTrash');
+                            if (selectAll) {
+                                selectAll.checked = false;
+                                selectAll.indeterminate = false;
+                                selectAll.disabled = true;
+                            }
+                        }
+
+                        // Update trash stats from server
+                        await loadTrashStats(true);
+                        await loadDashboardStats();
+
+                        // Clear from selected items
+                        selectedTrashItems = selectedTrashItems.filter(item =>
+                            !(item.content_id === contentId && item.content_type === contentType)
+                        );
+                        updateTrashBulkActionButton();
+                        updateSelectAllTrashCheckbox();
+                        updateSelectedTrashItems();
+                    }
+                } catch (error) {
+                    console.error('Error hiding item:', error);
+                    showNotification(error.message || 'Failed to hide item', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        );
+    }
+
+    // Bulk hide items from trash
+    function bulkPermanentlyDeleteTrashItems(items) {
+        if (!items || items.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
+        showConfirmation('delete',
+            `Permanently remove ${items.length} item(s) from trash? They will be hidden forever.`,
+            () => {
+                showLoading();
+
+                console.log('Bulk hiding items:', items);
+
+                fetch('/api/admin/trash/hide-permanently', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ items: items })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || `HTTP ${response.status}: Failed to hide items`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Remove items from UI
+                        items.forEach(item => {
+                            const row = document.querySelector(`#trashTableBody tr .permanent-delete-item[data-id="${item.content_id}"]`)?.closest('tr');
+                            if (row) {
+                                row.remove();
+                            }
+                        });
+
+                        showNotification(`Permanently removed ${items.length} items from trash`, 'success');
+
+                        // Check if table is empty
+                        const tableBody = document.getElementById('trashTableBody');
+                        if (tableBody && tableBody.children.length === 0) {
+                            tableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                                    </td>
+                                </tr>
+                            `;
+
+                            // Disable select all
+                            const selectAll = document.getElementById('selectAllTrash');
+                            if (selectAll) {
+                                selectAll.checked = false;
+                                selectAll.indeterminate = false;
+                                selectAll.disabled = true;
+                            }
+                        }
+
+                        // Update trash stats from server
+                        loadTrashStats(true);
+                        loadDashboardStats();
+
+                        // Clear selected items
+                        selectedTrashItems = [];
+                        updateTrashBulkActionButton();
+                        updateSelectAllTrashCheckbox();
+                        updateSelectedTrashItems();
+                    } else {
+                        throw new Error(data.error || 'Failed to hide items');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error hiding items:', error);
+                    showNotification(error.message || 'Failed to hide items', 'error');
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+            }
+        );
+    }
+
+    // Empty trash - hide ALL items permanently
+    function emptyTrash() {
+        // Get all visible items first
+        const allItems = [];
+        document.querySelectorAll('#trashTableBody .trash-item-checkbox').forEach(checkbox => {
+            allItems.push({
+                content_type: checkbox.getAttribute('data-type'),
+                content_id: checkbox.getAttribute('data-id'),
+                table_name: checkbox.getAttribute('data-table')
+            });
+        });
+
+        if (allItems.length === 0) {
+            showNotification('Trash is already empty', 'info');
+            return;
+        }
+
+        showConfirmation('delete',
+            `Permanently remove all ${allItems.length} items from trash? They will be hidden forever.`,
+            async () => {
+                showLoading();
+
+                try {
+                    const response = await fetch('/api/admin/trash/hide-permanently', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ items: allItems })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to empty trash');
+                    }
+
+                    if (data.success) {
+                        // Clear the table
+                        const tableBody = document.getElementById('trashTableBody');
+                        if (tableBody) {
+                            tableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px;">
+                                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+
+                        // Disable select all
+                        const selectAll = document.getElementById('selectAllTrash');
+                        if (selectAll) {
+                            selectAll.checked = false;
+                            selectAll.indeterminate = false;
+                            selectAll.disabled = true;
+                        }
+
+                        showNotification('Trash emptied successfully', 'success');
+
+                        // Update trash stats from server
+                        await loadTrashStats(true);
+                        await loadDashboardStats();
+
+                        // Clear selected items
+                        selectedTrashItems = [];
+                        updateTrashBulkActionButton();
+                        updateSelectAllTrashCheckbox();
+                        updateSelectedTrashItems();
+                    }
+                } catch (error) {
+                    console.error('Error emptying trash:', error);
+                    showNotification(error.message || 'Failed to empty trash', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        );
+    }
+
+    // Perform trash bulk action
+    function performTrashBulkAction(action) {
+        // Get selected items directly from checkboxes
+        const selectedItems = [];
+        document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(checkbox => {
+            selectedItems.push({
+                content_type: checkbox.getAttribute('data-type'),
+                content_id: checkbox.getAttribute('data-id'),
+                table_name: checkbox.getAttribute('data-table')
+            });
+        });
+
+        if (selectedItems.length === 0) {
+            showNotification('Please select at least one item', 'warning');
+            return;
+        }
+
+        console.log(`Bulk action: ${action} on ${selectedItems.length} items`, selectedItems);
+
+        if (action === 'restore') {
+            showConfirmation('bulk_action',
+                `Restore ${selectedItems.length} item(s) from trash?`,
+                () => bulkRestoreTrashItems(selectedItems)
+            );
+        } else if (action === 'delete') {
+            showConfirmation('delete',
+                `Permanently delete ${selectedItems.length} item(s)? This action CANNOT be undone.`,
+                () => bulkPermanentlyDeleteTrashItems(selectedItems)
+            );
+        }
+    }
+
+    // Bulk restore trash items
+    function bulkRestoreTrashItems(items) {
+        if (!items || items.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
+        showLoading();
+
+        console.log(`Bulk restoring ${items.length} items:`, items);
+
+        fetch('/api/admin/trash/bulk-restore', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ items: items })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.error || err.message || 'Failed to restore items');
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                showNotification(result.message || `Restored ${items.length} items successfully`, 'success');
+
+                // Remove restored items from UI
+                items.forEach(item => {
+                    const row = document.querySelector(`#trashTableBody tr .restore-item[data-id="${item.content_id}"]`)?.closest('tr');
+                    if (row) row.remove();
+                });
+
+                // Check if table is empty
+                const tableBody = document.getElementById('trashTableBody');
+                if (tableBody && tableBody.children.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
+                                <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
+                                <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
+                            </td>
+                        </tr>
+                    `;
+
+                    // Disable select all
+                    const selectAll = document.getElementById('selectAllTrash');
+                    if (selectAll) {
+                        selectAll.checked = false;
+                        selectAll.indeterminate = false;
+                        selectAll.disabled = true;
+                    }
+                }
+
+                // Update counts
+                loadTrashStats(true);
+                loadDashboardStats();
+
+                // Clear selected items
+                selectedTrashItems = [];
+                updateTrashBulkActionButton();
+                updateSelectAllTrashCheckbox();
+                updateSelectedTrashItems();
+
+            } else {
+                showNotification(result.error || 'Failed to restore items', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error bulk restoring items:', error);
+            showNotification(error.message || 'Failed to restore items', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
     // ===== ADMIN DASHBOARD MOBILE MENU (Matches main site) =====
     function setupMobileMenu() {
         console.log('📱 Setting up admin mobile menu...');
@@ -6294,22 +7764,17 @@
 
             console.log('✅ Initial data loading started');
 
-            // === 8. RESTORE SESSION STATE ===
-            console.log('🔄 Step 8: Restoring session state...');
-            restoreCurrentSection();
-            console.log('✅ Current section restored');
-
-            // === 9. INITIALIZE HISTORY ===
+            // === 8. INITIALIZE HISTORY ===
             console.log('🔄 Step 9: Initializing history...');
             initializeHistory();
             console.log('✅ History initialized');
 
-            // === 10. SETUP SESSION CHECK ===
+            // === 9. SETUP SESSION CHECK ===
             console.log('🔄 Step 10: Setting up session check...');
             setInterval(checkAdminSession, 5 * 60 * 1000);
             console.log('✅ Session check interval set');
 
-            // === 11. SETUP TESTIMONIAL MANAGER ===
+            // === 10. SETUP TESTIMONIAL MANAGER ===
             console.log('🔄 Step 11: Setting up testimonial manager...');
             setTimeout(() => {
                 console.log('🎯 Initializing Testimonial Manager...');
@@ -6331,19 +7796,19 @@
                 }
             }, 1500);
 
-            // === 12. SETUP EXPIRED CONTENT SECTION LOADER ===
+            // === 11. SETUP EXPIRED CONTENT SECTION LOADER ===
             console.log('🔄 Step 12: Setting up expired content section loader...');
             setupExpiredContentSection();
             console.log('✅ Expired content section loader setup complete');
 
-            // === 13. SETUP MOBILE MENU ===
+            // === 12. SETUP MOBILE MENU ===
             console.log('🔄 Step 13: Setting up mobile menu...');
             setupMobileMenu();
             console.log('✅ Mobile menu setup complete');
 
             console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
 
-            // === 14. FINAL CHECKS ===
+            // === 13. FINAL CHECKS ===
             setTimeout(() => {
                 console.log('🔍 Running final checks...');
 
@@ -6359,6 +7824,18 @@
 
                 console.log('✅ Final checks completed');
             }, 2000);
+
+            // === 14. SETUP TRASH SECTION ===
+            console.log('🔄 Step 14: Setting up trash section...');
+            initTrashSection();
+            console.log('✅ Trash section setup complete');
+
+            // === RESTORE SESSION STATE ===
+            console.log('🔄 Step 8: Restoring session state...');
+            setTimeout(() => {
+                restoreCurrentSection();
+            }, 100);
+            console.log('✅ Current section restored');
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);

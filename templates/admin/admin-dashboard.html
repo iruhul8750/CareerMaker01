@@ -18,33 +18,19 @@
             <h2>CareerMaker Admin</h2>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
-            </li>
+            <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-            <li class="menu-item"><a href="#internships"><i
-                    class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+            <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
+            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
-            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a>
-            </li>
-            <li class="menu-item"><a href="#expired-content"><i
-                    class="fas fa-clock"></i><span>Expired Content</span></a></li>
+            <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
             <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-            </li>
-            <!-- Replace the dark mode toggle line with this -->
-            <li class="menu-item dark-mode-item">
-                <div class="dark-mode-toggle" id="darkModeToggle">
-                    <i class="fas fa-moon"></i>
-                    <span>Dark Mode</span>
-                    <div class="dark-mode-switch">
-                        <input type="checkbox" id="darkModeCheckbox">
-                        <span class="slider round"></span>
-                    </div>
-                </div>
-            </li>
+            <li class="menu-item"><a href="#trash"> <i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
+            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+            <li class="menu-item dark-mode-item"><div class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i><span>Dark Mode</span><div class="dark-mode-switch"><input type="checkbox" id="darkModeCheckbox"><span class="slider round"></span></div></div></li>
         </ul>
     </div>
 
@@ -110,111 +96,125 @@
 
             <div class="stats-grid">
                 <!-- Users Card -->
-                <div id="usersCard" class="stat-card info">
+                <div class="stat-card info" id="usersCard">
                     <div class="stat-icon">
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Total Users</h3>
                         <div class="stat-number" id="usersCount">0</div>
+                        <a href="#users" class="stat-link">View All</a>
                     </div>
-                    <a href="#users" class="stat-link">View All</a>
                 </div>
 
                 <!-- Courses Card -->
-                <div id="coursesCard" class="stat-card success">
+                <div class="stat-card success" id="coursesCard">
                     <div class="stat-icon">
                         <i class="fas fa-book"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Total Courses</h3>
                         <div class="stat-number" id="coursesCount">0</div>
+                        <a href="#courses" class="stat-link">View All</a>
                     </div>
-                    <a href="#courses" class="stat-link">View All</a>
                 </div>
 
                 <!-- Jobs Card -->
-                <div id="jobsCard" class="stat-card warning">
+                <div class="stat-card warning" id="jobsCard">
                     <div class="stat-icon">
                         <i class="fas fa-briefcase"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Total Jobs</h3>
                         <div class="stat-number" id="jobsCount">0</div>
+                        <a href="#jobs" class="stat-link">View All</a>
                     </div>
-                    <a href="#jobs" class="stat-link">View All</a>
                 </div>
 
                 <!-- Internships Card -->
-                <div id="internshipsCard" class="stat-card danger">
+                <div class="stat-card danger" id="internshipsCard">
                     <div class="stat-icon">
                         <i class="fas fa-user-graduate"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Total Internships</h3>
                         <div class="stat-number" id="internshipsCount">0</div>
+                        <a href="#internships" class="stat-link">View All</a>
                     </div>
-                    <a href="#internships" class="stat-link">View All</a>
                 </div>
 
                 <!-- Blog Posts Card -->
-                <div id="blogPostsCard" class="stat-card info">
+                <div class="stat-card info" id="blogPostsCard">
                     <div class="stat-icon">
                         <i class="fas fa-blog"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Blog Posts</h3>
                         <div class="stat-number" id="blogPostsCount">0</div>
+                        <a href="#blog" class="stat-link">View All</a>
                     </div>
-                    <a href="#blog" class="stat-link">View All</a>
                 </div>
 
                 <!-- Messages Card -->
-                <div id="messagesCard" class="stat-card secondary">
+                <div class="stat-card secondary" id="messagesCard">
                     <div class="stat-icon">
                         <i class="fas fa-envelope"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Unread Messages</h3>
                         <div class="stat-number" id="messagesCount">0</div>
+                        <a href="#messages" class="stat-link">View All</a>
                     </div>
-                    <a href="#messages" class="stat-link">View All</a>
                 </div>
 
                 <!-- Subscribers Card -->
-                <div id="subscribersCard" class="stat-card info">
+                <div class="stat-card info" id="subscribersCard">
                     <div class="stat-icon">
                         <i class="fas fa-newspaper"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Newsletter Subscribers</h3>
                         <div class="stat-number" id="subscribersCount">0</div>
+                        <a href="#newsletter" class="stat-link">View All</a>
                     </div>
-                    <a href="#newsletter" class="stat-link">View All</a>
                 </div>
 
                 <!-- Testimonials Card -->
-                <div id="testimonialsCard" class="stat-card info">
+                <div class="stat-card info" id="testimonialsCard">
                     <div class="stat-icon">
                         <i class="fas fa-comment"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Total Testimonials</h3>
                         <div class="stat-number" id="testimonialsCount">0</div>
+                        <a href="#testimonials" class="stat-link">View All</a>
                     </div>
-                    <a href="#testimonials" class="stat-link">View All</a>
                 </div>
 
                 <!-- Expired Content Card -->
-                <div id="expiredContentCard" class="stat-card warning">
+                <div class="stat-card warning" id="expiredContentCard">
                     <div class="stat-icon">
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content">
                         <h3 class="stat-title">Expired Content</h3>
                         <div class="stat-number" id="expiredContentCount">0</div>
+                        <a href="#expired-content" class="stat-link">View All</a>
                     </div>
-                    <a href="#expired-content" class="stat-link">View All</a>
+                </div>
+
+                <!-- Trash Card - Added at the end of the grid -->
+                <div class="stat-card warning" id="trashCard">
+                    <div class="stat-icon">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Trash</h3>
+                        <div class="stat-number" id="trashCount">0</div>
+                        <a href="#trash" class="stat-link" id="viewTrashLink">
+                            <i class="fas fa-trash"></i> View Trash
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -817,6 +817,99 @@
                 </div>
             </div>
         </div>
+
+        <!-- Trash Section - CORRECTED -->
+        <section id="trash" class="admin-section">
+            <div class="section-header">
+                <h2><i class="fas fa-trash-alt"></i> Trash Management</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refreshTrashBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary" id="clearOldTrashBtn">
+                        <i class="fas fa-clock"></i> Clear Old (30+ days)
+                    </button>
+                    <button class="btn btn-danger" id="emptyTrashBtn">
+                        <i class="fas fa-trash-alt"></i> Empty Trash
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="content-filters">
+                <div class="search-box">
+                    <input type="text" placeholder="Search trash..." id="trashSearch" class="search-input">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <div class="filter-options">
+                    <select id="trashTypeFilter" class="filter-select">
+                        <option value="all">All Types</option>
+                        <option value="courses">Courses</option>
+                        <option value="jobs">Jobs</option>
+                        <option value="internships">Internships</option>
+                        <option value="blog">Blog Posts</option>
+                        <option value="testimonials">Testimonials</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div class="bulk-actions">
+                <div class="bulk-select">
+                    <span class="selected-count" id="selectedTrashCount">0 selected</span>
+                </div>
+                <div class="bulk-action-controls">
+                    <select id="trashBulkAction" class="bulk-action-select">
+                        <option value="">Bulk Actions</option>
+                        <option value="restore">Restore Selected</option>
+                        <option value="delete">Permanently Delete Selected</option>
+                    </select>
+                    <button class="btn btn-outline" id="applyTrashBulkAction" disabled>Apply</button>
+                </div>
+            </div>
+
+            <!-- Trash Table -->
+            <div class="content-table">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th width="40"><input type="checkbox" id="selectAllTrash"></th>
+                        <th width="60">S.No</th>
+                        <th width="120">Type</th>
+                        <th>Title/Name</th>
+                        <th>Subtitle</th>
+                        <th width="150">Deleted</th>
+                        <th width="120">Created</th>
+                        <th width="150">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="trashTableBody">
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
+                            <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="table-footer">
+                <div class="bulk-actions">
+                    <!-- Empty to maintain layout -->
+                </div>
+                <div class="pagination">
+                    <button class="btn btn-outline" id="prevTrashPage" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span class="page-info" id="trashPageInfo">Page 1 of 1</span>
+                    <button class="btn btn-outline" id="nextTrashPage">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
 
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">

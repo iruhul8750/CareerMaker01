@@ -1792,7 +1792,7 @@
     }
 
     // =============================================
-    // TESTIMONIAL SYSTEM - UPDATED (No Clone Cards)
+    // TESTIMONIAL SYSTEM
     // =============================================
 
     const testimonialSystem = {
@@ -2265,8 +2265,14 @@
             console.log('📝 Opening testimonial form...');
 
             try {
-                const response = await fetch('/api/testimonial/auth-check');
+                const response = await fetch('/api/testimonial/auth-check', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error('Failed to check authentication');
+                }
 
                 if (data.can_post) {
                     this.showModal(data.username);
@@ -2373,7 +2379,9 @@
                     method: method,
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
+                    credentials: 'include',
                     body: JSON.stringify({
                         content: content,
                         rating: rating
@@ -2382,22 +2390,31 @@
 
                 const data = await response.json();
 
+                if (!response.ok) {
+                    throw new Error(data.message || `Failed to ${isEdit ? 'update' : 'submit'} testimonial`);
+                }
+
                 if (data.success) {
                     this.showMessage(data.message, 'success', messageDiv);
+
+                    // Clear form
+                    document.getElementById('testimonialText').value = '';
+                    this.setupStarRating(5);
+
                     setTimeout(() => {
                         this.closeModal();
                         this.loadTestimonials(); // Reload to get updated list
                         if (typeof showToast === 'function') {
                             showToast(
                                 isEdit
-                                    ? 'Experience updated successfully!'
+                                    ? 'Your experience updated successfully!'
                                     : 'Thank you for sharing your experience!',
                                 'success'
                             );
                         }
                     }, 1500);
                 } else {
-                    throw new Error(data.message);
+                    throw new Error(data.message || 'Operation failed');
                 }
 
             } catch (error) {
@@ -2431,31 +2448,76 @@
 
             try {
                 const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
 
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to delete testimonial');
+                }
+
                 if (data.success) {
                     this.closeDeleteModal();
+
+                    // Show success message
                     if (typeof showToast === 'function') {
-                        showToast('Testimonial deleted successfully!', 'success');
+                        showToast('Your testimonial has been deleted successfully', 'success');
                     }
+
+                    // Reload testimonials to reflect changes
                     this.loadTestimonials();
+
+                    // Remove the testimonial card from UI immediately
+                    const testimonialCard = document.querySelector(`.testimonial-card[data-testimonial-id="${this.testimonialToDelete}"]`);
+                    if (testimonialCard) {
+                        testimonialCard.style.opacity = '0';
+                        testimonialCard.style.transform = 'scale(0.8)';
+                        testimonialCard.style.transition = 'all 0.3s ease';
+
+                        setTimeout(() => {
+                            testimonialCard.remove();
+
+                            // If no testimonials left, show empty state
+                            if (this.currentTestimonials.length === 0) {
+                                this.renderEmptyState();
+                            }
+                        }, 300);
+                    }
                 } else {
-                    throw new Error(data.message);
+                    throw new Error(data.message || 'Failed to delete testimonial');
                 }
 
             } catch (error) {
                 console.error('Delete error:', error);
                 if (typeof showToast === 'function') {
-                    showToast(error.message, 'error');
+                    showToast(error.message || 'Failed to delete testimonial', 'error');
                 }
             } finally {
                 btnText.style.display = 'inline-block';
                 spinner.style.display = 'none';
                 deleteBtn.disabled = false;
+                this.testimonialToDelete = null;
             }
+        },
+
+        // Add renderEmptyState method
+        renderEmptyState() {
+            const track = document.getElementById('testimonialTrack');
+            if (!track) return;
+
+            track.innerHTML = `
+                <div class="empty-testimonials">
+                    <i class="fas fa-comments"></i>
+                    <h4>No Experiences Shared Yet</h4>
+                    <p>Be the first to share your journey with the CareerMaker community!</p>
+                </div>
+            `;
         },
 
         deleteTestimonial(testimonialId) {
@@ -2528,26 +2590,44 @@
                     </div>
                 `;
 
-                const response = await fetch('/api/testimonial/list');
+                const response = await fetch('/api/testimonial/list', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load testimonials');
+                }
+
                 const data = await response.json();
 
                 console.log('📊 Loaded testimonials from backend:', data);
 
                 if (data.testimonials) {
-                    this.currentTestimonials = data.testimonials;
+                    // Filter out any soft-deleted testimonials (backend should already do this)
+                    this.currentTestimonials = data.testimonials.filter(t => !t.is_deleted);
                 } else {
                     throw new Error('No testimonials data received');
                 }
 
-                this.renderTestimonials();
+                if (this.currentTestimonials.length === 0) {
+                    this.renderEmptyState();
+                } else {
+                    this.renderTestimonials();
+                }
+
                 this.updateNavigation();
+                this.updateDots();
 
             } catch (error) {
                 console.error('❌ Failed to load testimonials:', error);
                 const track = document.getElementById('testimonialTrack');
                 if (track) {
                     track.innerHTML = `
-                        <div class="empty-testimonials">
+                        <div class="empty-testimonials error">
                             <i class="fas fa-exclamation-triangle"></i>
                             <h4>Unable to Load Experiences</h4>
                             <p>Please try again later</p>
@@ -2610,7 +2690,9 @@
 
             try {
                 // First check if user is logged in
-                const authResponse = await fetch('/api/testimonial/auth-check');
+                const authResponse = await fetch('/api/testimonial/auth-check', {
+                    credentials: 'include'
+                });
                 const authData = await authResponse.json();
 
                 if (!authData.can_post) {
@@ -2633,6 +2715,12 @@
                     return;
                 }
 
+                // Check if testimonial is soft-deleted
+                if (testimonial.is_deleted) {
+                    showToast('This testimonial has been deleted and cannot be edited', 'error');
+                    return;
+                }
+
                 // Open modal with testimonial data
                 this.showModal(authData.username || 'User', testimonial);
 
@@ -2646,20 +2734,16 @@
             const track = document.getElementById('testimonialTrack');
             if (!track) return;
 
-            if (this.currentTestimonials.length === 0) {
-                track.innerHTML = `
-                    <div class="empty-testimonials">
-                        <i class="fas fa-comments"></i>
-                        <h4>No Experiences Shared Yet</h4>
-                        <p>Be the first to share your journey!</p>
-                    </div>`;
-                this.stopAutoSlide();
-                this.updateNavigation();
+            // Filter out any testimonials that might have been soft-deleted (just in case)
+            const activeTestimonials = this.currentTestimonials.filter(t => !t.is_deleted);
+
+            if (activeTestimonials.length === 0) {
+                this.renderEmptyState();
                 return;
             }
 
-            // Create testimonial cards - ONE CARD PER TESTIMONIAL
-            const cardsHTML = this.currentTestimonials.map((testimonial, index) => {
+            // Create testimonial cards - ONE CARD PER TESTIMONIAL (NO DUPLICATE BUTTONS)
+            const cardsHTML = activeTestimonials.map((testimonial, index) => {
                 const canEdit = testimonial.can_edit || false;
                 // Check if text is long enough to need truncation
                 const needsTruncation = testimonial.content.length > 300;
@@ -2670,7 +2754,8 @@
                 return `
                 <div class="testimonial-card"
                      data-index="${index}"
-                     data-testimonial-id="${testimonial.id}">
+                     data-testimonial-id="${testimonial.id}"
+                     data-deleted="${testimonial.is_deleted || false}">
                     <div class="testimonial-card-inner">
                         <div class="testimonial-quote">"</div>
 
@@ -2692,7 +2777,7 @@
                         </div>
 
                         <div class="testimonial-text-container">
-                            <p class="testimonial-text" title="${testimonial.content}">${truncatedText}</p>
+                            <p class="testimonial-text" title="${testimonial.content.replace(/"/g, '&quot;')}">${truncatedText}</p>
                         </div>
 
                         <div class="read-more-section">
@@ -2706,6 +2791,7 @@
                             <img src="${testimonial.profile_pic_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(testimonial.username) + '&background=10b981&color=fff&bold=true'}"
                                  alt="${testimonial.username}"
                                  class="author-avatar"
+                                 loading="lazy"
                                  onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true'">
                             <div class="author-info">
                                 <h4>${testimonial.username}</h4>
@@ -2731,7 +2817,7 @@
             this.updateButtonStates();
 
             // Start auto-slide only if we have more than 3 testimonials
-            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+            if (this.isAutoPlay && activeTestimonials.length > 3) {
                 setTimeout(() => this.startAutoSlide(), 1000);
             }
         },
@@ -3009,6 +3095,8 @@
             this.calculateTrackWidth();
             this.updateCarousel();
         }
+
+
     };
 
     // =============================================

@@ -5871,3 +5871,658 @@
         color: var(--text-primary) !important;
       }
     }
+
+    /* ===== TRASH SECTION STYLES ===== */
+
+    /* Trash Section Container */
+    #trash {
+        padding: 20px;
+        animation: fadeIn 0.3s ease;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+    }
+
+    /* Trash Header */
+    #trash .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #trash .section-header h2 {
+        font-size: 24px;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #trash .section-header h2 i {
+        color: var(--danger);
+    }
+
+    /* Header Actions */
+    #trash .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    #trash .header-actions .btn-primary {
+        background: var(--gradient-danger);
+        color: white;
+        border: none;
+    }
+
+    #trash .header-actions .btn-primary:hover {
+        background: linear-gradient(135deg, #ff6b6b 0%, var(--danger) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    #trash .header-actions .btn-secondary {
+        background: var(--gradient-warning);
+        color: white;
+        border: none;
+    }
+
+    #trash .header-actions .btn-secondary:hover {
+        background: linear-gradient(135deg, #fbbf24 0%, var(--warning) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    #trash .header-actions .btn-outline-primary {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+
+    #trash .header-actions .btn-outline-primary:hover {
+        background: var(--bg-primary);
+        border-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Filters Bar */
+    #trash .filters-bar {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    #trash .search-box {
+        flex: 1;
+        min-width: 250px;
+        position: relative;
+    }
+
+    #trash .search-box i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-light);
+        font-size: 14px;
+    }
+
+    #trash .search-box .fa-times {
+        left: auto;
+        right: 12px;
+        cursor: pointer;
+        display: none;
+    }
+
+    #trash .search-box input {
+        width: 100%;
+        padding: 10px 35px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        transition: all 0.3s ease;
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
+
+    #trash .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    #trash .filter-select {
+        padding: 10px 15px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        min-width: 150px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #trash .filter-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Bulk Actions */
+    #trash .bulk-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+    }
+
+    #trash .bulk-select {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #trash .bulk-select input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    #trash .bulk-select label {
+        font-size: 14px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    #trash .bulk-action-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    #trash .bulk-action-controls select {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        min-width: 180px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    #trash .bulk-action-controls button {
+        padding: 8px 20px;
+        background: var(--gradient-primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    #trash .bulk-action-controls button:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    #trash .bulk-action-controls button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Trash Table */
+    #trash .content-table {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        margin-bottom: 20px;
+        overflow-x: auto;
+    }
+
+    #trash .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+    }
+
+    #trash .data-table thead {
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #trash .data-table th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    #trash .data-table tbody tr {
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.3s ease;
+    }
+
+    #trash .data-table tbody tr:hover {
+        background: var(--bg-primary);
+    }
+
+    #trash .data-table td {
+        padding: 15px;
+        font-size: 14px;
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    /* Content Type Badges */
+    #trash .content-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    #trash .content-type-badge.course {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+
+    #trash .content-type-badge.job {
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--primary);
+    }
+
+    #trash .content-type-badge.internship {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--warning);
+    }
+
+    #trash .content-type-badge.blog {
+        background: rgba(168, 85, 247, 0.15);
+        color: var(--purple);
+    }
+
+    #trash .content-type-badge.testimonial {
+        background: rgba(236, 72, 153, 0.15);
+        color: var(--pink);
+    }
+
+    /* Text Danger */
+    #trash .text-danger {
+        color: var(--danger);
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* Action Buttons */
+    #trash .action-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #trash .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    #trash .btn-icon:hover {
+        transform: translateY(-2px);
+    }
+
+    #trash .btn-icon.restore-item {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    #trash .btn-icon.restore-item:hover {
+        background: rgba(16, 185, 129, 0.2);
+    }
+
+    #trash .btn-icon.view-item {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary);
+    }
+
+    #trash .btn-icon.view-item:hover {
+        background: rgba(99, 102, 241, 0.2);
+    }
+
+    #trash .btn-icon.permanent-delete-item {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+    }
+
+    #trash .btn-icon.permanent-delete-item:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    /* Empty State */
+    #trash .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+    }
+
+    #trash .empty-state i {
+        font-size: 64px;
+        color: var(--text-light);
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    #trash .empty-state h3 {
+        color: var(--text-primary);
+        margin: 10px 0;
+        font-size: 20px;
+    }
+
+    #trash .empty-state p {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 14px;
+    }
+
+    /* Pagination */
+    #trash .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    #trash .pagination button {
+        padding: 8px 20px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    #trash .pagination button:hover:not(:disabled) {
+        background: var(--gradient-primary);
+        color: white;
+        border-color: transparent;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    #trash .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    #trash .pagination span {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    /* ===== TRASH CARD ON DASHBOARD ===== */
+
+    .stat-card.warning {
+        background: var(--gradient-warning);
+        color: white;
+    }
+
+    .stat-card.warning .stat-link {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card.warning .stat-link:hover {
+        color: white;
+    }
+
+    .stat-card .stat-link i {
+        margin-right: 5px;
+    }
+
+    /* Menu Badge */
+    .sidebar-menu .menu-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        background: var(--danger);
+        color: white;
+        border-radius: var(--radius-full);
+        font-size: 10px;
+        margin-left: auto;
+        min-width: 18px;
+        text-align: center;
+    }
+
+    /* ===== DARK MODE SPECIFIC STYLES ===== */
+
+    .admin-dashboard.dark-mode #trash .content-type-badge.course {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+    }
+
+    .admin-dashboard.dark-mode #trash .content-type-badge.job {
+        background: rgba(99, 102, 241, 0.2);
+        color: #818cf8;
+    }
+
+    .admin-dashboard.dark-mode #trash .content-type-badge.internship {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .admin-dashboard.dark-mode #trash .content-type-badge.blog {
+        background: rgba(168, 85, 247, 0.2);
+        color: #c084fc;
+    }
+
+    .admin-dashboard.dark-mode #trash .content-type-badge.testimonial {
+        background: rgba(236, 72, 153, 0.2);
+        color: #f472b6;
+    }
+
+    .admin-dashboard.dark-mode #trash .btn-icon.restore-item {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+    }
+
+    .admin-dashboard.dark-mode #trash .btn-icon.view-item {
+        background: rgba(99, 102, 241, 0.2);
+        color: #818cf8;
+    }
+
+    .admin-dashboard.dark-mode #trash .btn-icon.permanent-delete-item {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }
+
+    /* ===== RESPONSIVE DESIGN ===== */
+
+    @media (max-width: 768px) {
+        #trash {
+            padding: 15px;
+        }
+
+        #trash .section-header {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        #trash .header-actions {
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        #trash .header-actions button {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        #trash .filters-bar {
+            flex-direction: column;
+        }
+
+        #trash .search-box {
+            width: 100%;
+        }
+
+        #trash .filter-select {
+            width: 100%;
+        }
+
+        #trash .bulk-actions {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        #trash .bulk-action-controls {
+            width: 100%;
+        }
+
+        #trash .bulk-action-controls select {
+            flex: 1;
+        }
+
+        #trash .pagination {
+            flex-wrap: wrap;
+        }
+    }
+
+    @media (max-width: 576px) {
+        #trash .header-actions {
+            flex-direction: column;
+        }
+
+        #trash .header-actions button {
+            width: 100%;
+        }
+
+        #trash .bulk-action-controls {
+            flex-direction: column;
+        }
+
+        #trash .bulk-action-controls select,
+        #trash .bulk-action-controls button {
+            width: 100%;
+        }
+
+        #trash .pagination {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #trash .pagination button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* ===== PRINT STYLES ===== */
+
+    @media print {
+        #trash .header-actions,
+        #trash .filters-bar,
+        #trash .bulk-actions,
+        #trash .action-buttons,
+        #trash .pagination {
+            display: none;
+        }
+
+        #trash .content-table {
+            box-shadow: none;
+            border: 1px solid #000;
+        }
+    }
+
+    /* ===== ANIMATIONS ===== */
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Row Animation */
+    #trash .data-table tbody tr {
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    /* Ensure Trash card matches warning card styling */
+    .stat-card.warning#trashCard {
+        background: var(--gradient-warning);
+        color: white;
+    }
+
+    .stat-card.warning#trashCard .stat-link {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .stat-card.warning#trashCard .stat-link:hover {
+        color: white;
+    }
+
+    /* Dark mode support */
+    .admin-dashboard.dark-mode .stat-card.warning#trashCard {
+        background: var(--gradient-warning);
+    }
+
+    /* Responsive grid adjustment - your existing stats-grid will handle this */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+    }
+    /* ===== TRASH SECTION STYLES END ===== */
