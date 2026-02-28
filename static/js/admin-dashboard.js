@@ -517,9 +517,16 @@
 
         // Update browser history if not from popstate
         if (!fromPopState) {
+            let pageToSave = currentPage[targetSection];
+
+            // For trash, use the currentTrashPage
+            if (targetSection === 'trash') {
+                pageToSave = currentTrashPage || 1;
+            }
+
             const state = {
                 section: targetSection,
-                page: currentPage[targetSection],
+                page: pageToSave,
                 timestamp: Date.now()
             };
             history.pushState(state, '', `#${targetSection}`);
@@ -537,7 +544,13 @@
                 break;
 
             case 'trash':
-                console.log('🗑️ Loading trash section, page:', currentPage.trash);
+                console.log('🗑️ Loading trash section, page:', currentTrashPage || 1);
+
+                // Sync currentTrashPage with currentPage.trash
+                if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
+                    currentTrashPage = currentPage.trash || 1;
+                }
+
                 // Show loading in table
                 const trashTableBody = document.getElementById('trashTableBody');
                 if (trashTableBody) {
@@ -551,7 +564,7 @@
                     `;
                 }
                 // Load trash items with current page
-                loadTrashItems(currentPage.trash);
+                loadTrashItems(currentTrashPage);
                 loadTrashStats(false);
                 break;
 
@@ -6946,7 +6959,7 @@
         }
     }
 
-    // Initialize trash section - FIXED to prevent multiple initializations
+    // Initialize trash section
     function initTrashSection() {
         if (hasInitializedTrash) {
             console.log('Trash section already initialized, skipping...');
@@ -6955,6 +6968,11 @@
 
         console.log('Initializing trash section...');
         hasInitializedTrash = true;
+
+        // Sync currentTrashPage with global currentPage.trash
+        if (currentPage.trash && !currentTrashPage) {
+            currentTrashPage = currentPage.trash;
+        }
 
         // Load trash stats on dashboard with micro loader
         const dashboardSection = document.getElementById('dashboard');
@@ -6971,27 +6989,30 @@
             newLink.addEventListener('click', function(e) {
                 e.preventDefault();
 
-                // Update active states
-                document.querySelectorAll('.sidebar-menu a').forEach(item => {
-                    item.classList.remove('active');
-                });
-                this.classList.add('active');
+                // Use global navigation function
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('trash', this);
+                } else {
+                    // Fallback
+                    document.querySelectorAll('.sidebar-menu a').forEach(item => item.classList.remove('active'));
+                    this.classList.add('active');
 
-                // Hide all sections
-                document.querySelectorAll('.admin-section').forEach(section => {
-                    section.classList.remove('active');
-                });
+                    document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
+                    const trashSection = document.getElementById('trash');
+                    if (trashSection) {
+                        trashSection.classList.add('active');
+                        document.getElementById('pageTitle').textContent = 'Trash Management';
 
-                // Show trash section
-                const trashSection = document.getElementById('trash');
-                if (trashSection) {
-                    trashSection.classList.add('active');
-                    document.getElementById('pageTitle').textContent = 'Trash Management';
+                        // Update current section
+                        currentSection = 'trash';
+                        sessionStorage.setItem('currentSection', 'trash');
 
-                    // Load trash items
-                    currentTrashPage = 1;
-                    loadTrashItems(1);
-                    loadTrashStats(false);
+                        // Load trash items
+                        currentTrashPage = 1;
+                        currentPage.trash = 1;
+                        loadTrashItems(1);
+                        loadTrashStats(false);
+                    }
                 }
             });
         }
@@ -7004,8 +7025,13 @@
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         if (trashSection.classList.contains('active') && !isLoadingTrash) {
                             console.log('Trash section activated via observer');
-                            currentTrashPage = 1;
-                            loadTrashItems(1);
+
+                            // Sync page numbers
+                            if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
+                                currentTrashPage = currentPage.trash || 1;
+                            }
+
+                            loadTrashItems(currentTrashPage);
                             loadTrashStats(false);
                         }
                     }
