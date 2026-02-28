@@ -4351,7 +4351,7 @@
             }
         }
 
-        // Initialize dark mode
+        // ***Initialize dark mode***
         initDarkMode();
 
         // Initialize logo preview system
