@@ -4351,6 +4351,17 @@
             }
         }
 
+        // contact section card centered when single card present//
+        let c = document.querySelector('.contact-container');
+        let i = document.querySelector('.contact-info');
+        let f = document.querySelector('.contact-form');
+
+        if (c) {
+            c.classList.remove('single-column-info', 'single-column-form');
+            if (!i || i.children.length === 0) c.classList.add('single-column-info');
+            else if (!f || f.children.length === 0) c.classList.add('single-column-form');
+        }
+
         // Initialize dark mode
         initDarkMode();
 

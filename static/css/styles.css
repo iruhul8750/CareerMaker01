@@ -9489,7 +9489,9 @@
       padding: 5rem 0;
       background-color: #f8f9fa;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+      min-height: 730px;
+      height: auto;
     }
 
     .contact-section::before {
@@ -9555,9 +9557,20 @@
     }
 
     .info-icon {
-      font-size: 1.5rem;
-      color: var(--primary-color);
+      font-size: 0.8rem;
+      color: #10b981 !important; /* Changed to green */
       margin-top: 0.2rem;
+      flex-shrink: 0;
+      background: rgba(16, 185, 129, 0.1);
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    .info-icon {
+      transform: scale(0.5);
     }
 
     .dark-mode .info-icon {
@@ -9584,6 +9597,49 @@
       color: #adb5bd;
     }
 
+    /* When contact-info is hidden/empty - center the form */
+    .contact-container.single-column-info {
+      grid-template-columns: 1fr !important;
+      justify-content: center !important;
+      max-width: 700px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+
+    .contact-container.single-column-info .contact-form {
+      grid-column: 1 / -1 !important;
+      justify-self: center !important;
+      max-width: 600px !important;
+      width: 100% !important;
+      margin: 0 auto !important;
+    }
+
+    /* When contact-form is hidden/empty - center the info */
+    .contact-container.single-column-form {
+      grid-template-columns: 1fr !important;
+      justify-content: center !important;
+      max-width: 700px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+
+    .contact-container.single-column-form .contact-info {
+      grid-column: 1 / -1 !important;
+      justify-self: center !important;
+      max-width: 600px !important;
+      width: 100% !important;
+      margin: 0 auto !important;
+    }
+
+    /* Hide empty sections */
+    .contact-info:empty {
+      display: none !important;
+    }
+
+    .contact-form:empty {
+      display: none !important;
+    }
+
     /* Contact Form */
     .contact-section {
       padding: 1rem 0 1rem;
@@ -9596,7 +9652,7 @@
       position: relative;
       overflow: hidden;
       z-index: 1;
-      max-height: 40rem;
+      max-height: 33rem;
       top: 2rem;
     }
 
