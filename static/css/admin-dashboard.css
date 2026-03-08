@@ -2110,95 +2110,139 @@
       }
     }
 
-    /* ===== INTERACTIVE ELEMENTS - HAND CURSOR ===== */
 
-    /* Buttons - only actual buttons */
-    button,
-    .btn,
-    .btn-primary,
-    .btn-outline,
-    .btn-danger,
-    .btn-success,
-    .btn-warning,
-    .btn-info,
-    .btn-icon,
-    .close-modal,
-    .modal-close,
-    #refreshDashboardBtn,
-    #checkExpiredContentBtn,
-    #addCourseBtn,
-    #addJobBtn,
-    #addInternshipBtn,
-    #addBlogBtn,
-    #sendNewsletterBtn,
-    #refreshTestimonialsBtn,
-    #refreshExpiredContentBtn,
-    #reactivateAllExpiredBtn,
-    #applyCourseBulkAction,
-    #applyJobBulkAction,
-    #applyInternshipBulkAction,
-    #applyBlogBulkAction,
-    #applyUserBulkAction,
-    #applyMessageBulkAction,
-    #applyNewsletterBulkAction,
-    #applyTestimonialBulkAction,
-    #applyExpiredContentBulkAction,
-    #replyFromView,
-    #sendReplyBtn,
-    #uploadCourseImageBtn,
-    #removeCourseImage,
-    #confirmAction,
-    .cancel-btn,
-    .confirm-btn {
-        cursor: pointer !important;
-    }
-
-    /* Modal close buttons - specific */
-    .close-modal,
-    .modal .close,
-    .modal-header .close,
-    .modal-footer .close,
-    [class*="close-modal"],
-    [class*="modal-close"],
-    span.close-modal,
-    div.close-modal,
-    i.close-modal,
-    .fa-times.close-modal {
-        cursor: pointer !important;
-    }
-
-    /* Dropdown selects - only the select element itself, not its children */
+    /* ===== COMPLETE DROPDOWN AND DATE PICKER POINTER ===== */
+    /* 1. NATIVE SELECT DROPDOWNS - All browsers */
     select,
+    select *,
     .filter-select,
     .bulk-action-select,
-    #courseCategory,
-    #courseCategoryFilter,
-    #jobType,
-    #jobTypeFilter,
-    #internshipType,
-    #internshipTypeFilter,
-    #blogCategory,
-    #blogCategoryFilter,
+    #courseCategory, #courseCategoryFilter,
+    #jobType, #jobTypeFilter,
+    #internshipType, #internshipTypeFilter,
+    #blogCategory, #blogCategoryFilter,
     #userRoleFilter,
     #messageStatusFilter,
     #newsletterStatusFilter,
     #testimonialStatusFilter,
     #expiredContentTypeFilter,
-    #courseBulkAction,
-    #jobBulkAction,
-    #internshipBulkAction,
-    #blogBulkAction,
-    #userBulkAction,
-    #messageBulkAction,
-    #newsletterBulkAction,
-    #testimonialBulkAction,
-    #expiredContentBulkAction,
-    #newsletterRecipients,
-    #courseLevel {
+    #courseBulkAction, #jobBulkAction,
+    #internshipBulkAction, #blogBulkAction,
+    #userBulkAction, #messageBulkAction,
+    #newsletterBulkAction, #testimonialBulkAction,
+    #expiredContentBulkAction, #newsletterRecipients,
+    #courseLevel, #trashTypeFilter, #trashBulkAction {
         cursor: pointer !important;
     }
 
-    /* Date inputs - only the input and its calendar icon */
+    /* The dropdown options list - this is the key part */
+    select option,
+    .filter-select option,
+    .bulk-action-select option,
+    #courseCategory option,
+    #courseCategoryFilter option,
+    #jobType option,
+    #jobTypeFilter option,
+    #internshipType option,
+    #internshipTypeFilter option,
+    #blogCategory option,
+    #blogCategoryFilter option,
+    #userRoleFilter option,
+    #messageStatusFilter option,
+    #newsletterStatusFilter option,
+    #testimonialStatusFilter option,
+    #expiredContentTypeFilter option,
+    #courseBulkAction option,
+    #jobBulkAction option,
+    #internshipBulkAction option,
+    #blogBulkAction option,
+    #userBulkAction option,
+    #messageBulkAction option,
+    #newsletterBulkAction option,
+    #testimonialBulkAction option,
+    #expiredContentBulkAction option,
+    #newsletterRecipients option,
+    #courseLevel option,
+    #trashTypeFilter option,
+    #trashBulkAction option,
+    select optgroup,
+    select optgroup option {
+        cursor: pointer !important;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+
+    /* Firefox specific fix for dropdown options */
+    @-moz-document url-prefix() {
+        select option:hover,
+        select option:active,
+        select option:checked,
+        select optgroup:hover,
+        select optgroup option:hover {
+            cursor: pointer !important;
+            background-color: var(--primary) !important;
+            color: white !important;
+        }
+
+        /* Firefox dropdown container */
+        select:-moz-focusring {
+            color: transparent;
+            text-shadow: 0 0 0 #000;
+        }
+    }
+
+    /* Chrome, Edge, Brave, Safari specific fix */
+    @media screen and (-webkit-min-device-pixel-ratio: 0) {
+        select:focus option:hover,
+        select option:hover,
+        select option:active,
+        select option:checked {
+            cursor: pointer !important;
+            background-color: var(--primary) !important;
+            color: white !important;
+        }
+
+        /* For the dropdown popup in WebKit browsers */
+        select::-webkit-listbox,
+        select::-webkit-listbox option,
+        select::-webkit-inner-spin-button,
+        select::-webkit-calendar-picker-indicator {
+            cursor: pointer !important;
+        }
+    }
+
+    /* 2. SELECT2 DROPDOWNS - For your select2 implementation */
+    .select2-container,
+    .select2-container *,
+    .select2-selection,
+    .select2-selection__rendered,
+    .select2-selection__arrow,
+    .select2-dropdown,
+    .select2-results,
+    .select2-results__option,
+    .select2-results__option--highlighted,
+    .select2-results__option[aria-selected="true"],
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        cursor: pointer !important;
+    }
+
+    /* Select2 options hover state */
+    .select2-results__option:hover,
+    .select2-results__option:active,
+    .select2-results__option:focus {
+        cursor: pointer !important;
+        background-color: var(--primary) !important;
+        color: white !important;
+    }
+
+    /* Select2 search box inside dropdown */
+    .select2-search--dropdown,
+    .select2-search__field {
+        cursor: text !important;
+    }
+
+    /* 3. DATE INPUTS AND CALENDAR PICKER */
     input[type="date"],
     input[type="time"],
     input[type="datetime-local"],
@@ -2208,14 +2252,97 @@
         cursor: pointer !important;
     }
 
-    /* Calendar picker icon for date inputs */
+    /* Calendar icon */
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator,
     input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         cursor: pointer !important;
     }
 
-    /* Links only */
+    /* Date picker dropdown days - WebKit browsers */
+    ::-webkit-datetime-edit {
+        cursor: pointer !important;
+    }
+
+    ::-webkit-datetime-edit-fields-wrapper {
+        cursor: pointer !important;
+    }
+
+    ::-webkit-datetime-edit-text {
+        cursor: pointer !important;
+    }
+
+    ::-webkit-datetime-edit-month-field,
+    ::-webkit-datetime-edit-day-field,
+    ::-webkit-datetime-edit-year-field {
+        cursor: pointer !important;
+    }
+
+    ::-webkit-datetime-edit-month-field:hover,
+    ::-webkit-datetime-edit-day-field:hover,
+    ::-webkit-datetime-edit-year-field:hover {
+        cursor: pointer !important;
+        background-color: var(--primary) !important;
+        color: white !important;
+    }
+
+    /* 4. CHECKBOXES AND RADIOS - from your forms */
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="checkbox"] + label,
+    input[type="radio"] + label,
+    .checkbox-group label,
+    .checkbox-group input,
+    #selectAllCourses, #selectAllJobs, #selectAllInternships,
+    #selectAllBlog, #selectAllTestimonials, #selectAllNewsletter,
+    #selectAllExpired, #selectAllUsers, #selectAllMessages,
+    #selectAllTrash {
+        cursor: pointer !important;
+    }
+
+    /* 5. MODAL BUTTONS AND CLOSE BUTTONS */
+    .close-modal,
+    .modal .close,
+    .modal-header .close,
+    .modal-footer .close,
+    button.close-modal,
+    .btn,
+    .btn-primary,
+    .btn-outline,
+    .btn-danger,
+    .btn-success,
+    .btn-warning,
+    .btn-info,
+    .btn-icon,
+    .cancel-btn,
+    .confirm-btn,
+    #refreshDashboardBtn,
+    #checkExpiredContentBtn,
+    #addCourseBtn, #addJobBtn, #addInternshipBtn, #addBlogBtn,
+    #sendNewsletterBtn, #refreshTestimonialsBtn,
+    #refreshExpiredContentBtn, #reactivateAllExpiredBtn,
+    #applyCourseBulkAction, #applyJobBulkAction,
+    #applyInternshipBulkAction, #applyBlogBulkAction,
+    #applyUserBulkAction, #applyMessageBulkAction,
+    #applyNewsletterBulkAction, #applyTestimonialBulkAction,
+    #applyExpiredContentBulkAction, #replyFromView,
+    #sendReplyBtn, #uploadCourseImageBtn, #removeCourseImage,
+    #confirmAction, #refreshTrashBtn, #clearOldTrashBtn,
+    #emptyTrashBtn, #applyTrashBulkAction,
+    #prevCoursePage, #nextCoursePage,
+    #prevJobPage, #nextJobPage,
+    #prevInternshipPage, #nextInternshipPage,
+    #prevBlogPage, #nextBlogPage,
+    #prevTestimonialPage, #nextTestimonialPage,
+    #prevNewsletterPage, #nextNewsletterPage,
+    #prevExpiredContentPage, #nextExpiredContentPage,
+    #prevUserPage, #nextUserPage,
+    #prevMessagePage, #nextMessagePage,
+    #prevTrashPage, #nextTrashPage {
+        cursor: pointer !important;
+    }
+
+    /* 6. LINKS AND CLICKABLE ELEMENTS */
     a,
     a:link,
     a:visited,
@@ -2226,43 +2353,49 @@
     .pagination a,
     .page-link,
     .page-item,
-    [href]:not(input):not(button) {
+    [href]:not(input):not(button),
+    .notification-item,
+    .notification-bell,
+    .mark-all-read,
+    .tag-remove,
+    .btn-remove-image,
+    .admin-avatar-container,
+    .search-icon,
+    .fa-times,
+    .fa-times-circle,
+    .fa-close,
+    [class*="fa-times"] {
         cursor: pointer !important;
     }
 
-    /* Checkboxes and radios - only the input and its label */
-    input[type="checkbox"],
-    input[type="radio"],
-    input[type="checkbox"] + label,
-    input[type="radio"] + label,
-    .checkbox-group label:has(input[type="checkbox"]),
-    .checkbox-group label:has(input[type="radio"]) {
+    /* 7. PAGINATION BUTTONS */
+    .pagination button:not(:disabled),
+    .pagination .btn:not(:disabled),
+    .page-link:not(.disabled) {
         cursor: pointer !important;
     }
 
-    /* ===== STATUS TOGGLE BUTTONS AND SWITCHES ===== */
-    /* Status toggle containers */
-    .status-toggle,
-    .status-toggle *,
-    .status-toggle label,
-    .status-toggle .switch,
-    .status-toggle .slider,
-    .status-toggle .slider:before,
-    .status-toggle input[type="checkbox"],
-    .status-toggle .status-text {
+    /* 8. FILE UPLOAD */
+    input[type="file"],
+    #uploadCourseImageBtn,
+    .file-upload-label {
         cursor: pointer !important;
     }
 
-    /* Individual status toggle elements */
+    /* 9. FORM LABELS */
+    label[for],
+    fieldset label {
+        cursor: pointer !important;
+    }
+
+    /* 10. TOGGLE SWITCHES */
     .switch,
     .switch label,
     .switch .slider,
     .switch .slider:before,
-    .switch input[type="checkbox"] {
-        cursor: pointer !important;
-    }
-
-    /* Dark mode toggle */
+    .switch input,
+    .status-toggle,
+    .status-toggle *,
     .dark-mode-toggle,
     .dark-mode-toggle *,
     .dark-mode-switch,
@@ -2274,42 +2407,14 @@
         cursor: pointer !important;
     }
 
-    /* Icons that are explicitly clickable */
-    .fa.fa-search.search-icon,
-    .fa.fa-times.clear-search,
-    .fa.fa-chevron-down.filter-icon,
-    .fa.fa-chevron-up.filter-icon,
-    .notification-bell i,
-    .notification-close i,
-    .mark-all-read i,
-    .action-buttons i,
-    .edit-item i,
-    .delete-item i,
-    .view-item i,
-    .reply-message i,
-    .status-toggle i,
-    .fa-times,
-    .fa-times-circle,
-    .fa-close,
-    [class*="fa-times"] {
-        cursor: pointer !important;
-    }
-
-    /* Table rows that are explicitly clickable */
+    /* 11. TABLE ROWS THAT ARE CLICKABLE */
     tr[onclick],
     tbody tr.clickable,
     tr[data-href] {
         cursor: pointer !important;
     }
 
-    /* Pagination buttons only */
-    .pagination button:not(:disabled),
-    .pagination .btn:not(:disabled),
-    .page-link:not(.disabled) {
-        cursor: pointer !important;
-    }
-
-    /* Action buttons in tables - only the buttons */
+    /* 12. ACTION BUTTONS IN TABLES */
     .action-buttons button,
     .edit-item,
     .delete-item,
@@ -2322,118 +2427,7 @@
         cursor: pointer !important;
     }
 
-    /* File upload - only the clickable parts */
-    input[type="file"],
-    #uploadCourseImageBtn,
-    .file-upload-label {
-        cursor: pointer !important;
-    }
-
-    /* Dropdown headers only */
-    .select-header,
-    #blogCategoriesHeader {
-        cursor: pointer !important;
-    }
-
-    /* Notification items only */
-    .notification-item {
-        cursor: pointer !important;
-    }
-
-    /* Form labels - only those associated with inputs */
-    label[for],
-    fieldset label {
-        cursor: pointer !important;
-    }
-
-    /* Tag remove buttons only */
-    .tag-remove {
-        cursor: pointer !important;
-    }
-
-    /* Image remove button only */
-    .btn-remove-image,
-    #removeCourseImage {
-        cursor: pointer !important;
-    }
-
-    /* Admin avatar only */
-    .admin-avatar-container {
-        cursor: pointer !important;
-    }
-
-    /* Stat links only */
-    .stat-link {
-        cursor: pointer !important;
-    }
-
-    /* Search icon only */
-    .search-icon {
-        cursor: pointer !important;
-    }
-
-    /* ===== NON-INTERACTIVE ELEMENTS - DEFAULT CURSOR ===== */
-
-    /* Form inputs - text cursor */
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="url"],
-    input[type="search"],
-    textarea,
-    #blogTitle,
-    #blogAuthor,
-    #blogContent,
-    #blogImage,
-    #courseTitle,
-    #courseInstructor,
-    #jobTitle,
-    #jobCompany,
-    #internshipTitle,
-    #internshipCompany,
-    #replyMessage,
-    .form-group input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]),
-    .form-group textarea {
-        cursor: text !important;
-    }
-
-    /* Labels that are not associated with inputs */
-    label:not([for]),
-    .form-group > label:not([for]),
-    .sidebar-menu span,
-    .stat-title,
-    h1, h2, h3, h4, h5, h6,
-    p,
-    div:not([onclick]):not([role="button"]):not(.status-toggle):not(.switch):not(.slider):not(.close-modal),
-    span:not([onclick]):not([role="button"]):not(.status-text):not(.slider):not(.close-modal),
-    .form-group,
-    .form-row,
-    .modal-content,
-    .modal-header,
-    .modal-body,
-    .modal-footer,
-    .section-header,
-    .content-filters,
-    .table-footer,
-    .bulk-actions,
-    .stats-grid,
-    .stat-content,
-    .stat-number,
-    .activity-content,
-    .activity-message,
-    .activity-time,
-    .notification-content,
-    .notification-header,
-    .notification-footer,
-    .admin-title,
-    .admin-name:not(.clickable),
-    .page-info {
-        cursor: default !important;
-    }
-
-    /* Disabled state */
+    /* 13. DISABLED STATE */
     button:disabled,
     .btn:disabled,
     select:disabled,
@@ -2441,21 +2435,28 @@
     textarea:disabled,
     .disabled,
     [disabled],
-    [aria-disabled="true"],
-    .status-toggle input[type="checkbox"]:disabled + .slider,
-    .switch input:disabled + .slider,
-    .close-modal.disabled {
+    [aria-disabled="true"] {
         cursor: not-allowed !important;
         opacity: 0.6;
     }
 
-    /* Loading state */
-    .loading-overlay,
-    .loading-spinner,
-    #loadingOverlay {
-        cursor: wait !important;
+    /* 14. TOUCH DEVICE OPTIMIZATION */
+    @media (hover: none) and (pointer: coarse) {
+        select option:hover,
+        .select2-results__option:hover,
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            cursor: pointer !important;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+        }
+
+        select,
+        .btn,
+        button,
+        a {
+            min-height: 44px; /* Better touch target */
+        }
     }
-    /* ===== INTERACTIVE ELEMENTS - HAND CURSOR END ===== */
+    /* ===== COMPLETE DROPDOWN AND DATE PICKER POINTER END ===== */
 
     /* Focus Styles for Keyboard Navigation */
     .btn:focus-visible,

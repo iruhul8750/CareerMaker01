@@ -608,7 +608,7 @@
             </div>
         </div>
 
-        <!-- Expired Content Section - FIXED -->
+        <!-- Expired Content Section -->
         <div class="admin-section" id="expired-content">
             <div class="section-header">
                 <h2>Expired Content Management</h2>
@@ -917,7 +917,7 @@
         </div>
 
         <!-- Modals -->
-        <!-- Course Modal - Updated with Image URL -->
+        <!-- Course Modal  -->
         <div id="courseModal" class="modal">
             <div class="modal-content large">
                 <span class="close-modal">&times;</span>
@@ -963,7 +963,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="coursePrice">Price *</label>
-                                <input type="text" id="coursePrice" name="price" value="Free" required>
+                                <input type="text" id="coursePrice" name="price" value="0" required>
                             </div>
                             <div class="form-group">
                                 <label for="courseDuration">Duration</label>
@@ -1029,7 +1029,7 @@
                         <div class="form-row">
                             <div class="checkbox-group">
                                 <label>
-                                    <input type="checkbox" name="is_featured"> Featured Course
+                                    <input type="checkbox" name="is_featured" checked> Featured Course
                                 </label>
                             </div>
                             <div class="checkbox-group">
@@ -1057,21 +1057,21 @@
                         <input type="hidden" name="id" value="">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="jobTitle">Title</label>
+                                <label for="jobTitle">Title *</label>
                                 <input type="text" id="jobTitle" name="title" required>
                             </div>
                             <div class="form-group">
-                                <label for="jobCompany">Company</label>
+                                <label for="jobCompany">Company *</label>
                                 <input type="text" id="jobCompany" name="company" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="jobLocation">Location</label>
+                                <label for="jobLocation">Location *</label>
                                 <input type="text" id="jobLocation" name="location" required>
                             </div>
                             <div class="form-group">
-                                <label for="jobType">Type</label>
+                                <label for="jobType">Type *</label>
                                 <select id="jobType" name="type" required>
                                     <option value="">Select Type</option>
                                     <option value="Full-time">Full-time</option>
@@ -1084,7 +1084,7 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="jobSalary">Salary</label>
+                                <label for="jobSalary">Salary *</label>
                                 <input type="text" id="jobSalary" name="salary" placeholder="e.g., $50,000 - $70,000">
                             </div>
                             <div class="form-group">
@@ -1100,7 +1100,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="jobDescription">Description</label>
+                            <label for="jobDescription">Description *</label>
                             <textarea id="jobDescription" name="description" rows="4" required></textarea>
                         </div>
                         <div class="form-row">
@@ -1134,21 +1134,21 @@
                         <input type="hidden" name="id" value="">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="internshipTitle">Title</label>
+                                <label for="internshipTitle">Title *</label>
                                 <input type="text" id="internshipTitle" name="title" required>
                             </div>
                             <div class="form-group">
-                                <label for="internshipCompany">Company</label>
+                                <label for="internshipCompany">Company *</label>
                                 <input type="text" id="internshipCompany" name="company" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="internshipLocation">Location</label>
+                                <label for="internshipLocation">Location *</label>
                                 <input type="text" id="internshipLocation" name="location" required>
                             </div>
                             <div class="form-group">
-                                <label for="internshipType">Type</label>
+                                <label for="internshipType">Type *</label>
                                 <select id="internshipType" name="type" required>
                                     <option value="">Select Type</option>
                                     <option value="Paid">Paid</option>
@@ -1161,12 +1161,12 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="internshipDuration">Duration</label>
+                                <label for="internshipDuration">Duration *</label>
                                 <input type="text" id="internshipDuration" name="duration" placeholder="e.g., 3 months"
                                        required>
                             </div>
                             <div class="form-group">
-                                <label for="internshipLink">Application Link</label>
+                                <label for="internshipLink">Application Link *</label>
                                 <input type="url" id="internshipLink" name="application_link" required>
                             </div>
                         </div>
@@ -1178,7 +1178,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="internshipDescription">Description</label>
+                            <label for="internshipDescription">Description *</label>
                             <textarea id="internshipDescription" name="description" rows="4" required></textarea>
                         </div>
                         <div class="form-row">
@@ -1212,18 +1212,18 @@
                         <input type="hidden" name="id" value="">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="blogTitle">Title</label>
+                                <label for="blogTitle">Title *</label>
                                 <input type="text" id="blogTitle" name="title" required>
                             </div>
                             <div class="form-group">
-                                <label for="blogAuthor">Author</label>
+                                <label for="blogAuthor">Author *</label>
                                 <input type="text" id="blogAuthor" name="author" required>
                             </div>
                         </div>
 
                         <!-- PROFESSIONAL SELECT DROPDOWN -->
                         <div class="form-group">
-                            <label for="blogCategory">Category</label>
+                            <label for="blogCategory">Category *</label>
                             <select id="blogCategory" name="category" required>
                                 <option value="">Select a category...</option>
                                 <option value="Career Advice">Career Advice</option>
@@ -1239,7 +1239,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="blogContent">Content</label>
+                            <label for="blogContent">Content *</label>
                             <textarea id="blogContent" name="content" rows="8" required></textarea>
                         </div>
                         <div class="form-group">
@@ -1280,15 +1280,15 @@
                 <div class="form-container">
                     <form id="newsletterForm">
                         <div class="form-group">
-                            <label for="newsletterSubject">Subject</label>
+                            <label for="newsletterSubject">Subject *</label>
                             <input type="text" id="newsletterSubject" name="subject" required>
                         </div>
                         <div class="form-group">
-                            <label for="newsletterContent">Content</label>
+                            <label for="newsletterContent">Content *</label>
                             <textarea id="newsletterContent" name="content" rows="10" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="newsletterRecipients">Recipients</label>
+                            <label for="newsletterRecipients">Recipients *</label>
                             <select id="newsletterRecipients" name="recipients" required>
                                 <option value="all">All Subscribers</option>
                                 <option value="active">Active Subscribers Only</option>

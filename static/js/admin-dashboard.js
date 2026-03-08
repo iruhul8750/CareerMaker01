@@ -628,7 +628,7 @@
         console.log(`✅ Navigated to ${targetSection}`);
     }
 
-    // Simple single category dropdown for blog posts
+    //  single category dropdown for blog posts
     function setupBlogCategories() {
         console.log('Setting up blog category dropdown');
 
@@ -645,6 +645,7 @@
             if (category) {
                 categorySelect.value = category;
                 if (hiddenInput) {
+                    // ALWAYS store as JSON array string - this is what old file expects
                     hiddenInput.value = JSON.stringify([category]);
                 }
             }
@@ -653,12 +654,30 @@
         // Initialize with any existing values (for edit mode)
         function initializeWithValues(categories) {
             console.log('Setting category with:', categories);
-            if (categories && Array.isArray(categories) && categories.length > 0) {
-                // Take the first category since we only support single now
-                const category = categories[0];
-                setCategory(category);
-            } else if (typeof categories === 'string') {
-                setCategory(categories);
+            if (categories) {
+                let categoryValue = '';
+
+                // Handle different possible formats
+                if (Array.isArray(categories) && categories.length > 0) {
+                    categoryValue = categories[0];
+                } else if (typeof categories === 'string') {
+                    // Try to parse if it's a JSON string
+                    try {
+                        const parsed = JSON.parse(categories);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            categoryValue = parsed[0];
+                        } else {
+                            categoryValue = categories;
+                        }
+                    } catch (e) {
+                        // Not JSON, use as is
+                        categoryValue = categories;
+                    }
+                }
+
+                if (categoryValue) {
+                    setCategory(categoryValue);
+                }
             }
         }
 
@@ -671,11 +690,17 @@
             }
         }
 
-        // Handle category change
+        // Get selected category as array (for compatibility with old code)
+        function getSelectedCategories() {
+            return categorySelect.value ? [categorySelect.value] : [];
+        }
+
+        // Handle category change - update hidden input with JSON array
         categorySelect.addEventListener('change', function(e) {
             const selectedCategory = e.target.value;
             if (hiddenInput) {
                 if (selectedCategory) {
+                    // Store as JSON array string - exactly what old file expects
                     hiddenInput.value = JSON.stringify([selectedCategory]);
                 } else {
                     hiddenInput.value = '';
@@ -688,7 +713,7 @@
         return {
             initializeWithValues: initializeWithValues,
             clearSelections: clearSelections,
-            getSelectedCategory: () => categorySelect.value
+            getSelectedCategories: getSelectedCategories
         };
     }
 
@@ -4927,7 +4952,7 @@
         });
     }
 
-    // Enhanced form submission for blog posts
+    // Form submission
     function handleFormSubmit(e, type) {
         e.preventDefault();
 
@@ -4940,162 +4965,77 @@
         console.log('Type:', type);
         console.log('ID:', id);
 
-        // Handle blog posts separately - they have different fields
-        if (type === 'blog') {
-            // Convert checkbox values to boolean
-            const blogData = {
-                id: data.id || null,
-                title: data.title || '',
-                author: data.author || '',
-                content: data.content || '',
-                image: data.image || '',
-                categories: []
-            };
-
-            // Handle single category from select dropdown
-            if (data.category) {
-                blogData.categories = [data.category];
-            } else if (data.categories) {
-                // Fallback to handle if categories hidden input is used
-                try {
-                    const parsed = JSON.parse(data.categories);
-                    blogData.categories = Array.isArray(parsed) ? parsed : [parsed];
-                } catch (e) {
-                    blogData.categories = [];
-                }
-            }
-
-            // Handle checkboxes
-            blogData.is_featured = data.is_featured === 'on';
-            blogData.is_published = data.is_published === 'on';
-            blogData.is_active = data.is_active === 'on';
-
-            // Remove id if it's empty or null for new posts
-            if (!blogData.id || blogData.id === '') {
-                delete blogData.id;
-            }
-
-            // Validate required fields
-            if (!blogData.title || blogData.title.trim() === '') {
-                showNotification('Title is required', 'error');
-                return;
-            }
-            if (!blogData.author || blogData.author.trim() === '') {
-                showNotification('Author is required', 'error');
-                return;
-            }
-            if (!blogData.content || blogData.content.trim() === '') {
-                showNotification('Content is required', 'error');
-                return;
-            }
-            if (!blogData.categories || blogData.categories.length === 0) {
-                showNotification('Please select a category', 'error');
-                return;
-            }
-
-            // Use blogData for the request
-            Object.assign(data, blogData);
-
-            // Remove any fields that shouldn't be sent
-            const allowedFields = ['id', 'title', 'author', 'content', 'image', 'categories', 'is_featured', 'is_published', 'is_active'];
-            Object.keys(data).forEach(key => {
-                if (!allowedFields.includes(key)) {
+        // Convert checkbox values to boolean for ALL types first (like old file)
+        Object.keys(data).forEach(key => {
+            if (data[key] === 'on') {
+                data[key] = true;
+            } else if (data[key] === 'off') {
+                data[key] = false;
+            } else if (data[key] === '') {
+                // Remove empty fields except for text areas and certain fields
+                if (!['description', 'content', 'image', 'salary'].includes(key)) {
                     delete data[key];
                 }
-            });
+            }
 
-            console.log('Cleaned blog data:', data);
+            // Convert numeric fields
+            if (['rating', 'enrollments', 'duration_hours'].includes(key) && data[key]) {
+                data[key] = parseFloat(data[key]) || 0;
+            }
+        });
+
+        // Handle categories array for blog posts - THIS IS THE KEY PART from old file
+        if (type === 'blog' && data.categories) {
+            try {
+                // The hidden input stores JSON string, parse it to array
+                data.categories = JSON.parse(data.categories);
+                console.log('Parsed categories:', data.categories);
+            } catch (e) {
+                console.log('Error parsing categories, setting empty array:', e);
+                data.categories = [];
+            }
         }
-        // Handle courses
-        else if (type === 'courses') {
-            // Convert checkbox values to boolean
-            Object.keys(data).forEach(key => {
-                if (data[key] === 'on') {
-                    data[key] = true;
-                } else if (data[key] === 'off') {
-                    data[key] = false;
-                } else if (data[key] === '') {
-                    // Keep empty strings for description, content, etc.
-                    if (!['description', 'content', 'image'].includes(key)) {
-                        delete data[key];
-                    }
+
+        // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
+        // Keep is_active as false until manual reactivation
+        if (id && currentSection === 'expired-content') {
+            // If we're editing from expired section, preserve the inactive state
+            // unless explicitly changing it
+            if (typeof data.is_active === 'undefined') {
+                data.is_active = false;
+            }
+        } else {
+            // For normal edits, sync featured state with active state for new items
+            if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
+                data.is_featured = data.is_active;
+            }
+        }
+
+        // For new items, remove the ID field completely (CRITICAL FIX)
+        if (!id || id === '' || id === 'null') {
+            delete data.id;
+        }
+
+        // Validate required fields (exactly like old file)
+        const required_fields = {
+            'courses': ['title', 'category', 'instructor', 'application_link'],
+            'jobs': ['title', 'company', 'location', 'application_link'],
+            'internships': ['title', 'company', 'location', 'application_link'],
+            'blog': ['title', 'author', 'content', 'categories']
+        };
+
+        if (type in required_fields) {
+            for (const field of required_fields[type]) {
+                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
+                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
+                    return;
                 }
-            });
-
-            // Ensure price is properly handled
-            if (data.price === '' || data.price === undefined) {
-                data.price = 'Free';
-            }
-
-            // For new items, remove the ID field completely
-            if (!id || id === '') {
-                delete data.id;
-            }
-        }
-        // Handle jobs
-        else if (type === 'jobs') {
-            // Convert checkbox values to boolean
-            Object.keys(data).forEach(key => {
-                if (data[key] === 'on') {
-                    data[key] = true;
-                } else if (data[key] === 'off') {
-                    data[key] = false;
-                } else if (data[key] === '') {
-                    // Keep empty strings for description
-                    if (!['description'].includes(key)) {
-                        delete data[key];
-                    }
-                }
-            });
-
-            // For new items, remove the ID field completely
-            if (!id || id === '') {
-                delete data.id;
-            }
-        }
-        // Handle internships
-        else if (type === 'internships') {
-            // Convert checkbox values to boolean
-            Object.keys(data).forEach(key => {
-                if (data[key] === 'on') {
-                    data[key] = true;
-                } else if (data[key] === 'off') {
-                    data[key] = false;
-                } else if (data[key] === '') {
-                    // Keep empty strings for description
-                    if (!['description'].includes(key)) {
-                        delete data[key];
-                    }
-                }
-            });
-
-            // For new items, remove the ID field completely
-            if (!id || id === '') {
-                delete data.id;
-            }
-        }
-        // Handle other sections (users, messages, newsletter)
-        else {
-            // Convert checkbox values to boolean
-            Object.keys(data).forEach(key => {
-                if (data[key] === 'on') {
-                    data[key] = true;
-                } else if (data[key] === 'off') {
-                    data[key] = false;
-                } else if (data[key] === '') {
-                    delete data[key];
-                }
-            });
-
-            // For new items, remove the ID field completely
-            if (!id || id === '') {
-                delete data.id;
             }
         }
 
-        // Determine the correct endpoint
-        const url = id ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
-        const method = id ? 'PUT' : 'POST';
+        // Determine the correct endpoint and method
+        const url = id && id !== '' && id !== 'null' ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
+        const method = id && id !== '' && id !== 'null' ? 'PUT' : 'POST';
 
         console.log(`Sending ${method} request to ${url} with data:`, data);
 
