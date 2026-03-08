@@ -3683,6 +3683,7 @@
 
             const action = actionSelect.value;
 
+            // Show confirmation based on action
             if (action === 'delete') {
                 showConfirmation('delete',
                     `Are you sure you want to delete ${this.selectedIds.length} testimonial(s)? This action cannot be undone.`,
@@ -3950,11 +3951,8 @@
         const refreshBtn = document.getElementById('refreshExpiredContentBtn');
         if (refreshBtn) {
             console.log('✅ Setting up expired content refresh button');
-
-            // Clone to remove existing listeners
             const newBtn = refreshBtn.cloneNode(true);
             refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3968,7 +3966,6 @@
         if (reactivateAllBtn) {
             const newBtn = reactivateAllBtn.cloneNode(true);
             reactivateAllBtn.parentNode.replaceChild(newBtn, reactivateAllBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3980,12 +3977,13 @@
         const searchInput = document.getElementById('expiredContentSearch');
         if (searchInput) {
             console.log('✅ Setting up expired content search');
+            const newInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newInput, searchInput);
 
             let searchTimeout;
-            searchInput.addEventListener('input', function() {
+            newInput.addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 const searchTerm = this.value.trim();
-
                 searchTimeout = setTimeout(() => {
                     console.log(`🔍 Searching expired content: "${searchTerm}"`);
                     currentExpiredPage = 1;
@@ -3998,14 +3996,59 @@
         const filterSelect = document.getElementById('expiredContentTypeFilter');
         if (filterSelect) {
             console.log('✅ Setting up expired content filter');
+            const newSelect = filterSelect.cloneNode(true);
+            filterSelect.parentNode.replaceChild(newSelect, filterSelect);
 
-            filterSelect.addEventListener('change', function() {
+            newSelect.addEventListener('change', function() {
                 const filterValue = this.value;
                 console.log(`🎯 Filtering expired content by: ${filterValue}`);
                 currentExpiredPage = 1;
                 loadExpiredContentData(1, '', filterValue);
             });
         }
+
+        // SELECT ALL CHECKBOX - FIXED
+        const selectAllCheckbox = document.getElementById('selectAllExpired');
+        if (selectAllCheckbox) {
+            console.log('✅ Setting up expired content select all');
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+
+            newSelectAll.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const isChecked = this.checked;
+                const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
+
+                // Clear or update selected items array
+                selectedExpiredItems = [];
+
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                    if (isChecked) {
+                        selectedExpiredItems.push({
+                            content_type: checkbox.getAttribute('data-type'),
+                            content_id: checkbox.getAttribute('data-id')
+                        });
+                    }
+                });
+
+                // Update UI state
+                updateExpiredBulkActionButton();
+                console.log(`Expired select all: ${isChecked ? 'Selected' : 'Deselected'} ${checkboxes.length} items`);
+            });
+        }
+
+        // Individual checkbox listener - using event delegation
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('expired-item-checkbox')) {
+                const checkbox = e.target;
+                updateSelectedExpiredItems();
+                updateExpiredBulkActionButton();
+                updateSelectAllExpiredCheckbox();
+            }
+        });
 
         // Bulk actions
         const bulkActionBtn = document.getElementById('applyExpiredContentBulkAction');
@@ -4021,7 +4064,25 @@
                     showNotification('Please select a bulk action first', 'warning');
                     return;
                 }
-                performExpiredBulkAction(action);
+
+                // Show confirmation based on action
+                const selectedItems = getSelectedExpiredItems();
+                if (selectedItems.length === 0) {
+                    showNotification('Please select at least one item', 'warning');
+                    return;
+                }
+
+                if (action === 'reactivate') {
+                    showConfirmation('bulk_reactivate',
+                        `Are you sure you want to reactivate ${selectedItems.length} item(s)? This will set them as active and featured.`,
+                        () => bulkReactivateExpiredContent(selectedItems)
+                    );
+                } else if (action === 'delete') {
+                    showConfirmation('bulk_delete',
+                        `Are you sure you want to permanently delete ${selectedItems.length} expired item(s)? This action cannot be undone.`,
+                        () => bulkDeleteExpiredContent(selectedItems)
+                    );
+                }
             });
         }
 
@@ -4030,7 +4091,6 @@
         if (prevBtn) {
             const newBtn = prevBtn.cloneNode(true);
             prevBtn.parentNode.replaceChild(newBtn, prevBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -4045,7 +4105,6 @@
         if (nextBtn) {
             const newBtn = nextBtn.cloneNode(true);
             nextBtn.parentNode.replaceChild(newBtn, nextBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -4303,7 +4362,21 @@
                     </td>
                 </tr>
             `;
+
+            // Disable select all when no items
+            const selectAll = document.getElementById('selectAllExpired');
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                selectAll.disabled = true;
+            }
             return;
+        }
+
+        // Enable select all
+        const selectAll = document.getElementById('selectAllExpired');
+        if (selectAll) {
+            selectAll.disabled = false;
         }
 
         tableBody.innerHTML = expiredContent.map((item, index) => {
@@ -4483,12 +4556,17 @@
     // Update select all checkbox
     function updateSelectAllExpiredCheckbox() {
         const selectAll = document.getElementById('selectAllExpired');
+        if (!selectAll) return;
+
         const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
         const checkedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
 
-        if (selectAll && checkboxes.length > 0) {
+        if (checkboxes.length > 0) {
             selectAll.checked = checkedCount === checkboxes.length;
             selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        } else {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
         }
     }
 
@@ -5172,10 +5250,15 @@
         });
     }
 
+    // Find the setupBulkActions function and update the newsletter section
     function setupBulkActions() {
         // Select All functionality for each section
         document.querySelectorAll('thead input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            // Remove existing listeners by cloning
+            const newCheckbox = checkbox.cloneNode(true);
+            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+            newCheckbox.addEventListener('change', function() {
                 const sectionId = this.id.replace('selectAll', '');
                 if (!sectionId) return;
 
@@ -5186,6 +5269,11 @@
 
                 const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
 
+                // Clear existing selections first
+                if (!this.checked) {
+                    selectedItems[sectionKey] = [];
+                }
+
                 rowCheckboxes.forEach(cb => {
                     cb.checked = this.checked;
                     const id = cb.getAttribute('data-id');
@@ -5194,8 +5282,6 @@
                         if (!selectedItems[sectionKey].includes(id)) {
                             selectedItems[sectionKey].push(id);
                         }
-                    } else {
-                        selectedItems[sectionKey] = selectedItems[sectionKey].filter(itemId => itemId !== id);
                     }
                 });
 
@@ -5227,7 +5313,11 @@
 
         // Apply Bulk Actions
         document.querySelectorAll('[id^="apply"][id$="BulkAction"]').forEach(button => {
-            button.addEventListener('click', function() {
+            // Remove existing listeners by cloning
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+
+            newButton.addEventListener('click', function() {
                 const buttonId = this.id;
                 const section = buttonId.replace('apply', '').replace('BulkAction', '').toLowerCase();
                 const actionSelect = document.getElementById(`${section}BulkAction`);
@@ -5257,19 +5347,17 @@
                         });
                         break;
                     case 'activate':
-                        performBulkStatusUpdate(section, selectedItems[section], true);
-                        break;
                     case 'deactivate':
-                        performBulkStatusUpdate(section, selectedItems[section], false);
+                        showConfirmation('bulk_action', `Are you sure you want to ${action} ${selectedItems[section].length} item(s)?`, () => {
+                            performBulkStatusUpdate(section, selectedItems[section], action === 'activate');
+                        });
                         break;
                     case 'mark_read':
-                        performBulkMessageStatusUpdate(section, selectedItems[section], 'read');
-                        break;
                     case 'mark_unread':
-                        performBulkMessageStatusUpdate(section, selectedItems[section], 'unread');
-                        break;
                     case 'mark_replied':
-                        performBulkMessageStatusUpdate(section, selectedItems[section], 'replied');
+                        showConfirmation('bulk_action', `Are you sure you want to ${action.replace('_', ' ')} ${selectedItems[section].length} message(s)?`, () => {
+                            performBulkMessageStatusUpdate(section, selectedItems[section], action.replace('mark_', ''));
+                        });
                         break;
                     default:
                         showNotification('Unknown bulk action', 'error');
@@ -5278,7 +5366,7 @@
         });
     }
 
-    // Add this function to fix bulk actions
+    // function bulk actions
     function setupBulkActionButtons() {
         // Course bulk actions
         document.getElementById('applyCourseBulkAction')?.addEventListener('click', function() {
@@ -5311,14 +5399,30 @@
         });
 
         // Blog bulk actions
-        document.getElementById('applyBlogBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('blogBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('blog', action);
-        });
+        const applyBlogBtn = document.getElementById('applyBlogBulkAction');
+        if (applyBlogBtn) {
+            // Remove any existing listeners by cloning
+            const newBtn = applyBlogBtn.cloneNode(true);
+            applyBlogBtn.parentNode.replaceChild(newBtn, applyBlogBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const actionSelect = document.getElementById('blogBulkAction');
+                if (!actionSelect) {
+                    console.error('Blog bulk action select not found');
+                    return;
+                }
+                const action = actionSelect.value;
+                if (!action) {
+                    showNotification('Please select a bulk action first', 'warning');
+                    return;
+                }
+                console.log('Blog bulk action clicked:', action);
+                performBulkAction('blog', action);
+            });
+            console.log('✅ Blog bulk action button setup complete');
+        }
 
         // User bulk actions
         document.getElementById('applyUserBulkAction')?.addEventListener('click', function() {
@@ -5351,7 +5455,7 @@
         });
     }
 
-    // Enhanced bulk action function
+    // bulk action function
     function performBulkAction(section, action) {
         const selectedIds = selectedItems[section];
 
@@ -5378,40 +5482,78 @@
             let method = 'POST';
             let body = { ids: selectedIds };
 
-            switch(action) {
-                case 'activate':
-                case 'deactivate':
-                    endpoint = `/api/admin/${section}/bulk-status`;
-                    body.is_active = action === 'activate';
+            // Fix API endpoints for different sections
+            switch(section) {
+                case 'courses':
+                case 'jobs':
+                case 'internships':
+                case 'users':
+                case 'messages':
+                case 'newsletter':
+                    if (action === 'activate' || action === 'deactivate') {
+                        endpoint = `/api/admin/${section}/bulk-status`;
+                        body.is_active = action === 'activate';
+                    } else if (action === 'delete') {
+                        endpoint = `/api/admin/${section}/bulk-delete`;
+                    }
                     break;
-                case 'delete':
-                    endpoint = `/api/admin/${section}/bulk-delete`;
+
+                case 'blog':
+                    // Blog needs special handling - use blog_posts for status, blog for delete
+                    if (action === 'activate' || action === 'deactivate') {
+                        endpoint = '/api/admin/blog_posts/bulk-status';
+                        body.is_active = action === 'activate';
+                        body.is_featured = action === 'activate'; // Blog posts also have featured
+                    } else if (action === 'delete') {
+                        endpoint = '/api/admin/blog/bulk-delete';
+                    }
                     break;
-                case 'mark_read':
-                case 'mark_unread':
-                case 'mark_replied':
-                    endpoint = `/api/admin/messages/bulk-status`;
-                    body.status = action.replace('mark_', '');
+
+                case 'messages':
+                    if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_replied') {
+                        endpoint = '/api/admin/messages/bulk-status';
+                        body.status = action.replace('mark_', '');
+                    } else if (action === 'delete') {
+                        endpoint = '/api/admin/messages/bulk-delete';
+                    }
                     break;
+
+                default:
+                    showNotification('Unknown section', 'error');
+                    hideLoading();
+                    return;
             }
+
+            console.log(`Performing bulk action:`, { endpoint, method, body });
 
             fetch(endpoint, {
                 method: method,
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(body)
             })
             .then(response => {
-                if (!response.ok) throw new Error('Failed to perform bulk action');
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
+                    });
+                }
                 return response.json();
             })
             .then(result => {
+                console.log('Bulk action result:', result);
                 if (result.success) {
                     showNotification(result.message || 'Bulk action completed successfully', 'success');
-                    // Clear selection and reload data
+
+                    // Clear selection
                     selectedItems[section] = [];
+                    updateSelectAllCheckbox(section);
+                    updateBulkActionButton(section);
+
+                    // Reload data
                     loadSectionData(section, currentPage[section]);
                 } else {
                     showNotification(result.message || 'Failed to perform bulk action', 'error');
@@ -5419,7 +5561,7 @@
             })
             .catch(error => {
                 console.error('Bulk action error:', error);
-                showNotification('Failed to perform bulk action', 'error');
+                showNotification(error.message || 'Failed to perform bulk action', 'error');
             })
             .finally(() => {
                 hideLoading();
@@ -5471,8 +5613,6 @@
         if (section === 'messages') apiSection = 'messages';
         if (section === 'newsletter') apiSection = 'newsletter';
 
-        console.log(`Bulk deleting ${ids.length} items from ${section} using endpoint: ${apiSection}`);
-
         fetch(`/api/admin/${apiSection}/bulk-delete`, {
             method: 'POST',
             credentials: 'include',
@@ -5523,7 +5663,8 @@
         });
     }
 
-    // Enhanced bulk status update function - FIXED for blog posts
+
+    // bulk status update function
     function performBulkStatusUpdate(section, ids, isActive) {
         if (!ids || ids.length === 0) {
             showNotification('No items selected', 'warning');
@@ -5532,7 +5673,7 @@
 
         showLoading();
 
-        // Fix section names for API endpoints - IMPORTANT: blog becomes blog_posts
+        // Fix section names for API endpoints
         let apiSection = section;
         if (section === 'blog') apiSection = 'blog_posts';
         if (section === 'newsletter') apiSection = 'newsletter_subscribers';
@@ -5547,13 +5688,16 @@
             method: 'POST',
             credentials: 'include',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(updateData)
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                });
             }
             return response.json();
         })
@@ -5561,8 +5705,13 @@
             if (result.success) {
                 const statusText = isActive ? 'activated' : 'deactivated';
                 showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
-                // Clear selection and reload data
+
+                // Clear selection
                 selectedItems[section] = [];
+                updateSelectAllCheckbox(section);
+                updateBulkActionButton(section);
+
+                // Reload the section data
                 loadSectionData(section, currentPage[section]);
             } else {
                 showNotification(result.message || `Failed to update ${section} status`, 'error');
