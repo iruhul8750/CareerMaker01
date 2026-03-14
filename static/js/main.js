@@ -20,7 +20,7 @@
     }
 
     // =============================================
-    // UNIVERSAL LOADER MANAGEMENT (Single Instance)
+    // UNIVERSAL LOADER MANAGEMENT
     // =============================================
 
     // Only create LoaderManager if it doesn't exist
@@ -806,20 +806,65 @@
         // Initialize bookmark buttons
         initializeBookmarkButtons();
 
-        // Apply buttons
+        // Apply buttons - UPDATED with enrollment tracking
         document.querySelectorAll('.apply-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (this.disabled) return;
-
-                const contentId = this.dataset.id;
-                const contentType = this.dataset.type;
-                applyForContent(contentId, contentType, this);
-            });
+            // Remove existing listener to avoid duplicates
+            btn.removeEventListener('click', handleApplyClick);
+            btn.addEventListener('click', handleApplyClick);
         });
 
+        console.log('✅ Apply buttons initialized with enrollment tracking');
+    }
+
+    // function for apply button clicks
+    function handleApplyClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (this.disabled) return;
+
+        const contentId = this.dataset.id;
+        const contentType = this.dataset.type;
+
+        console.log(`📊 Apply button clicked: ${contentType} ID: ${contentId}`);
+
+        // Track enrollment for courses
+        if (contentType === 'course') {
+            trackCourseEnrollment(contentId);
+        }
+
+        // Call the original apply function
+        applyForContent(contentId, contentType, this);
+    }
+
+    // function to track course enrollment
+    function trackCourseEnrollment(courseId) {
+        // Don't wait for this - fire and forget
+        fetch(`/api/course/${courseId}/enroll`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`✅ Enrollment tracked: ${data.enrollment_count} total`);
+
+                // Update enrollment count in modal if it's open
+                const modalEnrollment = document.getElementById('horizontalModalEnrollment');
+                if (modalEnrollment) {
+                    modalEnrollment.textContent = data.enrollment_count;
+                }
+
+                // Update enrollment count in the card if it exists
+                const card = document.querySelector(`.course-card-layout[data-id="${courseId}"] .enrollment-count`);
+                if (card) {
+                    card.textContent = data.enrollment_count;
+                }
+            }
+        })
+        .catch(error => console.warn('⚠️ Could not track enrollment:', error));
     }
 
     // =============================================
@@ -1671,6 +1716,7 @@
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
         button.disabled = true;
 
+        // Get application link
         fetch(`/get-application-link/${contentType}/${contentId}`, {
             credentials: 'same-origin'
         })
@@ -1684,7 +1730,7 @@
         })
         .then(data => {
             if (data.application_link) {
-                hideLoader(); // Hide universal loader first
+                hideLoader();
                 window.open(data.application_link, '_blank');
                 showToast('Application opened in new tab', 'success');
             } else if (data.error) {
@@ -4530,6 +4576,55 @@
 
         // Add animation styles
         addAnimationStyles();
+
+        // Initialize course cards for modal
+        setTimeout(() => {
+            if (typeof initializeCourseCards === 'function') {
+                initializeCourseCards();
+            }
+            if (typeof initializeContentCards === 'function') {
+                initializeContentCards();
+            }
+        }, 500);
+
+        // Modal bookmark button handler
+        document.getElementById('horizontalModalBookmarkBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleBookmarkAction(this);
+        });
+
+        // Modal apply button handler
+        document.getElementById('horizontalModalApplyBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (this.disabled) return;
+
+            const courseId = this.dataset.id;
+            const contentType = this.dataset.type;
+
+            console.log(`📊 Modal apply clicked: ${contentType} ID: ${courseId}`);
+
+            // Track enrollment for courses
+            if (contentType === 'course') {
+                trackCourseEnrollment(courseId);
+            }
+
+            // Call the original apply function
+            applyForContent(courseId, contentType, this);
+        });
+
+        // Close modal on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('horizontalCourseModal');
+                if (modal && modal.style.display === 'flex') {
+                    closeHorizontalCourseModal();
+                }
+            }
+        });
+
     });
 
     // Also run when hash changes (in case of direct navigation)
@@ -5220,4 +5315,329 @@
         document.addEventListener('DOMContentLoaded', initializeAnimations);
     } else {
         initializeAnimations();
+    }
+
+    // =============================================
+    // Horizontal Course Modal Functions
+    // =============================================
+
+    // Initialize course cards for modal click
+    function initializeCourseCards() {
+        console.log('Initializing course cards for horizontal modal...');
+
+        document.querySelectorAll('.course-card-layout').forEach(card => {
+            card.removeEventListener('click', handleHorizontalCourseCardClick);
+            card.addEventListener('click', handleHorizontalCourseCardClick);
+            card.style.cursor = 'pointer';
+        });
+
+        console.log(`Initialized ${document.querySelectorAll('.course-card-layout').length} course cards`);
+    }
+
+    // Handle course card click
+    function handleHorizontalCourseCardClick(e) {
+        if (e.target.closest('.bookmark-btn') || e.target.closest('.apply-btn')) {
+            return;
+        }
+
+        const courseId = this.dataset.id;
+        console.log('Course card clicked, ID:', courseId);
+
+        if (!courseId || courseId === 'undefined' || courseId === 'null') {
+            showToast('Invalid course', 'error');
+            return;
+        }
+
+        openHorizontalCourseModal(courseId);
+    }
+
+    // Refresh course cards after dynamic updates
+    function refreshCourseCards() {
+        console.log('Refreshing course cards...');
+        setTimeout(() => {
+            initializeCourseCards();
+            initializeContentCards(); // Re-initialize apply buttons
+        }, 100);
+    }
+
+    // Open horizontal course modal
+    async function openHorizontalCourseModal(courseId) {
+        try {
+            showLoader('Loading course details...');
+
+            const response = await fetch(`/api/course/${courseId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned invalid response');
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Error ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load course details');
+            }
+
+            const course = data.course;
+            populateHorizontalCourseModal(course);
+
+            const modal = document.getElementById('horizontalCourseModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+        } catch (error) {
+            console.error('Error loading course details:', error);
+            showToast(error.message || 'Failed to load course details', 'error');
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // Close horizontal course modal
+    function closeHorizontalCourseModal() {
+        const modal = document.getElementById('horizontalCourseModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Populate horizontal course details modal with data
+    function populateHorizontalCourseModal(course) {
+        // Image
+        const modalImage = document.getElementById('horizontalModalCourseImage');
+        const imagePlaceholder = document.querySelector('.horizontal-image-placeholder');
+
+        if (course.image || course.company_logo) {
+            modalImage.src = course.image || course.company_logo;
+            modalImage.style.display = 'block';
+            if (imagePlaceholder) imagePlaceholder.style.display = 'none';
+        } else {
+            modalImage.style.display = 'none';
+            if (imagePlaceholder) imagePlaceholder.style.display = 'flex';
+        }
+
+        // Category
+        document.getElementById('horizontalModalCourseCategory').textContent = course.category || 'General';
+
+        // Title
+        document.getElementById('horizontalModalCourseTitle').textContent = course.title;
+
+        // Provider
+        document.getElementById('horizontalModalCourseProvider').textContent =
+            course.company || course.instructor || 'Unknown Provider';
+
+        // Description
+        document.getElementById('horizontalModalCourseDescription').textContent =
+            course.description || 'No description available';
+
+        // Price
+        const priceElement = document.getElementById('horizontalModalCoursePrice');
+        priceElement.textContent = (course.price && course.price !== 'Free') ? `$${course.price}` : 'Free';
+
+        // Level
+        document.getElementById('horizontalModalCourseLevel').textContent = course.level || 'All Levels';
+
+        // Duration
+        document.getElementById('horizontalModalCourseDuration').textContent = course.duration || 'N/A';
+
+        // Language
+        document.getElementById('horizontalModalCourseLanguage').textContent = course.language || 'N/A';
+
+        // Stats
+        document.getElementById('horizontalModalEnrollment').textContent = course.enrollment_count || 0;
+        document.getElementById('horizontalModalViews').textContent = course.views || 0;
+
+        // Instructor
+        const instructorSection = document.getElementById('horizontalInstructorSection');
+        const instructorElement = document.getElementById('horizontalModalInstructor');
+
+        if (course.instructor && course.instructor !== 'Not specified' && course.instructor !== 'Unknown Instructor') {
+            instructorElement.textContent = course.instructor;
+            instructorSection.style.display = 'block';
+        } else {
+            instructorSection.style.display = 'none';
+        }
+
+        // Curriculum
+        const curriculumSection = document.getElementById('horizontalCurriculumSection');
+        const curriculumList = document.getElementById('horizontalModalCurriculum');
+
+        if (course.curriculum && course.curriculum.length > 0) {
+            curriculumSection.style.display = 'block';
+            curriculumList.innerHTML = course.curriculum.map(item =>
+                `<li><i class="fas fa-check-circle"></i> ${item}</li>`
+            ).join('');
+        } else {
+            curriculumSection.style.display = 'none';
+        }
+
+        // Bookmark button
+        const bookmarkBtn = document.getElementById('horizontalModalBookmarkBtn');
+        bookmarkBtn.dataset.id = course.id;
+
+        if (course.is_bookmarked) {
+            bookmarkBtn.classList.add('bookmarked');
+            bookmarkBtn.querySelector('i').className = 'fas fa-bookmark';
+            bookmarkBtn.querySelector('.bookmark-text').textContent = 'Bookmarked';
+        } else {
+            bookmarkBtn.classList.remove('bookmarked');
+            bookmarkBtn.querySelector('i').className = 'far fa-bookmark';
+            bookmarkBtn.querySelector('.bookmark-text').textContent = 'Bookmark';
+        }
+
+        // Apply button
+        const applyBtn = document.getElementById('horizontalModalApplyBtn');
+        applyBtn.dataset.id = course.id;
+        applyBtn.dataset.type = 'course';
+
+        if (!course.application_link) {
+            applyBtn.disabled = true;
+            applyBtn.title = 'No application link available';
+        } else {
+            applyBtn.disabled = false;
+            applyBtn.title = '';
+        }
+
+        // Handle expiration in modal
+        const expirationSection = document.getElementById('modalExpirationSection');
+        const expirationInfo = document.getElementById('modalExpirationInfo');
+
+        if (course.expiration_date) {
+            const expDate = new Date(course.expiration_date);
+            const now = new Date();
+            const isExpired = expDate < now;
+
+            expirationSection.style.display = 'block';
+
+            if (isExpired) {
+                expirationInfo.innerHTML = `
+                    <i class="fas fa-clock" style="color: #ef4444;"></i>
+                    <span class="expired-text" style="color: #ef4444; font-weight: 600;">Expired</span>
+                `;
+            } else {
+                const formattedDate = expDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                expirationInfo.innerHTML = `
+                    <i class="fas fa-clock" style="color: #10b981;"></i>
+                    <span class="active-text" style="color: #10b981; font-weight: 600;">Expires: ${formattedDate}</span>
+                `;
+            }
+        } else {
+            expirationSection.style.display = 'none';
+        }
+    }
+
+    // =============================================
+    // Enhanced Content Card Initialization - UPDATED
+    // =============================================
+    function initializeContentCards() {
+        // Initialize bookmark buttons
+        initializeBookmarkButtons();
+
+        // Apply buttons - UPDATED with enrollment tracking
+        document.querySelectorAll('.apply-btn').forEach(btn => {
+            btn.removeEventListener('click', handleApplyClick);
+            btn.addEventListener('click', handleApplyClick);
+        });
+
+        console.log('✅ Apply buttons initialized with enrollment tracking');
+    }
+
+    // Handle apply button click
+    function handleApplyClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (this.disabled) return;
+
+        const contentId = this.dataset.id;
+        const contentType = this.dataset.type;
+
+        console.log(`📊 Apply clicked: ${contentType} ID: ${contentId}`);
+
+        // For courses, increment enrollment count (fire and forget)
+        if (contentType === 'course') {
+            trackCourseEnrollment(contentId);
+        }
+
+        // Open the application link
+        openApplicationLink(contentId, contentType, this);
+    }
+
+    function openApplicationLink(contentId, contentType, button) {
+        // Show loading state
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+
+        fetch(`/get-application-link/${contentType}/${contentId}`, {
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.application_link) {
+                window.open(data.application_link, '_blank');
+            } else {
+                showToast('Application link not available', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to open application link', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+        });
+    }
+
+    // Track course enrollment
+    function trackCourseEnrollment(courseId) {
+        console.log(`📊 Enrolling in course: ${courseId}`);
+
+        fetch(`/api/course/${courseId}/enroll`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`✅ Enrollment counted: ${data.enrollment_count}`);
+
+                // Update the count in the UI
+                const countElements = document.querySelectorAll(`.course-card-layout[data-id="${courseId}"] .enrollment-count`);
+                countElements.forEach(el => {
+                    el.textContent = data.enrollment_count;
+                });
+
+                // Update modal count if open
+                const modalCount = document.getElementById('horizontalModalEnrollment');
+                if (modalCount) {
+                    modalCount.textContent = data.enrollment_count;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('❌ Enrollment count failed:', error);
+            // Don't show error to user - it's not critical
+        });
     }

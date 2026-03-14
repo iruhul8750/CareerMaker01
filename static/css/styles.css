@@ -1909,33 +1909,44 @@
       background: var(--accent-color);
     }
 
-    /* Category and expiration badges */
-    .category-badge,
-    .expiration-badge {
-      position: absolute;
-      padding: 4px 8px;
-      font-size: 0.7rem;
-      border-radius: 4px;
-      color: #fff;
-      background: rgba(0,0,0,0.65);
-      top: 8px;
-      z-index: 2;
-      max-width: 50%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    /* Category badge */
+    .preview-card .category-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 20;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+        color: white;
+        padding: 5px 12px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        text-transform: uppercase;
+        pointer-events: none;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 70%;
     }
 
-    .category-badge {
-      left: 8px;
+    /* Ensure badge is visible on hover too */
+    .preview-card:hover .category-badge {
+        background: rgba(0, 0, 0, 0.7);
     }
 
-    .expiration-badge {
-      right: 8px;
-    }
-
-    .expiration-badge.expired {
-      background: rgba(239, 68, 68, 0.9);
+    /* Dark mode support */
+    .dark-mode .preview-card .category-badge {
+        background: rgba(0, 0, 0, 0.6);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: white;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     }
 
     /* =====================
@@ -2563,6 +2574,523 @@
       }
     }
 
+    /* Course Details Modal */
+    .horizontal-course-modal .horizontal-modal-content {
+        max-width: 1300px;
+        width: 100%;
+        padding: 0;
+        border-radius: 20px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .horizontal-modal-layout {
+        display: flex;
+        min-height: 400px;
+        max-height: 70vh;
+        height: auto;
+    }
+
+    /* Left Side */
+    .horizontal-modal-left {
+        width: 28%;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        padding: 20px 15px;
+        display: flex;
+        flex-direction: column;
+        color: white;
+        overflow-y: auto;
+    }
+
+    /* Image container - square with rounded corners */
+    .horizontal-image-container {
+        width: 100px;
+        height: 100px;
+        border-radius: 16px;
+        overflow: hidden;
+        background: white;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        margin: 0 auto 15px;
+        position: relative;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .horizontal-course-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .horizontal-image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        color: var(--primary-color);
+        background: #f0f9ff;
+    }
+
+    /* Category badge in modal */
+    .horizontal-category-badge {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        color: var(--primary-color);
+        padding: 4px 12px;
+        border-radius: 30px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: 2px solid var(--primary-color);
+        z-index: 10;
+    }
+
+    .horizontal-quick-info {
+        margin: 15px 0;
+    }
+
+    .quick-info-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .quick-info-item:last-child {
+        border-bottom: none;
+    }
+
+    .quick-info-item i {
+        width: 20px;
+        font-size: 16px;
+        color: white;
+    }
+
+    .quick-info-label {
+        display: block;
+        font-size: 10px;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .quick-info-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: white;
+    }
+
+    .horizontal-stats {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(5px);
+        padding: 5px 10px;
+        border-radius: 30px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        font-weight: 500;
+    }
+
+    .stat-badge i {
+        font-size: 12px;
+        color: white;
+    }
+
+    /* Right Side - Only this scrolls */
+    .horizontal-modal-right {
+        width: 72%;
+        padding: 20px;
+        background: white;
+        overflow-y: auto;
+        max-height: 400px;
+        scrollbar-width: thin;
+    }
+
+    .horizontal-header {
+        margin-bottom: 12px;
+        border-bottom: 2px solid #eef2f6;
+        padding-bottom: 8px;
+    }
+
+    .horizontal-header h3 {
+        font-size: 22px;
+        color: #1f2937;
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+        font-weight: 700;
+    }
+
+    .horizontal-provider {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #4b5563;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .horizontal-provider i {
+        color: var(--primary-color);
+        font-size: 14px;
+    }
+
+    .horizontal-description,
+    .horizontal-curriculum,
+    .horizontal-instructor {
+        margin-bottom: 15px;
+    }
+
+    .horizontal-description h4,
+    .horizontal-curriculum h4,
+    .horizontal-instructor h4 {
+        font-size: 15px;
+        color: #1f2937;
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-bottom: 2px solid #eef2f6;
+        padding-bottom: 6px;
+        font-weight: 600;
+    }
+
+    .horizontal-description h4 i,
+    .horizontal-curriculum h4 i,
+    .horizontal-instructor h4 i {
+        color: var(--primary-color);
+        font-size: 14px;
+    }
+
+    .horizontal-description p {
+        color: #374151;
+        font-size: 13px;
+        line-height: 1.6;
+        margin: 0;
+        max-height: 80px;
+        overflow-y: auto;
+        padding: 8px;
+        background: #f9fafb;
+        border-radius: 8px;
+        font-weight: 400;
+        scrollbar-width: thin;
+    }
+
+    .horizontal-curriculum ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 6px;
+        max-height: 100px;
+        overflow-y: auto;
+        padding-right: 5px;
+        scrollbar-width: thin;
+    }
+
+    .horizontal-curriculum li {
+        padding: 5px 8px;
+        background: #f3f4f6;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-left: 3px solid var(--primary-color);
+        font-weight: 500;
+    }
+
+    .horizontal-curriculum li i {
+        color: var(--primary-color);
+        font-size: 11px;
+    }
+
+    .instructor-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f3f4f6;
+        padding: 8px 12px;
+        border-radius: 8px;
+        color: #1f2937;
+        font-weight: 500;
+        font-size: 13px;
+    }
+
+    .instructor-icon {
+        font-size: 28px;
+        color: var(--primary-color);
+    }
+
+    /* Footer - Sticky to always show buttons */
+    .horizontal-footer {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        padding-top: 12px;
+        border-top: 2px solid #eef2f6;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        z-index: 5;
+    }
+
+    .horizontal-footer .bookmark-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        background: white;
+        color: #374151;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .horizontal-footer .bookmark-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .horizontal-footer .bookmark-btn.bookmarked {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    .horizontal-footer .apply-btn {
+        flex: 2;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .horizontal-footer .apply-btn:hover {
+        background: var(--secondary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -10px var(--primary-color);
+    }
+
+    .horizontal-footer .apply-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+        opacity: 0.7;
+    }
+
+    /* Left panel scrollbar styling */
+    .horizontal-modal-left::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .horizontal-modal-left::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .horizontal-modal-left::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+    }
+
+    /* Right panel scrollbar styling */
+    .horizontal-modal-right::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .horizontal-modal-right::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .horizontal-modal-right::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 3px;
+    }
+
+    .horizontal-modal-right::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary-color);
+    }
+
+    /* Dark Mode */
+    @media (prefers-color-scheme: dark) {
+        .horizontal-modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+        }
+
+        .horizontal-modal-left {
+            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+        }
+
+        .horizontal-modal-right {
+            background: #1a1a1a;
+        }
+
+        .horizontal-header h3 {
+            color: #ffffff !important;
+        }
+
+        .horizontal-provider {
+            color: #e5e7eb !important;
+        }
+
+        .horizontal-description h4,
+        .horizontal-curriculum h4,
+        .horizontal-instructor h4 {
+            color: #ffffff !important;
+            border-bottom-color: #333;
+        }
+
+        .horizontal-description p {
+            color: #f3f4f6 !important;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+        }
+
+        .horizontal-curriculum li {
+            background: #2d2d2d;
+            color: #f3f4f6 !important;
+        }
+
+        .instructor-info {
+            background: #2d2d2d;
+            color: #f3f4f6 !important;
+        }
+
+        .horizontal-footer {
+            background: #1a1a1a;
+            border-top-color: #333;
+        }
+
+        .horizontal-footer .bookmark-btn {
+            background: #2d2d2d;
+            border-color: #404040;
+            color: #f3f4f6 !important;
+        }
+
+        .horizontal-footer .bookmark-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color) !important;
+        }
+
+        .horizontal-footer .bookmark-btn.bookmarked {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white !important;
+        }
+
+        .horizontal-footer .apply-btn {
+            background: var(--primary-color);
+            color: white !important;
+        }
+
+        .horizontal-footer .apply-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .horizontal-footer .apply-btn:disabled {
+            background: #404040;
+            color: #9ca3af !important;
+        }
+
+        .horizontal-modal-right::-webkit-scrollbar-track {
+            background: #333;
+        }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .horizontal-modal-layout {
+            flex-direction: column;
+            min-height: auto;
+            max-height: 90vh;
+        }
+
+        .horizontal-modal-left,
+        .horizontal-modal-right {
+            width: 100%;
+        }
+
+        .horizontal-modal-left {
+            padding: 15px;
+        }
+
+        .horizontal-image-container {
+            width: 80px;
+            height: 80px;
+        }
+
+        .horizontal-modal-right {
+            max-height: 50vh;
+            padding: 15px;
+        }
+
+        .horizontal-curriculum ul {
+            grid-template-columns: 1fr;
+            max-height: 120px;
+        }
+
+        .horizontal-footer {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .horizontal-footer .bookmark-btn,
+        .horizontal-footer .apply-btn {
+            width: 100%;
+        }
+    }
+
+    /* Animation */
+    @keyframes slideInHorizontal {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .horizontal-modal-content {
+        animation: slideInHorizontal 0.3s ease-out;
+    }
     /* COURSE , INTERNSHIP AND JOBS SECTIONS END */
 
     /*      MODALS      */
@@ -5757,7 +6285,7 @@
       border-color: #a3bffa;
     }
 
-        /* ====================== */
+    /* ====================== */
     /* BLOG MODAL - MOBILE RESPONSIVE FIXES */
     /* ====================== */
 
@@ -8973,26 +9501,41 @@
 
     /* COURSE , INTERNSHIP AND JOBS SECTIONS PART 2 BLOCK */
 
-    /* Expiration Badge */
-    .expiration-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: #3b82f6;
-        color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+    /* Expiration info in details section */
+    .preview-card .additional-details .expiration-info {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 6px;
+        padding: 6px 12px;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 20px;
+        border-left: 3px solid #ef4444;
+    }
+
+    .preview-card .additional-details .expiration-info i {
+        color: #ef4444;
+        font-size: 12px;
+        width: 16px;
+    }
+
+    .preview-card .additional-details .expiration-info span {
+        font-size: 12px;
         font-weight: 600;
-        z-index: 2;
     }
 
-    .expiration-badge.expired {
-        background: #ef4444;
+    .preview-card .additional-details .expiration-info .expired-text {
+        color: #dc2626;
     }
 
-    .expiration-badge i {
-        margin-right: 4px;
+    .preview-card .additional-details .expiration-info .active-text {
+        color: #10b981;
+    }
+
+    /* Dark mode */
+    .dark-mode .preview-card .additional-details .expiration-info {
+        background: rgba(239, 68, 68, 0.2);
     }
 
     /* Additional Details */
@@ -9373,6 +9916,14 @@
       .expiration-badge {
         font-size: 0.7rem;
         padding: 3px 6px;
+      }
+      .preview-card .category-badge {
+        font-size: 10px;
+        padding: 4px 10px;
+        max-width: fit-content;   /* width only according to text */
+        width: auto;
+        overflow: visible;
+        text-overflow: unset;
       }
     }
 

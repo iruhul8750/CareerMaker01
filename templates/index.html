@@ -6,7 +6,8 @@
     <div class="hero-content">
         <div class="hero-text">
             <h1 class="animate-fade-in-up delay-100">Empower Your Career Journey</h1>
-            <p class="animate-fade-in-up delay-300">Discover the best courses, jobs, and internships to boost your career. Join thousands of learners and
+            <p class="animate-fade-in-up delay-300">Discover the best courses, jobs, and internships to boost your
+                career. Join thousands of learners and
                 professionals who have transformed their careers with CareerMaker.</p>
             <div class="hero-buttons animate-fade-in-up delay-500">
                 <a href="/courses" class="btn btn-primary"><i class="fas fa-book"></i> Explore Courses</a>
@@ -70,14 +71,12 @@
         <div class="preview-grid scroll-animate" id="coursesGrid">
             {% for course in courses %}
             <div class="preview-card course-card-layout animated-card" data-id="{{ course.id }}" data-type="course">
-                <!-- Image Section (Left Half) -->
+                <!-- Image Section -->
                 <div class="course-image-section">
                     {% if course.image %}
-                    <!-- Use uploaded course image if available -->
                     <img src="{{ course.image }}" alt="{{ course.title }}" class="course-image"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% elif course.company_logo and course.company_logo != '/static/images/default-course.png' %}
-                    <!-- Fallback to company logo -->
                     <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="course-image"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% endif %}
@@ -90,43 +89,28 @@
                         <span>Course Image</span>
                     </div>
 
-                    <!-- Expiration Badge -->
-                    {% if course.expiration_date %}
-                        {% set exp_date = course.expiration_date|string %}
-                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
-                            <i class="fas fa-clock"></i>
-                            {% if exp_date < now.isoformat() %}
-                                Expired
-                            {% else %}
-                                Expires: {{ course.expiration_date|format_date('%b %d, %Y') }}
-                            {% endif %}
-                        </div>
-                    {% endif %}
-
-                    <!-- Category Badge -->
+                    <!-- Category Badge - TRANSPARENT OVER IMAGE (ALWAYS VISIBLE) -->
                     <div class="category-badge">
                         {{ course.category or 'General' }}
                     </div>
+
+                    <!-- Expiration Badge - REMOVED FROM IMAGE SECTION (moved to details) -->
                 </div>
 
-                <!-- Details Section (Right Half) -->
+                <!-- Details Section -->
                 <div class="course-details-section">
                     <div class="course-header">
                         <h3>{{ course.title }}</h3>
-
-                        <!-- Company/Instructor -->
                         <div class="course-instructor">
                             <i class="fas fa-building"></i>
                             {{ course.company or course.instructor or 'Unknown Provider' }}
                         </div>
                     </div>
 
-                    <!-- Description -->
                     <div class="course-description">
                         {{ course.description|default('No description available', true)|truncate(120) }}
                     </div>
 
-                    <!-- Course Meta Information -->
                     <div class="course-meta">
                         <div class="course-price">
                             <i class="fas fa-tag"></i>
@@ -148,7 +132,6 @@
                         {% endif %}
                     </div>
 
-                    <!-- Additional Details -->
                     <div class="additional-details">
                         {% if course.instructor and course.instructor != 'Unknown Instructor' %}
                         <div class="detail-item">
@@ -165,9 +148,9 @@
                         {% endif %}
 
                         {% if course.enrollment_count %}
-                        <div class="detail-item">
+                        <div class="detail-item enrollment-count-item">
                             <i class="fas fa-users"></i>
-                            <span>{{ course.enrollment_count }} enrolled</span>
+                            <span class="enrollment-count">{{ course.enrollment_count }} enrolled</span>
                         </div>
                         {% endif %}
 
@@ -177,9 +160,31 @@
                             <span>{{ "%.1f"|format(course.rating) }} rating</span>
                         </div>
                         {% endif %}
+
+                        {% if course.views %}
+                        <div class="detail-item">
+                            <i class="fas fa-eye"></i>
+                            <span>{{ course.views }} views</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- EXPIRATION DATE - MOVED TO DETAILS SECTION -->
+                        {% if course.expiration_date %}
+                        {% set exp_date = course.expiration_date|string %}
+                        {% if exp_date < now.isoformat() %}
+                        <div class="expiration-info">
+                            <i class="fas fa-clock"></i>
+                            <span class="expired-text">Expired</span>
+                        </div>
+                        {% else %}
+                        <div class="expiration-info">
+                            <i class="fas fa-clock"></i>
+                            <span class="active-text">Expires: {{ course.expiration_date|format_date('%b %d, %Y') }}</span>
+                        </div>
+                        {% endif %}
+                        {% endif %}
                     </div>
 
-                    <!-- Action Buttons - FIXED: Using action-buttons class like other sections -->
                     <div class="action-buttons">
                         <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
                                 data-id="{{ course.id }}"
@@ -210,6 +215,122 @@
     </div>
 </section>
 
+<!-- Horizontal Course Details Modal -->
+<div class="modal horizontal-course-modal" id="horizontalCourseModal" style="display: none;">
+    <div class="modal-overlay" onclick="closeHorizontalCourseModal()"></div>
+    <div class="modal-content horizontal-modal-content">
+        <button class="close-modal" onclick="closeHorizontalCourseModal()">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="horizontal-modal-layout">
+            <!-- Left Side - Image & Key Info -->
+            <div class="horizontal-modal-left">
+                <div class="horizontal-image-container">
+                    <img id="horizontalModalCourseImage" src="" alt="Course" class="horizontal-course-image"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="course-image-placeholder horizontal-image-placeholder" style="display: none;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <span class="horizontal-category-badge" id="horizontalModalCourseCategory"></span>
+                </div>
+
+                <div class="horizontal-quick-info">
+                    <div class="quick-info-item">
+                        <i class="fas fa-tag"></i>
+                        <div>
+                            <span class="quick-info-label">Price</span>
+                            <span class="quick-info-value" id="horizontalModalCoursePrice"></span>
+                        </div>
+                    </div>
+
+                    <div class="quick-info-item">
+                        <i class="fas fa-chart-line"></i>
+                        <div>
+                            <span class="quick-info-label">Level</span>
+                            <span class="quick-info-value" id="horizontalModalCourseLevel"></span>
+                        </div>
+                    </div>
+
+                    <div class="quick-info-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <span class="quick-info-label">Duration</span>
+                            <span class="quick-info-value" id="horizontalModalCourseDuration">N/A</span>
+                        </div>
+                    </div>
+
+                    <div class="quick-info-item">
+                        <i class="fas fa-language"></i>
+                        <div>
+                            <span class="quick-info-label">Language</span>
+                            <span class="quick-info-value" id="horizontalModalCourseLanguage">N/A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="horizontal-stats">
+                    <div class="stat-badge">
+                        <i class="fas fa-users"></i>
+                        <span id="horizontalModalEnrollment">0</span> enrolled
+                    </div>
+                    <div class="stat-badge">
+                        <i class="fas fa-eye"></i>
+                        <span id="horizontalModalViews">0</span> views
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - Details -->
+            <div class="horizontal-modal-right">
+                <div class="horizontal-header">
+                    <h3 id="horizontalModalCourseTitle"></h3>
+                    <div class="horizontal-provider">
+                        <i class="fas fa-building"></i>
+                        <span id="horizontalModalCourseProvider"></span>
+                    </div>
+                </div>
+
+                <div class="horizontal-description">
+                    <h4><i class="fas fa-align-left"></i> About this course</h4>
+                    <p id="horizontalModalCourseDescription"></p>
+                </div>
+
+                <!-- Curriculum Section (if available) -->
+                <div class="horizontal-curriculum" id="horizontalCurriculumSection" style="display: none;">
+                    <h4><i class="fas fa-list-ul"></i> What you'll learn</h4>
+                    <ul id="horizontalModalCurriculum"></ul>
+                </div>
+
+                <!-- Instructor Info -->
+                <div class="horizontal-instructor" id="horizontalInstructorSection" style="display: none;">
+                    <h4><i class="fas fa-chalkboard-teacher"></i> Instructor</h4>
+                    <div class="instructor-info">
+                        <i class="fas fa-user-circle instructor-icon"></i>
+                        <span id="horizontalModalInstructor"></span>
+                    </div>
+                </div>
+
+                <!-- Expiration Info in Modal -->
+                <div class="modal-expiration-info" id="modalExpirationSection" style="display: none;">
+                    <h4><i class="fas fa-clock"></i> Availability</h4>
+                    <div class="expiration-info" id="modalExpirationInfo"></div>
+                </div>
+
+                <div class="horizontal-footer">
+                    <button class="btn btn-outline bookmark-btn" id="horizontalModalBookmarkBtn" data-type="course">
+                        <i class="far fa-bookmark"></i>
+                        <span class="bookmark-text">Bookmark</span>
+                    </button>
+                    <button class="btn btn-primary apply-btn" id="horizontalModalApplyBtn" data-type="course">
+                        Enroll Now <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Internships Preview Section -->
 <section class="preview-section" id="internships">
     <div class="container">
@@ -221,7 +342,8 @@
             {% for internship in internships %}
             <div class="preview-card animated-card" data-id="{{ internship.id }}" data-type="internship">
                 <div class="preview-image-container">
-                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}
+                    {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png'
+                    %}
                     <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% endif %}
@@ -232,23 +354,26 @@
 
                     <!-- Expiration Badge - SAFE VERSION -->
                     {% if internship.expiration_date and internship.expiration_date is not none %}
-                        {% set exp_date = internship.expiration_date|string %}
-                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
-                            <i class="fas fa-clock"></i>
-                            {% if exp_date < now.isoformat() %}
-                                Expired
-                            {% else %}
-                                Expires: {{ internship.expiration_date|format_date('%b %d, %Y') }}
-                            {% endif %}
-                        </div>
+                    {% set exp_date = internship.expiration_date|string %}
+                    <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < now.isoformat() %}
+                        Expired
+                        {% else %}
+                        Expires: {{ internship.expiration_date|format_date('%b %d, %Y') }}
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ internship.title }}</h3>
                     <p class="company">{{ internship.company or 'Unknown Company' }}</p>
-                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not specified' }}</p>
-                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not specified' }}</p>
-                    <p class="description">{{ internship.description|default('No description available', true)|truncate(120) }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ internship.location or 'Location not
+                        specified' }}</p>
+                    <p class="duration"><i class="fas fa-calendar-alt"></i> {{ internship.duration or 'Duration not
+                        specified' }}</p>
+                    <p class="description">{{ internship.description|default('No description available',
+                        true)|truncate(120) }}</p>
 
                     <div class="preview-meta">
                         <span class="type"><i class="fas fa-briefcase"></i> {{ internship.type or 'Internship' }}</span>
@@ -340,22 +465,24 @@
 
                     <!-- Expiration Badge - SAFE VERSION -->
                     {% if job.expiration_date and job.expiration_date is not none %}
-                        {% set exp_date = job.expiration_date|string %}
-                        <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
-                            <i class="fas fa-clock"></i>
-                            {% if exp_date < now.isoformat() %}
-                                Expired
-                            {% else %}
-                                Expires: {{ job.expiration_date|format_date('%b %d, %Y') }}
-                            {% endif %}
-                        </div>
+                    {% set exp_date = job.expiration_date|string %}
+                    <div class="expiration-badge {% if exp_date < now.isoformat() %}expired{% else %}active{% endif %}">
+                        <i class="fas fa-clock"></i>
+                        {% if exp_date < now.isoformat() %}
+                        Expired
+                        {% else %}
+                        Expires: {{ job.expiration_date|format_date('%b %d, %Y') }}
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 <div class="preview-content">
                     <h3>{{ job.title }}</h3>
                     <p class="company">{{ job.company or 'Unknown Company' }}</p>
-                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location or 'Location not specified' }}</p>
-                    <p class="description">{{ job.description|default('No description available', true)|truncate(120) }}</p>
+                    <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location or 'Location not
+                        specified' }}</p>
+                    <p class="description">{{ job.description|default('No description available', true)|truncate(120)
+                        }}</p>
 
                     <div class="preview-meta">
                         <span class="salary"><i class="fas fa-money-bill-wave"></i> {{ job.salary or 'Salary not specified' }}</span>
@@ -576,7 +703,8 @@
     <div class="testimonials-container">
         <div class="testimonials-header">
             <h2 class="scroll-animate">What Our Users Say</h2>
-            <p class="scroll-animate">Join thousands of professionals who have transformed their careers with CareerMaker</p>
+            <p class="scroll-animate">Join thousands of professionals who have transformed their careers with
+                CareerMaker</p>
             <button class="btn btn-primary scroll-animate" id="testimonialBtn">
                 <i class="fas fa-plus"></i> Share Your Experience
             </button>
@@ -727,36 +855,36 @@
             <p>Have questions? We're here to help you with your career journey</p>
         </div>
         <div class="contact-container scroll-animate stagger-scroll">
-         <!--   <div class="contact-info">
-                <h2 class="box-heading scroll-animate-left">Contact Info</h2>
-                <div class="info-card scroll-animate-left">
-                    <div class="info-icon">
-                        <i class="fas fa-map-marker-alt"></i>
-                    </div>
-                    <div class="info-content">
-                        <h3>Our Location</h3>
-                        <p>123 Career Street, Tech City, TC 12345</p>
-                    </div>
-                </div>
-                <div class="info-card scroll-animate-left">
-                    <div class="info-icon">
-                        <i class="fas fa-envelope"></i>
-                    </div>
-                    <div class="info-content">
-                        <h3>Email Us</h3>
-                        <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
-                    </div>
-                </div>
-                <div class="info-card scroll-animate-left">
-                    <div class="info-icon">
-                        <i class="fas fa-phone-alt"></i>
-                    </div>
-                    <div class="info-content">
-                        <h3>Call Us</h3>
-                        <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
-                    </div>
-                </div>
-            </div> -->
+            <!--   <div class="contact-info">
+                   <h2 class="box-heading scroll-animate-left">Contact Info</h2>
+                   <div class="info-card scroll-animate-left">
+                       <div class="info-icon">
+                           <i class="fas fa-map-marker-alt"></i>
+                       </div>
+                       <div class="info-content">
+                           <h3>Our Location</h3>
+                           <p>123 Career Street, Tech City, TC 12345</p>
+                       </div>
+                   </div>
+                   <div class="info-card scroll-animate-left">
+                       <div class="info-icon">
+                           <i class="fas fa-envelope"></i>
+                       </div>
+                       <div class="info-content">
+                           <h3>Email Us</h3>
+                           <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
+                       </div>
+                   </div>
+                   <div class="info-card scroll-animate-left">
+                       <div class="info-icon">
+                           <i class="fas fa-phone-alt"></i>
+                       </div>
+                       <div class="info-content">
+                           <h3>Call Us</h3>
+                           <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
+                       </div>
+                   </div>
+               </div> -->
 
             <div class="contact-form scroll-animate-right">
                 <h2 class="box-heading">Send a Message</h2>
@@ -789,61 +917,61 @@
 </section>
 
 <!-- Support Us Section - With Working PayPal -->
-<section class="support-section compact" id="support">
-    <div class="container">
-        <div class="support-header scroll-animate">
-            <h3>Support Our Mission</h3>
-            <p>Help us continue providing free career resources and opportunities</p>
-        </div>
+<!--<section class="support-section compact" id="support">-->
+<!--    <div class="container">-->
+<!--        <div class="support-header scroll-animate">-->
+<!--            <h3>Support Our Mission</h3>-->
+<!--            <p>Help us continue providing free career resources and opportunities</p>-->
+<!--        </div>-->
 
-        <div class="support-row scroll-animate stagger-scroll">
-            <!-- Description -->
-            <div class="support-item description-box scroll-animate-left">
-                <div class="support-icon">
-                    <i class="fas fa-hands-helping"></i>
-                </div>
-                <h4>Why Support Us?</h4>
-                <ul class="compact-list">
-                    <li><i class="fas fa-check"></i> Maintain platform</li>
-                    <li><i class="fas fa-check"></i> Add new courses</li>
-                    <li><i class="fas fa-check"></i> Keep resources free</li>
-                    <li><i class="fas fa-check"></i> Develop features</li>
-                </ul>
-            </div>
+<!--        <div class="support-row scroll-animate stagger-scroll">-->
+<!--            &lt;!&ndash; Description &ndash;&gt;-->
+<!--            <div class="support-item description-box scroll-animate-left">-->
+<!--                <div class="support-icon">-->
+<!--                    <i class="fas fa-hands-helping"></i>-->
+<!--                </div>-->
+<!--                <h4>Why Support Us?</h4>-->
+<!--                <ul class="compact-list">-->
+<!--                    <li><i class="fas fa-check"></i> Maintain platform</li>-->
+<!--                    <li><i class="fas fa-check"></i> Add new courses</li>-->
+<!--                    <li><i class="fas fa-check"></i> Keep resources free</li>-->
+<!--                    <li><i class="fas fa-check"></i> Develop features</li>-->
+<!--                </ul>-->
+<!--            </div>-->
 
-            <!-- Simple PayPal.me Link -->
-            <div class="support-item payment-box scroll-animate">
-                <div class="support-icon">
-                    <i class="fab fa-paypal"></i>
-                </div>
-                <h4>PayPal</h4>
-                <p>Quick donation via PayPal.me</p>
-                <a href="https://paypal.me/careermaker75" target="_blank" class="btn btn-paypal compact">
-                    <i class="fab fa-paypal"></i> Donate via PayPal.me
-                </a>
-            </div>
+<!--            &lt;!&ndash; Simple PayPal.me Link &ndash;&gt;-->
+<!--            <div class="support-item payment-box scroll-animate">-->
+<!--                <div class="support-icon">-->
+<!--                    <i class="fab fa-paypal"></i>-->
+<!--                </div>-->
+<!--                <h4>PayPal</h4>-->
+<!--                <p>Quick donation via PayPal.me</p>-->
+<!--                <a href="https://paypal.me/careermaker75" target="_blank" class="btn btn-paypal compact">-->
+<!--                    <i class="fab fa-paypal"></i> Donate via PayPal.me-->
+<!--                </a>-->
+<!--            </div>-->
 
-            <!-- QR Code -->
-            <div class="support-item qr-box scroll-animate-right">
-                <div class="support-icon">
-                    <i class="fas fa-qrcode"></i>
-                </div>
-                <h4>QR Code</h4>
-                <p>Scan to pay</p>
-                <div class="qr-compact">
-                    <img src="/static/images/payment-qr.png" alt="QR Code"
-                         onerror="this.src='/static/images/default-qr.png'">
-                </div>
-                <p class="qr-note">UPI, Google Pay, PhonePe</p>
-            </div>
-        </div>
+<!--            &lt;!&ndash; QR Code &ndash;&gt;-->
+<!--            <div class="support-item qr-box scroll-animate-right">-->
+<!--                <div class="support-icon">-->
+<!--                    <i class="fas fa-qrcode"></i>-->
+<!--                </div>-->
+<!--                <h4>QR Code</h4>-->
+<!--                <p>Scan to pay</p>-->
+<!--                <div class="qr-compact">-->
+<!--                    <img src="/static/images/payment-qr.png" alt="QR Code"-->
+<!--                         onerror="this.src='/static/images/default-qr.png'">-->
+<!--                </div>-->
+<!--                <p class="qr-note">UPI, Google Pay, PhonePe</p>-->
+<!--            </div>-->
+<!--        </div>-->
 
-        <div class="support-footer compact scroll-animate">
-            <i class="fas fa-heart"></i>
-            <span>Thank you for your support!</span>
-        </div>
-    </div>
-</section>
+<!--        <div class="support-footer compact scroll-animate">-->
+<!--            <i class="fas fa-heart"></i>-->
+<!--            <span>Thank you for your support!</span>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</section>-->
 {% endblock %}
 
 {% block extra_js %}

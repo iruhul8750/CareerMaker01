@@ -1,5 +1,8 @@
 import os
+
+from anyio import current_time
 from dotenv import load_dotenv
+
 load_dotenv()
 import uuid
 import secrets
@@ -82,10 +85,12 @@ try:
 except Exception as e:
     logger.error(f"Supabase connection failed: {str(e)}")
 
+
 # Helper Functions
 def get_current_utc_time():
     """Get current time in UTC for consistent expiration checks"""
     return datetime.now(timezone.utc)
+
 
 def test_supabase_connection():
     """Test Supabase connection with retry logic"""
@@ -104,6 +109,7 @@ def test_supabase_connection():
                 logger.error(f"❌ All Supabase connection attempts failed")
                 return False
 
+
 def parse_db_timestamp(timestamp_str):
     """Parse database timestamp and ensure it's timezone-aware"""
     if not timestamp_str:
@@ -113,6 +119,15 @@ def parse_db_timestamp(timestamp_str):
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     except ValueError:
         return datetime.now(timezone.utc)
+
+
+def is_valid_uuid(uuid_string):
+    """Validate if a string is a valid UUID"""
+    try:
+        uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+        return bool(uuid_pattern.match(str(uuid_string)))
+    except:
+        return False
 
 
 def verify_password(stored_hash, password):
@@ -238,6 +253,7 @@ def login_required(f):
 
     return decorated_function
 
+
 def handle_otp_resend(data):
     """Handle OTP resend requests"""
     try:
@@ -328,7 +344,9 @@ def admin_required(f):
                 'requires_login': True,
                 'redirect_url': '/admin/login'
             }), 500
+
     return decorated_function
+
 
 # Logo fetch functions for contents
 def fetch_company_logo(company_name):
@@ -1056,6 +1074,7 @@ def get_or_fetch_logo_optimized(company_name, content_type, content_id):
         logger.error(f"Error in optimized logo fetch for {company_name}: {str(e)}")
         return None
 
+
 def find_similar_company_logo(company_name):
     """
     Find similar company logo in database using fuzzy matching
@@ -1186,6 +1205,7 @@ def update_content_logos():
         logger.error(f"Error updating content logos: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+
 # Categories handle
 def handle_categories_data(data):
     """Handle categories data conversion from string to array"""
@@ -1199,9 +1219,11 @@ def handle_categories_data(data):
             data['categories'] = [cat for cat in data['categories'] if cat]
     return data
 
+
 # function to check and auto-deactivate expired content
 # Initialize scheduler
 scheduler = BackgroundScheduler()
+
 
 def check_expired_content():
     """Check and deactivate expired content - ENHANCED VERSION"""
@@ -1382,6 +1404,7 @@ atexit.register(shutdown_scheduler)
 # Start scheduler immediately
 start_scheduler()
 
+
 # Routes
 @app.route('/')
 def index():
@@ -1411,6 +1434,11 @@ def index():
                 .limit(4)
 
             courses = courses_query.execute().data or []
+
+            # Ensure views field exists
+            for course in courses:
+                if 'views' not in course:
+                    course['views'] = 0
             logger.info(f"📚 Found {len(courses)} active featured courses for homepage")
 
             # Enhance courses with logos
@@ -1654,6 +1682,7 @@ def index():
                                testimonials=[],
                                profile_pic_data=None,
                                now=now)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -2200,6 +2229,7 @@ def clear_profile_cache():
         logger.error(f"Clear profile cache error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 # Helper function to get profile picture URL from database value
 def profile_pic_url_from_db(value):
     """
@@ -2232,6 +2262,7 @@ def get_profile_pic_url_with_cache_bust(profile_pic_path, timestamp=None):
     except Exception as e:
         logger.error(f"Error generating profile pic URL: {str(e)}")
         return None
+
 
 @app.route('/dashboard')
 @login_required
@@ -2685,6 +2716,7 @@ def get_user_bookmarks(user_id):
         logger.error(f"Error getting user bookmarks: {str(e)}", exc_info=True)
         return []
 
+
 # Content logo routes
 @app.route('/api/company-logo/preview')
 def company_logo_preview():
@@ -2810,38 +2842,102 @@ def courses():
     try:
         user_id = session.get('user_id')
 
-        # Only fetch ACTIVE courses (expired ones are auto-deactivated)
-        query = supabase.table('courses').select('*').eq('is_active', True)
+        # Get current time in UTC for expiration comparison
+        current_time = get_current_utc_time()
+        current_time_iso = current_time.isoformat()
+        logger.info(f"🕐 Current time for courses page: {current_time_iso}")
+
+        # Only fetch ACTIVE courses that are NOT expired
+        query = supabase.table('courses') \
+            .select('*') \
+            .eq('is_active', True) \
+            .or_(f'expiration_date.is.null,expiration_date.gt.{current_time_iso}')
 
         if search:
             query = query.ilike('title', f'%{search}%')
         if category:
             query = query.eq('category', category)
 
+        # Execute query
         courses_data = query.order('created_at', desc=True).execute().data or []
+        logger.info(f"📚 Found {len(courses_data)} active courses")
 
-        # Enhance courses with logos
-        enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in courses_data]
+        # Enhance courses with logos and ensure all fields exist
+        enhanced_courses = []
+        for course in courses_data:
+            try:
+                # Ensure all required fields have defaults
+                course.setdefault('image', None)
+                course.setdefault('company_logo', None)
+                course.setdefault('description', 'No description available')
+                course.setdefault('price', 'Free')
+                course.setdefault('level', 'All Levels')
+                course.setdefault('duration', 'Not specified')
+                course.setdefault('language', 'Not specified')
+                course.setdefault('instructor', 'Not specified')
+                course.setdefault('company', 'Unknown Provider')
+                course.setdefault('category', 'General')
+                course.setdefault('application_link', None)
+                course.setdefault('enrollment_count', 0)
+                course.setdefault('views', 0)  # Ensure views field exists
+
+                # Enhance with company logo if available
+                if course.get('company'):
+                    try:
+                        enhanced = enhance_content_with_logo(course, 'course', course.get('id'))
+                        if enhanced.get('company_logo'):
+                            course['company_logo'] = enhanced['company_logo']
+                    except Exception as e:
+                        logger.warning(f"Could not enhance course logo for {course.get('id')}: {str(e)}")
+                        if not course.get('company_logo'):
+                            course['company_logo'] = '/static/images/default-course.png'
+                else:
+                    course['company_logo'] = '/static/images/default-course.png'
+
+                enhanced_courses.append(course)
+
+            except Exception as e:
+                logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
+                # Add course with defaults rather than failing
+                course['company_logo'] = '/static/images/default-course.png'
+                enhanced_courses.append(course)
+
+        logger.info(f"✅ Enhanced {len(enhanced_courses)} courses with logos")
 
         # Add bookmark status if user is logged in
         if user_id:
-            user_bookmarks = get_user_bookmarks(user_id)
-            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            try:
+                user_bookmarks = get_user_bookmarks(user_id)
+                bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
 
+                for course in enhanced_courses:
+                    course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
+
+                logger.info(f"🔖 Added bookmark status for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error adding bookmark status: {str(e)}")
+                # Set default bookmark status
+                for course in enhanced_courses:
+                    course['is_bookmarked'] = False
+        else:
             for course in enhanced_courses:
-                course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
+                course['is_bookmarked'] = False
 
-        logger.info(f"Courses page - Active courses: {len(enhanced_courses)}")
+        # Log final count
+        logger.info(f"🏠 Courses page loaded - Total courses: {len(enhanced_courses)}")
 
     except Exception as e:
-        logger.error(f"Error loading courses: {str(e)}")
+        logger.error(f"❌ Error loading courses: {str(e)}", exc_info=True)
         enhanced_courses = []
+        flash('Error loading courses. Please try again.', 'error')
 
+    # Always return the template, even with empty courses list
     return render_template('courses.html',
                            courses=enhanced_courses,
                            search=search,
                            category=category,
-                           course_categories=['Programming', 'Design', 'Business', 'Marketing', 'Data Science'])
+                           course_categories=['Programming', 'Design', 'Business', 'Marketing', 'Data Science','Artificial Intelligence',''],
+                           now=current_time)  # Pass current_time to template for expiration comparison
 
 
 @app.route('/courses/<course_id>/enroll', methods=['POST'])
@@ -2850,7 +2946,8 @@ def enroll_course(course_id):
     try:
         # Check if course is active and not expired using UTC
         current_time = get_current_utc_time().isoformat()
-        course = supabase.table('courses').select('application_link').eq('id', course_id).eq('is_published', True).eq('is_active', True).or_(f'expiration_date.is.null,expiration_date.gt.{current_time}').single().execute().data
+        course = supabase.table('courses').select('application_link').eq('id', course_id).eq('is_published', True).eq(
+            'is_active', True).or_(f'expiration_date.is.null,expiration_date.gt.{current_time}').single().execute().data
 
         if not course or not course.get('application_link'):
             flash('This course is not currently available for enrollment or has expired', 'danger')
@@ -2922,6 +3019,149 @@ def upload_course_image():
         return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
 
 
+@app.route('/api/course/<string:course_id>')
+def get_course_details(course_id):
+    """API endpoint to get complete course details for modal - with view count increment"""
+    try:
+        logger.info(f"📡 API call to /api/course/{course_id}")
+
+        # Validate UUID format
+        uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+        if not uuid_pattern.match(course_id):
+            logger.warning(f"Invalid UUID format: {course_id}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid course ID format'
+            }), 400
+
+        # Get current time for expiration check
+        current_time = get_current_utc_time().isoformat()
+
+        # Get course from database - only if active and not expired
+        course_response = supabase.table('courses') \
+            .select('*') \
+            .eq('id', course_id) \
+            .eq('is_active', True) \
+            .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+            .execute()
+
+        logger.info(f"Database response: {course_response}")
+
+        if not course_response.data or len(course_response.data) == 0:
+            logger.warning(f"Course {course_id} not found, inactive, or expired")
+            return jsonify({
+                'success': False,
+                'error': 'Course not found or has expired'
+            }), 404
+
+        course = course_response.data[0]
+        logger.info(f"Found course: {course.get('title')}")
+
+        # INCREMENT VIEW COUNT - Use admin client to bypass RLS
+        try:
+            current_views = course.get('views', 0) or 0
+            new_views = current_views + 1
+
+            update_result = supabase_admin.table('courses') \
+                .update({'views': new_views}) \
+                .eq('id', course_id) \
+                .execute()
+
+            if update_result.data:
+                course['views'] = new_views
+                logger.info(f"👀 View count incremented for course {course_id}: {current_views} → {new_views}")
+            else:
+                logger.warning(f"Could not increment view count for course {course_id}")
+        except Exception as view_error:
+            logger.warning(f"View count increment failed: {str(view_error)}")
+            # Continue anyway - don't fail the request
+
+        # Enhance course with logo if available
+        if course.get('company'):
+            try:
+                enhanced_course = enhance_content_with_logo(course, 'course', course_id)
+                if enhanced_course.get('company_logo'):
+                    course['company_logo'] = enhanced_course['company_logo']
+            except Exception as e:
+                logger.warning(f"Could not enhance course logo: {str(e)}")
+
+        # Ensure all required fields have defaults
+        course_data = {
+            'id': course.get('id'),
+            'title': course.get('title', 'Untitled Course'),
+            'description': course.get('description', 'No description available'),
+            'category': course.get('category', 'General'),
+            'level': course.get('level', 'All Levels'),
+            'price': course.get('price', 'Free'),
+            'duration': course.get('duration', 'Not specified'),
+            'language': course.get('language', 'Not specified'),
+            'instructor': course.get('instructor', 'Not specified'),
+            'company': course.get('company', 'Unknown Provider'),
+            'company_logo': course.get('company_logo', None),
+            'image': course.get('image', None),
+            'enrollment_count': course.get('enrollment_count', 0),
+            'views': course.get('views', 0),
+            'application_link': course.get('application_link', None),
+            'expiration_date': course.get('expiration_date', None),
+            'curriculum': [],
+            'requirements': [],
+            'certificate': course.get('certificate'),
+            'prerequisites': course.get('prerequisites'),
+            'topics': course.get('topics'),
+            'format': course.get('format')
+        }
+
+        # Parse curriculum if stored as text
+        if course.get('curriculum'):
+            if isinstance(course['curriculum'], str):
+                course_data['curriculum'] = [line.strip() for line in course['curriculum'].split('\n') if line.strip()]
+            elif isinstance(course['curriculum'], list):
+                course_data['curriculum'] = course['curriculum']
+
+        # Parse requirements if stored as text
+        if course.get('requirements'):
+            if isinstance(course['requirements'], str):
+                course_data['requirements'] = [line.strip() for line in course['requirements'].split('\n') if
+                                               line.strip()]
+            elif isinstance(course['requirements'], list):
+                course_data['requirements'] = course['requirements']
+
+        # Add bookmark status if user is logged in
+        if 'user_id' in session:
+            try:
+                user_id = session['user_id']
+                # Check if this course is bookmarked by the user
+                bookmark_response = supabase_admin.table('bookmarks') \
+                    .select('id') \
+                    .eq('user_id', user_id) \
+                    .eq('item_type', 'course') \
+                    .eq('item_id', course_id) \
+                    .execute()
+
+                course_data['is_bookmarked'] = len(bookmark_response.data or []) > 0
+            except Exception as e:
+                logger.warning(f"Could not get bookmark status: {str(e)}")
+                course_data['is_bookmarked'] = False
+        else:
+            course_data['is_bookmarked'] = False
+
+        logger.info(f"✅ Successfully returning course data for {course_id} with {course_data['views']} views")
+
+        response = jsonify({
+            'success': True,
+            'course': course_data
+        })
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching course details for ID {course_id}: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Failed to load course details. Please try again.'
+        }), 500
+
+
 @app.route('/jobs')
 def jobs():
     search = request.args.get('search', '')
@@ -2972,7 +3212,8 @@ def jobs():
 def apply_job(job_id):
     try:
         # Check if job is active (expired jobs are auto-deactivated)
-        job = supabase.table('jobs').select('application_link').eq('id', job_id).eq('is_active', True).single().execute().data
+        job = supabase.table('jobs').select('application_link').eq('id', job_id).eq('is_active',
+                                                                                    True).single().execute().data
 
         if not job or not job.get('application_link'):
             flash('Job not found or has expired', 'danger')
@@ -3044,7 +3285,8 @@ def internships():
 def apply_internship(internship_id):
     try:
         # Check if internship is active (expired internships are auto-deactivated)
-        internship = supabase.table('internships').select('application_link').eq('id', internship_id).eq('is_active', True).single().execute().data
+        internship = supabase.table('internships').select('application_link').eq('id', internship_id).eq('is_active',
+                                                                                                         True).single().execute().data
 
         if not internship or not internship.get('application_link'):
             flash('Internship not found or has expired', 'danger')
@@ -3187,6 +3429,7 @@ def blog():
         posts = []
 
     return render_template('blogs.html', posts=posts)
+
 
 # =============================================
 # FIXED TESTIMONIAL ROUTES - PROPER PROFILE PICTURES
@@ -3467,6 +3710,7 @@ def get_testimonial(testimonial_id):
         logger.error(f"Error fetching testimonial: {str(e)}")
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
+
 # ===== BOOKMARK ENDPOINT FIX =====
 @app.route('/api/bookmark/<content_type>/<content_id>', methods=['POST'])
 @login_required
@@ -3587,6 +3831,7 @@ def check_bookmark_status(content_type, content_id):
     except Exception as e:
         logger.error(f"Error checking bookmark status: {str(e)}")
         return jsonify({'is_bookmarked': False})
+
 
 # ===== APPLICATION LINK ENDPOINT FIX =====
 @app.route('/get-application-link/<content_type>/<content_id>')
@@ -4038,6 +4283,7 @@ def unsubscribe_newsletter():
             "message": "Failed to unsubscribe. Please try again."
         }), 500
 
+
 @app.route('/unsubscribe', methods=['GET', 'POST'])
 def unsubscribe_page():
     """Render unsubscribe page"""
@@ -4100,6 +4346,7 @@ def handle_404_error(error):
             'message': 'Endpoint not found.'
         }), 404
     return error
+
 
 # ===== ADMIN ROUTES =====
 
@@ -4709,7 +4956,8 @@ def update_admin_resource(resource, id):
         table_name = table_map.get(resource, resource)
 
         # Check if resource exists
-        existing_response = supabase_admin.table(table_name).select('id, company, company_logo, expiration_date, is_active').eq('id', id).execute()
+        existing_response = supabase_admin.table(table_name).select(
+            'id, company, company_logo, expiration_date, is_active').eq('id', id).execute()
         if not existing_response.data:
             return jsonify({'success': False, 'message': f'{resource[:-1].title()} not found'}), 404
 
@@ -4791,6 +5039,7 @@ def update_admin_resource(resource, id):
     except Exception as e:
         logger.error(f"❌ Error updating {resource}: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
+
 
 # Filters for jobs and internhsips
 @app.route('/api/jobs/filters')
@@ -4946,6 +5195,7 @@ def toggle_resource_status(resource, id):
     except Exception as e:
         logger.error(f"❌ Error updating {resource} status: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+
 
 # ===== FEATURED TOGGLE ROUTES =====
 
@@ -5116,6 +5366,7 @@ def bulk_update_resource_status(resource):
         logger.error(f"❌ Error bulk updating {resource} status: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
 
+
 # ===== DATA FETCHING ROUTES =====
 
 @app.route('/api/admin/<string:resource>')
@@ -5219,7 +5470,6 @@ def get_admin_resources(resource):
     except Exception as e:
         logger.error(f"Error loading {resource}: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
 
 
 # ===== SINGLE ITEM ROUTES =====
@@ -5527,7 +5777,6 @@ def bookmark_blog(blog_id):
         return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
 
 
-
 @app.route('/api/blog/categories')
 def get_blog_categories():
     """Get all blog categories"""
@@ -5739,6 +5988,7 @@ def generate_blog_slug():
     except Exception as e:
         logger.error(f"Error generating slug: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to generate slug'}), 500
+
 
 # ===== HELPER FUNCTIONS =====
 
@@ -6009,6 +6259,7 @@ def like_blog(blog_id):
         logger.error(f"Error liking blog: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to like blog'}), 500
 
+
 @app.template_filter('format_date')
 def format_date_filter(value, format='%b %d, %Y'):
     """Custom filter to format dates safely"""
@@ -6168,6 +6419,7 @@ def get_admin_testimonials():
     except Exception as e:
         logger.error(f"Error getting admin testimonials: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
 
 @app.route('/api/admin/testimonials/<testimonial_id>')
 @admin_required
@@ -6432,6 +6684,7 @@ def admin_message_reply():
         logger.error(f"Error sending message reply: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to send reply'}), 500
 
+
 # ===== NOTIFICATION ROUTES =====
 
 @app.route('/api/admin/notifications')
@@ -6496,24 +6749,24 @@ def send_newsletter():
         if not test_mode:
             if recipients_type == 'all':
                 subscribers = supabase_admin.table('newsletter_subscribers') \
-                                .select('*') \
-                                .eq('is_active', True) \
-                                .execute().data or []
+                                  .select('*') \
+                                  .eq('is_active', True) \
+                                  .execute().data or []
             elif recipients_type == 'active':
                 subscribers = supabase_admin.table('newsletter_subscribers') \
-                                .select('*') \
-                                .eq('is_active', True) \
-                                .execute().data or []
+                                  .select('*') \
+                                  .eq('is_active', True) \
+                                  .execute().data or []
             else:
                 subscriber_ids = data.get('subscriber_ids', [])
                 if not subscriber_ids:
                     return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
 
                 subscribers = supabase_admin.table('newsletter_subscribers') \
-                                .select('*') \
-                                .in_('id', subscriber_ids) \
-                                .eq('is_active', True) \
-                                .execute().data or []
+                                  .select('*') \
+                                  .in_('id', subscriber_ids) \
+                                  .eq('is_active', True) \
+                                  .execute().data or []
 
         # Run in background
         from threading import Thread
@@ -6593,7 +6846,8 @@ def expired_content_stats():
         expired_internships_count = 0
 
         try:
-            expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active', False).execute()
+            expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active',
+                                                                                             False).execute()
             expired_courses_count = expired_courses.count or 0
         except Exception as e:
             logger.warning(f"Error counting expired courses: {str(e)}")
@@ -6605,14 +6859,16 @@ def expired_content_stats():
             logger.warning(f"Error counting expired jobs: {str(e)}")
 
         try:
-            expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active', False).execute()
+            expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active',
+                                                                                                     False).execute()
             expired_internships_count = expired_internships.count or 0
         except Exception as e:
             logger.warning(f"Error counting expired internships: {str(e)}")
 
         total_expired = expired_courses_count + expired_jobs_count + expired_internships_count
 
-        logger.info(f"Expired content stats - Total: {total_expired}, Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count}")
+        logger.info(
+            f"Expired content stats - Total: {total_expired}, Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count}")
 
         return jsonify({
             'success': True,
@@ -6628,6 +6884,7 @@ def expired_content_stats():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @app.route('/api/admin/expired-content')
 @admin_required
@@ -6809,7 +7066,8 @@ def reactivate_content(content_type, content_id):
         current_time = get_current_utc_time().isoformat()
 
         # Get current content data
-        content_response = supabase_admin.table(content_type).select('expiration_date, is_active').eq('id', content_id).execute()
+        content_response = supabase_admin.table(content_type).select('expiration_date, is_active').eq('id',
+                                                                                                      content_id).execute()
 
         if not content_response.data:
             return jsonify({'success': False, 'message': 'Content not found'}), 404
@@ -6906,7 +7164,8 @@ def bulk_reactivate_expired_content():
                 continue
 
             # Check expiration date
-            content_response = supabase_admin.table(content_type).select('expiration_date, title, company, is_active').eq('id', content_id).execute()
+            content_response = supabase_admin.table(content_type).select(
+                'expiration_date, title, company, is_active').eq('id', content_id).execute()
 
             if not content_response.data:
                 results['failed'].append({
@@ -7469,14 +7728,17 @@ def hide_trash_items_permanently():
         logger.error(f"Error hiding trash items: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 # Terms and condition routes
 @app.route('/privacy')
 def privacy():
     return render_template('privacy.html')
 
+
 @app.route('/terms')
 def terms():
     return render_template('terms.html')
+
 
 # Error Handlers
 @app.errorhandler(404)
