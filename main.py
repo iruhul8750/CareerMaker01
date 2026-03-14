@@ -2839,6 +2839,9 @@ def courses():
     search = request.args.get('search', '')
     category = request.args.get('category', '')
 
+    # If category is empty string or None, don't filter by category
+    filter_by_category = category if category else None
+
     try:
         user_id = session.get('user_id')
 
@@ -2846,6 +2849,24 @@ def courses():
         current_time = get_current_utc_time()
         current_time_iso = current_time.isoformat()
         logger.info(f"🕐 Current time for courses page: {current_time_iso}")
+
+        # Define course categories - HARDCODED LIST
+        course_categories = [
+            'Programming',
+            'Web Development',
+            'Mobile Development',
+            'Data Science',
+            'AI & Machine Learning',
+            'Cloud Computing',
+            'Cybersecurity',
+            'Design',
+            'Business',
+            'Marketing',
+            'Finance',
+            'Photography',
+            'Music',
+            'Health & Fitness'
+        ]
 
         # Only fetch ACTIVE courses that are NOT expired
         query = supabase.table('courses') \
@@ -2855,12 +2876,15 @@ def courses():
 
         if search:
             query = query.ilike('title', f'%{search}%')
-        if category:
-            query = query.eq('category', category)
+
+        # Only apply category filter if a category is selected (not empty)
+        if filter_by_category:
+            query = query.eq('category', filter_by_category)
 
         # Execute query
         courses_data = query.order('created_at', desc=True).execute().data or []
-        logger.info(f"📚 Found {len(courses_data)} active courses")
+        logger.info(f"📚 Found {len(courses_data)} active courses" +
+                    (f" in category '{filter_by_category}'" if filter_by_category else ""))
 
         # Enhance courses with logos and ensure all fields exist
         enhanced_courses = []
@@ -2879,7 +2903,7 @@ def courses():
                 course.setdefault('category', 'General')
                 course.setdefault('application_link', None)
                 course.setdefault('enrollment_count', 0)
-                course.setdefault('views', 0)  # Ensure views field exists
+                course.setdefault('views', 0)
 
                 # Enhance with company logo if available
                 if course.get('company'):
@@ -2898,11 +2922,8 @@ def courses():
 
             except Exception as e:
                 logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
-                # Add course with defaults rather than failing
                 course['company_logo'] = '/static/images/default-course.png'
                 enhanced_courses.append(course)
-
-        logger.info(f"✅ Enhanced {len(enhanced_courses)} courses with logos")
 
         # Add bookmark status if user is logged in
         if user_id:
@@ -2912,32 +2933,26 @@ def courses():
 
                 for course in enhanced_courses:
                     course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
-
-                logger.info(f"🔖 Added bookmark status for user {user_id}")
             except Exception as e:
                 logger.error(f"Error adding bookmark status: {str(e)}")
-                # Set default bookmark status
                 for course in enhanced_courses:
                     course['is_bookmarked'] = False
         else:
             for course in enhanced_courses:
                 course['is_bookmarked'] = False
 
-        # Log final count
-        logger.info(f"🏠 Courses page loaded - Total courses: {len(enhanced_courses)}")
-
     except Exception as e:
         logger.error(f"❌ Error loading courses: {str(e)}", exc_info=True)
         enhanced_courses = []
+        course_categories = ['Programming', 'Design', 'Business', 'Marketing', 'Data Science']
         flash('Error loading courses. Please try again.', 'error')
 
-    # Always return the template, even with empty courses list
     return render_template('courses.html',
                            courses=enhanced_courses,
                            search=search,
                            category=category,
-                           course_categories=['Programming', 'Design', 'Business', 'Marketing', 'Data Science','Artificial Intelligence',''],
-                           now=current_time)  # Pass current_time to template for expiration comparison
+                           course_categories=course_categories,
+                           now=current_time)
 
 
 @app.route('/courses/<course_id>/enroll', methods=['POST'])

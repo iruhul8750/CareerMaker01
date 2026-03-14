@@ -5,7 +5,7 @@
     <h1>All Courses</h1>
 
     <div class="filters">
-        <form action="/courses" method="GET" class="search-form" id="courseFilterForm">
+        <form action="/courses" method="GET" class="search-form" id="filterForm">
             <input type="search" name="search" placeholder="Search courses..." value="{{ search if search else '' }}">
             <select name="category" id="categorySelect">
                 <option value="" {% if not category %}selected{% endif %}>All Categories</option>
@@ -14,6 +14,7 @@
                 {% endfor %}
             </select>
             <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="/courses" class="btn btn-outline">Clear Filters</a>
         </form>
     </div>
 
