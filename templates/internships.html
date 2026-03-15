@@ -11,14 +11,10 @@
             <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
             <select name="type">
                 <option value="">All Types</option>
-                <option value="Paid" {% if internship_type==
-                'Paid' %}selected{% endif %}>Paid</option>
-                <option value="Unpaid" {% if internship_type==
-                'Unpaid' %}selected{% endif %}>Unpaid</option>
-                <option value="Remote" {% if internship_type==
-                'Remote' %}selected{% endif %}>Remote</option>
-                <option value="On-site" {% if internship_type==
-                'On-site' %}selected{% endif %}>On-site</option>
+                <option value="Paid" {% if internship_type=='Paid' %}selected{% endif %}>Paid</option>
+                <option value="Unpaid" {% if internship_type=='Unpaid' %}selected{% endif %}>Unpaid</option>
+                <option value="Remote" {% if internship_type=='Remote' %}selected{% endif %}>Remote</option>
+                <option value="On-site" {% if internship_type=='On-site' %}selected{% endif %}>On-site</option>
             </select>
             <button type="submit" class="btn btn-primary">Search</button>
             <a href="/internships" class="btn btn-outline">Clear</a>

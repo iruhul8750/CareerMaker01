@@ -11,14 +11,10 @@
             <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
             <select name="type">
                 <option value="">All Types</option>
-                <option value="Full-time" {% if job_type==
-                'Full-time' %}selected{% endif %}>Full-time</option>
-                <option value="Part-time" {% if job_type==
-                'Part-time' %}selected{% endif %}>Part-time</option>
-                <option value="Remote" {% if job_type==
-                'Remote' %}selected{% endif %}>Remote</option>
-                <option value="Contract" {% if job_type==
-                'Contract' %}selected{% endif %}>Contract</option>
+                <option value="Full-time" {% if job_type=='Full-time' %}selected{% endif %}>Full-time</option>
+                <option value="Part-time" {% if job_type=='Part-time' %}selected{% endif %}>Part-time</option>
+                <option value="Remote" {% if job_type=='Remote' %}selected{% endif %}>Remote</option>
+                <option value="Contract" {% if job_type=='Contract' %}selected{% endif %}>Contract</option>
             </select>
             <button type="submit" class="btn btn-primary">Search</button>
             <a href="/jobs" class="btn btn-outline">Clear</a>
