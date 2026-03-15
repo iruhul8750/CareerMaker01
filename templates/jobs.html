@@ -2,70 +2,132 @@
 
 {% block content %}
 <div class="container">
-  <h1>Job Opportunities</h1>
+    <h1>Job Opportunities</h1>
 
-  <div class="filters">
-    <form action="/jobs" method="GET" class="search-form">
-      <input type="search" name="search" placeholder="Search jobs..." value="{{ search if search else '' }}">
-      <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
-      <select name="type">
-        <option value="">All Types</option>
-        <option value="Full-time" {% if job_type == 'Full-time' %}selected{% endif %}>Full-time</option>
-        <option value="Part-time" {% if job_type == 'Part-time' %}selected{% endif %}>Part-time</option>
-        <option value="Remote" {% if job_type == 'Remote' %}selected{% endif %}>Remote</option>
-        <option value="Contract" {% if job_type == 'Contract' %}selected{% endif %}>Contract</option>
-      </select>
-      <button type="submit" class="btn btn-primary">Filter</button>
-    </form>
-  </div>
+    <div class="filters">
+        <form action="/jobs" method="GET" class="search-form" id="jobFilterForm">
+            <input type="search" name="search" placeholder="Search by title..." value="{{ search if search else '' }}"
+                   id="searchInput">
+            <input type="text" name="location" placeholder="Location" value="{{ location if location else '' }}">
+            <select name="type">
+                <option value="">All Types</option>
+                <option value="Full-time" {% if job_type==
+                'Full-time' %}selected{% endif %}>Full-time</option>
+                <option value="Part-time" {% if job_type==
+                'Part-time' %}selected{% endif %}>Part-time</option>
+                <option value="Remote" {% if job_type==
+                'Remote' %}selected{% endif %}>Remote</option>
+                <option value="Contract" {% if job_type==
+                'Contract' %}selected{% endif %}>Contract</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="/jobs" class="btn btn-outline">Clear</a>
+        </form>
+    </div>
 
-  <div class="preview-grid">
-    {% if jobs|length > 0 %}
-      {% for job in jobs %}
-      <div class="preview-card" data-id="{{ job.id }}" data-tags="{{ job.type|lower }} {% if job.location == 'Remote' %}remote{% endif %}">
-        <div class="preview-image-container">
-          {% if job.company_logo %}
-          <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo" onerror="this.onerror=null;this.src='/static/images/default-job.png'">
-          {% else %}
-          <div class="default-logo job-logo">
+    <div class="preview-grid">
+        {% if jobs|length > 0 %}
+        {% for job in jobs %}
+        <div class="preview-card" data-id="{{ job.id }}"
+             data-tags="{{ job.type|lower }} {% if job.location == 'Remote' %}remote{% endif %}">
+            <div class="preview-image-container">
+                {% if job.company_logo %}
+                <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
+                     onerror="this.onerror=null;this.src='/static/images/default-job.png'">
+                {% else %}
+                <div class="default-logo job-logo">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                {% endif %}
+            </div>
+            <div class="preview-content">
+                <h3>{{ job.title }}</h3>
+                <p class="company">{{ job.company }}</p>
+                <p class="location"><i class="fas fa-map-marker-alt"></i> {{ job.location }}</p>
+                <p class="description">{{ job.description|truncate(100) }}</p>
+
+                <div class="preview-meta">
+                    <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
+                    <span class="type">{{ job.type }}</span>
+                </div>
+
+                <!-- additional-details section of each job card -->
+                <div class="additional-details">
+                    {% if job.remote %}
+                    <div class="detail-item">
+                        <i class="fas fa-laptop-house"></i>
+                        <span>Remote Work Available</span>
+                    </div>
+                    {% endif %}
+
+                    {% if job.required_skills %}
+                    <div class="detail-item">
+                        <i class="fas fa-tools"></i>
+                        <span>Skills: {{ job.required_skills|join(', ') if job.required_skills is iterable else job.required_skills }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if job.experience_level %}
+                    <div class="detail-item">
+                        <i class="fas fa-user-tie"></i>
+                        <span>Experience: {{ job.experience_level }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if job.posted_date %}
+                    <div class="detail-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Posted: {{ job.posted_date|format_date('%b %d') }}</span>
+                    </div>
+                    {% endif %}
+
+                    <!-- EXPIRATION DATE WITH COLOR CODING -->
+                    {% if job.expiration_date %}
+                    {% set exp_date = job.expiration_date|string %}
+                    {% set days_left = job.expiration_date|days_until %}
+
+                    {% if exp_date < now.isoformat() %}
+                    <div class="expiration-badge expired">
+                        <i class="fas fa-clock"></i>
+                        <span>Expired</span>
+                    </div>
+                    {% elif days_left is not none and days_left <= 7 %}
+                    <div class="expiration-badge urgent">
+                        <i class="fas fa-clock"></i>
+                        <span>⚠️ Urgent: Expires in {{ days_left }} day{% if days_left != 1 %}s{% endif %}</span>
+                    </div>
+                    {% else %}
+                    <div class="expiration-badge active">
+                        <i class="fas fa-clock"></i>
+                        <span>Expires: {{ job.expiration_date|format_date('%b %d, %Y') }}</span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
+                        data-id="{{ job.id }}"
+                        data-type="job"
+                        title="Bookmark">
+                    <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
+                </button>
+
+                <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
+                        {% if not job.application_link %}disabled{% endif %}>
+                    Apply Now
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
             <i class="fas fa-briefcase"></i>
-          </div>
-          {% endif %}
+            <h4>No jobs found</h4>
+            <p>Try adjusting your search criteria</p>
         </div>
-        <div class="preview-content">
-          <h3>{{ job.title }}</h3>
-          <p class="company">{{ job.company }}</p>
-          <p class="location">{{ job.location }}</p>
-          <p class="description">{{ job.description|truncate(100) }}</p>
-
-          <div class="preview-meta">
-            <span class="salary">{{ job.salary or 'Salary not specified' }}</span>
-            <span class="type">{{ job.type }}</span>
-          </div>
-        </div>
-
-        <div class="action-buttons">
-          <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
-                  data-id="{{ job.id }}"
-                  data-type="job"
-                  title="Bookmark">
-            <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
-          </button>
-
-          <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
-                  {% if not job.application_link %}disabled{% endif %}>
-            Apply Now
-          </button>
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="empty-state">
-        <i class="fas fa-briefcase"></i>
-        <h4>No jobs found</h4>
-        <p>Try adjusting your search criteria</p>
-      </div>
-    {% endif %}
-  </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

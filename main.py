@@ -2836,11 +2836,14 @@ def inject_user():
 # Content Routes
 @app.route('/courses')
 def courses():
-    search = request.args.get('search', '')
-    category = request.args.get('category', '')
+    search = request.args.get('search', '').strip().lower()
+    category = request.args.get('category', '').strip()
 
-    # If category is empty string or None, don't filter by category
-    filter_by_category = category if category else None
+    print("\n" + "=" * 50)
+    print(f"COURSES PAGE LOADED - MANUAL FILTERING MODE")
+    print(f"Search parameter from URL: '{search}'")
+    print(f"Category parameter from URL: '{category}'")
+    print("=" * 50)
 
     try:
         user_id = session.get('user_id')
@@ -2850,45 +2853,64 @@ def courses():
         current_time_iso = current_time.isoformat()
         logger.info(f"🕐 Current time for courses page: {current_time_iso}")
 
-        # Define course categories - HARDCODED LIST
+        # Define course categories
         course_categories = [
-            'Programming',
-            'Web Development',
-            'Mobile Development',
-            'Data Science',
-            'AI & Machine Learning',
-            'Cloud Computing',
-            'Cybersecurity',
-            'Design',
-            'Business',
-            'Marketing',
-            'Finance',
-            'Photography',
-            'Music',
-            'Health & Fitness'
+            'Programming', 'Web Development', 'Mobile Development', 'Data Science',
+            'AI & Machine Learning', 'Cloud Computing', 'Cybersecurity', 'Design',
+            'Business', 'Marketing', 'Finance', 'Photography', 'Music', 'Health & Fitness'
         ]
 
-        # Only fetch ACTIVE courses that are NOT expired
+        # ===== STEP 1: GET ALL ACTIVE COURSES =====
+        logger.info("📚 Fetching all active courses from database...")
+
         query = supabase.table('courses') \
             .select('*') \
             .eq('is_active', True) \
             .or_(f'expiration_date.is.null,expiration_date.gt.{current_time_iso}')
 
-        if search:
-            query = query.ilike('title', f'%{search}%')
+        all_courses = query.order('created_at', desc=True).execute().data or []
+        logger.info(f"📊 Total active courses in database: {len(all_courses)}")
 
-        # Only apply category filter if a category is selected (not empty)
-        if filter_by_category:
-            query = query.eq('category', filter_by_category)
+        # Debug: Print all course titles
+        if all_courses:
+            logger.info("All active course titles:")
+            for course in all_courses:
+                logger.info(f"  - {course.get('title')}")
 
-        # Execute query
-        courses_data = query.order('created_at', desc=True).execute().data or []
-        logger.info(f"📚 Found {len(courses_data)} active courses" +
-                    (f" in category '{filter_by_category}'" if filter_by_category else ""))
+        # ===== STEP 2: FILTER COURSES IN PYTHON =====
+        filtered_courses = []
 
-        # Enhance courses with logos and ensure all fields exist
+        for course in all_courses:
+            title = course.get('title', '').lower()
+
+            # Apply search filter (case-insensitive partial match)
+            if search:
+                if search not in title:
+                    continue  # Skip if search term not in title
+
+            # Apply category filter
+            if category:
+                if course.get('category') != category:
+                    continue  # Skip if category doesn't match
+
+            # If we get here, the course passed all filters
+            filtered_courses.append(course)
+
+        logger.info(
+            f"🔍 After filtering: {len(filtered_courses)} courses match search '{search}' and category '{category}'")
+
+        # Debug: Print filtered course titles
+        if filtered_courses:
+            logger.info("Filtered course titles:")
+            for course in filtered_courses:
+                logger.info(f"  - {course.get('title')} (Category: {course.get('category')})")
+        else:
+            logger.warning("⚠️ No courses found matching the filters")
+
+        # ===== STEP 3: ENHANCE COURSES WITH LOGOS =====
         enhanced_courses = []
-        for course in courses_data:
+
+        for course in filtered_courses:
             try:
                 # Ensure all required fields have defaults
                 course.setdefault('image', None)
@@ -2904,6 +2926,7 @@ def courses():
                 course.setdefault('application_link', None)
                 course.setdefault('enrollment_count', 0)
                 course.setdefault('views', 0)
+                course.setdefault('expiration_date', None)
 
                 # Enhance with company logo if available
                 if course.get('company'):
@@ -2922,31 +2945,65 @@ def courses():
 
             except Exception as e:
                 logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
+                # Add course with defaults rather than failing
                 course['company_logo'] = '/static/images/default-course.png'
                 enhanced_courses.append(course)
 
-        # Add bookmark status if user is logged in
+        logger.info(f"✅ Enhanced {len(enhanced_courses)} courses with logos")
+
+        # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
             try:
+                # Get all bookmarks for the user
+                logger.info(f"🔖 Fetching bookmarks for user {user_id}")
                 user_bookmarks = get_user_bookmarks(user_id)
-                bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
 
+                # Create a map of (content_type, id) -> True for faster lookup
+                bookmark_map = {}
+                for item in user_bookmarks:
+                    content_type = item.get('content_type')
+                    item_id = item.get('id')
+                    if content_type and item_id:
+                        bookmark_map[(content_type, item_id)] = True
+
+                logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
+
+                # Add bookmark status to each course
+                bookmarked_count = 0
                 for course in enhanced_courses:
-                    course['is_bookmarked'] = bookmark_map.get(('course', course.get('id')), False)
+                    course_id = course.get('id')
+                    is_bookmarked = bookmark_map.get(('course', course_id), False)
+                    course['is_bookmarked'] = is_bookmarked
+                    if is_bookmarked:
+                        bookmarked_count += 1
+
+                logger.info(f"⭐ {bookmarked_count} out of {len(enhanced_courses)} courses are bookmarked by user")
+
             except Exception as e:
                 logger.error(f"Error adding bookmark status: {str(e)}")
+                # Set default bookmark status to False for all courses
                 for course in enhanced_courses:
                     course['is_bookmarked'] = False
         else:
+            # User not logged in, no bookmarks
+            logger.info("👤 User not logged in - no bookmark status added")
             for course in enhanced_courses:
                 course['is_bookmarked'] = False
 
+        # ===== STEP 5: LOG FINAL SUMMARY =====
+        logger.info(f"🏁 FINAL: Returning {len(enhanced_courses)} courses to template")
+        logger.info(f"   - Search term: '{search}'")
+        logger.info(f"   - Category: '{category}'")
+        logger.info(f"   - User logged in: {bool(user_id)}")
+
     except Exception as e:
-        logger.error(f"❌ Error loading courses: {str(e)}", exc_info=True)
+        logger.error(f"❌ CRITICAL ERROR loading courses: {str(e)}", exc_info=True)
         enhanced_courses = []
+        # Fallback categories in case of error
         course_categories = ['Programming', 'Design', 'Business', 'Marketing', 'Data Science']
         flash('Error loading courses. Please try again.', 'error')
 
+    # Always return the template, even with empty courses list
     return render_template('courses.html',
                            courses=enhanced_courses,
                            search=search,
@@ -3179,47 +3236,178 @@ def get_course_details(course_id):
 
 @app.route('/jobs')
 def jobs():
-    search = request.args.get('search', '')
-    location = request.args.get('location', '')
-    job_type = request.args.get('type', '')
+    search = request.args.get('search', '').strip().lower()
+    location = request.args.get('location', '').strip()
+    job_type = request.args.get('type', '').strip()
+
+    print("\n" + "=" * 50)
+    print(f"JOBS PAGE LOADED - MANUAL FILTERING MODE")
+    print(f"Search parameter: '{search}'")
+    print(f"Location parameter: '{location}'")
+    print(f"Type parameter: '{job_type}'")
+    print("=" * 50)
 
     try:
         user_id = session.get('user_id')
 
-        # Only fetch ACTIVE jobs (expired ones are auto-deactivated)
-        query = supabase.table('jobs').select('*').eq('is_active', True)
+        # Get current time in UTC for expiration comparison
+        current_time = get_current_utc_time()
+        current_time_iso = current_time.isoformat()
+        logger.info(f"🕐 Current time for jobs page: {current_time_iso}")
 
-        if search:
-            query = query.ilike('title', f'%{search}%')
-        if location:
-            query = query.ilike('location', f'%{location}%')
-        if job_type:
-            query = query.eq('type', job_type)
+        # ===== STEP 1: GET ALL ACTIVE JOBS =====
+        logger.info("📚 Fetching all active jobs from database...")
 
-        jobs_data = query.order('created_at', desc=True).execute().data or []
+        query = supabase.table('jobs') \
+            .select('*') \
+            .eq('is_active', True) \
+            .or_(f'expiration_date.is.null,expiration_date.gt.{current_time_iso}')
 
-        # Enhance jobs with logos
-        enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs_data]
+        all_jobs = query.order('created_at', desc=True).execute().data or []
+        logger.info(f"📊 Total active jobs in database: {len(all_jobs)}")
 
-        # Add bookmark status if user is logged in
+        # Debug: Print all job titles
+        if all_jobs:
+            logger.info("All active job titles:")
+            for job in all_jobs:
+                logger.info(f"  - {job.get('title')} (Company: {job.get('company')})")
+
+        # ===== STEP 2: FILTER JOBS IN PYTHON =====
+        filtered_jobs = []
+
+        for job in all_jobs:
+            title = job.get('title', '').lower()
+            job_location = job.get('location', '').lower()
+            job_type_value = job.get('type', '')
+
+            # Apply search filter (case-insensitive partial match on title only)
+            if search:
+                if search not in title:
+                    continue  # Skip if search term not in title
+
+            # Apply location filter
+            if location:
+                if location.lower() not in job_location:
+                    continue  # Skip if location doesn't match
+
+            # Apply type filter
+            if job_type:
+                if job_type != job_type_value:
+                    continue  # Skip if type doesn't match
+
+            # If we get here, the job passed all filters
+            filtered_jobs.append(job)
+
+        logger.info(f"🔍 After filtering: {len(filtered_jobs)} jobs match criteria")
+
+        # Debug: Print filtered job titles
+        if filtered_jobs:
+            logger.info("Filtered job titles:")
+            for job in filtered_jobs:
+                logger.info(f"  - {job.get('title')} (Location: {job.get('location')}, Type: {job.get('type')})")
+        else:
+            logger.warning("⚠️ No jobs found matching the filters")
+
+        # ===== STEP 3: ENHANCE JOBS WITH LOGOS =====
+        enhanced_jobs = []
+
+        for job in filtered_jobs:
+            try:
+                # Ensure all required fields have defaults
+                job.setdefault('image', None)
+                job.setdefault('company_logo', None)
+                job.setdefault('description', 'No description available')
+                job.setdefault('company', 'Unknown Company')
+                job.setdefault('location', 'Location not specified')
+                job.setdefault('salary', 'Not Specified')
+                job.setdefault('type', 'Full-time')
+                job.setdefault('application_link', None)
+                job.setdefault('expiration_date', None)
+                job.setdefault('remote', False)
+                job.setdefault('required_skills', [])
+                job.setdefault('experience_level', '')
+                job.setdefault('posted_date', None)
+
+                # Enhance with company logo if available
+                if job.get('company'):
+                    try:
+                        enhanced = enhance_content_with_logo(job, 'job', job.get('id'))
+                        if enhanced.get('company_logo'):
+                            job['company_logo'] = enhanced['company_logo']
+                    except Exception as e:
+                        logger.warning(f"Could not enhance job logo for {job.get('id')}: {str(e)}")
+                        if not job.get('company_logo'):
+                            job['company_logo'] = '/static/images/default-job.png'
+                else:
+                    job['company_logo'] = '/static/images/default-job.png'
+
+                enhanced_jobs.append(job)
+
+            except Exception as e:
+                logger.error(f"Error enhancing job {job.get('id')}: {str(e)}")
+                # Add job with defaults rather than failing
+                job['company_logo'] = '/static/images/default-job.png'
+                enhanced_jobs.append(job)
+
+        logger.info(f"✅ Enhanced {len(enhanced_jobs)} jobs with logos")
+
+        # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
-            user_bookmarks = get_user_bookmarks(user_id)
-            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            try:
+                # Get all bookmarks for the user
+                logger.info(f"🔖 Fetching bookmarks for user {user_id}")
+                user_bookmarks = get_user_bookmarks(user_id)
 
+                # Create a map of (content_type, id) -> True for faster lookup
+                bookmark_map = {}
+                for item in user_bookmarks:
+                    content_type = item.get('content_type')
+                    item_id = item.get('id')
+                    if content_type and item_id:
+                        bookmark_map[(content_type, item_id)] = True
+
+                logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
+
+                # Add bookmark status to each job
+                bookmarked_count = 0
+                for job in enhanced_jobs:
+                    job_id = job.get('id')
+                    is_bookmarked = bookmark_map.get(('job', job_id), False)
+                    job['is_bookmarked'] = is_bookmarked
+                    if is_bookmarked:
+                        bookmarked_count += 1
+
+                logger.info(f"⭐ {bookmarked_count} out of {len(enhanced_jobs)} jobs are bookmarked by user")
+
+            except Exception as e:
+                logger.error(f"Error adding bookmark status: {str(e)}")
+                # Set default bookmark status to False for all jobs
+                for job in enhanced_jobs:
+                    job['is_bookmarked'] = False
+        else:
+            # User not logged in, no bookmarks
+            logger.info("👤 User not logged in - no bookmark status added")
             for job in enhanced_jobs:
-                job['is_bookmarked'] = bookmark_map.get(('job', job.get('id')), False)
+                job['is_bookmarked'] = False
 
-        logger.info(f"Jobs page - Active jobs: {len(enhanced_jobs)}")
+        # ===== STEP 5: LOG FINAL SUMMARY =====
+        logger.info(f"🏁 FINAL: Returning {len(enhanced_jobs)} jobs to template")
+        logger.info(f"   - Search term: '{search}'")
+        logger.info(f"   - Location: '{location}'")
+        logger.info(f"   - Type: '{job_type}'")
+        logger.info(f"   - User logged in: {bool(user_id)}")
 
     except Exception as e:
-        logger.error(f"Error loading jobs: {str(e)}")
+        logger.error(f"❌ CRITICAL ERROR loading jobs: {str(e)}", exc_info=True)
         enhanced_jobs = []
+        flash('Error loading jobs. Please try again.', 'error')
 
     return render_template('jobs.html',
                            jobs=enhanced_jobs,
                            search=search,
                            location=location,
-                           job_type=job_type)
+                           job_type=job_type,
+                           now=current_time)
 
 
 @app.route('/jobs/<job_id>/apply')
@@ -3251,48 +3439,180 @@ def apply_job(job_id):
 
 @app.route('/internships')
 def internships():
-    search = request.args.get('search', '')
-    location = request.args.get('location', '')
-    internship_type = request.args.get('type', '')
+    search = request.args.get('search', '').strip().lower()
+    location = request.args.get('location', '').strip()
+    internship_type = request.args.get('type', '').strip()
+
+    print("\n" + "=" * 50)
+    print(f"INTERNSHIPS PAGE LOADED - MANUAL FILTERING MODE")
+    print(f"Search parameter: '{search}'")
+    print(f"Location parameter: '{location}'")
+    print(f"Type parameter: '{internship_type}'")
+    print("=" * 50)
 
     try:
         user_id = session.get('user_id')
 
-        # Only fetch ACTIVE internships (expired ones are auto-deactivated)
-        query = supabase.table('internships').select('*').eq('is_active', True)
+        # Get current time in UTC for expiration comparison
+        current_time = get_current_utc_time()
+        current_time_iso = current_time.isoformat()
+        logger.info(f"🕐 Current time for internships page: {current_time_iso}")
 
-        if search:
-            query = query.ilike('title', f'%{search}%')
-        if location:
-            query = query.ilike('location', f'%{location}%')
-        if internship_type:
-            query = query.eq('type', internship_type)
+        # ===== STEP 1: GET ALL ACTIVE INTERNSHIPS =====
+        logger.info("📚 Fetching all active internships from database...")
 
-        internships_data = query.order('created_at', desc=True).execute().data or []
+        query = supabase.table('internships') \
+            .select('*') \
+            .eq('is_active', True) \
+            .or_(f'expiration_date.is.null,expiration_date.gt.{current_time_iso}')
 
-        # Enhance internships with logos
-        enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for internship
-                                in internships_data]
+        all_internships = query.order('created_at', desc=True).execute().data or []
+        logger.info(f"📊 Total active internships in database: {len(all_internships)}")
 
-        # Add bookmark status if user is logged in
+        # Debug: Print all internship titles
+        if all_internships:
+            logger.info("All active internship titles:")
+            for internship in all_internships:
+                logger.info(f"  - {internship.get('title')} (Company: {internship.get('company')})")
+
+        # ===== STEP 2: FILTER INTERNSHIPS IN PYTHON =====
+        filtered_internships = []
+
+        for internship in all_internships:
+            title = internship.get('title', '').lower()
+            intern_location = internship.get('location', '').lower()
+            intern_type = internship.get('type', '')
+
+            # Apply search filter (case-insensitive partial match on title only)
+            if search:
+                if search not in title:
+                    continue  # Skip if search term not in title
+
+            # Apply location filter
+            if location:
+                if location.lower() not in intern_location:
+                    continue  # Skip if location doesn't match
+
+            # Apply type filter
+            if internship_type:
+                if internship_type != intern_type:
+                    continue  # Skip if type doesn't match
+
+            # If we get here, the internship passed all filters
+            filtered_internships.append(internship)
+
+        logger.info(f"🔍 After filtering: {len(filtered_internships)} internships match criteria")
+
+        # Debug: Print filtered internship titles
+        if filtered_internships:
+            logger.info("Filtered internship titles:")
+            for internship in filtered_internships:
+                logger.info(
+                    f"  - {internship.get('title')} (Location: {internship.get('location')}, Type: {internship.get('type')})")
+        else:
+            logger.warning("⚠️ No internships found matching the filters")
+
+        # ===== STEP 3: ENHANCE INTERNSHIPS WITH LOGOS =====
+        enhanced_internships = []
+
+        for internship in filtered_internships:
+            try:
+                # Ensure all required fields have defaults
+                internship.setdefault('image', None)
+                internship.setdefault('company_logo', None)
+                internship.setdefault('description', 'No description available')
+                internship.setdefault('company', 'Unknown Company')
+                internship.setdefault('location', 'Location not specified')
+                internship.setdefault('stipend', 'Unpaid')
+                internship.setdefault('duration', 'Flexible')
+                internship.setdefault('type', 'Internship')
+                internship.setdefault('application_link', None)
+                internship.setdefault('expiration_date', None)
+                internship.setdefault('required_skills', [])
+                internship.setdefault('qualifications', '')
+                internship.setdefault('start_date', None)
+
+                # Enhance with company logo if available
+                if internship.get('company'):
+                    try:
+                        enhanced = enhance_content_with_logo(internship, 'internship', internship.get('id'))
+                        if enhanced.get('company_logo'):
+                            internship['company_logo'] = enhanced['company_logo']
+                    except Exception as e:
+                        logger.warning(f"Could not enhance internship logo for {internship.get('id')}: {str(e)}")
+                        if not internship.get('company_logo'):
+                            internship['company_logo'] = '/static/images/default-internship.png'
+                else:
+                    internship['company_logo'] = '/static/images/default-internship.png'
+
+                enhanced_internships.append(internship)
+
+            except Exception as e:
+                logger.error(f"Error enhancing internship {internship.get('id')}: {str(e)}")
+                # Add internship with defaults rather than failing
+                internship['company_logo'] = '/static/images/default-internship.png'
+                enhanced_internships.append(internship)
+
+        logger.info(f"✅ Enhanced {len(enhanced_internships)} internships with logos")
+
+        # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
-            user_bookmarks = get_user_bookmarks(user_id)
-            bookmark_map = {(item.get('content_type'), item.get('id')): True for item in user_bookmarks}
+            try:
+                # Get all bookmarks for the user
+                logger.info(f"🔖 Fetching bookmarks for user {user_id}")
+                user_bookmarks = get_user_bookmarks(user_id)
 
+                # Create a map of (content_type, id) -> True for faster lookup
+                bookmark_map = {}
+                for item in user_bookmarks:
+                    content_type = item.get('content_type')
+                    item_id = item.get('id')
+                    if content_type and item_id:
+                        bookmark_map[(content_type, item_id)] = True
+
+                logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
+
+                # Add bookmark status to each internship
+                bookmarked_count = 0
+                for internship in enhanced_internships:
+                    internship_id = internship.get('id')
+                    is_bookmarked = bookmark_map.get(('internship', internship_id), False)
+                    internship['is_bookmarked'] = is_bookmarked
+                    if is_bookmarked:
+                        bookmarked_count += 1
+
+                logger.info(
+                    f"⭐ {bookmarked_count} out of {len(enhanced_internships)} internships are bookmarked by user")
+
+            except Exception as e:
+                logger.error(f"Error adding bookmark status: {str(e)}")
+                # Set default bookmark status to False for all internships
+                for internship in enhanced_internships:
+                    internship['is_bookmarked'] = False
+        else:
+            # User not logged in, no bookmarks
+            logger.info("👤 User not logged in - no bookmark status added")
             for internship in enhanced_internships:
-                internship['is_bookmarked'] = bookmark_map.get(('internship', internship.get('id')), False)
+                internship['is_bookmarked'] = False
 
-        logger.info(f"Internships page - Active internships: {len(enhanced_internships)}")
+        # ===== STEP 5: LOG FINAL SUMMARY =====
+        logger.info(f"🏁 FINAL: Returning {len(enhanced_internships)} internships to template")
+        logger.info(f"   - Search term: '{search}'")
+        logger.info(f"   - Location: '{location}'")
+        logger.info(f"   - Type: '{internship_type}'")
+        logger.info(f"   - User logged in: {bool(user_id)}")
 
     except Exception as e:
-        logger.error(f"Error loading internships: {str(e)}")
+        logger.error(f"❌ CRITICAL ERROR loading internships: {str(e)}", exc_info=True)
         enhanced_internships = []
+        flash('Error loading internships. Please try again.', 'error')
 
     return render_template('internships.html',
                            internships=enhanced_internships,
                            search=search,
                            location=location,
-                           internship_type=internship_type)
+                           internship_type=internship_type,
+                           now=current_time)
 
 
 @app.route('/internships/<internship_id>/apply')
@@ -3321,6 +3641,28 @@ def apply_internship(internship_id):
         flash('Failed to apply for internship', 'danger')
         return redirect(url_for('internships'))
 
+# ===== Expiration date filter =====
+@app.template_filter('days_until')
+def days_until_filter(date_str):
+    """Calculate days until a date"""
+    if not date_str:
+        return None
+    try:
+        if isinstance(date_str, str):
+            # Parse ISO format date
+            exp_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        else:
+            exp_date = date_str
+        # Ensure timezone awareness
+        if exp_date.tzinfo is None:
+            exp_date = exp_date.replace(tzinfo=timezone.utc)
+
+        now = get_current_utc_time()
+        delta = exp_date - now
+        return delta.days
+    except Exception as e:
+        logger.error(f"Error calculating days until: {str(e)}")
+        return None
 
 @app.route('/blog')
 @app.route('/blogs.html')

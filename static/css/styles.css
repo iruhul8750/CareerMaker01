@@ -9652,46 +9652,61 @@
     }
 
     /* ====================== */
-    /* COLORFUL BADGE SYSTEM */
+    /* EXPIRATION DATE COLORFUL BADGE SYSTEM  - IN DETAILS SECTION ONLY */
     /* ====================== */
 
-    /* Base badge styles */
-    .expiration-badge {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      color: white;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    /* Expiration badge in additional details section */
+    .preview-card .additional-details .expiration-badge {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 8px;
+        padding: 8px 12px;
+        border-radius: 30px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid;
     }
 
-    .expiration-badge i {
-      font-size: 0.7rem;
-    }
-
-    /* Active expiration badge - Green */
-    .expiration-badge.active {
-      background: linear-gradient(135deg, #10b981, #059669);
-      border: 1px solid #059669;
+    /* Active expiration badge - Green (more than 7 days) */
+    .preview-card .additional-details .expiration-badge.active {
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-color: #059669;
+        color: white;
     }
 
     /* Expired badge - Red */
-    .expiration-badge.expired {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      border: 1px solid #dc2626;
+    .preview-card .additional-details .expiration-badge.expired {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        border-color: #dc2626;
+        color: white;
     }
 
-    /* Urgent expiration (within 3 days) - Orange */
-    .expiration-badge.urgent {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      border: 1px solid #d97706;
+    /* Urgent expiration (within 7 days) - Orange */
+    .preview-card .additional-details .expiration-badge.urgent {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border-color: #d97706;
+        color: white;
+    }
+
+    .preview-card .additional-details .expiration-badge i {
+        font-size: 12px;
+        color: white;
+    }
+
+    /* Dark mode support */
+    .dark-mode .preview-card .additional-details .expiration-badge.active {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .dark-mode .preview-card .additional-details .expiration-badge.expired {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+
+    .dark-mode .preview-card .additional-details .expiration-badge.urgent {
+        background: linear-gradient(135deg, #d97706, #b45309);
     }
 
     /* ====================== */
