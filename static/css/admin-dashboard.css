@@ -6404,37 +6404,127 @@
         text-align: center;
     }
 
-    /* Newsletter badge in trash */
-    #trash .content-type-badge.newsletter {
-        background: rgba(74, 108, 247, 0.15);
-        color: var(--primary);
+    /* =========================
+       BASE BADGE STYLE (COMMON)
+    ========================= */
+    .content-type-badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
     }
 
-    .dark-mode #trash .content-type-badge.newsletter {
+
+    /* =========================
+       COURSES (Indigo)
+    ========================= */
+    .content-type-badge.course {
+        background: rgba(99, 102, 241, 0.15);
+        color: #6366f1;
+    }
+
+    .dark-mode .content-type-badge.course {
         background: rgba(99, 102, 241, 0.2);
         color: #818cf8;
     }
 
-    /* Users badge */
-    #trash .content-type-badge.users {
+
+    /* =========================
+       JOBS (Emerald)
+    ========================= */
+    .content-type-badge.job {
         background: rgba(16, 185, 129, 0.15);
         color: #10b981;
     }
 
-    .dark-mode #trash .content-type-badge.users {
+    .dark-mode .content-type-badge.job {
         background: rgba(16, 185, 129, 0.2);
         color: #34d399;
     }
 
-    /* Messages badge */
-    #trash .content-type-badge.messages {
+
+    /* =========================
+       INTERNSHIPS (Sky Blue)
+    ========================= */
+    .content-type-badge.internship {
+        background: rgba(14, 165, 233, 0.15);
+        color: #0ea5e9;
+    }
+
+    .dark-mode .content-type-badge.internship {
+        background: rgba(14, 165, 233, 0.2);
+        color: #38bdf8;
+    }
+
+
+    /* =========================
+       BLOG POSTS (Amber)
+    ========================= */
+    .content-type-badge.blog {
         background: rgba(245, 158, 11, 0.15);
         color: #f59e0b;
     }
 
-    .dark-mode #trash .content-type-badge.messages {
+    .dark-mode .content-type-badge.blog {
         background: rgba(245, 158, 11, 0.2);
         color: #fbbf24;
+    }
+
+
+    /* =========================
+       TESTIMONIALS (Teal)
+    ========================= */
+    .content-type-badge.testimonial {
+        background: rgba(20, 184, 166, 0.15);
+        color: #14b8a6;
+    }
+
+    .dark-mode .content-type-badge.testimonial {
+        background: rgba(20, 184, 166, 0.2);
+        color: #2dd4bf;
+    }
+
+
+    /* =========================
+       USERS (Blue)
+    ========================= */
+    .content-type-badge.user {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    .dark-mode .content-type-badge.user {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+    }
+
+
+    /* =========================
+       MESSAGES (Orange)
+    ========================= */
+    .content-type-badge.message {
+        background: rgba(249, 115, 22, 0.15); /* orange-500 */
+        color: #f97316;
+    }
+
+    .dark-mode .content-type-badge.message {
+        background: rgba(249, 115, 22, 0.2);
+        color: #fb923c;
+    }
+
+
+    /* =========================
+       NEWSLETTER (Cyan)
+    ========================= */
+    .content-type-badge.newsletter {
+        background: rgba(6, 182, 212, 0.15); /* cyan-500 */
+        color: #06b6d4;
+    }
+
+    .dark-mode .content-type-badge.newsletter {
+        background: rgba(6, 182, 212, 0.2);
+        color: #22d3ee;
     }
 
     /* ===== DARK MODE SPECIFIC STYLES ===== */
