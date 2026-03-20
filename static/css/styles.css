@@ -13314,7 +13314,7 @@
       .animate-fade-in-up,
       .animate-fade-in-left,
       .animate-fade-in-right {
-        animation-duration: 0.5s;
+        animation-duration: 10s;
       }
 
       /* No 3D transforms on mobile */

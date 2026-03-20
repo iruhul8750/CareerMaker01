@@ -18,19 +18,30 @@
             <h2>CareerMaker Admin</h2>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+            <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+            </li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-            <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+            <li class="menu-item"><a href="#internships"><i
+                    class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
-            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
+            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a>
+            </li>
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
-            <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
+            <li class="menu-item"><a href="#expired-content"><i
+                    class="fas fa-clock"></i><span>Expired Content</span></a></li>
             <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="#trash"> <i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
-            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
-            <li class="menu-item dark-mode-item"><div class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i><span>Dark Mode</span><div class="dark-mode-switch"><input type="checkbox" id="darkModeCheckbox"><span class="slider round"></span></div></div></li>
+            <li class="menu-item"><a href="#trash"> <i class="fas fa-trash-alt"></i><span>Trash</span><span
+                    class="menu-badge" id="trashMenuBadge"></span></a></li>
+            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </li>
+            <li class="menu-item dark-mode-item">
+                <div class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i><span>Dark Mode</span>
+                    <div class="dark-mode-switch"><input type="checkbox" id="darkModeCheckbox"><span
+                            class="slider round"></span></div>
+                </div>
+            </li>
         </ul>
     </div>
 
@@ -95,18 +106,6 @@
             </div>
 
             <div class="stats-grid">
-                <!-- Users Card -->
-                <div class="stat-card info" id="usersCard">
-                    <div class="stat-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-title">Total Users</h3>
-                        <div class="stat-number" id="usersCount">0</div>
-                        <a href="#users" class="stat-link">View All</a>
-                    </div>
-                </div>
-
                 <!-- Courses Card -->
                 <div class="stat-card success" id="coursesCard">
                     <div class="stat-icon">
@@ -203,6 +202,18 @@
                     </div>
                 </div>
 
+                <!-- Users Card -->
+                <div class="stat-card info" id="usersCard">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Users</h3>
+                        <div class="stat-number" id="usersCount">0</div>
+                        <a href="#users" class="stat-link">View All</a>
+                    </div>
+                </div>
+
                 <!-- Trash Card - Added at the end of the grid -->
                 <div class="stat-card warning" id="trashCard">
                     <div class="stat-icon">
@@ -253,7 +264,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search courses..." id="courseSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="courseCategoryFilter" class="filter-select">
@@ -313,7 +326,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search jobs..." id="jobSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="jobTypeFilter" class="filter-select">
@@ -375,7 +390,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search internships..." id="internshipSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="internshipTypeFilter" class="filter-select">
@@ -437,7 +454,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search posts..." id="blogSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="blogCategoryFilter" class="filter-select">
@@ -499,7 +518,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search testimonials..." id="testimonialSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="testimonialStatusFilter" class="filter-select">
@@ -562,7 +583,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search subscribers..." id="newsletterSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="newsletterStatusFilter" class="filter-select">
@@ -644,7 +667,9 @@
                 <div class="search-box">
                     <input type="text" placeholder="Search expired content..." id="expiredContentSearch"
                            class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="expiredContentTypeFilter" class="filter-select">
@@ -711,7 +736,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search users..." id="userSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="userRoleFilter" class="filter-select">
@@ -769,7 +796,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search messages..." id="messageSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="messageStatusFilter" class="filter-select">
@@ -839,7 +868,9 @@
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search trash..." id="trashSearch" class="search-input">
-                    <i class="fas fa-search search-icon"></i>
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
                 <div class="filter-options">
                     <select id="trashTypeFilter" class="filter-select">
@@ -849,6 +880,9 @@
                         <option value="internships">Internships</option>
                         <option value="blog">Blog Posts</option>
                         <option value="testimonials">Testimonials</option>
+                        <option value="users">Users</option>
+                        <option value="messages">Messages</option>
+                        <option value="newsletter">Newsletter Subscribers</option>
                     </select>
                 </div>
             </div>
@@ -877,7 +911,7 @@
                         <th width="60">S.No</th>
                         <th width="120">Type</th>
                         <th>Title/Name</th>
-                        <th>Subtitle</th>
+                        <th>Subtitle/Email</th>
                         <th width="150">Deleted</th>
                         <th width="120">Created</th>
                         <th width="150">Actions</th>
@@ -945,6 +979,7 @@
                                     <option value="Design">Design</option>
                                     <option value="Business">Business</option>
                                     <option value="Marketing">Marketing</option>
+                                    <option value="Marketing">MS Office</option>
                                     <option value="Finance">Finance</option>
                                     <option value="Photography">Photography</option>
                                     <option value="Music">Music</option>

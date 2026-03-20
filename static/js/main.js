@@ -5545,7 +5545,7 @@
     }
 
     // =============================================
-    // Enhanced Content Card Initialization - UPDATED
+    // Enhanced Content Card Initialization
     // =============================================
     function initializeContentCards() {
         // Initialize bookmark buttons

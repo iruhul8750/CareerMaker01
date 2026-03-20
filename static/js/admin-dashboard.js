@@ -1250,7 +1250,6 @@
         });
     }
 
-
     function loadSectionData(section, page = 1, search = '', filters = {}) {
         console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}"`);
 
@@ -1274,8 +1273,9 @@
 
         params.append('page', page);
 
-        if (search) {
-            params.append('search', search);
+        // Only add search if it's not empty
+        if (search && search.trim() !== '') {
+            params.append('search', search.trim());
         }
 
         Object.keys(filters).forEach(key => {
@@ -1323,7 +1323,9 @@
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Failed to fetch ${section}`);
+                return response.json().then(err => {
+                    throw new Error(err.message || `HTTP ${response.status}: Failed to fetch ${section}`);
+                });
             }
             return response.json();
         })
@@ -1338,7 +1340,31 @@
         })
         .catch(error => {
             console.error(`❌ Error loading ${section}:`, error);
-            showNotification(`Failed to load ${section}: ${error.message}`, 'error');
+
+            // Show user-friendly error message
+            if (section === 'newsletter' && search) {
+                showNotification(`Search failed: ${error.message}. Try a different search term or clear the search.`, 'error');
+
+                // Clear the search input to allow normal loading
+                const searchInput = document.getElementById('newsletterSearch');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+
+                // Reload without search after 2 seconds
+                setTimeout(() => {
+                    loadSectionData('newsletter', 1, '');
+                }, 2000);
+            } else {
+                showNotification(`Failed to load ${section}: ${error.message}`, 'error');
+            }
+
+            // Display empty table
+            const tableBody = document.getElementById(`${section}TableBody`);
+            if (tableBody) {
+                const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
+                tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">Failed to load data. Please try again.</td></tr>`;
+            }
         })
         .finally(() => {
             hideLoading();
@@ -2369,7 +2395,9 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify({
+                is_active: Boolean(isActive)
+            })
         })
         .then(response => {
             console.log('Response status:', response.status);
@@ -3105,7 +3133,7 @@
         });
     }
 
-    // ===== TESTIMONIAL MANAGER - COMPLETE FIXED IMPLEMENTATION =====
+    // ===== TESTIMONIAL MANAGER
     class TestimonialManager {
         constructor() {
             this.currentPage = 1;
@@ -3219,14 +3247,63 @@
 
         setupSearchListener(id, handler) {
             const element = document.getElementById(id);
-            if (element) {
-                let timeout;
-                element.addEventListener('input', (e) => {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => handler(e), 500);
+            if (!element) return;
+
+            // Find the search box and button
+            const searchBox = element.closest('.search-box');
+            const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
+
+            if (searchBtn) {
+                // Remove existing listeners by cloning
+                const newBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
+
+                let isSearching = false;
+
+                // Search button click handler
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (isSearching) return;
+                    isSearching = true;
+
+                    // Show loading state on button
+                    const originalHTML = newBtn.innerHTML;
+                    newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    newBtn.disabled = true;
+
+                    // Call the search handler
+                    handler(e);
+
+                    setTimeout(() => {
+                        newBtn.innerHTML = originalHTML;
+                        newBtn.disabled = false;
+                        isSearching = false;
+                    }, 1000);
                 });
-                console.log(`✅ Added search listener to ${id}`);
+
+                console.log(`✅ Search button listener setup for ${id}`);
+            } else {
+                console.warn(`⚠️ Search button not found for ${id}`);
             }
+
+            // Enter key support
+            element.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const searchBox = element.closest('.search-box');
+                    const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
+                    if (searchBtn) {
+                        searchBtn.click();
+                    } else {
+                        // Fallback if no button found
+                        handler(e);
+                    }
+                }
+            });
+
+            console.log(`✅ Search listener setup complete for ${id} (no auto-search)`);
         }
 
         setupNavigation() {
@@ -3973,23 +4050,56 @@
             });
         }
 
-        // Search functionality - FIXED
-        const searchInput = document.getElementById('expiredContentSearch');
-        if (searchInput) {
-            console.log('✅ Setting up expired content search');
-            const newInput = searchInput.cloneNode(true);
-            searchInput.parentNode.replaceChild(newInput, searchInput);
+        // Search functionality - WITH BUTTON CLICK ONLY
+        const expiredSearchInput = document.getElementById('expiredContentSearch');
+        if (expiredSearchInput) {
+            const searchBox = expiredSearchInput.closest('.search-box');
+            const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
 
-            let searchTimeout;
-            newInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                const searchTerm = this.value.trim();
-                searchTimeout = setTimeout(() => {
+            if (searchBtn) {
+                const newBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
+
+                let isSearching = false;
+
+                // Search button click handler
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (isSearching) return;
+                    isSearching = true;
+
+                    const originalHTML = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    this.disabled = true;
+
+                    const searchTerm = expiredSearchInput.value.trim();
                     console.log(`🔍 Searching expired content: "${searchTerm}"`);
                     currentExpiredPage = 1;
-                    loadExpiredContentData(1, searchTerm);
-                }, 500);
-            });
+
+                    loadExpiredContentData(1, searchTerm)
+                        .finally(() => {
+                            setTimeout(() => {
+                                this.innerHTML = originalHTML;
+                                this.disabled = false;
+                                isSearching = false;
+                            }, 500);
+                        });
+                });
+
+                // Enter key support - FIXED
+                expiredSearchInput.addEventListener('keypress', function(e) {
+                    console.log('Enter key pressed on expired content search'); // Debug log
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        newBtn.click();
+                    }
+                });
+
+                console.log('✅ Expired content search with Enter key support enabled');
+            }
         }
 
         // Filter functionality - FIXED
@@ -4271,9 +4381,8 @@
     function loadExpiredContentData(page = 1, search = '', typeFilter = '') {
         console.log(`📋 Loading expired content data: page=${page}, search="${search}", type="${typeFilter}"`);
 
-        showLoading(); // Show loading overlay
+        showLoading();
 
-        // Get values if not provided
         const searchValue = search || document.getElementById('expiredContentSearch')?.value || '';
         const filterValue = typeFilter || document.getElementById('expiredContentTypeFilter')?.value || '';
 
@@ -4281,16 +4390,11 @@
         if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
         if (filterValue) url += `&type=${encodeURIComponent(filterValue)}`;
 
-        console.log(`📡 Fetching from: ${url}`);
-
-        fetch(url, {
+        return fetch(url, {  // Added return here
             credentials: 'include'
         })
         .then(response => {
             if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Session expired. Please login again.');
-                }
                 throw new Error(`HTTP ${response.status}: Failed to fetch expired content`);
             }
             return response.json();
@@ -4301,49 +4405,18 @@
             if (data.success) {
                 renderExpiredContentTable(data.data || data.expired_content || []);
                 updateExpiredPaginationInfo(data.count || data.total_count || 0, page, data.per_page || expiredItemsPerPage);
-
-                // Show notification only if we have items
-                if (data.data && data.data.length > 0) {
-                    showNotification(`Loaded ${data.data.length} expired items`, 'info');
-                }
             } else {
                 throw new Error(data.error || 'Failed to load expired content');
             }
+            return data; // Return data for promise chain
         })
         .catch(error => {
             console.error('❌ Error loading expired content:', error);
-
-            // Show user-friendly error message
-            let errorMessage = 'Failed to load expired content';
-            if (error.message.includes('Session expired')) {
-                errorMessage = 'Your session has expired. Please refresh the page.';
-            } else if (error.message.includes('401')) {
-                errorMessage = 'Authentication required. Please login again.';
-            } else if (error.message.includes('500')) {
-                errorMessage = 'Server error. Please try again later.';
-            }
-
-            showNotification(errorMessage, 'error');
-
-            // Show empty state in table
-            const tableBody = document.getElementById('expiredContentTableBody');
-            if (tableBody) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-exclamation-triangle" style="color: #ffc107; font-size: 48px; margin-bottom: 15px;"></i>
-                            <h3 style="color: #6c757d; margin: 0;">Failed to Load Data</h3>
-                            <p style="color: #6c757d; margin: 10px 0 0 0;">${errorMessage}</p>
-                            <button onclick="loadExpiredContentData(1)" style="margin-top: 15px; padding: 8px 16px; background: #4a6cf7; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                <i class="fas fa-redo"></i> Try Again
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }
+            showNotification('Failed to load expired content', 'error');
+            throw error;
         })
         .finally(() => {
-            hideLoading(); // Hide loading overlay
+            hideLoading();
         });
     }
 
@@ -4972,61 +5045,69 @@
         });
     }
 
-    // FIXED: Search and filter functionality
+    // Search and filter functionality
     function setupForms() {
-        // Search functionality - FIXED: Proper event delegation
-        document.addEventListener('click', function(e) {
-            // Handle search icon clicks
-            if (e.target.classList.contains('fa-search') || e.target.closest('.fa-search')) {
-                const searchIcon = e.target.classList.contains('fa-search') ? e.target : e.target.closest('.fa-search');
-                const searchBox = searchIcon.closest('.search-box');
-                if (searchBox) {
-                    const input = searchBox.querySelector('input');
-                    const section = searchBox.closest('.admin-section').id;
-                    const searchTerm = input.value.trim();
-                    loadSectionData(section, 1, searchTerm);
-                }
-            }
+        // Search functionality - ONLY on button click or Enter key
+        document.querySelectorAll('.search-box').forEach(searchBox => {
+            const searchInput = searchBox.querySelector('input');
+            const searchBtn = searchBox.querySelector('.search-btn');
 
-            // Handle clear search button clicks
-            if (e.target.classList.contains('fa-times') || e.target.closest('.fa-times')) {
-                const clearBtn = e.target.classList.contains('fa-times') ? e.target : e.target.closest('.fa-times');
-                const searchBox = clearBtn.closest('.search-box');
-                if (searchBox) {
-                    const input = searchBox.querySelector('input');
-                    input.value = '';
-                    const section = searchBox.closest('.admin-section').id;
-                    loadSectionData(section, 1);
-                }
-            }
-        });
+            if (!searchInput || !searchBtn) return;
 
-        // Enter key in search inputs
-        document.querySelectorAll('.search-box input').forEach(input => {
-            input.addEventListener('keyup', function(e) {
+            // Remove any existing listeners by cloning
+            const newSearchBtn = searchBtn.cloneNode(true);
+            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+
+            // Search button click handler
+            newSearchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const section = searchBox.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
+                const searchTerm = searchInput.value.trim();
+
+                // Show loading state on button
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
+                // Reset to page 1 and load data with search
+                if (sectionId === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.currentPage = 1;
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (sectionId === 'expired-content') {
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                } else if (sectionId === 'trash') {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, searchTerm);
+                } else {
+                    // For courses, jobs, internships, blog, users, messages, newsletter
+                    if (currentPage[sectionId] !== undefined) {
+                        currentPage[sectionId] = 1;
+                    }
+                    loadSectionData(sectionId, 1, searchTerm);
+                }
+
+                // Restore button after delay
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }, 1000);
+            });
+
+            // Enter key also triggers search
+            searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    const section = this.closest('.admin-section').id;
-                    const searchTerm = this.value.trim();
-                    loadSectionData(section, 1, searchTerm);
+                    e.preventDefault();
+                    newSearchBtn.click();
                 }
             });
-        });
-
-        // Filter functionality - FIXED: Proper event delegation
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('filter-select')) {
-                const select = e.target;
-                const section = select.closest('.admin-section').id;
-                const filterValue = select.value;
-                const filterName = select.id.replace('Filter', '').toLowerCase();
-
-                const filters = {};
-                if (filterValue) {
-                    filters[filterName] = filterValue;
-                }
-
-                loadSectionData(section, 1, '', filters);
-            }
         });
     }
 
@@ -5497,7 +5578,6 @@
                         endpoint = `/api/admin/${section}/bulk-delete`;
                     }
                     break;
-
                 case 'blog':
                     // Blog needs special handling - use blog_posts for status, blog for delete
                     if (action === 'activate' || action === 'deactivate') {
@@ -5632,7 +5712,10 @@
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${ids.length} ${section} moved to trash`, 'success');
+                const message = result.moved_to_trash ?
+                    `${ids.length} ${section} moved to trash` :
+                    `${ids.length} ${section} deleted successfully`;
+                showNotification(message, 'success');
 
                 // Clear selection
                 selectedItems[section] = [];
@@ -5770,27 +5853,68 @@
 
     // Enhanced filter setup
     function setupSearchFilters() {
-        // Search functionality
-        document.querySelectorAll('.search-box input').forEach(input => {
-            let searchTimeout;
+        // Search functionality - ONLY on button click or Enter key
+        document.querySelectorAll('.search-box').forEach(searchBox => {
+            const searchInput = searchBox.querySelector('input');
+            const searchBtn = searchBox.querySelector('.search-btn');
 
-            input.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                const section = this.closest('.admin-section').id;
-                const searchTerm = this.value.trim();
+            if (!searchInput || !searchBtn) return;
 
-                searchTimeout = setTimeout(() => {
-                    loadSectionDataWithFilters(section, 1, searchTerm);
+            // Remove any existing listeners by cloning
+            const newSearchBtn = searchBtn.cloneNode(true);
+            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+
+            // Search button click handler
+            newSearchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const section = searchBox.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
+                const searchTerm = searchInput.value.trim();
+
+                // Show loading state on button
+                const originalIcon = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
+                // Reset to page 1 and load data with search
+                if (sectionId === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.currentPage = 1;
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (sectionId === 'expired-content') {
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                } else if (sectionId === 'trash') {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, searchTerm);
+                } else {
+                    // For courses, jobs, internships, blog, users, messages, newsletter
+                    if (currentPage[sectionId] !== undefined) {
+                        currentPage[sectionId] = 1;
+                    }
+                    loadSectionData(sectionId, 1, searchTerm);
+                }
+
+                // Restore button after delay
+                setTimeout(() => {
+                    this.innerHTML = originalIcon;
+                    this.disabled = false;
                 }, 500);
             });
-        });
 
-        // Filter functionality
-        document.querySelectorAll('.filter-select').forEach(select => {
-            select.addEventListener('change', function() {
-                const section = this.closest('.admin-section').id;
-                loadSectionDataWithFilters(section, 1);
+            // Enter key also triggers search
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    newSearchBtn.click();
+                }
             });
+            searchInput.removeEventListener('input', null);
         });
     }
 
@@ -6732,15 +6856,31 @@
         tableBody.innerHTML = items.map((item, index) => {
             const serialNo = ((currentTrashPage - 1) * trashItemsPerPage) + index + 1;
 
-            // Map content type to icon
+            // Map content type to icon and display name
             const iconMap = {
                 'course': 'fa-book',
                 'job': 'fa-briefcase',
                 'internship': 'fa-user-graduate',
                 'blog': 'fa-blog',
-                'testimonial': 'fa-comment'
+                'testimonial': 'fa-comment',
+                'user': 'fa-user',
+                'message': 'fa-envelope',
+                'newsletter': 'fa-newspaper'
             };
+
             const icon = iconMap[item.content_type] || 'fa-file';
+
+            // Get display name
+            const displayName = {
+                'course': 'Course',
+                'job': 'Job',
+                'internship': 'Internship',
+                'blog': 'Blog Post',
+                'testimonial': 'Testimonial',
+                'user': 'User',
+                'message': 'Message',
+                'newsletter': 'Newsletter Subscriber'
+            }[item.content_type] || item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1);
 
             // Format dates with safe fallbacks
             const deletedDate = item.deleted_at ? formatDate(item.deleted_at, true) : 'Unknown';
@@ -6764,10 +6904,10 @@
                     <td>
                         <span class="content-type-badge ${item.content_type}">
                             <i class="fas ${icon}"></i>
-                            ${item.content_type ? item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1) : 'Unknown'}
+                            ${displayName}
                         </span>
                     </td>
-                    <td>${escapeHTML(item.title || 'Untitled')}</td>
+                    <td><strong>${escapeHTML(item.title || 'Untitled')}</strong></td>
                     <td>${escapeHTML(item.subtitle || 'N/A')}</td>
                     <td>
                         <span class="text-danger" title="${deletedDate}">
@@ -6918,16 +7058,38 @@
         // Refresh button
         const refreshBtn = document.getElementById('refreshTrashBtn');
         if (refreshBtn) {
-            // Remove all existing listeners
             const newBtn = refreshBtn.cloneNode(true);
             refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+
+            let isRefreshing = false;
 
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
+
+                if (isRefreshing) return;
+
+                isRefreshing = true;
+                const originalHTML = this.innerHTML;
+
+                // Show spinner
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
                 console.log('Refreshing trash...');
-                loadTrashItems(currentTrashPage);
+
+                loadTrashItems(currentTrashPage)
+                    .finally(() => {
+                        // Restore button after a short delay
+                        setTimeout(() => {
+                            this.innerHTML = originalHTML;
+                            this.disabled = false;
+                            isRefreshing = false;
+                        }, 500);
+                    });
             });
+
+            console.log('✅ Trash refresh button fixed');
         }
 
         // Empty trash button
@@ -6956,20 +7118,47 @@
             });
         }
 
-        // Search
+        // Search - WITH BUTTON CLICK ONLY
         const searchInput = document.getElementById('trashSearch');
         if (searchInput) {
-            const newInput = searchInput.cloneNode(true);
-            searchInput.parentNode.replaceChild(newInput, searchInput);
+            const searchBtn = searchInput.parentElement?.querySelector('.search-btn') ||
+                              searchInput.closest('.search-box')?.querySelector('.search-btn');
 
-            let searchTimeout;
-            newInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
+            if (searchBtn) {
+                const newBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
+
+                let isSearching = false;
+                newBtn.addEventListener('click', function() {
+                    if (isSearching) return;
+                    isSearching = true;
+
+                    const originalHTML = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    this.disabled = true;
+
+                    const searchTerm = searchInput.value.trim();
                     currentTrashPage = 1;
-                    loadTrashItems(1, this.value);
-                }, 500);
-            });
+
+                    loadTrashItems(1, searchTerm)
+                        .finally(() => {
+                            setTimeout(() => {
+                                this.innerHTML = originalHTML;
+                                this.disabled = false;
+                                isSearching = false;
+                            }, 500);
+                        });
+                });
+
+                // Enter key
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        newBtn.click();
+                    }
+                });
+                searchInput.removeEventListener('input', null);
+            }
         }
 
         // Type filter
@@ -7078,6 +7267,20 @@
             newLink.addEventListener('click', function(e) {
                 e.preventDefault();
 
+                // Close mobile menu if open
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.sidebar');
+                    const mobileToggle = document.querySelector('.mobile-menu-toggle');
+                    const overlay = document.querySelector('.mobile-overlay');
+
+                    if (sidebar && sidebar.classList.contains('mobile-active')) {
+                        sidebar.classList.remove('mobile-active');
+                        if (mobileToggle) mobileToggle.classList.remove('active');
+                        if (overlay) overlay.classList.remove('active');
+                        document.body.style.overflow = '';
+                    }
+                }
+
                 // Use global navigation function
                 if (typeof navigateToSection === 'function') {
                     navigateToSection('trash', this);
@@ -7104,6 +7307,8 @@
                     }
                 }
             });
+
+            console.log('✅ Trash navigation fixed (closes mobile menu)');
         }
 
         // Setup trash section observer

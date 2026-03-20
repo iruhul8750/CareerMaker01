@@ -2857,7 +2857,7 @@ def courses():
         course_categories = [
             'Programming', 'Web Development', 'Mobile Development', 'Data Science',
             'AI & Machine Learning', 'Cloud Computing', 'Cybersecurity', 'Design',
-            'Business', 'Marketing', 'Finance', 'Photography', 'Music', 'Health & Fitness'
+            'Business', 'Marketing', 'MS Office', 'Finance', 'Photography', 'Music', 'Health & Fitness'
         ]
 
         # ===== STEP 1: GET ALL ACTIVE COURSES =====
@@ -5616,10 +5616,15 @@ def bulk_delete_resources(resource):
             'newsletter': 'newsletter_subscribers',
             'testimonials': 'testimonials'
         }
-        table_name = table_map.get(resource, resource)
 
-        # For content that should go to trash, soft delete
-        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']
+        if resource in ['courses', 'jobs', 'internships', 'users']:
+            table_name = resource
+        else:
+            table_name = table_map.get(resource, resource)
+
+        # For content that should go to trash, soft delete - ADDED users and messages
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages',
+                        'newsletter_subscribers']
 
         if table_name in trash_tables:
             # Soft delete - move to trash
@@ -5629,9 +5634,23 @@ def bulk_delete_resources(resource):
                 'updated_at': get_current_utc_time().isoformat()
             }
 
-            if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+            # For content that uses is_active, set to inactive
+            if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'users']:
                 update_data['is_active'] = False
-                update_data['is_featured'] = False
+                if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+                    update_data['is_featured'] = False
+
+            # For testimonials, also set is_active to False
+            if table_name == 'testimonials':
+                update_data['is_active'] = False
+
+            # For newsletter subscribers, set is_active to False
+            if table_name == 'newsletter_subscribers':
+                update_data['is_active'] = False
+
+            # For messages, just mark as deleted
+            if table_name == 'contact_messages':
+                update_data['is_deleted'] = True
 
             response = supabase_admin.table(table_name).update(update_data).in_('id', ids).execute()
             updated_count = len(response.data) if response.data else 0
@@ -5639,7 +5658,8 @@ def bulk_delete_resources(resource):
             return jsonify({
                 'success': True,
                 'message': f'{updated_count} {resource} moved to trash',
-                'moved_to_trash': True
+                'moved_to_trash': True,
+                'deleted_count': updated_count
             })
         else:
             # For other tables, permanent delete
@@ -5683,7 +5703,6 @@ def bulk_update_resource_status(resource):
         # Validate resource type
         valid_resources = ['courses', 'jobs', 'internships', 'blog_posts', 'users', 'newsletter_subscribers']
         if resource not in valid_resources:
-            logger.error(f"❌ Invalid resource type for bulk update: {resource}")
             return jsonify({'success': False, 'message': f'Invalid resource type: {resource}'}), 400
 
         # Map resource to table name
@@ -5751,8 +5770,10 @@ def get_admin_resources(resource):
         # Build base query - EXCLUDE soft-deleted items
         query = supabase_admin.table(table_name).select('*')
 
-        # Add is_deleted = False filter for tables that support soft delete
-        if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']:
+        # Add is_deleted = False filter for all tables that support soft delete
+        tables_with_soft_delete = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users',
+                                   'contact_messages', 'newsletter_subscribers']
+        if table_name in tables_with_soft_delete:
             query = query.eq('is_deleted', False)
 
         # Apply search filters
@@ -5778,7 +5799,7 @@ def get_admin_resources(resource):
         if resource == 'messages':
             query = query.order('created_at', desc=True)
         elif resource == 'newsletter':
-            query = query.order('subscribed_at', desc=True)
+            query = query.order('created_at', desc=True)
         else:
             query = query.order('created_at', desc=True)
 
@@ -5790,7 +5811,7 @@ def get_admin_resources(resource):
         # Count query - EXCLUDE soft-deleted items
         count_query = supabase_admin.table(table_name).select('id', count='exact')
 
-        if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']:
+        if table_name in tables_with_soft_delete:
             count_query = count_query.eq('is_deleted', False)
 
         if search:
@@ -5879,7 +5900,7 @@ def delete_admin_resource(resource, id):
         }
 
         # Handle plural resources vs table names
-        if resource in ['courses', 'jobs', 'internships']:
+        if resource in ['courses', 'jobs', 'internships', 'users']:
             table_name = resource
         else:
             table_name = table_map.get(resource, resource)
@@ -5887,12 +5908,12 @@ def delete_admin_resource(resource, id):
         logger.info(f"Delete request - Resource: {resource}, Table: {table_name}, ID: {id}")
 
         # Check if item exists
-        existing = supabase_admin.table(table_name).select('id').eq('id', id).execute()
+        existing = supabase_admin.table(table_name).select('*').eq('id', id).execute()
         if not existing.data:
             return jsonify({'error': f'{resource} not found'}), 404
 
-        # For content that should go to trash, soft delete
-        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials']
+        # For content that should go to trash, soft delete - ADDED users and messages
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages', 'newsletter_subscribers']
 
         if table_name in trash_tables:
             # Soft delete - move to trash
@@ -5903,13 +5924,22 @@ def delete_admin_resource(resource, id):
             }
 
             # For content that uses is_active, set to inactive
-            if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+            if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'users']:
                 update_data['is_active'] = False
-                update_data['is_featured'] = False
+                if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
+                    update_data['is_featured'] = False
 
             # For testimonials, also set is_active to False
             if table_name == 'testimonials':
                 update_data['is_active'] = False
+
+            # For newsletter subscribers, set is_active to False
+            if table_name == 'newsletter_subscribers':
+                update_data['is_active'] = False
+
+            # For messages, just mark as deleted
+            if table_name == 'contact_messages':
+                update_data['is_deleted'] = True
 
             response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
 
@@ -5923,7 +5953,7 @@ def delete_admin_resource(resource, id):
             else:
                 return jsonify({'error': f'Failed to delete {resource}'}), 500
         else:
-            # For other tables (users, messages, newsletter), permanent delete
+            # For other tables, permanent delete
             response = supabase_admin.table(table_name).delete().eq('id', id).execute()
 
             if response.data:
@@ -7041,6 +7071,73 @@ def admin_message_reply():
         logger.error(f"Error sending message reply: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to send reply'}), 500
 
+    @app.route('/api/admin/messages/<string:id>', methods=['DELETE'])
+    @admin_required
+    def delete_admin_message(id):
+        try:
+            # Check if message exists
+            existing = supabase_admin.table('contact_messages').select('*').eq('id', id).execute()
+
+            if not existing.data:
+                return jsonify({'success': False, 'message': 'Message not found'}), 404
+
+            # Soft delete - mark as deleted and move to trash
+            update_data = {
+                'is_deleted': True,
+                'deleted_at': get_current_utc_time().isoformat(),
+                'updated_at': get_current_utc_time().isoformat()
+            }
+
+            response = supabase_admin.table('contact_messages').update(update_data).eq('id', id).execute()
+
+            if response.data:
+                logger.info(f"✅ Message {id} moved to trash")
+                return jsonify({
+                    'success': True,
+                    'message': 'Message moved to trash',
+                    'moved_to_trash': True
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Failed to delete message'}), 500
+
+        except Exception as e:
+            logger.error(f"Error deleting message: {str(e)}")
+            return jsonify({'success': False, 'message': 'Failed to delete message'}), 500
+
+
+@app.route('/api/admin/messages/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_messages():
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No messages selected'}), 400
+
+        # Soft delete messages
+        deleted_count = 0
+        update_data = {
+            'is_deleted': True,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('contact_messages').update(update_data).in_('id', ids).execute()
+        deleted_count = len(response.data) if response.data else 0
+
+        logger.info(f"✅ Bulk soft deleted {deleted_count} messages")
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count} message(s) moved to trash',
+            'deleted_count': deleted_count,
+            'moved_to_trash': True
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk deleting messages: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete messages'}), 500
 
 # ===== NOTIFICATION ROUTES =====
 
@@ -7088,81 +7185,86 @@ def mark_all_notifications_read():
 
 # ===== NEWSLETTER ROUTES =====
 
-@app.route('/api/admin/newsletter/send', methods=['POST'])
+@app.route('/api/admin/newsletter', methods=['GET'])
 @admin_required
-def send_newsletter():
+def get_newsletter_subscribers():
     try:
-        data = request.get_json()
-        subject = data.get('subject')
-        content = data.get('content')
-        recipients_type = data.get('recipients', 'all')
-        test_mode = data.get('test_mode', False)
+        # Get query parameters
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        search = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '')
 
-        if not subject or not content:
-            return jsonify({'success': False, 'message': 'Subject and content are required'}), 400
+        logger.info(f"📧 Newsletter query - page: {page}, search: '{search}', status: '{status_filter}'")
 
-        # Prepare subscriber list before background thread
+        # Get ALL subscribers (excluding deleted ones) - like users and messages
+        query = supabase_admin.table('newsletter_subscribers').select('*').eq('is_deleted', False)
+
+        # Apply status filter if provided
+        if status_filter and status_filter != '':
+            if status_filter == 'active':
+                query = query.eq('is_active', True)
+            elif status_filter == 'inactive':
+                query = query.eq('is_active', False)
+
+        # Execute query to get all matching records (like users section)
+        all_response = query.execute()
+        all_subscribers = all_response.data or []
+
+        logger.info(f"📊 Total newsletter subscribers before filter: {len(all_subscribers)}")
+
+        # Apply search filter in Python (like users and messages section)
+        filtered_subscribers = []
+        if search and search != '':
+            search_lower = search.lower()
+            for sub in all_subscribers:
+                email = sub.get('email', '').lower()
+                if search_lower in email:
+                    filtered_subscribers.append(sub)
+            logger.info(f"🔍 After search filter: {len(filtered_subscribers)} subscribers match '{search}'")
+        else:
+            filtered_subscribers = all_subscribers
+
+        # Sort by created_at (newest first) - like other sections
+        filtered_subscribers.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
+        # Get total count
+        total_count = len(filtered_subscribers)
+
+        # Apply pagination
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_subscribers = filtered_subscribers[start:end]
+
+        # Format response exactly like other sections
         subscribers = []
-        if not test_mode:
-            if recipients_type == 'all':
-                subscribers = supabase_admin.table('newsletter_subscribers') \
-                                  .select('*') \
-                                  .eq('is_active', True) \
-                                  .execute().data or []
-            elif recipients_type == 'active':
-                subscribers = supabase_admin.table('newsletter_subscribers') \
-                                  .select('*') \
-                                  .eq('is_active', True) \
-                                  .execute().data or []
-            else:
-                subscriber_ids = data.get('subscriber_ids', [])
-                if not subscriber_ids:
-                    return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
+        for sub in paginated_subscribers:
+            subscribers.append({
+                'id': sub.get('id'),
+                'email': sub.get('email'),
+                'is_active': sub.get('is_active', True),
+                'subscribed_at': sub.get('created_at'),
+                'unsubscribed_at': sub.get('unsubscribed_at'),
+                'updated_at': sub.get('updated_at')
+            })
 
-                subscribers = supabase_admin.table('newsletter_subscribers') \
-                                  .select('*') \
-                                  .in_('id', subscriber_ids) \
-                                  .eq('is_active', True) \
-                                  .execute().data or []
+        logger.info(f"✅ Newsletter query successful - total: {total_count}, showing: {len(subscribers)}")
 
-        # Run in background
-        from threading import Thread
-        def send_newsletter_async(subscribers, subject, content, test_mode):
-            try:
-                if test_mode:
-                    # Send test email only to admin
-                    send_email_smtp(
-                        session.get('admin_email', 'admin@careermaker.com'),
-                        f"[TEST] {subject}",
-                        content
-                    )
-                    logger.info("Test newsletter sent to admin")
-                else:
-                    # Send to subscribers
-                    success_count = 0
-                    for subscriber in subscribers:
-                        email_sent = send_email_smtp(subscriber['email'], subject, content)
-                        if email_sent:
-                            success_count += 1
-
-                    logger.info(f"Newsletter sent to {success_count} out of {len(subscribers)} subscribers")
-
-            except Exception as e:
-                logger.error(f"Error in async newsletter sending: {str(e)}")
-
-        # Start thread
-        thread = Thread(target=send_newsletter_async, args=(subscribers, subject, content, test_mode))
-        thread.start()
-
-        # Return immediate response
         return jsonify({
             'success': True,
-            'message': 'Newsletter is being sent in the background. You will receive a notification when complete.'
+            'data': subscribers,
+            'count': total_count,
+            'page': page,
+            'per_page': per_page
         })
 
     except Exception as e:
-        logger.error(f"Error sending newsletter: {str(e)}")
-        return jsonify({'success': False, 'message': 'Failed to send newsletter'}), 500
+        logger.error(f"❌ Error fetching newsletter subscribers: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Failed to fetch subscribers',
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/admin/newsletter/<string:id>/status', methods=['PUT'])
@@ -7175,20 +7277,165 @@ def toggle_newsletter_status(id):
         if is_active is None:
             return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
 
-        # Update status in database
-        response = supabase_admin.table('newsletter_subscribers').update({
-            'is_active': is_active,
-            'updated_at': get_current_utc_time().isoformat()
-        }).eq('id', id).execute()
+        # Check if subscriber exists and is not deleted
+        existing = supabase_admin.table('newsletter_subscribers') \
+            .select('*') \
+            .eq('id', id) \
+            .eq('is_deleted', False) \
+            .execute()
 
-        if not response.data:
+        if not existing.data:
             return jsonify({'success': False, 'message': 'Subscriber not found'}), 404
 
-        return jsonify({'success': True, 'message': 'Subscriber status updated successfully'})
+        current_time = get_current_utc_time().isoformat()
+
+        # Prepare update data
+        update_data = {
+            'is_active': is_active,
+            'updated_at': current_time
+        }
+
+        # If setting to inactive, record unsubscribed time
+        if not is_active:
+            update_data['unsubscribed_at'] = current_time
+        else:
+            # If reactivating, clear unsubscribed time
+            update_data['unsubscribed_at'] = None
+
+        # Update status in database
+        response = supabase_admin.table('newsletter_subscribers').update(update_data).eq('id', id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': f'Subscriber {"activated" if is_active else "deactivated"} successfully',
+            'is_active': is_active
+        })
 
     except Exception as e:
         logger.error(f"Error updating newsletter status: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+
+
+@app.route('/api/admin/newsletter/bulk-status', methods=['POST'])
+@admin_required
+def bulk_update_newsletter_status():
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+        is_active = data.get('is_active')
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
+
+        if is_active is None:
+            return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
+
+        current_time = get_current_utc_time().isoformat()
+
+        # Update status for each subscriber
+        updated_count = 0
+        for subscriber_id in ids:
+            update_data = {
+                'is_active': is_active,
+                'updated_at': current_time
+            }
+
+            # If setting to inactive, record unsubscribed time
+            if not is_active:
+                update_data['unsubscribed_at'] = current_time
+            else:
+                # If reactivating, clear unsubscribed time
+                update_data['unsubscribed_at'] = None
+
+            response = supabase_admin.table('newsletter_subscribers').update(update_data).eq('id',
+                                                                                             subscriber_id).execute()
+
+            if response.data:
+                updated_count += 1
+
+        return jsonify({
+            'success': True,
+            'message': f'{updated_count} subscriber(s) {"activated" if is_active else "deactivated"} successfully',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk updating newsletter status: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update subscribers'}), 500
+
+
+@app.route('/api/admin/newsletter/<string:id>', methods=['DELETE'])
+@admin_required
+def delete_newsletter_subscriber(id):
+    try:
+        # Check if subscriber exists
+        existing = supabase_admin.table('newsletter_subscribers').select('*').eq('id', id).execute()
+
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'Subscriber not found'}), 404
+
+        # Soft delete - mark as deleted and move to trash
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,  # Deactivate as well
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('newsletter_subscribers').update(update_data).eq('id', id).execute()
+
+        if response.data:
+            logger.info(f"✅ Newsletter subscriber {id} moved to trash")
+            return jsonify({
+                'success': True,
+                'message': 'Subscriber moved to trash',
+                'moved_to_trash': True
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete subscriber'}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting newsletter subscriber: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete subscriber'}), 500
+
+
+@app.route('/api/admin/newsletter/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_newsletter():
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No subscribers selected'}), 400
+
+        # Soft delete subscribers - move to trash
+        deleted_count = 0
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        for subscriber_id in ids:
+            response = supabase_admin.table('newsletter_subscribers').update(update_data).eq('id',
+                                                                                             subscriber_id).execute()
+            if response.data:
+                deleted_count += 1
+
+        logger.info(f"✅ Bulk soft deleted {deleted_count} newsletter subscribers")
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count} subscriber(s) moved to trash',
+            'deleted_count': deleted_count,
+            'moved_to_trash': True
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk deleting newsletter subscribers: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete subscribers'}), 500
 
 
 # Content expiration routes
@@ -7650,6 +7897,75 @@ def bulk_delete_expired_content():
         logger.error(f"Error in bulk delete expired content: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to delete items'}), 500
 
+# ===== USER MANAGEMENT ROUTES =====
+@app.route('/api/admin/users/<string:id>', methods=['DELETE'])
+@admin_required
+def delete_admin_user(id):
+    try:
+        # Check if user exists
+        existing = supabase_admin.table('users').select('*').eq('id', id).execute()
+
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Soft delete - mark as deleted and deactivate
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('users').update(update_data).eq('id', id).execute()
+
+        if response.data:
+            logger.info(f"✅ User {id} moved to trash")
+            return jsonify({
+                'success': True,
+                'message': 'User moved to trash',
+                'moved_to_trash': True
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete user'}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting user: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete user'}), 500
+
+
+@app.route('/api/admin/users/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_users():
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No users selected'}), 400
+
+        # Soft delete users
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('users').update(update_data).in_('id', ids).execute()
+        deleted_count = len(response.data) if response.data else 0
+
+        logger.info(f"✅ Bulk soft deleted {deleted_count} users")
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count} user(s) moved to trash',
+            'deleted_count': deleted_count,
+            'moved_to_trash': True
+        })
+
+    except Exception as e:
+        logger.error(f"Error bulk deleting users: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete users'}), 500
 
 # ===== TRASH MANAGEMENT ROUTES =====
 
@@ -7664,6 +7980,9 @@ def trash_stats():
             'internships': 0,
             'blog_posts': 0,
             'testimonials': 0,
+            'users': 0,
+            'messages': 0,
+            'newsletter': 0,
             'total': 0
         }
 
@@ -7718,8 +8037,42 @@ def trash_stats():
         except Exception as e:
             logger.warning(f"Error counting deleted testimonials: {str(e)}")
 
-        stats['total'] = stats['courses'] + stats['jobs'] + stats['internships'] + stats['blog_posts'] + stats[
-            'testimonials']
+        # Add users count
+        try:
+            users = supabase_admin.table('users') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['users'] = users.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted users: {str(e)}")
+
+        # Add messages count
+        try:
+            messages = supabase_admin.table('contact_messages') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['messages'] = messages.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted messages: {str(e)}")
+
+        # Add newsletter subscribers count
+        try:
+            newsletter = supabase_admin.table('newsletter_subscribers') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['newsletter'] = newsletter.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted newsletter subscribers: {str(e)}")
+
+        stats['total'] = (stats['courses'] + stats['jobs'] + stats['internships'] +
+                          stats['blog_posts'] + stats['testimonials'] + stats['users'] +
+                          stats['messages'] + stats['newsletter'])
 
         return jsonify({
             'success': True,
@@ -7743,47 +8096,92 @@ def get_trash_items():
 
         all_trash_items = []
 
-        # Get trash items from each table - EXCLUDE hidden items
+        # Get trash items from each table - ADDED users and messages
         tables = [
             ('courses', 'course', ['title', 'company']),
             ('jobs', 'job', ['title', 'company']),
             ('internships', 'internship', ['title', 'company']),
             ('blog_posts', 'blog', ['title', 'author']),
-            ('testimonials', 'testimonial', ['content', 'username'])
+            ('testimonials', 'testimonial', ['content', 'username']),
+            ('users', 'user', ['username', 'email']),
+            ('contact_messages', 'message', ['subject', 'email', 'name']),
+            ('newsletter_subscribers', 'newsletter', ['email'])
         ]
 
         for table, type_name, search_fields in tables:
-            if not content_type or content_type == type_name + 's' or content_type == 'all':
-                try:
-                    # Only get items that are deleted AND NOT hidden from trash
-                    query = supabase_admin.table(table) \
-                        .select('*') \
-                        .eq('is_deleted', True) \
-                        .eq('hidden_from_trash', False)  # Add this filter
+            # Skip if type filter is specified and doesn't match
+            if content_type != 'all' and content_type != '':
+                # Map type filter to table names
+                if content_type == 'users' and type_name != 'user':
+                    continue
+                if content_type == 'messages' and type_name != 'message':
+                    continue
+                if content_type == 'newsletter' and type_name != 'newsletter':
+                    continue
+                if content_type == 'courses' and type_name != 'course':
+                    continue
+                if content_type == 'jobs' and type_name != 'job':
+                    continue
+                if content_type == 'internships' and type_name != 'internship':
+                    continue
+                if content_type == 'blog' and type_name != 'blog':
+                    continue
+                if content_type == 'testimonials' and type_name != 'testimonial':
+                    continue
 
-                    if search:
-                        if table == 'testimonials':
-                            query = query.or_(f"content.ilike.%{search}%,username.ilike.%{search}%")
-                        elif table == 'blog_posts':
-                            query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%")
-                        else:
-                            query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
+            try:
+                # Only get items that are deleted AND NOT hidden from trash
+                query = supabase_admin.table(table) \
+                    .select('*') \
+                    .eq('is_deleted', True) \
+                    .eq('hidden_from_trash', False)
 
-                    items = query.order('deleted_at', desc=True).execute().data or []
+                if search:
+                    if table == 'newsletter_subscribers':
+                        query = query.ilike('email', f'%{search}%')
+                    elif table == 'contact_messages':
+                        query = query.or_(f"subject.ilike.%{search}%,email.ilike.%{search}%,name.ilike.%{search}%")
+                    elif table == 'users':
+                        query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%")
+                    elif table == 'testimonials':
+                        query = query.or_(f"content.ilike.%{search}%,username.ilike.%{search}%")
+                    elif table == 'blog_posts':
+                        query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%")
+                    else:
+                        query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%")
 
-                    for item in items:
-                        all_trash_items.append({
-                            'id': item['id'],
-                            'content_type': type_name,
-                            'table_name': table,
-                            'title': item.get('title') or item.get('content', 'Untitled')[:50],
-                            'subtitle': item.get('company') or item.get('author') or item.get('username', 'Unknown'),
-                            'deleted_at': item.get('deleted_at'),
-                            'created_at': item.get('created_at'),
-                            'data': item
-                        })
-                except Exception as e:
-                    logger.warning(f"Error fetching {table} trash: {str(e)}")
+                items = query.order('deleted_at', desc=True).execute().data or []
+
+                for item in items:
+                    # Handle different field names for each table
+                    if table == 'newsletter_subscribers':
+                        title = item.get('email', 'Unknown')
+                        subtitle = item.get('email', 'Unknown')
+                    elif table == 'contact_messages':
+                        title = item.get('subject', 'No Subject')
+                        subtitle = item.get('email', 'Unknown')
+                    elif table == 'users':
+                        title = item.get('username', 'Unknown')
+                        subtitle = item.get('email', 'Unknown')
+                    elif table == 'testimonials':
+                        title = item.get('username', 'Anonymous')[:50]
+                        subtitle = item.get('content', '')[:50]
+                    else:
+                        title = item.get('title', 'Untitled')[:100]
+                        subtitle = item.get('company') or item.get('author') or item.get('username', 'Unknown')
+
+                    all_trash_items.append({
+                        'id': item['id'],
+                        'content_type': type_name,
+                        'table_name': table,
+                        'title': title,
+                        'subtitle': subtitle,
+                        'deleted_at': item.get('deleted_at'),
+                        'created_at': item.get('created_at'),
+                        'data': item
+                    })
+            except Exception as e:
+                logger.warning(f"Error fetching {table} trash: {str(e)}")
 
         # Sort by deletion date (newest first)
         all_trash_items.sort(key=lambda x: x['deleted_at'] or '', reverse=True)
