@@ -474,7 +474,6 @@
         const sectionElement = document.getElementById(targetSection);
         if (!sectionElement) {
             console.error(`❌ Section element not found: ${targetSection}`);
-            // Fallback to dashboard
             const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
             if (dashboardItem) dashboardItem.click();
             return;
@@ -505,7 +504,7 @@
         const sectionName = getSectionDisplayName(targetSection);
         document.getElementById('pageTitle').textContent = sectionName + ' Management';
 
-        // Update current section and session storage - THIS IS CRITICAL
+        // Update current section and session storage
         currentSection = targetSection;
         sessionStorage.setItem('currentSection', targetSection);
         console.log(`💾 Saved to sessionStorage: ${targetSection}`);
@@ -518,12 +517,9 @@
         // Update browser history if not from popstate
         if (!fromPopState) {
             let pageToSave = currentPage[targetSection];
-
-            // For trash, use the currentTrashPage
             if (targetSection === 'trash') {
                 pageToSave = currentTrashPage || 1;
             }
-
             const state = {
                 section: targetSection,
                 page: pageToSave,
@@ -545,13 +541,9 @@
 
             case 'trash':
                 console.log('🗑️ Loading trash section, page:', currentTrashPage || 1);
-
-                // Sync currentTrashPage with currentPage.trash
                 if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
                     currentTrashPage = currentPage.trash || 1;
                 }
-
-                // Show loading in table
                 const trashTableBody = document.getElementById('trashTableBody');
                 if (trashTableBody) {
                     trashTableBody.innerHTML = `
@@ -563,7 +555,6 @@
                         </tr>
                     `;
                 }
-                // Load trash items with current page
                 loadTrashItems(currentTrashPage);
                 loadTrashStats(false);
                 break;
@@ -588,20 +579,26 @@
 
             case 'testimonials':
                 console.log('💬 Loading testimonials section...');
+                // Force load testimonials data
                 if (window.testimonialManager) {
                     if (!window.testimonialManager.isInitialized) {
+                        console.log('Initializing testimonial manager...');
                         window.testimonialManager.init();
                     } else {
+                        console.log('Loading testimonials data...');
                         window.testimonialManager.loadTestimonialsData(currentPage.testimonials);
                     }
+                } else {
+                    console.log('Creating testimonial manager...');
+                    window.testimonialManager = new TestimonialManager();
+                    window.testimonialManager.init();
                 }
                 break;
 
             default:
-                // Handle all other sections (courses, jobs, internships, blog, users, messages, newsletter)
+                // Handle all other sections
                 console.log(`📋 Loading ${targetSection} section, page:`, currentPage[targetSection]);
 
-                // Show loading in table
                 const tableBody = document.getElementById(`${targetSection}TableBody`);
                 if (tableBody) {
                     const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
@@ -615,7 +612,6 @@
                     `;
                 }
 
-                // Load section data
                 if (typeof loadSectionData === 'function') {
                     loadSectionData(targetSection, currentPage[targetSection])
                         .catch(error => {
@@ -1251,7 +1247,7 @@
     }
 
     function loadSectionData(section, page = 1, search = '', filters = {}) {
-        console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}"`);
+        console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}", filters:`, filters);
 
         // Handle testimonials section separately
         if (section === 'testimonials') {
@@ -1273,14 +1269,16 @@
 
         params.append('page', page);
 
-        // Only add search if it's not empty
+        // Add search parameter if provided
         if (search && search.trim() !== '') {
             params.append('search', search.trim());
         }
 
+        // Add all filters to params - THIS IS THE KEY PART
         Object.keys(filters).forEach(key => {
-            if (filters[key]) {
+            if (filters[key] && filters[key] !== '') {
                 params.append(key, filters[key]);
+                console.log(`📌 Adding filter: ${key}=${filters[key]}`);
             }
         });
 
@@ -1340,31 +1338,7 @@
         })
         .catch(error => {
             console.error(`❌ Error loading ${section}:`, error);
-
-            // Show user-friendly error message
-            if (section === 'newsletter' && search) {
-                showNotification(`Search failed: ${error.message}. Try a different search term or clear the search.`, 'error');
-
-                // Clear the search input to allow normal loading
-                const searchInput = document.getElementById('newsletterSearch');
-                if (searchInput) {
-                    searchInput.value = '';
-                }
-
-                // Reload without search after 2 seconds
-                setTimeout(() => {
-                    loadSectionData('newsletter', 1, '');
-                }, 2000);
-            } else {
-                showNotification(`Failed to load ${section}: ${error.message}`, 'error');
-            }
-
-            // Display empty table
-            const tableBody = document.getElementById(`${section}TableBody`);
-            if (tableBody) {
-                const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
-                tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">Failed to load data. Please try again.</td></tr>`;
-            }
+            showNotification(`Failed to load ${section}: ${error.message}`, 'error');
         })
         .finally(() => {
             hideLoading();
@@ -1948,11 +1922,32 @@
 
     // View modal function
     function openViewModal(section, id) {
-        fetch(`/api/admin/${section}/${id}`, {
-            credentials: 'include'
+        console.log(`Opening view modal for ${section} with ID: ${id}`);
+
+        // Handle testimonial separately
+        if (section === 'testimonials') {
+            viewTestimonialFromTrash(id);
+            return;
+        }
+
+        // Map section to API endpoint
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog';
+        if (section === 'users') apiSection = 'users';
+        if (section === 'messages') apiSection = 'messages';
+        if (section === 'newsletter') apiSection = 'newsletter';
+
+        fetch(`/api/admin/${apiSection}/${id}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
         .then(response => {
-            if (!response.ok) throw new Error(`Failed to fetch ${section} item`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${section} item`);
+            }
             return response.json();
         })
         .then(item => {
@@ -1962,7 +1957,12 @@
             // Set modal title
             const modalTitle = modal.querySelector('.modal-title');
             if (modalTitle) {
-                modalTitle.textContent = `${section.charAt(0).toUpperCase() + section.slice(1, -1)} Details`;
+                const sectionName = section === 'blog' ? 'Blog Post' :
+                                   section === 'users' ? 'User' :
+                                   section === 'messages' ? 'Message' :
+                                   section === 'newsletter' ? 'Newsletter Subscriber' :
+                                   section.charAt(0).toUpperCase() + section.slice(1, -1);
+                modalTitle.textContent = `${sectionName} Details`;
             }
 
             // Populate content based on section type
@@ -3316,17 +3316,35 @@
 
                 newLink.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+
+                    console.log('🎯 Testimonials link clicked');
+
                     // Use the global navigateToSection function
                     if (typeof navigateToSection === 'function') {
                         navigateToSection('testimonials', newLink);
                     }
 
-                    // Ensure testimonial manager is initialized
+                    // Ensure testimonial manager is initialized and loaded
                     setTimeout(() => {
                         if (!this.isInitialized) {
+                            console.log('Initializing testimonial manager...');
                             this.init();
                         }
-                        this.loadTestimonialsData(1);
+
+                        // Force load testimonials data
+                        if (this.isSectionActive()) {
+                            console.log('Loading testimonials data...');
+                            this.loadTestimonialsData(1);
+                        } else {
+                            console.log('Waiting for section to become active...');
+                            // Check again after a short delay
+                            setTimeout(() => {
+                                if (this.isSectionActive()) {
+                                    this.loadTestimonialsData(1);
+                                }
+                            }, 100);
+                        }
                     }, 100);
                 });
                 console.log('✅ Testimonials navigation setup complete');
@@ -5047,68 +5065,14 @@
 
     // Search and filter functionality
     function setupForms() {
-        // Search functionality - ONLY on button click or Enter key
-        document.querySelectorAll('.search-box').forEach(searchBox => {
-            const searchInput = searchBox.querySelector('input');
-            const searchBtn = searchBox.querySelector('.search-btn');
-
-            if (!searchInput || !searchBtn) return;
-
-            // Remove any existing listeners by cloning
-            const newSearchBtn = searchBtn.cloneNode(true);
-            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
-
-            // Search button click handler
-            newSearchBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const section = searchBox.closest('.admin-section');
-                if (!section) return;
-
-                const sectionId = section.id;
-                const searchTerm = searchInput.value.trim();
-
-                // Show loading state on button
-                const originalHTML = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.disabled = true;
-
-                // Reset to page 1 and load data with search
-                if (sectionId === 'testimonials') {
-                    if (window.testimonialManager) {
-                        window.testimonialManager.currentPage = 1;
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                } else if (sectionId === 'expired-content') {
-                    currentExpiredPage = 1;
-                    loadExpiredContentData(1, searchTerm);
-                } else if (sectionId === 'trash') {
-                    currentTrashPage = 1;
-                    loadTrashItems(1, searchTerm);
-                } else {
-                    // For courses, jobs, internships, blog, users, messages, newsletter
-                    if (currentPage[sectionId] !== undefined) {
-                        currentPage[sectionId] = 1;
-                    }
-                    loadSectionData(sectionId, 1, searchTerm);
-                }
-
-                // Restore button after delay
-                setTimeout(() => {
-                    this.innerHTML = originalHTML;
-                    this.disabled = false;
-                }, 1000);
-            });
-
-            // Enter key also triggers search
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    newSearchBtn.click();
-                }
-            });
-        });
+        // Handle form submissions only
+        document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
+        document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
+        document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
+        document.getElementById('blogForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'blog'));
+        document.getElementById('userForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'users'));
+        document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
+        document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
     }
 
     // Form submission
@@ -5851,7 +5815,7 @@
         });
     }
 
-    // Enhanced filter setup
+    // Filter setup
     function setupSearchFilters() {
         // Search functionality - ONLY on button click or Enter key
         document.querySelectorAll('.search-box').forEach(searchBox => {
@@ -5876,11 +5840,14 @@
                 const searchTerm = searchInput.value.trim();
 
                 // Show loading state on button
-                const originalIcon = this.innerHTML;
+                const originalHTML = this.innerHTML;
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 this.disabled = true;
 
-                // Reset to page 1 and load data with search
+                // Get current filters
+                const filters = getCurrentFilters(sectionId);
+
+                // Reset to page 1 and load data with search and filters
                 if (sectionId === 'testimonials') {
                     if (window.testimonialManager) {
                         window.testimonialManager.currentPage = 1;
@@ -5897,14 +5864,14 @@
                     if (currentPage[sectionId] !== undefined) {
                         currentPage[sectionId] = 1;
                     }
-                    loadSectionData(sectionId, 1, searchTerm);
+                    loadSectionData(sectionId, 1, searchTerm, filters);
                 }
 
                 // Restore button after delay
                 setTimeout(() => {
-                    this.innerHTML = originalIcon;
+                    this.innerHTML = originalHTML;
                     this.disabled = false;
-                }, 500);
+                }, 1000);
             });
 
             // Enter key also triggers search
@@ -5914,7 +5881,51 @@
                     newSearchBtn.click();
                 }
             });
-            searchInput.removeEventListener('input', null);
+        });
+
+        // DROP DOWN FILTER FUNCTIONALITY
+        document.querySelectorAll('.filter-select').forEach(select => {
+            // Remove existing listeners by cloning
+            const newSelect = select.cloneNode(true);
+            select.parentNode.replaceChild(newSelect, select);
+
+            newSelect.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const section = this.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
+
+                // Get current search term
+                const searchInput = section.querySelector('.search-box input');
+                const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+                // Get all filters from this section
+                const filters = getCurrentFilters(sectionId);
+
+                console.log(`🎯 Filter changed in ${sectionId}:`, filters);
+
+                // Reset to page 1 and load data with filters
+                if (sectionId === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.currentPage = 1;
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (sectionId === 'expired-content') {
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                } else if (sectionId === 'trash') {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, searchTerm);
+                } else {
+                    if (currentPage[sectionId] !== undefined) {
+                        currentPage[sectionId] = 1;
+                    }
+                    loadSectionData(sectionId, 1, searchTerm, filters);
+                }
+            });
         });
     }
 
@@ -5974,6 +5985,27 @@
                 const newsletterStatusFilter = document.getElementById('newsletterStatusFilter');
                 if (newsletterStatusFilter && newsletterStatusFilter.value) {
                     filters.status = newsletterStatusFilter.value;
+                }
+                break;
+
+            case 'testimonials':
+                const testimonialStatusFilter = document.getElementById('testimonialStatusFilter');
+                if (testimonialStatusFilter && testimonialStatusFilter.value) {
+                    filters.status = testimonialStatusFilter.value;
+                }
+                break;
+
+            case 'expired-content':
+                const expiredTypeFilter = document.getElementById('expiredContentTypeFilter');
+                if (expiredTypeFilter && expiredTypeFilter.value) {
+                    filters.type = expiredTypeFilter.value;
+                }
+                break;
+
+            case 'trash':
+                const trashTypeFilter = document.getElementById('trashTypeFilter');
+                if (trashTypeFilter && trashTypeFilter.value && trashTypeFilter.value !== 'all') {
+                    filters.type = trashTypeFilter.value;
                 }
                 break;
         }
@@ -6945,7 +6977,6 @@
     function addTrashRowEventListeners() {
         // Individual checkboxes
         document.querySelectorAll('#trashTableBody .trash-item-checkbox').forEach(checkbox => {
-            // Remove existing listeners by cloning
             const newCheckbox = checkbox.cloneNode(true);
             checkbox.parentNode.replaceChild(newCheckbox, checkbox);
 
@@ -6972,7 +7003,7 @@
             });
         });
 
-        // View buttons
+        // View buttons - FIXED to handle testimonials and blog properly
         document.querySelectorAll('#trashTableBody .view-item').forEach(btn => {
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
@@ -6982,9 +7013,30 @@
                 e.stopPropagation();
                 const contentType = this.getAttribute('data-type');
                 const contentId = this.getAttribute('data-id');
-                // Add 's' for plural table name
-                const tableName = contentType + 's';
-                openViewModal(tableName, contentId);
+
+                console.log(`View button clicked - Type: ${contentType}, ID: ${contentId}`);
+
+                // Handle different content types
+                if (contentType === 'testimonial') {
+                    // Use testimonial view modal
+                    viewTestimonialFromTrash(contentId);
+                } else if (contentType === 'blog') {
+                    // Use blog view modal
+                    openViewModal('blog', contentId);
+                } else if (contentType === 'user') {
+                    openViewModal('users', contentId);
+                } else if (contentType === 'message') {
+                    viewMessage(contentId);
+                } else if (contentType === 'newsletter') {
+                    openViewModal('newsletter', contentId);
+                } else {
+                    // For courses, jobs, internships - add 's' for plural
+                    const tableName = contentType === 'course' ? 'courses' :
+                                     contentType === 'job' ? 'jobs' :
+                                     contentType === 'internship' ? 'internships' :
+                                     contentType + 's';
+                    openViewModal(tableName, contentId);
+                }
             });
         });
 
@@ -7003,6 +7055,91 @@
                 permanentlyDeleteSingleItem(contentType, contentId, tableName);
             });
         });
+    }
+
+    // Handle testimonial view from trash
+    function viewTestimonialFromTrash(testimonialId) {
+        console.log(`Viewing testimonial from trash: ${testimonialId}`);
+
+        showLoading();
+
+        fetch(`/api/admin/testimonials/${testimonialId}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Failed to fetch testimonial`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success && result.testimonial) {
+                showTestimonialModal(result.testimonial);
+            } else {
+                throw new Error(result.error || 'Failed to load testimonial');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading testimonial:', error);
+            showNotification('Failed to load testimonial details', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    // Show testimonial modal
+    function showTestimonialModal(testimonial) {
+        const modal = document.getElementById('contentViewModal');
+        if (!modal) {
+            console.error('Content view modal not found');
+            return;
+        }
+
+        const title = modal.querySelector('.modal-title');
+        const body = modal.querySelector('#contentViewBody');
+
+        if (title) title.textContent = 'Testimonial Details';
+        if (body) {
+            const ratingStars = '★'.repeat(testimonial.rating || 5) + '☆'.repeat(5 - (testimonial.rating || 5));
+
+            body.innerHTML = `
+                <div class="view-field">
+                    <label>User:</label>
+                    <span>${escapeHTML(testimonial.username || 'Anonymous')}</span>
+                </div>
+                <div class="view-field">
+                    <label>Email:</label>
+                    <span>${escapeHTML(testimonial.user_email || testimonial.email || 'N/A')}</span>
+                </div>
+                <div class="view-field">
+                    <label>Rating:</label>
+                    <span>${testimonial.rating || 5}/5 (${ratingStars})</span>
+                </div>
+                <div class="view-field">
+                    <label>Status:</label>
+                    <span class="status-badge ${testimonial.is_active ? 'active' : 'inactive'}">
+                        ${testimonial.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+                <div class="view-field">
+                    <label>Posted:</label>
+                    <span>${formatDate(testimonial.created_at, true)}</span>
+                </div>
+                <div class="view-field full-width">
+                    <label>Content:</label>
+                    <div class="view-content" style="background: var(--bg-primary); padding: 15px; border-radius: 5px; border-left: 4px solid var(--primary);">
+                        ${escapeHTML(testimonial.content || 'No content')}
+                    </div>
+                </div>
+            `;
+        }
+        modal.style.display = 'block';
+        console.log('✅ Testimonial modal displayed');
     }
 
     // Update selected trash items array

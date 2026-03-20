@@ -5758,6 +5758,12 @@ def get_admin_resources(resource):
         per_page = 10
         search = request.args.get('search', '')
 
+        # Get filter parameters
+        category_filter = request.args.get('category', '')
+        type_filter = request.args.get('type', '')
+        role_filter = request.args.get('role', '')
+        status_filter = request.args.get('status', '')
+
         # Map resources to table names
         table_map = {
             'blog': 'blog_posts',
@@ -5776,6 +5782,40 @@ def get_admin_resources(resource):
         if table_name in tables_with_soft_delete:
             query = query.eq('is_deleted', False)
 
+        # Apply filters based on resource
+        if resource == 'courses' and category_filter:
+            query = query.eq('category', category_filter)
+
+        if resource == 'jobs' and type_filter:
+            query = query.eq('type', type_filter)
+
+        if resource == 'internships' and type_filter:
+            query = query.eq('type', type_filter)
+
+        # FIXED: Blog category filter - handle array column
+        if resource == 'blog' and category_filter:
+            # For PostgreSQL array column, use the contains operator @>
+            # This checks if the array contains the specified value
+            query = query.contains('categories', [category_filter])
+
+        if resource == 'users' and role_filter:
+            query = query.eq('role', role_filter)
+
+        if resource == 'messages' and status_filter:
+            query = query.eq('status', status_filter)
+
+        if resource == 'newsletter' and status_filter:
+            if status_filter == 'active':
+                query = query.eq('is_active', True)
+            elif status_filter == 'inactive':
+                query = query.eq('is_active', False)
+
+        if resource == 'testimonials' and status_filter:
+            if status_filter == 'active':
+                query = query.eq('is_active', True)
+            elif status_filter == 'inactive':
+                query = query.eq('is_active', False)
+
         # Apply search filters
         if search:
             if resource == 'courses':
@@ -5791,7 +5831,8 @@ def get_admin_resources(resource):
             elif resource == 'messages':
                 query = query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
-                query = query.ilike('email', f'%{search}%')
+                # Use Python filtering for newsletter to avoid errors
+                pass
             elif resource == 'testimonials':
                 query = query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
 
@@ -5803,47 +5844,99 @@ def get_admin_resources(resource):
         else:
             query = query.order('created_at', desc=True)
 
-        # Paginate
-        start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page - 1
-        data_response = query.range(start_idx, end_idx).execute()
+        # For newsletter, handle search and pagination in Python
+        if resource == 'newsletter' and search:
+            # Execute query without search filter
+            all_response = query.execute()
+            all_data = all_response.data or []
 
-        # Count query - EXCLUDE soft-deleted items
-        count_query = supabase_admin.table(table_name).select('id', count='exact')
+            # Filter in Python
+            filtered_data = []
+            search_lower = search.lower()
+            for item in all_data:
+                email = item.get('email', '').lower()
+                if search_lower in email:
+                    filtered_data.append(item)
 
-        if table_name in tables_with_soft_delete:
-            count_query = count_query.eq('is_deleted', False)
+            total_count = len(filtered_data)
 
-        if search:
-            if resource == 'courses':
-                count_query = count_query.or_(
-                    f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
-            elif resource == 'jobs':
-                count_query = count_query.or_(
-                    f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
-            elif resource == 'internships':
-                count_query = count_query.or_(
-                    f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
-            elif resource == 'blog':
-                count_query = count_query.or_(
-                    f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
-            elif resource == 'users':
-                count_query = count_query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
-            elif resource == 'messages':
-                count_query = count_query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
-            elif resource == 'newsletter':
-                count_query = count_query.ilike('email', f'%{search}%')
-            elif resource == 'testimonials':
-                count_query = count_query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
+            # Paginate
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            paginated_data = filtered_data[start_idx:end_idx]
 
-        count_response = count_query.execute()
-        total_count = count_response.count or 0
+            return jsonify({
+                'data': paginated_data,
+                'count': total_count,
+                'per_page': per_page
+            })
+        else:
+            # Paginate normally
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page - 1
+            data_response = query.range(start_idx, end_idx).execute()
 
-        return jsonify({
-            'data': data_response.data,
-            'count': total_count,
-            'per_page': per_page
-        })
+            # Count query - EXCLUDE soft-deleted items
+            count_query = supabase_admin.table(table_name).select('id', count='exact')
+
+            if table_name in tables_with_soft_delete:
+                count_query = count_query.eq('is_deleted', False)
+
+            # Apply filters to count query
+            if resource == 'courses' and category_filter:
+                count_query = count_query.eq('category', category_filter)
+            if resource == 'jobs' and type_filter:
+                count_query = count_query.eq('type', type_filter)
+            if resource == 'internships' and type_filter:
+                count_query = count_query.eq('type', type_filter)
+            # FIXED: Blog category filter for count query
+            if resource == 'blog' and category_filter:
+                count_query = count_query.contains('categories', [category_filter])
+            if resource == 'users' and role_filter:
+                count_query = count_query.eq('role', role_filter)
+            if resource == 'messages' and status_filter:
+                count_query = count_query.eq('status', status_filter)
+            if resource == 'newsletter' and status_filter:
+                if status_filter == 'active':
+                    count_query = count_query.eq('is_active', True)
+                elif status_filter == 'inactive':
+                    count_query = count_query.eq('is_active', False)
+            if resource == 'testimonials' and status_filter:
+                if status_filter == 'active':
+                    count_query = count_query.eq('is_active', True)
+                elif status_filter == 'inactive':
+                    count_query = count_query.eq('is_active', False)
+
+            if search and resource != 'newsletter':
+                if resource == 'courses':
+                    count_query = count_query.or_(
+                        f"title.ilike.%{search}%,category.ilike.%{search}%,instructor.ilike.%{search}%")
+                elif resource == 'jobs':
+                    count_query = count_query.or_(
+                        f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
+                elif resource == 'internships':
+                    count_query = count_query.or_(
+                        f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
+                elif resource == 'blog':
+                    count_query = count_query.or_(
+                        f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
+                elif resource == 'users':
+                    count_query = count_query.or_(
+                        f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
+                elif resource == 'messages':
+                    count_query = count_query.or_(
+                        f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
+                elif resource == 'testimonials':
+                    count_query = count_query.or_(f"username.ilike.%{search}%,content.ilike.%{search}%")
+
+            count_response = count_query.execute()
+            total_count = count_response.count or 0
+
+            return jsonify({
+                'data': data_response.data,
+                'count': total_count,
+                'per_page': per_page
+            })
 
     except Exception as e:
         logger.error(f"Error loading {resource}: {str(e)}")
