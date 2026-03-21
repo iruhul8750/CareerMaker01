@@ -288,7 +288,7 @@
             });
     }
 
-     // Enhanced section restoration
+    // Section restoration
     function restoreCurrentSection() {
         console.log('🔄 restoreCurrentSection() called');
 
@@ -300,7 +300,7 @@
         const validSections = [
             'dashboard', 'courses', 'jobs', 'internships',
             'blog', 'newsletter', 'testimonials',
-            'expired-content', 'users', 'messages', 'trash'
+            'expired-content', 'users', 'messages', 'trash', 'admins'  // Added 'admins' here
         ];
 
         console.log('Valid sections:', validSections);
@@ -368,6 +368,15 @@
             if (sectionExists) {
                 const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
 
+                // Special handling for admins section (since it's in submenu)
+                if (hash === 'admins') {
+                    // Open the parent submenu first
+                    const parentSubmenu = document.querySelector('.has-submenu');
+                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                        parentSubmenu.classList.add('open');
+                    }
+                }
+
                 if (menuItem) {
                     navigateToSection(hash, menuItem, true);
                     return;
@@ -388,6 +397,14 @@
                 const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
                 const targetSection = document.getElementById(section);
 
+                // Special handling for admins section
+                if (section === 'admins') {
+                    const parentSubmenu = document.querySelector('.has-submenu');
+                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                        parentSubmenu.classList.add('open');
+                    }
+                }
+
                 if (menuItem && targetSection) {
                     navigateToSection(section, menuItem, true);
                     return;
@@ -402,6 +419,14 @@
         if (savedSection && validSections.includes(savedSection)) {
             const menuItem = document.querySelector(`.sidebar-menu a[href="#${savedSection}"]`);
             const targetSection = document.getElementById(savedSection);
+
+            // Special handling for admins section
+            if (savedSection === 'admins') {
+                const parentSubmenu = document.querySelector('.has-submenu');
+                if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                    parentSubmenu.classList.add('open');
+                }
+            }
 
             if (menuItem && targetSection) {
                 navigateToSection(savedSection, menuItem, true);
@@ -448,7 +473,7 @@
         }
     }
 
-    // Navigate to specific section with history management - UPDATED for micro loaders
+    // Navigate to specific section with history management
     function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
         console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
 
@@ -474,6 +499,7 @@
         const sectionElement = document.getElementById(targetSection);
         if (!sectionElement) {
             console.error(`❌ Section element not found: ${targetSection}`);
+            // Fallback to dashboard
             const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
             if (dashboardItem) dashboardItem.click();
             return;
@@ -495,7 +521,8 @@
                 'expired-content': 'Expired Content',
                 'users': 'Users',
                 'messages': 'Messages',
-                'trash': 'Trash'
+                'trash': 'Trash',
+                'admins': 'Admin Management'  // Added admins here
             };
             return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
         }
@@ -517,9 +544,12 @@
         // Update browser history if not from popstate
         if (!fromPopState) {
             let pageToSave = currentPage[targetSection];
+
+            // For trash, use the currentTrashPage
             if (targetSection === 'trash') {
                 pageToSave = currentTrashPage || 1;
             }
+
             const state = {
                 section: targetSection,
                 page: pageToSave,
@@ -547,7 +577,7 @@
                 const trashTableBody = document.getElementById('trashTableBody');
                 if (trashTableBody) {
                     trashTableBody.innerHTML = `
-                        <tr>
+                        发展
                             <td colspan="8" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
@@ -564,7 +594,7 @@
                 const expiredTableBody = document.getElementById('expiredContentTableBody');
                 if (expiredTableBody) {
                     expiredTableBody.innerHTML = `
-                        <tr>
+                        发展
                             <td colspan="9" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading expired content...</p>
@@ -579,31 +609,32 @@
 
             case 'testimonials':
                 console.log('💬 Loading testimonials section...');
-                // Force load testimonials data
                 if (window.testimonialManager) {
                     if (!window.testimonialManager.isInitialized) {
-                        console.log('Initializing testimonial manager...');
                         window.testimonialManager.init();
                     } else {
-                        console.log('Loading testimonials data...');
                         window.testimonialManager.loadTestimonialsData(currentPage.testimonials);
                     }
-                } else {
-                    console.log('Creating testimonial manager...');
-                    window.testimonialManager = new TestimonialManager();
-                    window.testimonialManager.init();
+                }
+                break;
+
+            case 'admins':  // Added admins section handler
+                console.log('👥 Loading admins section...');
+                if (window.adminManager) {
+                    window.adminManager.loadAdmins();
                 }
                 break;
 
             default:
-                // Handle all other sections
+                // Handle all other sections (courses, jobs, internships, blog, users, messages, newsletter)
                 console.log(`📋 Loading ${targetSection} section, page:`, currentPage[targetSection]);
 
+                // Show loading in table
                 const tableBody = document.getElementById(`${targetSection}TableBody`);
                 if (tableBody) {
                     const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
                     tableBody.innerHTML = `
-                        <tr>
+                        发展
                             <td colspan="${colSpan}" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading ${sectionName.toLowerCase()}...</p>
@@ -612,6 +643,7 @@
                     `;
                 }
 
+                // Load section data
                 if (typeof loadSectionData === 'function') {
                     loadSectionData(targetSection, currentPage[targetSection])
                         .catch(error => {
@@ -8101,6 +8133,1397 @@
         console.log('✅ Admin mobile menu setup complete');
     }
 
+    // Setup submenu toggle functionality For user management
+    function initSubmenu() {
+        console.log('🔄 Initializing vertical submenu...');
+
+        const submenuTriggers = document.querySelectorAll('.submenu-trigger');
+        console.log(`Found ${submenuTriggers.length} submenu triggers`);
+
+        submenuTriggers.forEach(trigger => {
+            // Remove any existing listeners
+            const newTrigger = trigger.cloneNode(true);
+            trigger.parentNode.replaceChild(newTrigger, trigger);
+
+            newTrigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const parentLi = this.closest('.has-submenu');
+                console.log('Toggling submenu:', parentLi);
+
+                if (parentLi) {
+                    // Close other open submenus (optional)
+                    document.querySelectorAll('.has-submenu.open').forEach(openMenu => {
+                        if (openMenu !== parentLi) {
+                            openMenu.classList.remove('open');
+                        }
+                    });
+
+                    parentLi.classList.toggle('open');
+                }
+            });
+        });
+
+        // Handle submenu item clicks
+        const submenuItems = document.querySelectorAll('.submenu .menu-item a');
+        submenuItems.forEach(item => {
+            item.addEventListener('click', function() {
+                console.log('Submenu item clicked:', this.getAttribute('href'));
+
+                // Close submenu on mobile after click
+                if (window.innerWidth <= 768) {
+                    const parentSubmenu = this.closest('.has-submenu');
+                    if (parentSubmenu) {
+                        parentSubmenu.classList.remove('open');
+                    }
+                }
+            });
+        });
+
+        console.log('✅ Vertical submenu initialized');
+    }
+
+    /// ===== ADMIN MANAGER CLASS - WITH PROPER PASSWORD VALIDATION =====
+    class AdminManager {
+        constructor() {
+            this.currentPage = 1;
+            this.perPage = 10;
+            this.selectedAdmins = [];
+            this.isInitialized = false;
+            this.searchTerm = '';
+            this.statusFilter = '';
+            this.isSuperAdmin = false;
+            this.currentAdminId = '';
+            this.admins = [];
+            this.isEditMode = false;
+            this.editingAdminId = null;
+        }
+
+        init() {
+            if (this.isInitialized) return;
+
+            console.log('🔄 Initializing Admin Manager...');
+
+            this.isSuperAdmin = window.isSuperAdmin === true;
+            this.currentAdminId = window.currentAdminId || '';
+
+            console.log('isSuperAdmin:', this.isSuperAdmin);
+            console.log('currentAdminId:', this.currentAdminId);
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => this.setup());
+            } else {
+                this.setup();
+            }
+
+            this.isInitialized = true;
+        }
+
+        setup() {
+            console.log('Setting up Admin Manager...');
+
+            const adminsSection = document.getElementById('admins');
+            if (!adminsSection) {
+                setTimeout(() => this.setup(), 500);
+                return;
+            }
+
+            this.setupSearchListener();
+            this.setupStatusFilter();
+            this.setupPagination();
+            this.setupAdminModal();
+            this.setupAddAdminButton();
+            this.setupBulkActions();
+            this.setupSectionObserver();
+
+            this.loadAdmins();
+
+            console.log('✅ Admin Manager setup complete');
+        }
+
+        setupSearchListener() {
+            const searchInput = document.getElementById('adminSearch');
+            const searchBtn = document.querySelector('#admins .search-btn');
+
+            if (searchInput && searchBtn) {
+                const newBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
+
+                newBtn.addEventListener('click', () => {
+                    this.searchTerm = searchInput.value.trim();
+                    this.currentPage = 1;
+                    this.loadAdmins();
+                });
+
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.searchTerm = searchInput.value.trim();
+                        this.currentPage = 1;
+                        this.loadAdmins();
+                    }
+                });
+            }
+        }
+
+        setupStatusFilter() {
+            const statusFilter = document.getElementById('adminStatusFilter');
+            if (statusFilter) {
+                const newFilter = statusFilter.cloneNode(true);
+                statusFilter.parentNode.replaceChild(newFilter, statusFilter);
+
+                newFilter.addEventListener('change', () => {
+                    this.statusFilter = newFilter.value;
+                    this.currentPage = 1;
+                    this.loadAdmins();
+                });
+            }
+        }
+
+        setupPagination() {
+            const prevBtn = document.getElementById('prevAdminPage');
+            const nextBtn = document.getElementById('nextAdminPage');
+
+            if (prevBtn) {
+                const newPrev = prevBtn.cloneNode(true);
+                prevBtn.parentNode.replaceChild(newPrev, prevBtn);
+                newPrev.addEventListener('click', () => {
+                    if (this.currentPage > 1) {
+                        this.currentPage--;
+                        this.loadAdmins();
+                    }
+                });
+            }
+
+            if (nextBtn) {
+                const newNext = nextBtn.cloneNode(true);
+                nextBtn.parentNode.replaceChild(newNext, nextBtn);
+                newNext.addEventListener('click', () => {
+                    this.currentPage++;
+                    this.loadAdmins();
+                });
+            }
+        }
+
+        setupAdminModal() {
+            const modal = document.getElementById('adminModal');
+            const form = document.getElementById('adminForm');
+
+            if (!modal || !form) {
+                console.error('Admin modal elements not found');
+                return;
+            }
+
+            console.log('Setting up Admin Modal');
+
+            // Click outside to close - using the same pattern as other modals
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(); // Use global closeModal function
+                }
+            });
+
+            // Password strength validation
+            const passwordInput = document.getElementById('adminPassword');
+            if (passwordInput) {
+                passwordInput.addEventListener('input', () => {
+                    this.validatePasswordField(passwordInput.value);
+                });
+            }
+
+            // Confirm password validation
+            const confirmInput = document.getElementById('adminConfirmPassword');
+            if (confirmInput) {
+                confirmInput.addEventListener('input', () => {
+                    this.validateConfirmPassword();
+                });
+            }
+
+            // Form submission
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            newForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleFormSubmit();
+            });
+
+            console.log('Admin Modal setup complete');
+        }
+
+        setupFieldValidation() {
+            // Full Name validation
+            const fullNameInput = document.getElementById('adminFullName');
+            if (fullNameInput) {
+                fullNameInput.addEventListener('input', () => {
+                    this.validateField('fullName', fullNameInput.value.trim());
+                });
+                fullNameInput.addEventListener('blur', () => {
+                    this.validateField('fullName', fullNameInput.value.trim(), true);
+                });
+            }
+
+            // Username validation
+            const usernameInput = document.getElementById('adminUsername');
+            if (usernameInput) {
+                usernameInput.addEventListener('input', () => {
+                    this.validateField('username', usernameInput.value.trim());
+                });
+                usernameInput.addEventListener('blur', () => {
+                    this.validateField('username', usernameInput.value.trim(), true);
+                });
+            }
+
+            // Email validation
+            const emailInput = document.getElementById('adminEmail');
+            if (emailInput) {
+                emailInput.addEventListener('input', () => {
+                    this.validateField('email', emailInput.value.trim());
+                });
+                emailInput.addEventListener('blur', () => {
+                    this.validateField('email', emailInput.value.trim(), true);
+                });
+            }
+
+            // Password validation
+            const passwordInput = document.getElementById('adminPassword');
+            if (passwordInput) {
+                passwordInput.addEventListener('input', () => {
+                    this.validatePasswordField(passwordInput.value);
+                });
+                passwordInput.addEventListener('blur', () => {
+                    this.validatePasswordField(passwordInput.value, true);
+                });
+            }
+
+            // Confirm password validation
+            const confirmInput = document.getElementById('adminConfirmPassword');
+            if (confirmInput) {
+                confirmInput.addEventListener('input', () => {
+                    this.validateConfirmPassword();
+                });
+                confirmInput.addEventListener('blur', () => {
+                    this.validateConfirmPassword(true);
+                });
+            }
+        }
+
+        validateField(field, value, showError = false) {
+            const fieldMap = {
+                fullName: {
+                    input: document.getElementById('adminFullName'),
+                    errorSpan: document.getElementById('fullNameError'),
+                    validate: (val) => {
+                        if (!val) return 'Full name is required';
+                        if (val.length < 2) return 'Full name must be at least 2 characters';
+                        return null;
+                    }
+                },
+                username: {
+                    input: document.getElementById('adminUsername'),
+                    errorSpan: document.getElementById('usernameError'),
+                    validate: (val) => {
+                        if (!val) return 'Username is required';
+                        if (val.length < 3) return 'Username must be at least 3 characters';
+                        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+                        if (!usernameRegex.test(val)) return 'Username can only contain letters, numbers, and underscore';
+                        return null;
+                    }
+                },
+                email: {
+                    input: document.getElementById('adminEmail'),
+                    errorSpan: document.getElementById('emailError'),
+                    validate: (val) => {
+                        if (!val) return 'Email is required';
+                        const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+                        if (!emailRegex.test(val)) return 'Please enter a valid email address';
+                        return null;
+                    }
+                }
+            };
+
+            const fieldConfig = fieldMap[field];
+            if (!fieldConfig) return;
+
+            const error = fieldConfig.validate(value);
+
+            if (error && (showError || (value && !this.isEditMode))) {
+                this.showFieldError(fieldConfig.input, fieldConfig.errorSpan, error);
+                return false;
+            } else {
+                this.clearFieldError(fieldConfig.input, fieldConfig.errorSpan);
+                return true;
+            }
+        }
+
+        validatePasswordField(password, showError = false) {
+            const passwordInput = document.getElementById('adminPassword');
+            const errorSpan = document.getElementById('passwordError');
+
+            // In edit mode, if password is empty, it's valid (keep existing)
+            if (this.isEditMode && !password) {
+                this.clearFieldError(passwordInput, errorSpan);
+                return true;
+            }
+
+            if (!password && !this.isEditMode) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password is required');
+                }
+                return false;
+            }
+
+            if (password && password.length < 8) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password must be at least 8 characters');
+                }
+                return false;
+            }
+
+            if (password && !/[A-Z]/.test(password)) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password must contain at least one uppercase letter');
+                }
+                return false;
+            }
+
+            if (password && !/[a-z]/.test(password)) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password must contain at least one lowercase letter');
+                }
+                return false;
+            }
+
+            if (password && !/[0-9]/.test(password)) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password must contain at least one number');
+                }
+                return false;
+            }
+
+            if (password && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                if (showError) {
+                    this.showFieldError(passwordInput, errorSpan, 'Password must contain at least one special character (!@#$%^&*)');
+                }
+                return false;
+            }
+
+            this.clearFieldError(passwordInput, errorSpan);
+            this.updatePasswordStrength(password);
+            return true;
+        }
+
+        validateConfirmPassword(showError = false) {
+            const password = document.getElementById('adminPassword').value;
+            const confirmInput = document.getElementById('adminConfirmPassword');
+            const confirmValue = confirmInput.value;
+            const errorSpan = document.getElementById('confirmPasswordError');
+
+            // In edit mode, if password is empty and confirm is empty, it's valid
+            if (this.isEditMode && !password && !confirmValue) {
+                this.clearFieldError(confirmInput, errorSpan);
+                return true;
+            }
+
+            if (!confirmValue) {
+                if (showError) {
+                    this.showFieldError(confirmInput, errorSpan, 'Please confirm your password');
+                }
+                return false;
+            }
+
+            if (password !== confirmValue) {
+                if (showError) {
+                    this.showFieldError(confirmInput, errorSpan, 'Passwords do not match');
+                }
+                return false;
+            }
+
+            this.clearFieldError(confirmInput, errorSpan);
+            return true;
+        }
+
+        updatePasswordStrength(password) {
+            const strengthEl = document.getElementById('passwordStrength');
+            if (!strengthEl) return;
+
+            if (!password) {
+                strengthEl.innerHTML = '';
+                return;
+            }
+
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            let strengthClass = 'weak';
+            let strengthText = 'Weak';
+            let strengthIcon = 'fa-times-circle';
+
+            if (score >= 6 && password.length >= 10) {
+                strengthClass = 'strong';
+                strengthText = 'Strong';
+                strengthIcon = 'fa-check-circle';
+            } else if (score >= 4 && password.length >= 8) {
+                strengthClass = 'medium';
+                strengthText = 'Medium';
+                strengthIcon = 'fa-exclamation-circle';
+            } else {
+                strengthClass = 'weak';
+                strengthText = 'Weak';
+                strengthIcon = 'fa-times-circle';
+            }
+
+            strengthEl.innerHTML = `<i class="fas ${strengthIcon}"></i> Password Strength: ${strengthText}`;
+            strengthEl.className = `password-strength ${strengthClass}`;
+        }
+
+        showFieldError(input, errorSpan, message) {
+            if (!input) return;
+
+            input.classList.add('input-error');
+
+            if (errorSpan) {
+                errorSpan.textContent = message;
+                errorSpan.style.display = 'block';
+            } else {
+                // Create error span if it doesn't exist
+                const newErrorSpan = document.createElement('small');
+                newErrorSpan.className = 'field-error';
+                newErrorSpan.style.color = 'var(--danger)';
+                newErrorSpan.style.display = 'block';
+                newErrorSpan.style.marginTop = '5px';
+                newErrorSpan.style.fontSize = '12px';
+                newErrorSpan.id = `${input.id}Error`;
+                newErrorSpan.textContent = message;
+                input.parentNode.appendChild(newErrorSpan);
+            }
+        }
+
+        clearFieldError(input, errorSpan) {
+            if (!input) return;
+
+            input.classList.remove('input-error');
+
+            if (errorSpan) {
+                errorSpan.textContent = '';
+                errorSpan.style.display = 'none';
+            } else {
+                const existingError = document.getElementById(`${input.id}Error`);
+                if (existingError) existingError.remove();
+            }
+        }
+
+        validateForm() {
+            let isValid = true;
+
+            // Validate Full Name
+            const fullName = document.getElementById('adminFullName').value.trim();
+            if (!fullName) {
+                this.showFieldError(document.getElementById('adminFullName'), document.getElementById('fullNameError'), 'Full name is required');
+                isValid = false;
+            } else if (fullName.length < 2) {
+                this.showFieldError(document.getElementById('adminFullName'), document.getElementById('fullNameError'), 'Full name must be at least 2 characters');
+                isValid = false;
+            } else {
+                this.clearFieldError(document.getElementById('adminFullName'), document.getElementById('fullNameError'));
+            }
+
+            // Validate Username
+            const username = document.getElementById('adminUsername').value.trim();
+            if (!username) {
+                this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), 'Username is required');
+                isValid = false;
+            } else if (username.length < 3) {
+                this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), 'Username must be at least 3 characters');
+                isValid = false;
+            } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), 'Username can only contain letters, numbers, and underscore');
+                isValid = false;
+            } else {
+                this.clearFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'));
+            }
+
+            // Validate Email
+            const email = document.getElementById('adminEmail').value.trim();
+            const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+            if (!email) {
+                this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), 'Email is required');
+                isValid = false;
+            } else if (!emailRegex.test(email)) {
+                this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), 'Please enter a valid email address');
+                isValid = false;
+            } else {
+                this.clearFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'));
+            }
+
+            // Validate Password
+            const password = document.getElementById('adminPassword').value;
+            if (!this.isEditMode) {
+                if (!password) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password is required');
+                    isValid = false;
+                } else if (password.length < 8) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must be at least 8 characters');
+                    isValid = false;
+                } else if (!/[A-Z]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one uppercase letter');
+                    isValid = false;
+                } else if (!/[a-z]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one lowercase letter');
+                    isValid = false;
+                } else if (!/[0-9]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one number');
+                    isValid = false;
+                } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one special character');
+                    isValid = false;
+                } else {
+                    this.clearFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'));
+                }
+            } else if (password) {
+                // In edit mode, if password is provided, validate it
+                if (password.length < 8) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must be at least 8 characters');
+                    isValid = false;
+                } else if (!/[A-Z]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one uppercase letter');
+                    isValid = false;
+                } else if (!/[a-z]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one lowercase letter');
+                    isValid = false;
+                } else if (!/[0-9]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one number');
+                    isValid = false;
+                } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                    this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must contain at least one special character');
+                    isValid = false;
+                } else {
+                    this.clearFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'));
+                }
+            }
+
+            // Validate Confirm Password
+            const confirmPassword = document.getElementById('adminConfirmPassword').value;
+            if (password || (!this.isEditMode)) {
+                if (!confirmPassword) {
+                    this.showFieldError(document.getElementById('adminConfirmPassword'), document.getElementById('confirmPasswordError'), 'Please confirm your password');
+                    isValid = false;
+                } else if (password !== confirmPassword) {
+                    this.showFieldError(document.getElementById('adminConfirmPassword'), document.getElementById('confirmPasswordError'), 'Passwords do not match');
+                    isValid = false;
+                } else {
+                    this.clearFieldError(document.getElementById('adminConfirmPassword'), document.getElementById('confirmPasswordError'));
+                }
+            }
+
+            return isValid;
+        }
+
+        handleFormSubmit() {
+            // First validate all fields
+            if (!this.validateForm()) {
+                this.showNotification('Please fix the errors in the form', 'warning');
+                return;
+            }
+
+            // Check for existing username/email (async)
+            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
+
+            this.checkExistingUser(username, email, (isValid, message) => {
+                if (!isValid) {
+                    if (message.includes('username')) {
+                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), message);
+                    } else if (message.includes('email')) {
+                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), message);
+                    }
+                    this.showNotification(message, 'error');
+                    return;
+                }
+
+                if (this.isEditMode) {
+                    this.handleAdminUpdate();
+                } else {
+                    this.handleAdminCreation();
+                }
+            });
+        }
+
+        checkExistingUser(username, email, callback) {
+            // Check if username or email already exists (except current admin in edit mode)
+            fetch('/api/admin/admins/check-exists', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    exclude_id: this.isEditMode ? this.editingAdminId : null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    callback(true, '');
+                } else {
+                    callback(false, data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking existing user:', error);
+                callback(true, ''); // Proceed if check fails
+            });
+        }
+
+        setupAddAdminButton() {
+            const addAdminBtn = document.getElementById('addAdminBtn');
+
+            if (!addAdminBtn) {
+                console.error('Add Admin button not found');
+                return;
+            }
+
+            const newBtn = addAdminBtn.cloneNode(true);
+            addAdminBtn.parentNode.replaceChild(newBtn, addAdminBtn);
+
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Add Admin button clicked');
+
+                this.isEditMode = false;
+                this.editingAdminId = null;
+                this.resetForm();
+
+                const modalTitle = document.getElementById('adminModalTitle');
+                if (modalTitle) modalTitle.textContent = 'Add Admin';
+
+                const passwordRequired = document.getElementById('passwordRequired');
+                if (passwordRequired) passwordRequired.textContent = '*';
+
+                const passwordHelp = document.getElementById('passwordHelp');
+                if (passwordHelp) passwordHelp.textContent = 'Required for new admin. Must be at least 8 characters with uppercase, lowercase, number, and special character.';
+
+                const adminStatusGroup = document.getElementById('adminStatusGroup');
+                if (adminStatusGroup) adminStatusGroup.style.display = 'none';
+
+                const superadminGroup = document.getElementById('superadminCheckboxGroup');
+                if (superadminGroup) {
+                    superadminGroup.style.display = this.isSuperAdmin ? 'block' : 'none';
+                }
+
+                const modal = document.getElementById('adminModal');
+                if (modal) {
+                    console.log('Opening admin modal');
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Admin modal not found');
+                }
+            });
+
+            if (this.isSuperAdmin) {
+                newBtn.style.display = 'inline-flex';
+            } else {
+                newBtn.style.display = 'none';
+            }
+        }
+
+        setupBulkActions() {
+            const applyBtn = document.getElementById('applyAdminBulkAction');
+            const bulkActionSelect = document.getElementById('adminBulkAction');
+
+            if (applyBtn && bulkActionSelect) {
+                const newBtn = applyBtn.cloneNode(true);
+                applyBtn.parentNode.replaceChild(newBtn, applyBtn);
+
+                newBtn.addEventListener('click', () => {
+                    const action = bulkActionSelect.value;
+                    if (!action) {
+                        this.showNotification('Please select a bulk action', 'warning');
+                        return;
+                    }
+                    if (this.selectedAdmins.length === 0) {
+                        this.showNotification('Please select at least one admin', 'warning');
+                        return;
+                    }
+                    if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        this.showConfirmation('bulk_action',
+                            `Are you sure you want to ${action} ${this.selectedAdmins.length} admin(s)?`,
+                            () => this.bulkUpdateStatus(this.selectedAdmins, isActive)
+                        );
+                    } else if (action === 'delete') {
+                        this.showConfirmation('bulk_action',
+                            `Are you sure you want to delete ${this.selectedAdmins.length} admin(s)?`,
+                            () => this.bulkDelete(this.selectedAdmins)
+                        );
+                    }
+                });
+            }
+
+            if (!this.isSuperAdmin) {
+                const bulkDiv = document.querySelector('#admins .bulk-actions');
+                if (bulkDiv) bulkDiv.style.display = 'none';
+            }
+        }
+
+        setupSectionObserver() {
+            const adminsSection = document.getElementById('admins');
+            if (adminsSection) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            if (adminsSection.classList.contains('active')) {
+                                this.loadAdmins();
+                            }
+                        }
+                    });
+                });
+                observer.observe(adminsSection, { attributes: true });
+            }
+        }
+
+        loadAdmins() {
+            const tableBody = document.getElementById('adminsTableBody');
+            if (tableBody) {
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p></td></tr>';
+            }
+
+            let url = `/api/admin/admins/list?page=${this.currentPage}&per_page=${this.perPage}`;
+            if (this.searchTerm) url += `&search=${encodeURIComponent(this.searchTerm)}`;
+            if (this.statusFilter) url += `&status=${encodeURIComponent(this.statusFilter)}`;
+
+            fetch(url, { credentials: 'include', headers: { 'Accept': 'application/json' } })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.admins = data.data || [];
+                        this.renderTable(this.admins, data.count);
+                        this.updatePagination(data.count);
+                    } else {
+                        throw new Error(data.message || 'Failed to load admins');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (tableBody) {
+                        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}</td></tr>`;
+                    }
+                });
+        }
+
+        renderTable(admins, totalCount) {
+            const tableBody = document.getElementById('adminsTableBody');
+            if (!tableBody) return;
+
+            if (!admins || admins.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No admins found</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = admins.map((admin, index) => {
+                const serialNo = ((this.currentPage - 1) * this.perPage) + index + 1;
+                const isCurrentUser = admin.id === this.currentAdminId;
+
+                const showCheckbox = this.isSuperAdmin && !isCurrentUser;
+                const showEdit = this.isSuperAdmin || isCurrentUser;
+                const showDelete = this.isSuperAdmin && !isCurrentUser && !admin.is_superadmin;
+                const showStatusToggle = this.isSuperAdmin && !isCurrentUser;
+
+                const roleText = admin.is_superadmin ? 'Super Admin' : 'Admin';
+                const roleIcon = admin.is_superadmin ? '<i class="fas fa-crown"></i> ' : '<i class="fas fa-user-shield"></i> ';
+                const roleClass = admin.is_superadmin ? 'superadmin-role' : 'admin-role';
+
+                return `
+                    <tr data-admin-id="${admin.id}">
+                        <td style="text-align: center; width: 40px;">${showCheckbox ? `<input type="checkbox" class="admin-checkbox" data-id="${admin.id}">` : '—'}</td>
+                        <td style="text-align: center; width: 60px;">${serialNo}</td>
+                        <td><strong>${this.escapeHTML(admin.full_name || admin.username)}</strong></td>
+                        <td>${this.escapeHTML(admin.username)}</td>
+                        <td style="word-break: break-all;">${this.escapeHTML(admin.email)}</td>
+                        <td style="text-align: center;"><span class="role-badge ${roleClass}">${roleIcon}${roleText}</span></td>
+                        <td>${this.formatDate(admin.created_at)}</td>
+                        <td>${admin.last_login ? this.formatDate(admin.last_login, true) : 'Never'}</td>
+                        <td style="text-align: center;">
+                            <div class="status-toggle">
+                                <label class="switch">
+                                    <input type="checkbox" class="admin-status-toggle"
+                                        ${admin.is_active ? 'checked' : ''}
+                                        data-id="${admin.id}"
+                                        data-is-current-user="${isCurrentUser}"
+                                        ${!showStatusToggle ? 'disabled' : ''}>
+                                    <span class="slider round"></span>
+                                </label>
+                                <span class="status-text">${admin.is_active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <div class="action-buttons">
+                                <button class="btn-icon view-admin" data-id="${admin.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                                ${showEdit ? `<button class="btn-icon edit-admin" data-id="${admin.id}" title="${this.isSuperAdmin ? 'Edit Admin' : 'Edit Profile'}"><i class="fas fa-edit"></i></button>` : ''}
+                                ${showDelete ? `<button class="btn-icon delete-admin" data-id="${admin.id}" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            this.addRowEventListeners();
+            if (this.isSuperAdmin) {
+                this.updateSelectAllCheckbox();
+                this.updateBulkActionButton();
+            }
+        }
+
+        addRowEventListeners() {
+            // View buttons
+            document.querySelectorAll('.view-admin').forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
+                    const adminId = newBtn.getAttribute('data-id');
+                    const admin = this.admins.find(a => a.id === adminId);
+                    if (admin) {
+                        this.showAdminDetailsInModal(admin);
+                    }
+                });
+            });
+
+            // Edit buttons
+            document.querySelectorAll('.edit-admin').forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
+                    const adminId = newBtn.getAttribute('data-id');
+                    this.openEditModal(adminId);
+                });
+            });
+
+            // Delete buttons
+            document.querySelectorAll('.delete-admin').forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
+                    const adminId = newBtn.getAttribute('data-id');
+                    this.deleteAdmin(adminId);
+                });
+            });
+
+            // Status toggle
+            document.querySelectorAll('.admin-status-toggle').forEach(toggle => {
+                const newToggle = toggle.cloneNode(true);
+                toggle.parentNode.replaceChild(newToggle, toggle);
+                newToggle.addEventListener('change', (e) => {
+                    const adminId = newToggle.getAttribute('data-id');
+                    const isCurrentUser = newToggle.getAttribute('data-is-current-user') === 'true';
+                    const isActive = newToggle.checked;
+
+                    if (isCurrentUser && !isActive) {
+                        this.showNotification('You cannot deactivate your own account', 'warning');
+                        newToggle.checked = true;
+                        return;
+                    }
+                    this.toggleStatus(adminId, isActive);
+                });
+            });
+
+            // Checkboxes for bulk actions
+            if (this.isSuperAdmin) {
+                document.querySelectorAll('.admin-checkbox').forEach(checkbox => {
+                    const newCheckbox = checkbox.cloneNode(true);
+                    checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+                    newCheckbox.addEventListener('change', () => {
+                        const adminId = newCheckbox.getAttribute('data-id');
+                        if (newCheckbox.checked) {
+                            if (!this.selectedAdmins.includes(adminId)) {
+                                this.selectedAdmins.push(adminId);
+                            }
+                        } else {
+                            this.selectedAdmins = this.selectedAdmins.filter(id => id !== adminId);
+                        }
+                        this.updateBulkActionButton();
+                        this.updateSelectAllCheckbox();
+                    });
+                });
+
+                const selectAll = document.getElementById('selectAllAdmins');
+                if (selectAll) {
+                    const newSelectAll = selectAll.cloneNode(true);
+                    selectAll.parentNode.replaceChild(newSelectAll, selectAll);
+                    newSelectAll.addEventListener('change', () => {
+                        const checkboxes = document.querySelectorAll('.admin-checkbox:not([disabled])');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = newSelectAll.checked;
+                            const adminId = checkbox.getAttribute('data-id');
+                            if (newSelectAll.checked) {
+                                if (!this.selectedAdmins.includes(adminId)) {
+                                    this.selectedAdmins.push(adminId);
+                                }
+                            } else {
+                                this.selectedAdmins = [];
+                            }
+                        });
+                        this.updateBulkActionButton();
+                    });
+                }
+            }
+        }
+
+        showAdminDetailsInModal(admin) {
+            const modal = document.getElementById('contentViewModal');
+            if (!modal) return;
+
+            const title = modal.querySelector('.modal-title');
+            const body = modal.querySelector('#contentViewBody');
+
+            if (title) title.textContent = 'Admin Details';
+
+            if (body) {
+                const roleText = admin.is_superadmin ? 'Super Admin' : 'Admin';
+                const roleIcon = admin.is_superadmin ? '<i class="fas fa-crown"></i> ' : '<i class="fas fa-user-shield"></i> ';
+                const roleClass = admin.is_superadmin ? 'superadmin-role' : 'admin-role';
+
+                body.innerHTML = `
+                    <div class="view-field">
+                        <label>Full Name:</label>
+                        <span>${this.escapeHTML(admin.full_name || admin.username)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Username:</label>
+                        <span>${this.escapeHTML(admin.username)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Email:</label>
+                        <span>${this.escapeHTML(admin.email)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Role:</label>
+                        <span class="role-badge ${roleClass}">${roleIcon}${roleText}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Status:</label>
+                        <span class="status-badge ${admin.is_active ? 'active' : 'inactive'}">
+                            ${admin.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="view-field">
+                        <label>Joined:</label>
+                        <span>${this.formatDate(admin.created_at, true)}</span>
+                    </div>
+                    <div class="view-field">
+                        <label>Last Login:</label>
+                        <span>${admin.last_login ? this.formatDate(admin.last_login, true) : 'Never'}</span>
+                    </div>
+                `;
+            }
+
+            modal.style.display = 'block';
+
+            const closeBtn = modal.querySelector('.close-modal');
+            if (closeBtn) {
+                const newClose = closeBtn.cloneNode(true);
+                closeBtn.parentNode.replaceChild(newClose, closeBtn);
+                newClose.addEventListener('click', () => modal.style.display = 'none');
+            }
+        }
+
+        openEditModal(adminId) {
+            if (!this.isSuperAdmin && adminId !== this.currentAdminId) {
+                this.showNotification('You can only edit your own profile', 'warning');
+                return;
+            }
+
+            const admin = this.admins.find(a => a.id === adminId);
+            if (!admin) return;
+
+            this.isEditMode = true;
+            this.editingAdminId = adminId;
+
+            document.getElementById('adminId').value = admin.id;
+            document.getElementById('adminFullName').value = admin.full_name || admin.username;
+            document.getElementById('adminUsername').value = admin.username;
+            document.getElementById('adminEmail').value = admin.email;
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminConfirmPassword').value = '';
+            document.getElementById('adminIsSuperadmin').checked = admin.is_superadmin || false;
+            document.getElementById('adminIsActive').checked = admin.is_active !== false;
+
+            const modalTitle = document.getElementById('adminModalTitle');
+            modalTitle.textContent = adminId === this.currentAdminId ? 'Edit Profile' : 'Edit Admin';
+
+            document.getElementById('passwordRequired').textContent = '';
+            document.getElementById('passwordHelp').textContent = 'Leave blank to keep current password. If changing, must meet requirements.';
+            document.getElementById('adminStatusGroup').style.display = (this.isSuperAdmin && adminId !== this.currentAdminId) ? 'block' : 'none';
+            document.getElementById('superadminCheckboxGroup').style.display = this.isSuperAdmin ? 'block' : 'none';
+
+            // Clear all field errors
+            this.clearAllFieldErrors();
+
+            document.getElementById('adminModal').style.display = 'block';
+        }
+
+        clearAllFieldErrors() {
+            const fields = ['adminFullName', 'adminUsername', 'adminEmail', 'adminPassword', 'adminConfirmPassword'];
+            fields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                const errorSpan = document.getElementById(`${fieldId}Error`);
+                if (errorSpan) errorSpan.remove();
+                if (input) input.classList.remove('input-error');
+            });
+        }
+
+        resetForm() {
+            console.log('Resetting admin form');
+
+            // Reset form fields
+            const form = document.getElementById('adminForm');
+            if (form) {
+                form.reset();
+            }
+
+            // Reset hidden fields
+            const adminId = document.getElementById('adminId');
+            if (adminId) adminId.value = '';
+
+            const adminPassword = document.getElementById('adminPassword');
+            if (adminPassword) adminPassword.value = '';
+
+            const adminConfirmPassword = document.getElementById('adminConfirmPassword');
+            if (adminConfirmPassword) adminConfirmPassword.value = '';
+
+            const adminIsSuperadmin = document.getElementById('adminIsSuperadmin');
+            if (adminIsSuperadmin) adminIsSuperadmin.checked = false;
+
+            const adminIsActive = document.getElementById('adminIsActive');
+            if (adminIsActive) adminIsActive.checked = true;
+
+            // Clear all field errors
+            this.clearAllFieldErrors();
+
+            // Clear password strength display
+            const strengthEl = document.getElementById('passwordStrength');
+            if (strengthEl) strengthEl.innerHTML = '';
+
+            // Clear any mismatch message
+            const mismatchMsg = document.getElementById('passwordMismatchMsg');
+            if (mismatchMsg) mismatchMsg.remove();
+
+            // Reset validation flags
+            this.passwordValid = false;
+            this.passwordMatch = false;
+
+            console.log('Admin form reset complete');
+        }
+
+        clearAllFieldErrors() {
+            const fields = ['adminFullName', 'adminUsername', 'adminEmail', 'adminPassword', 'adminConfirmPassword'];
+            fields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                const errorSpan = document.getElementById(`${fieldId}Error`);
+                if (errorSpan) {
+                    errorSpan.style.display = 'none';
+                    errorSpan.textContent = '';
+                }
+                if (input) {
+                    input.classList.remove('input-error');
+                }
+            });
+        }
+
+        handleAdminCreation() {
+            const fullName = document.getElementById('adminFullName').value.trim();
+            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const isSuperadmin = document.getElementById('adminIsSuperadmin').checked;
+
+            const submitBtn = document.getElementById('saveAdminBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+            submitBtn.disabled = true;
+
+            fetch('/api/admin/admins', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    full_name: fullName,
+                    username: username,
+                    email: email,
+                    password: password,
+                    is_superadmin: isSuperadmin
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification('Admin created successfully!', 'success');
+                    document.getElementById('adminModal').style.display = 'none';
+                    this.resetForm();
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to create admin', 'error');
+                    if (data.message && data.message.includes('username')) {
+                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), data.message);
+                    } else if (data.message && data.message.includes('email')) {
+                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), data.message);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showNotification('Failed to create admin', 'error');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        handleAdminUpdate() {
+            const adminId = document.getElementById('adminId').value;
+            const fullName = document.getElementById('adminFullName').value.trim();
+            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const isSuperadmin = document.getElementById('adminIsSuperadmin').checked;
+            const isActive = document.getElementById('adminIsActive').checked;
+
+            const updateData = { full_name: fullName, username, email };
+            if (password) updateData.password = password;
+
+            const isEditingSelf = adminId === this.currentAdminId;
+            if (this.isSuperAdmin && !isEditingSelf) {
+                updateData.is_superadmin = isSuperadmin;
+                updateData.is_active = isActive;
+            }
+
+            const submitBtn = document.getElementById('saveAdminBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+
+            fetch(`/api/admin/admins/${adminId}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification(isEditingSelf ? 'Profile updated successfully!' : 'Admin updated successfully!', 'success');
+                    document.getElementById('adminModal').style.display = 'none';
+                    this.resetForm();
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to update', 'error');
+                    if (data.message && data.message.includes('username')) {
+                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), data.message);
+                    } else if (data.message && data.message.includes('email')) {
+                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), data.message);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showNotification('Failed to update', 'error');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        toggleStatus(adminId, isActive) {
+            if (!this.isSuperAdmin) {
+                this.showNotification('Only super admins can change admin status', 'warning');
+                this.loadAdmins();
+                return;
+            }
+
+            fetch(`/api/admin/admins/${adminId}/status`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: isActive })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification(`Admin ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to update status', 'error');
+                    this.loadAdmins();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showNotification('Failed to update status', 'error');
+                this.loadAdmins();
+            });
+        }
+
+        deleteAdmin(adminId) {
+            if (!this.isSuperAdmin) {
+                this.showNotification('Only super admins can delete admin accounts', 'warning');
+                return;
+            }
+            if (adminId === this.currentAdminId) {
+                this.showNotification('You cannot delete your own account', 'warning');
+                return;
+            }
+
+            const admin = this.admins.find(a => a.id === adminId);
+            const adminName = admin ? (admin.full_name || admin.username) : 'this admin';
+
+            this.showConfirmation('delete', `Are you sure you want to delete "${adminName}"? This action cannot be undone.`, () => {
+                fetch(`/api/admin/admins/${adminId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.showNotification('Admin deleted successfully', 'success');
+                        this.selectedAdmins = [];
+                        this.loadAdmins();
+                    } else {
+                        this.showNotification(data.message || 'Failed to delete', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.showNotification('Failed to delete admin', 'error');
+                });
+            });
+        }
+
+        bulkUpdateStatus(ids, isActive) {
+            fetch('/api/admin/admins/bulk-status', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids, is_active: isActive })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification(`${data.updated_count || ids.length} admin(s) ${isActive ? 'activated' : 'deactivated'}`, 'success');
+                    this.selectedAdmins = [];
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to update', 'error');
+                }
+            });
+        }
+
+        bulkDelete(ids) {
+            fetch('/api/admin/admins/bulk-delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification(`${data.deleted_count || ids.length} admin(s) deleted`, 'success');
+                    this.selectedAdmins = [];
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to delete', 'error');
+                }
+            });
+        }
+
+        updatePagination(totalCount) {
+            const pageInfo = document.getElementById('adminPageInfo');
+            const prevBtn = document.getElementById('prevAdminPage');
+            const nextBtn = document.getElementById('nextAdminPage');
+            const totalPages = Math.ceil(totalCount / this.perPage);
+            if (pageInfo) pageInfo.textContent = `Page ${this.currentPage} of ${totalPages || 1}`;
+            if (prevBtn) prevBtn.disabled = this.currentPage === 1;
+            if (nextBtn) nextBtn.disabled = this.currentPage === totalPages || totalPages === 0;
+        }
+
+        updateBulkActionButton() {
+            const applyBtn = document.getElementById('applyAdminBulkAction');
+            if (applyBtn) applyBtn.disabled = this.selectedAdmins.length === 0;
+        }
+
+        updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAllAdmins');
+            if (!selectAll) return;
+            const checkboxes = document.querySelectorAll('.admin-checkbox:not([disabled])');
+            const checkedCount = document.querySelectorAll('.admin-checkbox:checked:not([disabled])').length;
+            if (checkboxes.length > 0) {
+                selectAll.checked = checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        showNotification(message, type) {
+            if (typeof showNotification === 'function') {
+                showNotification(message, type);
+            } else {
+                alert(message);
+            }
+        }
+
+        showConfirmation(type, message, callback) {
+            if (typeof showConfirmation === 'function') {
+                showConfirmation(type, message, callback);
+            } else {
+                if (confirm(message)) callback();
+            }
+        }
+
+        escapeHTML(str) {
+            if (!str) return '';
+            return str.toString().replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        formatDate(dateString, includeTime = false) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return 'Invalid Date';
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                if (includeTime) {
+                    options.hour = '2-digit';
+                    options.minute = '2-digit';
+                }
+                return date.toLocaleDateString('en-US', options);
+            } catch {
+                return 'Invalid Date';
+            }
+        }
+    }
+
+    // Initialize
+    let adminManager = null;
+    function initAdminManager() {
+        if (!adminManager) {
+            adminManager = new AdminManager();
+            adminManager.init();
+            window.adminManager = adminManager;
+        }
+    }
+
     // ===== COMPLETE DASHBOARD INITIALIZATION =====
     function initializeDashboard() {
         console.log('🚀 Starting Admin Dashboard Initialization...');
@@ -8293,6 +9716,14 @@
                 restoreCurrentSection();
             }, 100);
             console.log('✅ Current section restored');
+
+            // Setup submenu
+            initSubmenu();
+
+            // Admin Management
+            setTimeout(() => {
+                initAdminManager();
+            }, 500);
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);

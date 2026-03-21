@@ -18,7 +18,7 @@
             <h2>CareerMaker Admin</h2>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-item"><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+            <li class="menu-item"><a href="#dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
             </li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
@@ -30,16 +30,41 @@
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
             <li class="menu-item"><a href="#expired-content"><i
                     class="fas fa-clock"></i><span>Expired Content</span></a></li>
-            <li class="menu-item"><a href="#users"><i class="fas fa-users"></i><span>Users</span></a></li>
+
+            <!-- User Management with Submenu - VERTICAL -->
+            <li class="menu-item has-submenu">
+                <a href="javascript:void(0)" class="submenu-trigger">
+                    <i class="fas fa-users"></i>
+                    <span>User Management</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <ul class="submenu">
+                    <li class="menu-item">
+                        <a href="#users">
+                            <i class="fas fa-user"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#admins">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Admins</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="#trash"> <i class="fas fa-trash-alt"></i><span>Trash</span><span
+            <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
                     class="menu-badge" id="trashMenuBadge"></span></a></li>
             <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
             </li>
             <li class="menu-item dark-mode-item">
-                <div class="dark-mode-toggle" id="darkModeToggle"><i class="fas fa-moon"></i><span>Dark Mode</span>
-                    <div class="dark-mode-switch"><input type="checkbox" id="darkModeCheckbox"><span
-                            class="slider round"></span></div>
+                <div class="dark-mode-toggle" id="darkModeToggle">
+                    <i class="fas fa-moon"></i><span>Dark Mode</span>
+                    <div class="dark-mode-switch">
+                        <input type="checkbox" id="darkModeCheckbox"><span class="slider round"></span>
+                    </div>
                 </div>
             </li>
         </ul>
@@ -785,6 +810,153 @@
             </div>
         </div>
 
+        <!-- Admins Section -->
+        <div class="admin-section" id="admins">
+            <div class="section-header">
+                <h2><i class="fas fa-user-shield"></i> Admin Management</h2>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addAdminBtn">
+                        <i class="fas fa-user-plus"></i> Add Admin
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-filters">
+                <div class="search-box">
+                    <input type="text" placeholder="Search admins..." id="adminSearch" class="search-input">
+                    <button class="search-btn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="filter-options">
+                    <select id="adminStatusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="content-table">
+                <table class="data-table">
+                    <thead>
+                    <tr>
+                        <th width="40"><input type="checkbox" id="selectAllAdmins"></th>
+                        <th width="60">S.No</th>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th width="100">Role</th>
+                        <th width="140">Joined</th>
+                        <th width="120">Last Login</th>
+                        <th width="100">Status</th>
+                        <th width="120">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="adminsTableBody">
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px;"><i
+                                class="fas fa-spinner fa-spin"></i> Loading admins...
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="bulk-actions">
+                    <select id="adminBulkAction" class="bulk-action-select">
+                        <option value="">Bulk Actions</option>
+                        <option value="activate">Activate</option>
+                        <option value="deactivate">Deactivate</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button class="btn btn-outline" id="applyAdminBulkAction">Apply</button>
+                </div>
+                <div class="pagination">
+                    <button class="btn btn-outline" id="prevAdminPage"><i class="fas fa-chevron-left"></i></button>
+                    <span class="page-info" id="adminPageInfo">Page 1 of 1</span>
+                    <button class="btn btn-outline" id="nextAdminPage"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Modal (Add/Edit) -->
+        <div id="adminModal" class="modal">
+            <div class="modal-content medium">
+                <span class="close-modal">&times;</span>
+                <h2 id="adminModalTitle">Add Admin</h2>
+                <div class="form-container">
+                    <form id="adminForm">
+                        <input type="hidden" id="adminId" name="id" value="">
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="adminFullName">Full Name *</label>
+                                <input type="text" id="adminFullName" name="full_name" required>
+                                <small id="fullNameError" class="field-error"
+                                       style="display: none; color: var(--danger);"></small>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminUsername">Username *</label>
+                                <input type="text" id="adminUsername" name="username" required>
+                                <small id="usernameError" class="field-error"
+                                       style="display: none; color: var(--danger);"></small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminEmail">Email *</label>
+                            <input type="email" id="adminEmail" name="email" required>
+                            <small id="emailError" class="field-error"
+                                   style="display: none; color: var(--danger);"></small>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="adminPassword">Password <span id="passwordRequired">*</span></label>
+                                <input type="password" id="adminPassword" name="password">
+                                <div id="passwordStrength" class="password-strength"></div>
+                                <small id="passwordError" class="field-error"
+                                       style="display: none; color: var(--danger);"></small>
+                                <small class="form-help" id="passwordHelp">Required for new admin. Must be at least 8
+                                    characters with uppercase, lowercase, number, and special character.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminConfirmPassword">Confirm Password</label>
+                                <input type="password" id="adminConfirmPassword" name="confirm_password">
+                                <small id="confirmPasswordError" class="field-error"
+                                       style="display: none; color: var(--danger);"></small>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-group" id="superadminCheckboxGroup">
+                            <label>
+                                <input type="checkbox" name="is_superadmin" id="adminIsSuperadmin">
+                                <i class="fas fa-crown"></i> Super Admin
+                            </label>
+                            <small class="form-help">Super admins have full unrestricted access including creating other
+                                admins</small>
+                        </div>
+
+                        <div class="checkbox-group" id="adminStatusGroup">
+                            <label>
+                                <input type="checkbox" name="is_active" id="adminIsActive" checked>
+                                <i class="fas fa-check-circle"></i> Active Account
+                            </label>
+                            <small class="form-help">Inactive accounts cannot log in</small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="saveAdminBtn">
+                                <i class="fas fa-save"></i> Save Admin
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
         <!-- Messages Section -->
         <div class="admin-section" id="messages">
             <div class="section-header">
@@ -1524,6 +1696,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Admin Section Script -->
+    <script>
+        // Pass admin session data to JavaScript
+        window.currentAdminId = "{{ session.get('admin_id', '') }}";
+        window.currentAdminUsername = "{{ session.get('admin_username', '') }}";
+        window.currentAdminFullName = "{{ session.get('admin_full_name', '') }}";
+        window.isSuperAdmin = {{ session.get('is_superadmin', False)|lower }};
+
+        console.log('Admin session loaded:', {
+            adminId: window.currentAdminId,
+            username: window.currentAdminUsername,
+            isSuperAdmin: window.isSuperAdmin
+        });
+    </script>
 
     <!-- JavaScript Files -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

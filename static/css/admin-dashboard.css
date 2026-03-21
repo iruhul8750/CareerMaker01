@@ -6719,3 +6719,231 @@
         }
     }
     /* ===== TRASH SECTION STYLES END ===== */
+
+    /* ===== VERTICAL SUBMENU - For User Management Section ===== */
+    .sidebar-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .sidebar-menu .menu-item {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: relative !important;
+    }
+
+    .sidebar-menu .menu-item a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 12px 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        text-decoration: none !important;
+        transition: all 0.3s ease !important;
+    }
+
+    /* Submenu parent item */
+    .sidebar-menu .menu-item.has-submenu {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .sidebar-menu .submenu-trigger {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        cursor: pointer !important;
+    }
+
+    .sidebar-menu .submenu-arrow {
+        margin-left: auto !important;
+        transition: transform 0.3s ease !important;
+        font-size: 12px !important;
+    }
+
+    .sidebar-menu .menu-item.has-submenu.open .submenu-arrow {
+        transform: rotate(180deg) !important;
+    }
+
+    /* Submenu - VERTICAL LAYOUT (below parent, not to the side) */
+    .sidebar-menu .submenu {
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: none !important;
+        width: 100% !important;
+        background: rgba(0, 0, 0, 0.08) !important;
+        border-radius: 0 !important;
+    }
+
+    .sidebar-menu .menu-item.has-submenu.open .submenu {
+        display: block !important;
+    }
+
+    /* Submenu items - each on its own line */
+    .sidebar-menu .submenu .menu-item {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .sidebar-menu .submenu .menu-item a {
+        padding: 10px 16px 10px 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sidebar-menu .submenu .menu-item a i {
+        width: 20px !important;
+        text-align: center !important;
+        font-size: 14px !important;
+    }
+
+    .sidebar-menu .submenu .menu-item a span {
+        flex: 1 !important;
+    }
+
+    /* Hover effects */
+    .sidebar-menu .submenu .menu-item a:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Dark mode */
+    .dark-mode .sidebar-menu .submenu {
+        background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    /* Ensure no absolute positioning that might cause horizontal layout */
+    .sidebar-menu .has-submenu {
+        position: static !important;
+    }
+
+    .sidebar-menu .submenu {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+    }
+
+    /* Active submenu item styling */
+    .sidebar-menu .submenu .menu-item a.active {
+        background: rgba(255, 255, 255, 0.2);
+        border-left-color: var(--primary);
+        padding-left: 2rem !important;
+    }
+
+    /* Parent menu active when submenu item is active */
+    .sidebar-menu .has-submenu.has-active > .submenu-trigger {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-inverse);
+    }
+    /* ===== VERTICAL SUBMENU - For User Management Section End ===== */
+
+
+    /* Admin Add Modal Specific Styles */
+    #adminModal .checkbox-group {
+        background: var(--bg-primary);
+        padding: 15px;
+        border-radius: var(--radius-md);
+        margin: 15px 0;
+        border: 1px solid var(--border-color);
+    }
+
+    #adminModal .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    #adminModal .checkbox-group i {
+        color: var(--warning);
+        font-size: 16px;
+    }
+
+    #adminModal .checkbox-group .form-help {
+        margin-left: 26px;
+        margin-top: 0;
+    }
+
+    #adminModal .form-help {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+        color: var(--text-light);
+    }
+
+    #adminModal .password-strength {
+        margin-top: 8px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    #adminModal .password-strength.weak { color: var(--danger); }
+    #adminModal .password-strength.medium { color: var(--warning); }
+    #adminModal .password-strength.strong { color: var(--success); }
+
+    /* Role Badges */
+    .role-badge.admin-role {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .role-badge.superadmin-role {
+        background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .role-badge.superadmin-role i {
+        font-size: 12px;
+    }
+
+    .dark-mode .role-badge.admin-role {
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .dark-mode .role-badge.superadmin-role {
+        background: linear-gradient(135deg, #eab308 0%, #dc2626 100%);
+    }
+
+    .input-error {
+        border-color: var(--danger) !important;
+        box-shadow: 0 0 0 1px var(--danger) !important;
+    }
+
+    .field-error {
+        display: none;
+        font-size: 12px;
+        margin-top: 5px;
+        color: var(--danger);
+    }
+
+    .field-error i {
+        margin-right: 4px;
+    }
+
+    /* Add Admin styles End */

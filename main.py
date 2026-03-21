@@ -4709,12 +4709,11 @@ def handle_404_error(error):
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    # Check for logout message and display it only once
+    # Check for logout message
     message = request.args.get('message')
     if message == 'logout_success':
         flash('Logged out successfully', 'success')
 
-    # Clear any logout flags
     session.pop('admin_logout_initiated', None)
 
     if request.method == 'GET':
@@ -4731,7 +4730,7 @@ def admin_login():
         return render_template('admin/admin-login.html')
 
     try:
-        # Use admin client to check admin credentials (bypasses RLS)
+        # Use admin client to check admin credentials
         response = supabase_admin.table('admins') \
             .select('*') \
             .eq('username', username) \
@@ -4746,19 +4745,50 @@ def admin_login():
 
         admin = response.data
 
+        # Check if admin is active
+        if not admin.get('is_active', True):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Account is deactivated. Contact administrator.'})
+            flash('Account is deactivated. Contact administrator.', 'danger')
+            return render_template('admin/admin-login.html')
+
+        # Check if admin is deleted
+        if admin.get('is_deleted', False):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Account is deleted. Contact administrator.'})
+            flash('Account is deleted. Contact administrator.', 'danger')
+            return render_template('admin/admin-login.html')
+
+        # Verify password
         if not verify_password(admin['password_hash'], password):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'error': 'Invalid credentials'})
             flash('Invalid credentials', 'danger')
             return render_template('admin/admin-login.html')
 
+        # Update last login time
+        try:
+            current_time = get_current_utc_time().isoformat()
+            supabase_admin.table('admins') \
+                .update({'last_login': current_time}) \
+                .eq('id', admin['id']) \
+                .execute()
+        except Exception as e:
+            logger.warning(f"Could not update last login time: {str(e)}")
+
+        # Set session variables - CRITICAL for AdminManager
         session.update({
             'admin_id': str(admin['id']),
             'admin_username': admin['username'],
             'admin_email': admin.get('email', ''),
-            'is_superadmin': bool(admin.get('is_superadmin', False)),
+            'admin_full_name': admin.get('full_name', admin['username']),
+            'is_superadmin': bool(admin.get('is_superadmin', False)),  # ← IMPORTANT: Convert to boolean
             'admin_logged_in': True
         })
+
+        # Log the session for debugging
+        logger.info(f"Admin login successful: {username}")
+        logger.info(f"Session values - admin_id: {session['admin_id']}, is_superadmin: {session['is_superadmin']}")
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({
@@ -4767,10 +4797,11 @@ def admin_login():
                 'redirect': url_for('admin_dashboard')
             })
 
+        flash('Login successful!', 'success')
         return redirect(url_for('admin_dashboard'))
 
     except Exception as e:
-        print(f"ADMIN LOGIN ERROR: {str(e)}")
+        logger.error(f"Admin login error: {str(e)}", exc_info=True)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': 'An error occurred. Please try again.'})
         flash('An error occurred. Please try again.', 'danger')
@@ -4780,7 +4811,7 @@ def admin_login():
 @app.route('/admin/logout')
 def admin_logout():
     # Clear all admin session variables
-    admin_vars = ['admin_id', 'admin_username', 'admin_email', 'is_superadmin', 'admin_logged_in']
+    admin_vars = ['admin_id', 'admin_username', 'admin_email', 'admin_full_name', 'is_superadmin', 'admin_logged_in']
     for var in admin_vars:
         session.pop(var, None)
 
@@ -4842,38 +4873,39 @@ def admin_dashboard():
     if not session.get('admin_logged_in'):
         flash('Please login to access the dashboard', 'warning')
         return redirect(url_for('admin_login'))
-    try:
-        if not session.get('admin_logged_in'):
-            flash('Please login to access the dashboard', 'warning')
-            return redirect(url_for('admin_login'))
 
+    try:
         # Check if it's an AJAX request for data only
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            # Return JSON data for AJAX requests
             return admin_dashboard_stats()
 
-        # Get statistics using admin client (bypasses RLS)
+        # Get statistics using admin client
         with ThreadPoolExecutor() as executor:
             users_future = executor.submit(
-                supabase_admin.table('users').select('id', count='exact').execute
+                supabase_admin.table('users').select('id', count='exact').eq('is_deleted', False).execute
             )
             courses_future = executor.submit(
-                supabase_admin.table('courses').select('id', count='exact').eq('is_active', True).execute
+                supabase_admin.table('courses').select('id', count='exact').eq('is_active', True).eq('is_deleted',
+                                                                                                     False).execute
             )
             jobs_future = executor.submit(
-                supabase_admin.table('jobs').select('id', count='exact').eq('is_active', True).execute
+                supabase_admin.table('jobs').select('id', count='exact').eq('is_active', True).eq('is_deleted',
+                                                                                                  False).execute
             )
             internships_future = executor.submit(
-                supabase_admin.table('internships').select('id', count='exact').eq('is_active', True).execute
+                supabase_admin.table('internships').select('id', count='exact').eq('is_active', True).eq('is_deleted',
+                                                                                                         False).execute
             )
             messages_future = executor.submit(
-                supabase_admin.table('contact_messages').select('id', count='exact').execute
+                supabase_admin.table('contact_messages').select('id', count='exact').eq('is_deleted', False).execute
             )
             unread_future = executor.submit(
-                supabase_admin.table('contact_messages').select('id', count='exact').eq('status', 'unread').execute
+                supabase_admin.table('contact_messages').select('id', count='exact').eq('status', 'unread').eq(
+                    'is_deleted', False).execute
             )
             subscribers_future = executor.submit(
-                supabase_admin.table('newsletter_subscribers').select('id', count='exact').eq('is_active', True).execute
+                supabase_admin.table('newsletter_subscribers').select('id', count='exact').eq('is_active', True).eq(
+                    'is_deleted', False).execute
             )
 
             stats = {
@@ -4886,15 +4918,17 @@ def admin_dashboard():
                 'subscribers': subscribers_future.result().count or 0
             }
 
-        # Get recent activities using admin client
+        # Get recent activities
         recent_messages = supabase_admin.table('contact_messages') \
                               .select('id, name, email, created_at') \
+                              .eq('is_deleted', False) \
                               .order('created_at', desc=True) \
                               .limit(5) \
                               .execute().data or []
 
         recent_users = supabase_admin.table('users') \
                            .select('id, email, username, created_at') \
+                           .eq('is_deleted', False) \
                            .order('created_at', desc=True) \
                            .limit(5) \
                            .execute().data or []
@@ -4920,11 +4954,14 @@ def admin_dashboard():
             'admin/admin-dashboard.html',
             stats=stats,
             recent_activities=activities[:5],
-            admin_name=session.get('admin_username', 'Admin')
+            admin_name=session.get('admin_full_name', session.get('admin_username', 'Admin')),
+            admin_id=session.get('admin_id'),
+            admin_username=session.get('admin_username'),
+            is_superadmin=session.get('is_superadmin', False)  # ← IMPORTANT: Pass to template
         )
 
     except Exception as e:
-        print(f"Dashboard error: {str(e)}")
+        logger.error(f"Dashboard error: {str(e)}", exc_info=True)
         flash('Failed to load dashboard data. Please try again.', 'danger')
         return redirect(url_for('admin_login'))
 
@@ -4955,23 +4992,41 @@ def admin_dashboard_stats():
             logger.info("✅ Database connection test successful")
         except Exception as db_error:
             logger.error(f"❌ Database connection failed: {str(db_error)}")
-            # Return default stats instead of error
             return jsonify(stats)
 
         # Get all stats with individual error handling
         try:
-            # Users count
-            users_response = supabase_admin.table('users').select('id', count='exact').execute()
+            # USERS COUNT - Only regular users from users table, NOT admins
+            # Exclude soft-deleted users
+            users_response = supabase_admin.table('users') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
             stats['users'] = getattr(users_response, 'count', 0) or 0
-            logger.info(f"✅ Users count: {stats['users']}")
+            logger.info(f"✅ Regular users count: {stats['users']}")
         except Exception as e:
             logger.warning(f"⚠️ Error getting users count: {str(e)}")
             stats['users'] = 0
 
+        # Get admins count separately (for admin management, not for dashboard card)
         try:
-            # Active courses count
-            courses_response = supabase_admin.table('courses').select('id', count='exact').eq('is_active',
-                                                                                              True).execute()
+            admins_response = supabase_admin.table('admins') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
+            stats['admins'] = getattr(admins_response, 'count', 0) or 0
+            logger.info(f"✅ Admins count: {stats['admins']}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting admins count: {str(e)}")
+            stats['admins'] = 0
+
+        try:
+            # Active courses count (not deleted)
+            courses_response = supabase_admin.table('courses') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
             stats['courses'] = getattr(courses_response, 'count', 0) or 0
             logger.info(f"✅ Courses count: {stats['courses']}")
         except Exception as e:
@@ -4979,8 +5034,12 @@ def admin_dashboard_stats():
             stats['courses'] = 0
 
         try:
-            # Active jobs count
-            jobs_response = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', True).execute()
+            # Active jobs count (not deleted)
+            jobs_response = supabase_admin.table('jobs') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
             stats['jobs'] = getattr(jobs_response, 'count', 0) or 0
             logger.info(f"✅ Jobs count: {stats['jobs']}")
         except Exception as e:
@@ -4988,9 +5047,12 @@ def admin_dashboard_stats():
             stats['jobs'] = 0
 
         try:
-            # Active internships count
-            internships_response = supabase_admin.table('internships').select('id', count='exact').eq('is_active',
-                                                                                                      True).execute()
+            # Active internships count (not deleted)
+            internships_response = supabase_admin.table('internships') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
             stats['internships'] = getattr(internships_response, 'count', 0) or 0
             logger.info(f"✅ Internships count: {stats['internships']}")
         except Exception as e:
@@ -4998,8 +5060,11 @@ def admin_dashboard_stats():
             stats['internships'] = 0
 
         try:
-            # Total messages count
-            messages_response = supabase_admin.table('contact_messages').select('id', count='exact').execute()
+            # Total messages count (not deleted)
+            messages_response = supabase_admin.table('contact_messages') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
             stats['messages'] = getattr(messages_response, 'count', 0) or 0
             logger.info(f"✅ Messages count: {stats['messages']}")
         except Exception as e:
@@ -5007,9 +5072,12 @@ def admin_dashboard_stats():
             stats['messages'] = 0
 
         try:
-            # Unread messages count
-            unread_response = supabase_admin.table('contact_messages').select('id', count='exact').eq('status',
-                                                                                                      'unread').execute()
+            # Unread messages count (not deleted)
+            unread_response = supabase_admin.table('contact_messages') \
+                .select('id', count='exact') \
+                .eq('status', 'unread') \
+                .eq('is_deleted', False) \
+                .execute()
             stats['unread_messages'] = getattr(unread_response, 'count', 0) or 0
             logger.info(f"✅ Unread messages: {stats['unread_messages']}")
         except Exception as e:
@@ -5017,9 +5085,12 @@ def admin_dashboard_stats():
             stats['unread_messages'] = 0
 
         try:
-            # Active subscribers count
-            subscribers_response = supabase_admin.table('newsletter_subscribers').select('id', count='exact').eq(
-                'is_active', True).execute()
+            # Active subscribers count (not deleted)
+            subscribers_response = supabase_admin.table('newsletter_subscribers') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
             stats['subscribers'] = getattr(subscribers_response, 'count', 0) or 0
             logger.info(f"✅ Subscribers count: {stats['subscribers']}")
         except Exception as e:
@@ -5027,9 +5098,12 @@ def admin_dashboard_stats():
             stats['subscribers'] = 0
 
         try:
-            # Active testimonials count
-            testimonials_response = supabase_admin.table('testimonials').select('id', count='exact').eq('is_active',
-                                                                                                        True).execute()
+            # Active testimonials count (not deleted)
+            testimonials_response = supabase_admin.table('testimonials') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
             stats['testimonials'] = getattr(testimonials_response, 'count', 0) or 0
             logger.info(f"✅ Testimonials count: {stats['testimonials']}")
         except Exception as e:
@@ -5037,8 +5111,11 @@ def admin_dashboard_stats():
             stats['testimonials'] = 0
 
         try:
-            # Blog posts count
-            blog_posts_response = supabase_admin.table('blog_posts').select('id', count='exact').execute()
+            # Blog posts count (not deleted)
+            blog_posts_response = supabase_admin.table('blog_posts') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
             stats['blog_posts'] = getattr(blog_posts_response, 'count', 0) or 0
             logger.info(f"✅ Blog posts count: {stats['blog_posts']}")
         except Exception as e:
@@ -5046,20 +5123,29 @@ def admin_dashboard_stats():
             stats['blog_posts'] = 0
 
         try:
-            # Expired content count (content that is inactive)
-            expired_courses = supabase_admin.table('courses').select('id', count='exact').eq('is_active',
-                                                                                             False).execute()
-            expired_jobs = supabase_admin.table('jobs').select('id', count='exact').eq('is_active', False).execute()
-            expired_internships = supabase_admin.table('internships').select('id', count='exact').eq('is_active',
-                                                                                                     False).execute()
+            # Expired content count (content that is inactive but not deleted)
+            expired_courses = supabase_admin.table('courses') \
+                .select('id', count='exact') \
+                .eq('is_active', False) \
+                .eq('is_deleted', False) \
+                .execute()
+            expired_jobs = supabase_admin.table('jobs') \
+                .select('id', count='exact') \
+                .eq('is_active', False) \
+                .eq('is_deleted', False) \
+                .execute()
+            expired_internships = supabase_admin.table('internships') \
+                .select('id', count='exact') \
+                .eq('is_active', False) \
+                .eq('is_deleted', False) \
+                .execute()
 
             expired_courses_count = getattr(expired_courses, 'count', 0) or 0
             expired_jobs_count = getattr(expired_jobs, 'count', 0) or 0
             expired_internships_count = getattr(expired_internships, 'count', 0) or 0
 
             stats['total_expired'] = expired_courses_count + expired_jobs_count + expired_internships_count
-            logger.info(
-                f"✅ Expired content: {stats['total_expired']} (Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count})")
+            logger.info(f"✅ Expired content: {stats['total_expired']} (Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count})")
         except Exception as e:
             logger.warning(f"⚠️ Error getting expired content count: {str(e)}")
             stats['total_expired'] = 0
@@ -5070,30 +5156,32 @@ def admin_dashboard_stats():
         activities = []
 
         try:
-            # 1. Get 5 most recent users
+            # 1. Get 3 most recent regular users (not admins)
             recent_users = supabase_admin.table('users') \
-                               .select('id, username, email, created_at') \
-                               .order('created_at', desc=True) \
-                               .limit(3) \
-                               .execute().data or []
+                .select('id, username, email, created_at') \
+                .eq('is_deleted', False) \
+                .order('created_at', desc=True) \
+                .limit(3) \
+                .execute().data or []
 
             for user in recent_users:
                 activities.append({
                     'type': 'user',
                     'icon': 'user-plus',
-                    'message': f"New user: {user.get('username', 'Unknown')}",
+                    'message': f"New user registered: {user.get('username', 'Unknown')}",
                     'time': user.get('created_at', '')
                 })
         except Exception as e:
             print(f"Error getting users for activities: {str(e)}")
 
         try:
-            # 2. Get 5 most recent jobs (active)
+            # 2. Get 3 most recent jobs (active, not deleted)
             recent_jobs = supabase_admin.table('jobs') \
-                              .select('id, title, company, created_at, is_active') \
-                              .order('created_at', desc=True) \
-                              .limit(3) \
-                              .execute().data or []
+                .select('id, title, company, created_at, is_active') \
+                .eq('is_deleted', False) \
+                .order('created_at', desc=True) \
+                .limit(3) \
+                .execute().data or []
 
             for job in recent_jobs:
                 if job.get('is_active', False):
@@ -5107,12 +5195,13 @@ def admin_dashboard_stats():
             print(f"Error getting jobs for activities: {str(e)}")
 
         try:
-            # 3. Get 5 most recent messages
+            # 3. Get 3 most recent messages (not deleted)
             recent_messages = supabase_admin.table('contact_messages') \
-                                  .select('id, name, email, created_at, status') \
-                                  .order('created_at', desc=True) \
-                                  .limit(3) \
-                                  .execute().data or []
+                .select('id, name, email, created_at, status') \
+                .eq('is_deleted', False) \
+                .order('created_at', desc=True) \
+                .limit(3) \
+                .execute().data or []
 
             for msg in recent_messages:
                 activities.append({
@@ -8059,6 +8148,432 @@ def bulk_delete_users():
     except Exception as e:
         logger.error(f"Error bulk deleting users: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to delete users'}), 500
+
+# ===== ADMIN MANAGEMENT ROUTES =====
+
+@app.route('/api/admin/admins/list', methods=['GET'])
+@admin_required
+def get_admins_list():
+    """Get list of all admin users"""
+    try:
+        # Get query parameters
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        search = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '')
+
+        logger.info(f"📋 Fetching admins - page: {page}, search: '{search}', status: '{status_filter}'")
+
+        # Build query - include all fields
+        query = supabase_admin.table('admins').select('*').eq('is_deleted', False)
+
+        # Apply status filter
+        if status_filter == 'active':
+            query = query.eq('is_active', True)
+        elif status_filter == 'inactive':
+            query = query.eq('is_active', False)
+
+        # Apply search filter
+        if search:
+            query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,full_name.ilike.%{search}%")
+
+        # Get total count
+        count_response = query.execute()
+        total_count = len(count_response.data) if count_response.data else 0
+
+        # Apply pagination and ordering
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+        data_response = query.range(start, end).order('created_at', desc=True).execute()
+
+        # Format response - ensure is_superadmin is included
+        admins = []
+        for admin in (data_response.data or []):
+            admins.append({
+                'id': admin.get('id'),
+                'username': admin.get('username'),
+                'email': admin.get('email'),
+                'full_name': admin.get('full_name', admin.get('username')),
+                'is_superadmin': admin.get('is_superadmin', False),  # CRITICAL: Include this
+                'is_active': admin.get('is_active', True),
+                'is_deleted': admin.get('is_deleted', False),
+                'created_at': admin.get('created_at'),
+                'last_login': admin.get('last_login'),
+                'updated_at': admin.get('updated_at')
+            })
+
+        logger.info(f"✅ Found {total_count} admins, returning {len(admins)}")
+        logger.info(f"Admin data sample: {admins[0] if admins else 'None'}")
+
+        return jsonify({
+            'success': True,
+            'data': admins,
+            'count': total_count,
+            'page': page,
+            'per_page': per_page
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching admins: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to fetch admins'}), 500
+
+
+@app.route('/api/admin/admins/<string:id>', methods=['GET'])
+@admin_required
+def get_admin_details(id):
+    """Get single admin details"""
+    try:
+        # Get admin by ID
+        response = supabase_admin.table('admins').select('*').eq('id', id).eq('is_deleted', False).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        admin = response.data[0]
+
+        return jsonify({
+            'success': True,
+            'admin': {
+                'id': admin.get('id'),
+                'username': admin.get('username'),
+                'email': admin.get('email'),
+                'full_name': admin.get('full_name', admin.get('username')),
+                'is_superadmin': admin.get('is_superadmin', False),
+                'is_active': admin.get('is_active', True),
+                'created_at': admin.get('created_at'),
+                'last_login': admin.get('last_login')
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching admin details: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to fetch admin details'}), 500
+
+
+@app.route('/api/admin/admins', methods=['POST'])
+@admin_required
+def create_new_admin():
+    """Create a new admin user"""
+    try:
+        data = request.get_json()
+
+        # Log the received data for debugging
+        logger.info(f"📝 Create admin request received: {data}")
+
+        # Validate required fields
+        full_name = data.get('full_name', '').strip()
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+        is_superadmin = data.get('is_superadmin', False)
+
+        # Check if current user is superadmin to create superadmin
+        current_is_superadmin = session.get('is_superadmin', False)
+        if is_superadmin and not current_is_superadmin:
+            return jsonify({'success': False, 'message': 'Only super admins can create super admin accounts'}), 403
+
+        if not full_name or not username or not email or not password:
+            return jsonify({'success': False, 'message': 'Full name, username, email, and password are required'}), 400
+
+        # Validate email format
+        if '@' not in email:
+            return jsonify({'success': False, 'message': 'Invalid email format'}), 400
+
+        # Validate username format
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return jsonify(
+                {'success': False, 'message': 'Username can only contain letters, numbers, and underscore'}), 400
+
+        # Validate password strength
+        if len(password) < 8:
+            return jsonify({'success': False, 'message': 'Password must be at least 8 characters'}), 400
+
+        # Check if email already exists
+        existing_email = supabase_admin.table('admins').select('id').eq('email', email).execute()
+        if existing_email.data:
+            return jsonify({'success': False, 'message': 'Email already exists'}), 400
+
+        # Check if username already exists
+        existing_username = supabase_admin.table('admins').select('id').eq('username', username).execute()
+        if existing_username.data:
+            return jsonify({'success': False, 'message': 'Username already exists'}), 400
+
+        # Create admin
+        now_iso = get_current_utc_time().isoformat()
+        admin_data = {
+            'full_name': full_name,
+            'username': username,
+            'email': email,
+            'password_hash': hash_password(password),
+            'is_superadmin': is_superadmin,
+            'is_active': True,
+            'is_deleted': False,
+            'created_at': now_iso,
+            'updated_at': now_iso
+        }
+
+        logger.info(f"📝 Inserting admin: {admin_data}")
+
+        response = supabase_admin.table('admins').insert(admin_data).execute()
+
+        if response.data:
+            logger.info(f"✅ New admin created: {username} ({email}) - Superadmin: {is_superadmin}")
+            return jsonify({
+                'success': True,
+                'message': 'Admin created successfully',
+                'admin': {
+                    'id': response.data[0]['id'],
+                    'full_name': full_name,
+                    'username': username,
+                    'email': email,
+                    'is_superadmin': is_superadmin,
+                    'created_at': now_iso
+                }
+            })
+        else:
+            logger.error(f"❌ No data returned from insert: {response}")
+            return jsonify({'success': False, 'message': 'Failed to create admin'}), 500
+
+    except Exception as e:
+        logger.error(f"❌ Error creating admin: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+
+@app.route('/api/admin/admins/<string:id>/status', methods=['PUT'])
+@admin_required
+def update_admin_status(id):
+    """Update admin status (activate/deactivate)"""
+    try:
+        data = request.get_json()
+        is_active = data.get('is_active')
+
+        if is_active is None:
+            return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
+
+        # Check if trying to deactivate self
+        current_admin_id = session.get('admin_id')
+        if str(current_admin_id) == str(id) and not is_active:
+            return jsonify({'success': False, 'message': 'You cannot deactivate your own account'}), 400
+
+        # Update status
+        update_data = {
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        logger.info(f"✅ Admin {id} status updated to: {is_active}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Admin {"activated" if is_active else "deactivated"} successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error updating admin status: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to update status'}), 500
+
+
+@app.route('/api/admin/admins/<string:id>', methods=['PUT'])
+@admin_required
+def update_admin(id):
+    """Update admin details - with permission checks"""
+    try:
+        data = request.get_json()
+
+        # Check if trying to update self
+        current_admin_id = session.get('admin_id')
+        is_current_user = str(current_admin_id) == str(id)
+        current_is_superadmin = session.get('is_superadmin', False)
+
+        # If not superadmin and not updating self, deny
+        if not current_is_superadmin and not is_current_user:
+            return jsonify({'success': False, 'message': 'You can only update your own profile'}), 403
+
+        # Build update data (only allowed fields)
+        update_data = {
+            'full_name': data.get('full_name'),
+            'username': data.get('username'),
+            'email': data.get('email'),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        # Remove None values
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+
+        # Only superadmin can change these fields
+        if current_is_superadmin:
+            if 'is_superadmin' in data:
+                update_data['is_superadmin'] = data.get('is_superadmin')
+            if 'is_active' in data:
+                update_data['is_active'] = data.get('is_active')
+
+        # Update password if provided
+        if data.get('password'):
+            update_data['password_hash'] = hash_password(data.get('password'))
+
+        # Check if username already exists (for other users)
+        if 'username' in update_data:
+            existing = supabase_admin.table('admins').select('id').eq('username', update_data['username']).execute()
+            if existing.data and existing.data[0]['id'] != id:
+                return jsonify({'success': False, 'message': 'Username already exists'}), 400
+
+        # Check if email already exists
+        if 'email' in update_data:
+            existing = supabase_admin.table('admins').select('id').eq('email', update_data['email']).execute()
+            if existing.data and existing.data[0]['id'] != id:
+                return jsonify({'success': False, 'message': 'Email already exists'}), 400
+
+        # Update in database
+        response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
+
+        if not response.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        logger.info(f"✅ Admin {id} updated successfully")
+
+        # If updating self, update session
+        if is_current_user and 'full_name' in update_data:
+            session['admin_full_name'] = update_data['full_name']
+        if is_current_user and 'username' in update_data:
+            session['admin_username'] = update_data['username']
+
+        return jsonify({
+            'success': True,
+            'message': 'Profile updated successfully',
+            'admin': response.data[0]
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error updating admin: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to update profile'}), 500
+
+
+@app.route('/api/admin/admins/<string:id>', methods=['DELETE'])
+@admin_required
+def delete_admin(id):
+    """Delete admin (soft delete)"""
+    try:
+        # Check if trying to delete self
+        current_admin_id = session.get('admin_id')
+        if str(current_admin_id) == str(id):
+            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
+
+        # Check if admin exists
+        existing = supabase_admin.table('admins').select('*').eq('id', id).execute()
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        # Soft delete
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
+
+        if response.data:
+            logger.info(f"✅ Admin {id} soft deleted")
+            return jsonify({'success': True, 'message': 'Admin deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
+
+    except Exception as e:
+        logger.error(f"❌ Error deleting admin: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
+
+
+@app.route('/api/admin/admins/bulk-status', methods=['POST'])
+@admin_required
+def bulk_update_admin_status():
+    """Bulk update admin status"""
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+        is_active = data.get('is_active')
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No admins selected'}), 400
+
+        if is_active is None:
+            return jsonify({'success': False, 'message': 'is_active parameter is required'}), 400
+
+        # Remove current admin from list if trying to deactivate self
+        current_admin_id = session.get('admin_id')
+        if not is_active and current_admin_id in ids:
+            ids.remove(current_admin_id)
+            if not ids:
+                return jsonify({'success': False, 'message': 'Cannot deactivate your own account'}), 400
+
+        # Update status
+        update_data = {
+            'is_active': bool(is_active),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').update(update_data).in_('id', ids).execute()
+        updated_count = len(response.data) if response.data else 0
+
+        logger.info(f"✅ Bulk updated {updated_count} admins status to: {is_active}")
+
+        return jsonify({
+            'success': True,
+            'message': f'{updated_count} admin(s) {"activated" if is_active else "deactivated"} successfully',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error bulk updating admin status: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to update admins'}), 500
+
+
+@app.route('/api/admin/admins/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_admins():
+    """Bulk delete admins"""
+    try:
+        data = request.get_json()
+        ids = data.get('ids', [])
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'No admins selected'}), 400
+
+        # Remove current admin from list
+        current_admin_id = session.get('admin_id')
+        if current_admin_id in ids:
+            ids.remove(current_admin_id)
+            if not ids:
+                return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
+
+        # Soft delete
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').update(update_data).in_('id', ids).execute()
+        deleted_count = len(response.data) if response.data else 0
+
+        logger.info(f"✅ Bulk deleted {deleted_count} admins")
+
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count} admin(s) deleted successfully',
+            'deleted_count': deleted_count
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error bulk deleting admins: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to delete admins'}), 500
 
 # ===== TRASH MANAGEMENT ROUTES =====
 
