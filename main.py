@@ -5688,7 +5688,7 @@ def toggle_resource_featured(resource, id):
 def bulk_delete_resources(resource):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials', 'admins']
         if resource not in valid_resources:
             return jsonify({'success': False, 'message': 'Invalid resource type'}), 400
 
@@ -5703,57 +5703,40 @@ def bulk_delete_resources(resource):
             'blog': 'blog_posts',
             'messages': 'contact_messages',
             'newsletter': 'newsletter_subscribers',
-            'testimonials': 'testimonials'
+            'testimonials': 'testimonials',
+            'admins': 'admins'
         }
+        table_name = table_map.get(resource, resource)
 
-        if resource in ['courses', 'jobs', 'internships', 'users']:
-            table_name = resource
-        else:
-            table_name = table_map.get(resource, resource)
-
-        # For content that should go to trash, soft delete - ADDED users and messages
-        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages',
-                        'newsletter_subscribers']
+        # For content that should go to trash, soft delete
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages', 'newsletter_subscribers', 'admins']
 
         if table_name in trash_tables:
-            # Soft delete - move to trash
+            # Soft delete - move to trash and set is_active to False
             update_data = {
                 'is_deleted': True,
+                'is_active': False,  # CRITICAL: Set to inactive when deleted
                 'deleted_at': get_current_utc_time().isoformat(),
                 'updated_at': get_current_utc_time().isoformat()
             }
 
-            # For content that uses is_active, set to inactive
-            if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'users']:
-                update_data['is_active'] = False
-                if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
-                    update_data['is_featured'] = False
-
-            # For testimonials, also set is_active to False
-            if table_name == 'testimonials':
-                update_data['is_active'] = False
-
-            # For newsletter subscribers, set is_active to False
-            if table_name == 'newsletter_subscribers':
-                update_data['is_active'] = False
-
-            # For messages, just mark as deleted
-            if table_name == 'contact_messages':
-                update_data['is_deleted'] = True
+            # For content that has is_featured (courses, jobs, internships, blog), also set to False
+            if resource in ['courses', 'jobs', 'internships', 'blog']:
+                update_data['is_featured'] = False
 
             response = supabase_admin.table(table_name).update(update_data).in_('id', ids).execute()
             updated_count = len(response.data) if response.data else 0
 
             return jsonify({
                 'success': True,
-                'message': f'{updated_count} {resource} moved to trash',
+                'message': f'{updated_count} {resource} moved to trash and deactivated',
                 'moved_to_trash': True,
+                'deactivated': True,
                 'deleted_count': updated_count
             })
         else:
             # For other tables, permanent delete
             response = supabase_admin.table(table_name).delete().in_('id', ids).execute()
-
             return jsonify({
                 'success': True,
                 'message': f'{len(response.data) if response.data else 0} {resource} deleted successfully'
@@ -6073,7 +6056,7 @@ def get_admin_resource(resource, id):
 def delete_admin_resource(resource, id):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials', 'admins']
         if resource not in valid_resources:
             return jsonify({'error': 'Invalid resource type'}), 400
 
@@ -6082,10 +6065,10 @@ def delete_admin_resource(resource, id):
             'blog': 'blog_posts',
             'messages': 'contact_messages',
             'newsletter': 'newsletter_subscribers',
-            'testimonials': 'testimonials'
+            'testimonials': 'testimonials',
+            'admins': 'admins'
         }
 
-        # Handle plural resources vs table names
         if resource in ['courses', 'jobs', 'internships', 'users']:
             table_name = resource
         else:
@@ -6098,50 +6081,37 @@ def delete_admin_resource(resource, id):
         if not existing.data:
             return jsonify({'error': f'{resource} not found'}), 404
 
-        # For content that should go to trash, soft delete - ADDED users and messages
-        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages', 'newsletter_subscribers']
+        # For content that should go to trash, soft delete
+        trash_tables = ['courses', 'jobs', 'internships', 'blog_posts', 'testimonials', 'users', 'contact_messages', 'newsletter_subscribers', 'admins']
 
         if table_name in trash_tables:
-            # Soft delete - move to trash
+            # Soft delete - move to trash and set is_active to False
             update_data = {
                 'is_deleted': True,
+                'is_active': False,  # CRITICAL: Set to inactive when deleted
                 'deleted_at': get_current_utc_time().isoformat(),
                 'updated_at': get_current_utc_time().isoformat()
             }
 
-            # For content that uses is_active, set to inactive
-            if table_name in ['courses', 'jobs', 'internships', 'blog_posts', 'users']:
-                update_data['is_active'] = False
-                if table_name in ['courses', 'jobs', 'internships', 'blog_posts']:
-                    update_data['is_featured'] = False
-
-            # For testimonials, also set is_active to False
-            if table_name == 'testimonials':
-                update_data['is_active'] = False
-
-            # For newsletter subscribers, set is_active to False
-            if table_name == 'newsletter_subscribers':
-                update_data['is_active'] = False
-
-            # For messages, just mark as deleted
-            if table_name == 'contact_messages':
-                update_data['is_deleted'] = True
+            # For content that has is_featured (courses, jobs, internships, blog), also set to False
+            if resource in ['courses', 'jobs', 'internships', 'blog']:
+                update_data['is_featured'] = False
 
             response = supabase_admin.table(table_name).update(update_data).eq('id', id).execute()
 
             if response.data:
-                logger.info(f"✅ Moved {resource} {id} to trash")
+                logger.info(f"✅ Moved {resource} {id} to trash and deactivated")
                 return jsonify({
                     'success': True,
-                    'message': f'{resource} moved to trash',
-                    'moved_to_trash': True
+                    'message': f'{resource} moved to trash and deactivated',
+                    'moved_to_trash': True,
+                    'deactivated': True
                 })
             else:
                 return jsonify({'error': f'Failed to delete {resource}'}), 500
         else:
             # For other tables, permanent delete
             response = supabase_admin.table(table_name).delete().eq('id', id).execute()
-
             if response.data:
                 return jsonify({'success': True, 'message': f'{resource} deleted successfully'})
             else:
@@ -8845,9 +8815,9 @@ def get_trash_items():
 @app.route('/api/admin/trash/restore/<string:content_type>/<string:content_id>', methods=['POST'])
 @admin_required
 def restore_trash_item(content_type, content_id):
-    """Restore a single item from trash"""
+    """Restore a single item from trash - keep current is_active state"""
     try:
-        # Map content_type to table name - INCLUDING ALL TYPES
+        # Map content_type to table name
         table_map = {
             'course': 'courses',
             'job': 'jobs',
@@ -8871,34 +8841,28 @@ def restore_trash_item(content_type, content_id):
         if not item.data:
             return jsonify({'success': False, 'error': 'Item not found in trash'}), 404
 
-        # Prepare restore data
+        current_item = item.data[0]
+        current_active = current_item.get('is_active', False)
+        current_featured = current_item.get('is_featured', False)
+
+        # Prepare restore data - KEEP current is_active and is_featured values
         update_data = {
             'is_deleted': False,
             'deleted_at': None,
             'updated_at': get_current_utc_time().isoformat()
+            # DO NOT change is_active or is_featured - keep their current values
         }
-
-        # For content that uses is_active, set to active on restore
-        if content_type in ['course', 'job', 'internship', 'blog', 'testimonial']:
-            update_data['is_active'] = True
-            if content_type in ['course', 'job', 'internship', 'blog']:
-                update_data['is_featured'] = False
-
-        # For users, admins, and newsletter, set is_active to True on restore
-        if content_type in ['user', 'admin', 'newsletter']:
-            update_data['is_active'] = True
-
-        # For messages, just restore without changing status
-        if content_type == 'message':
-            update_data['is_deleted'] = False
 
         result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
 
         if result.data:
-            logger.info(f"✅ Restored {content_type} {content_id} from trash")
+            logger.info(f"✅ Restored {content_type} {content_id} from trash (is_active: {current_active}, is_featured: {current_featured})")
             return jsonify({
                 'success': True,
-                'message': f'{content_type.title()} restored successfully'
+                'message': f'{content_type.title()} restored from trash',
+                'is_active': current_active,
+                'is_featured': current_featured,
+                'remains_inactive': not current_active
             })
         else:
             return jsonify({'success': False, 'error': 'Failed to restore item'}), 500
@@ -8911,7 +8875,7 @@ def restore_trash_item(content_type, content_id):
 @app.route('/api/admin/trash/bulk-restore', methods=['POST'])
 @admin_required
 def bulk_restore_trash_items():
-    """Bulk restore multiple items from trash"""
+    """Bulk restore multiple items from trash - keep current is_active state"""
     try:
         data = request.get_json()
         items = data.get('items', [])
@@ -8940,7 +8904,7 @@ def bulk_restore_trash_items():
         for item in items:
             content_type = item.get('content_type')
             content_id = item.get('content_id')
-            table_name = item.get('table_name')
+            table_name = item.get('table_name') or table_map.get(content_type)
 
             if not content_type or not content_id or not table_name:
                 results['failed'].append({
@@ -8951,33 +8915,36 @@ def bulk_restore_trash_items():
                 continue
 
             try:
-                # Prepare restore data
+                # Get current item state before restore
+                current_item = supabase_admin.table(table_name).select('is_active, is_featured').eq('id',
+                                                                                                    content_id).execute()
+                if not current_item.data:
+                    results['failed'].append({
+                        'content_type': content_type,
+                        'content_id': content_id,
+                        'reason': 'Item not found'
+                    })
+                    continue
+
+                current_active = current_item.data[0].get('is_active', False)
+                current_featured = current_item.data[0].get('is_featured', False)
+
+                # Prepare restore data - KEEP current is_active and is_featured
                 update_data = {
                     'is_deleted': False,
                     'deleted_at': None,
                     'updated_at': get_current_utc_time().isoformat()
+                    # DO NOT change is_active or is_featured
                 }
-
-                # For content that uses is_active, set to active on restore
-                if content_type in ['course', 'job', 'internship', 'blog', 'testimonial']:
-                    update_data['is_active'] = True
-                    if content_type in ['course', 'job', 'internship', 'blog']:
-                        update_data['is_featured'] = False
-
-                # For users, admins, and newsletter, set is_active to True on restore
-                if content_type in ['user', 'admin', 'newsletter']:
-                    update_data['is_active'] = True
-
-                # For messages, just restore without changing status
-                if content_type == 'message':
-                    update_data['is_deleted'] = False
 
                 result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
 
                 if result.data:
                     results['successful'].append({
                         'content_type': content_type,
-                        'content_id': content_id
+                        'content_id': content_id,
+                        'is_active': current_active,
+                        'is_featured': current_featured
                     })
                 else:
                     results['failed'].append({
@@ -8992,9 +8959,12 @@ def bulk_restore_trash_items():
                     'reason': str(e)
                 })
 
+        restored_count = len(results['successful'])
+        inactive_count = len([r for r in results['successful'] if not r.get('is_active', False)])
+
         return jsonify({
             'success': len(results['failed']) == 0,
-            'message': f"Restored {len(results['successful'])} items successfully",
+            'message': f"Restored {restored_count} items from trash ({inactive_count} remain inactive)",
             'results': results
         })
 

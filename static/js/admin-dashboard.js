@@ -1393,7 +1393,6 @@
             const row = document.createElement('tr');
             row.innerHTML = generateTableRowHTML(section, item, index);
             tableBody.appendChild(row);
-
             addRowEventListeners(section, item.id, row);
         });
 
@@ -2386,7 +2385,7 @@
                     selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
                 }
                 updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, selectedItems[section].length);  // Direct update
+                updateBulkButtonState(section, selectedItems[section].length);
             });
         }
 
@@ -2643,7 +2642,6 @@
         })
         .then(result => {
             if (result.success) {
-                // Show success message
                 const itemName = section.charAt(0).toUpperCase() + section.slice(1);
                 showNotification(`${itemName} moved to trash`, 'success');
 
@@ -2675,7 +2673,7 @@
                 if (selectedItems[section]) {
                     selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
                     updateSelectAllCheckbox(section);
-                    updateBulkActionButton(section);
+                    updateBulkButtonState(section, selectedItems[section].length);
                 }
             } else {
                 showNotification(result.message || `Failed to delete ${section}`, 'error');
@@ -4678,10 +4676,9 @@
     // Update bulk action button state
     function updateExpiredBulkActionButton() {
         const selectedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
-        const bulkActionBtn = document.getElementById('applyExpiredContentBulkAction');
-
-        if (bulkActionBtn) {
-            bulkActionBtn.disabled = selectedCount === 0;
+        const button = document.getElementById('applyExpiredContentBulkAction');
+        if (button) {
+            button.disabled = selectedCount === 0;
         }
     }
 
@@ -5919,18 +5916,29 @@
 
         showLoading();
 
-        let endpoint = `/api/admin/${section}/bulk-delete`;
+        // Map section to API endpoint - using correct backend endpoints
+        let apiSection = section;
+        let endpoint = `/api/admin/${apiSection}/bulk-delete`;
 
-        // Special handling for blog
+        // Special handling for different resource types
         if (section === 'blog') {
+            apiSection = 'blog';
             endpoint = '/api/admin/blog/bulk-delete';
         } else if (section === 'newsletter') {
+            apiSection = 'newsletter';
             endpoint = '/api/admin/newsletter/bulk-delete';
         } else if (section === 'users') {
+            apiSection = 'users';
             endpoint = '/api/admin/users/bulk-delete';
         } else if (section === 'messages') {
+            apiSection = 'messages';
             endpoint = '/api/admin/messages/bulk-delete';
+        } else if (section === 'testimonials') {
+            apiSection = 'testimonials';
+            endpoint = '/api/admin/testimonials/bulk-delete';
         }
+
+        console.log(`Bulk deleting ${section} with IDs: ${ids} using endpoint: ${endpoint}`);
 
         fetch(endpoint, {
             method: 'POST',
@@ -5951,19 +5959,39 @@
         })
         .then(result => {
             if (result.success) {
-                showNotification(`${ids.length} ${section} moved to trash`, 'success');
+                const message = result.moved_to_trash !== false ?
+                    `${ids.length} ${section} moved to trash` :
+                    `${ids.length} ${section} deleted successfully`;
+                showNotification(message, 'success');
 
                 // Clear selection
-                selectedItems[section] = [];
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
+                }
                 updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, 0);  // Direct update after clearing
+                updateBulkButtonState(section, 0);
 
-                // Reload the section
-                loadSectionData(section, currentPage[section]);
+                // Reload the current section to reflect changes
+                if (section === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (section === 'admins') {
+                    if (window.adminManager) {
+                        window.adminManager.loadAdmins();
+                    }
+                } else {
+                    loadSectionData(section, currentPage[section]);
+                }
 
-                // Update dashboard stats
+                // Update dashboard stats (including trash count)
                 loadDashboardStats();
                 loadTrashStats(true);
+
+                // If we're in the trash section, refresh it
+                if (currentSection === 'trash') {
+                    loadTrashItems(currentTrashPage);
+                }
             } else {
                 showNotification(result.message || `Failed to delete ${section}`, 'error');
             }
@@ -5987,16 +6015,27 @@
 
         showLoading();
 
+        // Fix section names for API endpoints - matches backend
         let apiSection = section;
         let endpoint = `/api/admin/${apiSection}/bulk-status`;
 
+        // Special handling for blog posts (uses blog_posts table)
         if (section === 'blog') {
             apiSection = 'blog_posts';
             endpoint = '/api/admin/blog_posts/bulk-status';
-        } else if (section === 'newsletter') {
+        }
+        // Special handling for newsletter subscribers
+        else if (section === 'newsletter') {
             apiSection = 'newsletter_subscribers';
             endpoint = '/api/admin/newsletter_subscribers/bulk-status';
         }
+        // Special handling for users
+        else if (section === 'users') {
+            apiSection = 'users';
+            endpoint = '/api/admin/users/bulk-status';
+        }
+
+        console.log(`Bulk status update: ${section} -> ${apiSection}, isActive: ${isActive}`);
 
         fetch(endpoint, {
             method: 'POST',
@@ -6021,12 +6060,24 @@
                 showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
 
                 // Clear selection
-                selectedItems[section] = [];
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
+                }
                 updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, 0);  // Direct update after clearing
+                updateBulkButtonState(section, 0);
 
                 // Reload the section data
-                loadSectionData(section, currentPage[section]);
+                if (section === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (section === 'admins') {
+                    if (window.adminManager) {
+                        window.adminManager.loadAdmins();
+                    }
+                } else {
+                    loadSectionData(section, currentPage[section]);
+                }
             } else {
                 showNotification(result.message || `Failed to update ${section} status`, 'error');
             }
@@ -6050,6 +6101,8 @@
 
         showLoading();
 
+        console.log(`Bulk updating ${section} status to ${status} for IDs:`, ids);
+
         fetch(`/api/admin/${section}/bulk-status`, {
             method: 'POST',
             credentials: 'include',
@@ -6067,8 +6120,11 @@
         .then(result => {
             if (result.success) {
                 showNotification(`${ids.length} ${section} status updated to ${status} successfully`, 'success');
-                selectedItems[section] = [];
-                updateBulkButtonState(section, 0);  // Direct update after clearing
+                // Clear selection and reload data
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
+                }
+                updateBulkButtonState(section, 0);
                 loadSectionData(section, currentPage[section]);
             } else {
                 showNotification(result.message || `Failed to update ${section} status`, 'error');
@@ -7431,10 +7487,9 @@
     // Update trash bulk action button state
     function updateTrashBulkActionButton() {
         const selectedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
-        const bulkActionBtn = document.getElementById('applyTrashBulkAction');
-
-        if (bulkActionBtn) {
-            bulkActionBtn.disabled = selectedCount === 0;
+        const button = document.getElementById('applyTrashBulkAction');
+        if (button) {
+            button.disabled = selectedCount === 0;
         }
     }
 
@@ -7819,7 +7874,7 @@
     // Restore single item from trash
     function restoreSingleTrashItem(contentType, contentId, tableName) {
         showConfirmation('restore',
-            `Restore this ${contentType} from trash? It will be restored with active status.`,
+            `Restore this ${contentType} from trash? It will remain in its current state (${getStateDescription(contentType)}).`,
             () => {
                 showLoading();
 
@@ -7843,18 +7898,19 @@
                 })
                 .then(result => {
                     if (result.success) {
-                        let displayName = contentType;
-                        if (contentType === 'course') displayName = 'Course';
-                        else if (contentType === 'job') displayName = 'Job';
-                        else if (contentType === 'internship') displayName = 'Internship';
-                        else if (contentType === 'blog') displayName = 'Blog Post';
-                        else if (contentType === 'testimonial') displayName = 'Testimonial';
-                        else if (contentType === 'user') displayName = 'User';
-                        else if (contentType === 'message') displayName = 'Message';
-                        else if (contentType === 'newsletter') displayName = 'Newsletter Subscriber';
-                        else if (contentType === 'admin') displayName = 'Admin';
+                        let displayName = getDisplayName(contentType);
 
-                        showNotification(`${displayName} restored successfully`, 'success');
+                        let statusMessage = '';
+                        if (result.is_active !== undefined) {
+                            statusMessage = result.is_active
+                                ? ' (remains active)'
+                                : ' (remains inactive)';
+                        }
+                        if (result.is_featured !== undefined && result.is_featured) {
+                            statusMessage += ' (featured status removed)';
+                        }
+
+                        showNotification(`${displayName} restored from trash${statusMessage}`, 'success');
 
                         // Remove the item from UI
                         const row = document.querySelector(`#trashTableBody tr .restore-item[data-id="${contentId}"]`)?.closest('tr');
@@ -7866,16 +7922,15 @@
                         const tableBody = document.getElementById('trashTableBody');
                         if (tableBody && tableBody.children.length === 0) {
                             tableBody.innerHTML = `
-                                发展
+                                <tr>
                                     <td colspan="8" style="text-align: center; padding: 40px;">
                                         <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
                                         <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
                                         <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
-                                    发展
-                                </table>
+                                     </td>
+                                 </tr>
                             `;
 
-                            // Disable select all
                             const selectAll = document.getElementById('selectAllTrash');
                             if (selectAll) {
                                 selectAll.checked = false;
@@ -7909,6 +7964,31 @@
                 });
             }
         );
+    }
+
+    // Helper function to get display name
+    function getDisplayName(contentType) {
+        const names = {
+            'course': 'Course',
+            'job': 'Job',
+            'internship': 'Internship',
+            'blog': 'Blog Post',
+            'testimonial': 'Testimonial',
+            'user': 'User',
+            'message': 'Message',
+            'newsletter': 'Newsletter Subscriber',
+            'admin': 'Admin'
+        };
+        return names[contentType] || contentType;
+    }
+
+    // Helper function to get state description
+    function getStateDescription(contentType) {
+        const hasFeatured = ['course', 'job', 'internship', 'blog'].includes(contentType);
+        if (hasFeatured) {
+            return 'inactive state (featured status will be removed)';
+        }
+        return 'inactive state';
     }
 
     // "Permanently delete" from trash - mark as hidden in database
@@ -8202,7 +8282,7 @@
         })
         .then(result => {
             if (result.success) {
-                showNotification(result.message || `Restored ${items.length} items successfully`, 'success');
+                showNotification(result.message || `Restored ${items.length} items from trash (all remain inactive)`, 'success');
 
                 // Remove restored items from UI
                 items.forEach(item => {
@@ -8214,16 +8294,15 @@
                 const tableBody = document.getElementById('trashTableBody');
                 if (tableBody && tableBody.children.length === 0) {
                     tableBody.innerHTML = `
-                        <tr>
+                         <tr>
                             <td colspan="8" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
                                 <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
                                 <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
-                            </td>
-                        </tr>
+                             </td>
+                         </tr>
                     `;
 
-                    // Disable select all
                     const selectAll = document.getElementById('selectAllTrash');
                     if (selectAll) {
                         selectAll.checked = false;

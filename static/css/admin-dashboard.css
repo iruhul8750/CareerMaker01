@@ -1376,6 +1376,50 @@
       font-family: inherit;
     }
 
+    /* Bulk Action Button Styling */
+    .bulk-actions .btn-outline {
+        transition: all 0.3s ease;
+    }
+
+    /* Active state when button is enabled (not disabled) */
+    .bulk-actions .btn-outline:not(:disabled) {
+        background: var(--primary, #4a6cf7);
+        color: white;
+        border-color: var(--primary, #4a6cf7);
+    }
+
+    /* Hover effect for active button */
+    .bulk-actions .btn-outline:not(:disabled):hover {
+        background: var(--primary-dark, #3a5ce5);
+        border-color: var(--primary-dark, #3a5ce5);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3);
+    }
+
+    /* Disabled state */
+    .bulk-actions .btn-outline:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: var(--bg-secondary, #f0f0f0);
+        color: var(--text-muted, #6c757d);
+        border-color: var(--border-color, #dee2e6);
+    }
+    /* Dark Mode Support */
+    .dark-mode .bulk-actions .btn-outline:not(:disabled) {
+        background: var(--primary, #4a6cf7);
+        color: white;
+    }
+
+    .dark-mode .bulk-actions .btn-outline:not(:disabled):hover {
+        background: var(--primary-dark, #3a5ce5);
+    }
+
+    .dark-mode .bulk-actions .btn-outline:disabled {
+        background: var(--bg-secondary, #2d2d2d);
+        color: var(--text-muted, #8e8e8e);
+        border-color: var(--border-color, #404040);
+    }
+
     .pagination {
       display: flex;
       align-items: center;
