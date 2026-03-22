@@ -8875,7 +8875,7 @@ def restore_trash_item(content_type, content_id):
 @app.route('/api/admin/trash/bulk-restore', methods=['POST'])
 @admin_required
 def bulk_restore_trash_items():
-    """Bulk restore multiple items from trash - keep current is_active state"""
+    """Bulk restore multiple items from trash"""
     try:
         data = request.get_json()
         items = data.get('items', [])
@@ -8918,6 +8918,7 @@ def bulk_restore_trash_items():
                 # Get current item state before restore
                 current_item = supabase_admin.table(table_name).select('is_active, is_featured').eq('id',
                                                                                                     content_id).execute()
+
                 if not current_item.data:
                     results['failed'].append({
                         'content_type': content_type,
@@ -8926,15 +8927,11 @@ def bulk_restore_trash_items():
                     })
                     continue
 
-                current_active = current_item.data[0].get('is_active', False)
-                current_featured = current_item.data[0].get('is_featured', False)
-
-                # Prepare restore data - KEEP current is_active and is_featured
+                # Restore the item (just set is_deleted to False, keep is_active as is)
                 update_data = {
                     'is_deleted': False,
                     'deleted_at': None,
                     'updated_at': get_current_utc_time().isoformat()
-                    # DO NOT change is_active or is_featured
                 }
 
                 result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
@@ -8943,16 +8940,17 @@ def bulk_restore_trash_items():
                     results['successful'].append({
                         'content_type': content_type,
                         'content_id': content_id,
-                        'is_active': current_active,
-                        'is_featured': current_featured
+                        'is_active': current_item.data[0].get('is_active', False)
                     })
                 else:
                     results['failed'].append({
                         'content_type': content_type,
                         'content_id': content_id,
-                        'reason': 'Update failed - no data returned'
+                        'reason': 'Update failed'
                     })
+
             except Exception as e:
+                logger.error(f"Error restoring {content_type} {content_id}: {str(e)}")
                 results['failed'].append({
                     'content_type': content_type,
                     'content_id': content_id,
@@ -8960,18 +8958,19 @@ def bulk_restore_trash_items():
                 })
 
         restored_count = len(results['successful'])
-        inactive_count = len([r for r in results['successful'] if not r.get('is_active', False)])
+        failed_count = len(results['failed'])
 
         return jsonify({
-            'success': len(results['failed']) == 0,
-            'message': f"Restored {restored_count} items from trash ({inactive_count} remain inactive)",
+            'success': True,
+            'message': f'Restored {restored_count} items from trash',
+            'restored_count': restored_count,
+            'failed_count': failed_count,
             'results': results
         })
 
     except Exception as e:
         logger.error(f"Error bulk restoring trash items: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @app.route('/api/admin/trash/empty', methods=['POST'])
 @admin_required

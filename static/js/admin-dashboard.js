@@ -5758,14 +5758,45 @@
                 }
 
                 if (section === 'trash') {
+                    const actionSelect = document.getElementById('trashBulkAction');
+                    const action = actionSelect ? actionSelect.value : '';
+
+                    if (!action) {
+                        showNotification('Please select a bulk action first', 'warning');
+                        return;
+                    }
+
+                    // Get selected items directly from checkboxes
+                    const selectedItemsList = [];
+                    document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(checkbox => {
+                        selectedItemsList.push({
+                            content_type: checkbox.getAttribute('data-type'),
+                            content_id: checkbox.getAttribute('data-id'),
+                            table_name: checkbox.getAttribute('data-table')
+                        });
+                    });
+
+                    console.log('Trash bulk action - Selected items:', selectedItemsList); // DEBUG
+
+                    if (selectedItemsList.length === 0) {
+                        showNotification('Please select at least one item', 'warning');
+                        return;
+                    }
+
                     if (action === 'restore') {
-                        showConfirmation('bulk_action', `Restore ${selectedIds.length} item(s)?`, () => {
-                            bulkRestoreTrashItems(selectedIds);
-                        });
+                        console.log('Calling bulkRestoreTrashItems with:', selectedItemsList); // DEBUG
+                        showConfirmation('bulk_action',
+                            `Restore ${selectedItemsList.length} item(s) from trash?`,
+                            () => {
+                                console.log('Confirmation confirmed, calling bulkRestoreTrashItems'); // DEBUG
+                                bulkRestoreTrashItems(selectedItemsList);
+                            }
+                        );
                     } else if (action === 'delete') {
-                        showConfirmation('delete', `Delete ${selectedIds.length} item(s)?`, () => {
-                            bulkPermanentlyDeleteTrashItems(selectedIds);
-                        });
+                        showConfirmation('delete',
+                            `Permanently delete ${selectedItemsList.length} item(s)?`,
+                            () => bulkPermanentlyDeleteTrashItems(selectedItemsList)
+                        );
                     }
                     return;
                 }
@@ -8232,6 +8263,8 @@
             });
         });
 
+        console.log('Selected items for bulk action:', selectedItems); // DEBUG LOG
+
         if (selectedItems.length === 0) {
             showNotification('Please select at least one item', 'warning');
             return;
@@ -8241,7 +8274,7 @@
 
         if (action === 'restore') {
             showConfirmation('bulk_action',
-                `Restore ${selectedItems.length} item(s) from trash?`,
+                `Restore ${selectedItems.length} item(s) from trash? They will remain in their current state.`,
                 () => bulkRestoreTrashItems(selectedItems)
             );
         } else if (action === 'delete') {
@@ -8254,6 +8287,8 @@
 
     // Bulk restore trash items
     function bulkRestoreTrashItems(items) {
+        console.log('bulkRestoreTrashItems called with:', items);
+
         if (!items || items.length === 0) {
             showNotification('No items selected', 'warning');
             return;
@@ -8261,7 +8296,14 @@
 
         showLoading();
 
-        console.log(`Bulk restoring ${items.length} items:`, items);
+        // Format items for API
+        const apiItems = items.map(item => ({
+            content_type: item.content_type,
+            content_id: item.content_id,
+            table_name: item.table_name
+        }));
+
+        console.log('Sending to API:', apiItems);
 
         fetch('/api/admin/trash/bulk-restore', {
             method: 'POST',
@@ -8270,37 +8312,56 @@
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ items: items })
+            body: JSON.stringify({ items: apiItems })
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || err.message || 'Failed to restore items');
-                });
+        .then(async response => {
+            console.log('Response status:', response.status);
+            const text = await response.text();
+            console.log('Response text:', text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON:', e);
+                throw new Error('Invalid response from server');
             }
-            return response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || data.message || 'Failed to restore items');
+            }
+            return data;
         })
         .then(result => {
+            console.log('Bulk restore result:', result);
+
             if (result.success) {
-                showNotification(result.message || `Restored ${items.length} items from trash (all remain inactive)`, 'success');
+                const restoredCount = result.restored_count || items.length;
+                showNotification(`Successfully restored ${restoredCount} item(s) from trash`, 'success');
 
                 // Remove restored items from UI
                 items.forEach(item => {
-                    const row = document.querySelector(`#trashTableBody tr .restore-item[data-id="${item.content_id}"]`)?.closest('tr');
-                    if (row) row.remove();
+                    // Find and remove the row
+                    const checkbox = document.querySelector(`#trashTableBody .trash-item-checkbox[data-id="${item.content_id}"]`);
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        if (row) {
+                            row.remove();
+                        }
+                    }
                 });
 
                 // Check if table is empty
                 const tableBody = document.getElementById('trashTableBody');
                 if (tableBody && tableBody.children.length === 0) {
                     tableBody.innerHTML = `
-                         <tr>
+                        <tr>
                             <td colspan="8" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
                                 <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
                                 <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
-                             </td>
-                         </tr>
+                            </td>
+                        </tr>
                     `;
 
                     const selectAll = document.getElementById('selectAllTrash');
@@ -8311,11 +8372,9 @@
                     }
                 }
 
-                // Update counts
+                // Update counts and clear selections
                 loadTrashStats(true);
                 loadDashboardStats();
-
-                // Clear selected items
                 selectedTrashItems = [];
                 updateTrashBulkActionButton();
                 updateSelectAllTrashCheckbox();
@@ -8327,7 +8386,7 @@
         })
         .catch(error => {
             console.error('Error bulk restoring items:', error);
-            showNotification(error.message || 'Failed to restore items', 'error');
+            showNotification(error.message || 'Failed to restore items. Please try again.', 'error');
         })
         .finally(() => {
             hideLoading();
