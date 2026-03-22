@@ -594,7 +594,7 @@
                 const expiredTableBody = document.getElementById('expiredContentTableBody');
                 if (expiredTableBody) {
                     expiredTableBody.innerHTML = `
-                        发展
+                        <tr>
                             <td colspan="9" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading expired content...</p>
@@ -634,7 +634,7 @@
                 if (tableBody) {
                     const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
                     tableBody.innerHTML = `
-                        发展
+                        <tr>
                             <td colspan="${colSpan}" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading ${sectionName.toLowerCase()}...</p>
