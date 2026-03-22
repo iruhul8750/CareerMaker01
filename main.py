@@ -5881,14 +5881,18 @@ def get_admin_resources(resource):
         if resource == 'internships' and type_filter:
             query = query.eq('type', type_filter)
 
-        # FIXED: Blog category filter - handle array column
+        #  Blog category filter - handle array column
         if resource == 'blog' and category_filter:
             # For PostgreSQL array column, use the contains operator @>
             # This checks if the array contains the specified value
             query = query.contains('categories', [category_filter])
 
-        if resource == 'users' and role_filter:
-            query = query.eq('role', role_filter)
+        # Users section uses status filter (active/inactive)
+        if resource == 'users' and status_filter:
+            if status_filter == 'active':
+                query = query.eq('is_active', True)
+            elif status_filter == 'inactive':
+                query = query.eq('is_active', False)
 
         if resource == 'messages' and status_filter:
             query = query.eq('status', status_filter)
@@ -8454,42 +8458,6 @@ def update_admin(id):
         return jsonify({'success': False, 'message': 'Failed to update profile'}), 500
 
 
-@app.route('/api/admin/admins/<string:id>', methods=['DELETE'])
-@admin_required
-def delete_admin(id):
-    """Delete admin (soft delete)"""
-    try:
-        # Check if trying to delete self
-        current_admin_id = session.get('admin_id')
-        if str(current_admin_id) == str(id):
-            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
-
-        # Check if admin exists
-        existing = supabase_admin.table('admins').select('*').eq('id', id).execute()
-        if not existing.data:
-            return jsonify({'success': False, 'message': 'Admin not found'}), 404
-
-        # Soft delete
-        update_data = {
-            'is_deleted': True,
-            'is_active': False,
-            'deleted_at': get_current_utc_time().isoformat(),
-            'updated_at': get_current_utc_time().isoformat()
-        }
-
-        response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
-
-        if response.data:
-            logger.info(f"✅ Admin {id} soft deleted")
-            return jsonify({'success': True, 'message': 'Admin deleted successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
-
-    except Exception as e:
-        logger.error(f"❌ Error deleting admin: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
-
-
 @app.route('/api/admin/admins/bulk-status', methods=['POST'])
 @admin_required
 def bulk_update_admin_status():
@@ -8534,10 +8502,49 @@ def bulk_update_admin_status():
         return jsonify({'success': False, 'message': 'Failed to update admins'}), 500
 
 
+@app.route('/api/admin/admins/<string:id>', methods=['DELETE'])
+@admin_required
+def delete_admin(id):
+    try:
+        # Check if trying to delete self
+        current_admin_id = session.get('admin_id')
+        if str(current_admin_id) == str(id):
+            return jsonify({'success': False, 'message': 'You cannot delete your own account'}), 400
+
+        # Check if admin exists
+        existing = supabase_admin.table('admins').select('*').eq('id', id).execute()
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        # Soft delete - move to trash
+        update_data = {
+            'is_deleted': True,
+            'is_active': False,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
+
+        if response.data:
+            logger.info(f"✅ Admin {id} moved to trash")
+            return jsonify({
+                'success': True,
+                'message': 'Admin moved to trash',
+                'moved_to_trash': True
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting admin: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to delete admin'}), 500
+
+
 @app.route('/api/admin/admins/bulk-delete', methods=['POST'])
 @admin_required
 def bulk_delete_admins():
-    """Bulk delete admins"""
+    """Bulk delete admins (soft delete - move to trash)"""
     try:
         data = request.get_json()
         ids = data.get('ids', [])
@@ -8552,7 +8559,7 @@ def bulk_delete_admins():
             if not ids:
                 return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
 
-        # Soft delete
+        # Soft delete - move to trash
         update_data = {
             'is_deleted': True,
             'is_active': False,
@@ -8563,16 +8570,17 @@ def bulk_delete_admins():
         response = supabase_admin.table('admins').update(update_data).in_('id', ids).execute()
         deleted_count = len(response.data) if response.data else 0
 
-        logger.info(f"✅ Bulk deleted {deleted_count} admins")
+        logger.info(f"✅ Bulk moved {deleted_count} admins to trash")
 
         return jsonify({
             'success': True,
-            'message': f'{deleted_count} admin(s) deleted successfully',
-            'deleted_count': deleted_count
+            'message': f'{deleted_count} admin(s) moved to trash',
+            'deleted_count': deleted_count,
+            'moved_to_trash': True
         })
 
     except Exception as e:
-        logger.error(f"❌ Error bulk deleting admins: {str(e)}", exc_info=True)
+        logger.error(f"Error bulk deleting admins: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': 'Failed to delete admins'}), 500
 
 # ===== TRASH MANAGEMENT ROUTES =====
@@ -8591,6 +8599,7 @@ def trash_stats():
             'users': 0,
             'messages': 0,
             'newsletter': 0,
+            'admins': 0,  # Added admins
             'total': 0
         }
 
@@ -8678,9 +8687,20 @@ def trash_stats():
         except Exception as e:
             logger.warning(f"Error counting deleted newsletter subscribers: {str(e)}")
 
+        # Add admins count
+        try:
+            admins = supabase_admin.table('admins') \
+                .select('id', count='exact') \
+                .eq('is_deleted', True) \
+                .eq('hidden_from_trash', False) \
+                .execute()
+            stats['admins'] = admins.count or 0
+        except Exception as e:
+            logger.warning(f"Error counting deleted admins: {str(e)}")
+
         stats['total'] = (stats['courses'] + stats['jobs'] + stats['internships'] +
                           stats['blog_posts'] + stats['testimonials'] + stats['users'] +
-                          stats['messages'] + stats['newsletter'])
+                          stats['messages'] + stats['newsletter'] + stats['admins'])
 
         return jsonify({
             'success': True,
@@ -8704,7 +8724,7 @@ def get_trash_items():
 
         all_trash_items = []
 
-        # Get trash items from each table - ADDED users and messages
+        # Get trash items from each table - INCLUDING admins
         tables = [
             ('courses', 'course', ['title', 'company']),
             ('jobs', 'job', ['title', 'company']),
@@ -8713,18 +8733,21 @@ def get_trash_items():
             ('testimonials', 'testimonial', ['content', 'username']),
             ('users', 'user', ['username', 'email']),
             ('contact_messages', 'message', ['subject', 'email', 'name']),
-            ('newsletter_subscribers', 'newsletter', ['email'])
+            ('newsletter_subscribers', 'newsletter', ['email']),
+            ('admins', 'admin', ['username', 'email', 'full_name'])
         ]
 
         for table, type_name, search_fields in tables:
             # Skip if type filter is specified and doesn't match
             if content_type != 'all' and content_type != '':
-                # Map type filter to table names
+                # Map content_type to type_name
                 if content_type == 'users' and type_name != 'user':
                     continue
                 if content_type == 'messages' and type_name != 'message':
                     continue
                 if content_type == 'newsletter' and type_name != 'newsletter':
+                    continue
+                if content_type == 'admins' and type_name != 'admin':
                     continue
                 if content_type == 'courses' and type_name != 'course':
                     continue
@@ -8751,6 +8774,9 @@ def get_trash_items():
                         query = query.or_(f"subject.ilike.%{search}%,email.ilike.%{search}%,name.ilike.%{search}%")
                     elif table == 'users':
                         query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%")
+                    elif table == 'admins':
+                        query = query.or_(
+                            f"username.ilike.%{search}%,email.ilike.%{search}%,full_name.ilike.%{search}%")
                     elif table == 'testimonials':
                         query = query.or_(f"content.ilike.%{search}%,username.ilike.%{search}%")
                     elif table == 'blog_posts':
@@ -8770,6 +8796,9 @@ def get_trash_items():
                         subtitle = item.get('email', 'Unknown')
                     elif table == 'users':
                         title = item.get('username', 'Unknown')
+                        subtitle = item.get('email', 'Unknown')
+                    elif table == 'admins':
+                        title = item.get('full_name') or item.get('username', 'Unknown')
                         subtitle = item.get('email', 'Unknown')
                     elif table == 'testimonials':
                         title = item.get('username', 'Anonymous')[:50]
@@ -8818,16 +8847,21 @@ def get_trash_items():
 def restore_trash_item(content_type, content_id):
     """Restore a single item from trash"""
     try:
+        # Map content_type to table name - INCLUDING ALL TYPES
         table_map = {
             'course': 'courses',
             'job': 'jobs',
             'internship': 'internships',
             'blog': 'blog_posts',
-            'testimonial': 'testimonials'
+            'testimonial': 'testimonials',
+            'user': 'users',
+            'message': 'contact_messages',
+            'newsletter': 'newsletter_subscribers',
+            'admin': 'admins'
         }
 
         if content_type not in table_map:
-            return jsonify({'success': False, 'error': 'Invalid content type'}), 400
+            return jsonify({'success': False, 'error': f'Invalid content type: {content_type}'}), 400
 
         table_name = table_map[content_type]
 
@@ -8837,7 +8871,7 @@ def restore_trash_item(content_type, content_id):
         if not item.data:
             return jsonify({'success': False, 'error': 'Item not found in trash'}), 404
 
-        # Restore the item
+        # Prepare restore data
         update_data = {
             'is_deleted': False,
             'deleted_at': None,
@@ -8845,9 +8879,18 @@ def restore_trash_item(content_type, content_id):
         }
 
         # For content that uses is_active, set to active on restore
-        if content_type in ['course', 'job', 'internship', 'blog']:
+        if content_type in ['course', 'job', 'internship', 'blog', 'testimonial']:
             update_data['is_active'] = True
-            update_data['is_featured'] = False  # Not featured by default on restore
+            if content_type in ['course', 'job', 'internship', 'blog']:
+                update_data['is_featured'] = False
+
+        # For users, admins, and newsletter, set is_active to True on restore
+        if content_type in ['user', 'admin', 'newsletter']:
+            update_data['is_active'] = True
+
+        # For messages, just restore without changing status
+        if content_type == 'message':
+            update_data['is_deleted'] = False
 
         result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
 
@@ -8861,7 +8904,7 @@ def restore_trash_item(content_type, content_id):
             return jsonify({'success': False, 'error': 'Failed to restore item'}), 500
 
     except Exception as e:
-        logger.error(f"Error restoring trash item: {str(e)}")
+        logger.error(f"Error restoring trash item: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -8875,6 +8918,19 @@ def bulk_restore_trash_items():
 
         if not items:
             return jsonify({'success': False, 'error': 'No items selected'}), 400
+
+        # Map content_type to table name
+        table_map = {
+            'course': 'courses',
+            'job': 'jobs',
+            'internship': 'internships',
+            'blog': 'blog_posts',
+            'testimonial': 'testimonials',
+            'user': 'users',
+            'message': 'contact_messages',
+            'newsletter': 'newsletter_subscribers',
+            'admin': 'admins'
+        }
 
         results = {
             'successful': [],
@@ -8895,15 +8951,26 @@ def bulk_restore_trash_items():
                 continue
 
             try:
+                # Prepare restore data
                 update_data = {
                     'is_deleted': False,
                     'deleted_at': None,
                     'updated_at': get_current_utc_time().isoformat()
                 }
 
-                if content_type in ['course', 'job', 'internship', 'blog']:
+                # For content that uses is_active, set to active on restore
+                if content_type in ['course', 'job', 'internship', 'blog', 'testimonial']:
                     update_data['is_active'] = True
-                    update_data['is_featured'] = False
+                    if content_type in ['course', 'job', 'internship', 'blog']:
+                        update_data['is_featured'] = False
+
+                # For users, admins, and newsletter, set is_active to True on restore
+                if content_type in ['user', 'admin', 'newsletter']:
+                    update_data['is_active'] = True
+
+                # For messages, just restore without changing status
+                if content_type == 'message':
+                    update_data['is_deleted'] = False
 
                 result = supabase_admin.table(table_name).update(update_data).eq('id', content_id).execute()
 
@@ -8916,7 +8983,7 @@ def bulk_restore_trash_items():
                     results['failed'].append({
                         'content_type': content_type,
                         'content_id': content_id,
-                        'reason': 'Update failed'
+                        'reason': 'Update failed - no data returned'
                     })
             except Exception as e:
                 results['failed'].append({
@@ -8932,7 +8999,7 @@ def bulk_restore_trash_items():
         })
 
     except Exception as e:
-        logger.error(f"Error bulk restoring trash items: {str(e)}")
+        logger.error(f"Error bulk restoring trash items: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

@@ -6499,6 +6499,19 @@
         color: #60a5fa;
     }
 
+    /* =========================
+       ADMIN (Crimson - Authority / Privileged)
+    ========================= */
+    #trash .content-type-badge.admin {
+        background: rgba(220, 38, 38, 0.15); /* red-600 */
+        color: #dc2626;
+    }
+
+    .dark-mode #trash .content-type-badge.admin {
+        background: rgba(220, 38, 38, 0.2);
+        color: #f87171;
+    }
+
 
     /* =========================
        MESSAGES (Orange)

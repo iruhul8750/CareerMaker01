@@ -576,8 +576,8 @@
                 }
                 const trashTableBody = document.getElementById('trashTableBody');
                 if (trashTableBody) {
-                    trashTableBody.innerHTML = `
-                        发展
+                    tableBody.innerHTML = `
+                        <tr>
                             <td colspan="8" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
                                 <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
@@ -5917,7 +5917,6 @@
 
         // DROP DOWN FILTER FUNCTIONALITY
         document.querySelectorAll('.filter-select').forEach(select => {
-            // Remove existing listeners by cloning
             const newSelect = select.cloneNode(true);
             select.parentNode.replaceChild(newSelect, select);
 
@@ -6000,9 +5999,10 @@
                 break;
 
             case 'users':
-                const userRoleFilter = document.getElementById('userRoleFilter');
-                if (userRoleFilter && userRoleFilter.value) {
-                    filters.role = userRoleFilter.value;
+                // Updated: Use status filter instead of role filter
+                const userStatusFilter = document.getElementById('userStatusFilter');
+                if (userStatusFilter && userStatusFilter.value) {
+                    filters.status = userStatusFilter.value;
                 }
                 break;
 
@@ -6773,6 +6773,8 @@
         if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
         if (filterValue && filterValue !== 'all') url += `&type=${encodeURIComponent(filterValue)}`;
 
+        console.log(`📡 Fetching from: ${url}`);
+
         return fetch(url, {
             credentials: 'include',
             headers: {
@@ -6890,7 +6892,6 @@
                 </tr>
             `;
 
-            // Reset select all and selected count
             const selectAll = document.getElementById('selectAllTrash');
             if (selectAll) {
                 selectAll.checked = false;
@@ -6911,7 +6912,6 @@
             return;
         }
 
-        // Enable select all
         const selectAll = document.getElementById('selectAllTrash');
         if (selectAll) {
             selectAll.disabled = false;
@@ -6929,7 +6929,8 @@
                 'testimonial': 'fa-comment',
                 'user': 'fa-user',
                 'message': 'fa-envelope',
-                'newsletter': 'fa-newspaper'
+                'newsletter': 'fa-newspaper',
+                'admin': 'fa-user-shield'
             };
 
             const icon = iconMap[item.content_type] || 'fa-file';
@@ -6943,7 +6944,8 @@
                 'testimonial': 'Testimonial',
                 'user': 'User',
                 'message': 'Message',
-                'newsletter': 'Newsletter Subscriber'
+                'newsletter': 'Newsletter Subscriber',
+                'admin': 'Admin'
             }[item.content_type] || item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1);
 
             // Format dates with safe fallbacks
@@ -6996,10 +6998,7 @@
             `;
         }).join('');
 
-        // Add event listeners to the new rows
         addTrashRowEventListeners();
-
-        // Update UI state
         updateSelectedTrashItems();
         updateTrashBulkActionButton();
         updateSelectAllTrashCheckbox();
@@ -7584,7 +7583,7 @@
     // Restore single item from trash
     function restoreSingleTrashItem(contentType, contentId, tableName) {
         showConfirmation('restore',
-            `Restore this ${contentType} from trash? It will be restored with active status but not featured.`,
+            `Restore this ${contentType} from trash? It will be restored with active status.`,
             () => {
                 showLoading();
 
@@ -7608,7 +7607,18 @@
                 })
                 .then(result => {
                     if (result.success) {
-                        showNotification(`${contentType.charAt(0).toUpperCase() + contentType.slice(1)} restored successfully`, 'success');
+                        let displayName = contentType;
+                        if (contentType === 'course') displayName = 'Course';
+                        else if (contentType === 'job') displayName = 'Job';
+                        else if (contentType === 'internship') displayName = 'Internship';
+                        else if (contentType === 'blog') displayName = 'Blog Post';
+                        else if (contentType === 'testimonial') displayName = 'Testimonial';
+                        else if (contentType === 'user') displayName = 'User';
+                        else if (contentType === 'message') displayName = 'Message';
+                        else if (contentType === 'newsletter') displayName = 'Newsletter Subscriber';
+                        else if (contentType === 'admin') displayName = 'Admin';
+
+                        showNotification(`${displayName} restored successfully`, 'success');
 
                         // Remove the item from UI
                         const row = document.querySelector(`#trashTableBody tr .restore-item[data-id="${contentId}"]`)?.closest('tr');
@@ -7620,13 +7630,13 @@
                         const tableBody = document.getElementById('trashTableBody');
                         if (tableBody && tableBody.children.length === 0) {
                             tableBody.innerHTML = `
-                                <tr>
+                                发展
                                     <td colspan="8" style="text-align: center; padding: 40px;">
                                         <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
                                         <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
                                         <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
-                                    </td>
-                                </tr>
+                                    发展
+                                </table>
                             `;
 
                             // Disable select all
