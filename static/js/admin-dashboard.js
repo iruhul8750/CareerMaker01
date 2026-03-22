@@ -1399,7 +1399,7 @@
 
         selectedItems[section] = [];
         updateSelectAllCheckbox(section);
-        updateBulkActionButton(section);
+        updateBulkButtonState(section, 0);
     }
 
     function generateTableRowHTML(section, item, index) {
@@ -2379,11 +2379,14 @@
             checkbox.addEventListener('change', (e) => {
                 e.stopPropagation();
                 if (checkbox.checked) {
-                    selectedItems[section].push(id);
+                    if (!selectedItems[section].includes(id)) {
+                        selectedItems[section].push(id);
+                    }
                 } else {
                     selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
                 }
                 updateSelectAllCheckbox(section);
+                updateBulkButtonState(section, selectedItems[section].length);  // Direct update
             });
         }
 
@@ -3798,54 +3801,52 @@
 
         performBulkAction() {
             const actionSelect = document.getElementById('testimonialBulkAction');
-            if (!actionSelect || !actionSelect.value) {
-                showNotification('Please select a bulk action first', 'warning');
+            const action = actionSelect ? actionSelect.value : '';
+
+            if (!action) {
+                this.showNotification('Please select a bulk action first', 'warning');
                 return;
             }
 
             if (this.selectedIds.length === 0) {
-                showNotification('Please select at least one testimonial', 'warning');
+                this.showNotification('Please select at least one testimonial', 'warning');
                 return;
             }
 
-            const action = actionSelect.value;
-
-            // Show confirmation based on action
             if (action === 'delete') {
-                showConfirmation('delete',
-                    `Are you sure you want to delete ${this.selectedIds.length} testimonial(s)? This action cannot be undone.`,
+                this.showConfirmation('delete',
+                    `Are you sure you want to delete ${this.selectedIds.length} testimonial(s)?`,
                     () => this.bulkDeleteTestimonials()
                 );
             } else if (action === 'activate' || action === 'deactivate') {
                 const isActive = action === 'activate';
                 const actionText = isActive ? 'activate' : 'deactivate';
-                showConfirmation('bulk_action',
+                this.showConfirmation('bulk_action',
                     `Are you sure you want to ${actionText} ${this.selectedIds.length} testimonial(s)?`,
                     () => this.bulkUpdateTestimonialStatus(isActive)
                 );
             }
         }
 
-        async bulkDeleteTestimonials() {
-            try {
-                showLoading();
+        bulkDeleteTestimonials() {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                showNotification('No testimonials selected', 'warning');
+                return;
+            }
 
-                const response = await fetch('/api/admin/testimonials/bulk-delete', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ ids: this.selectedIds })
-                });
+            showLoading();
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const result = await response.json();
-
+            fetch('/api/admin/testimonials/bulk-delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ids: this.selectedIds })
+            })
+            .then(response => response.json())
+            .then(result => {
                 if (result.success) {
                     showNotification(`${result.deleted_count || this.selectedIds.length} testimonial(s) moved to trash`, 'success');
                     this.selectedIds = [];
@@ -3854,17 +3855,24 @@
                     loadDashboardStats();
                     loadTrashStats(true);
                 } else {
-                    throw new Error(result.error || 'Failed to delete testimonials');
+                    showNotification(result.error || 'Failed to delete testimonials', 'error');
                 }
-            } catch (error) {
-                console.error('❌ Error bulk deleting testimonials:', error);
+            })
+            .catch(error => {
+                console.error('Error bulk deleting testimonials:', error);
                 showNotification('Failed to delete testimonials', 'error');
-            } finally {
+            })
+            .finally(() => {
                 hideLoading();
-            }
+            });
         }
 
-        async bulkUpdateTestimonialStatus(isActive) {
+         async bulkUpdateTestimonialStatus(isActive) {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                showNotification('No testimonials selected', 'warning');
+                return;
+            }
+
             try {
                 showLoading();
 
@@ -3891,6 +3899,7 @@
                     showNotification(`${result.updated_count || this.selectedIds.length} testimonial(s) ${action} successfully`, 'success');
                     this.selectedIds = [];
                     this.loadTestimonialsData(this.currentPage);
+                    this.updateBulkActionButton();
                 } else {
                     throw new Error(result.error || 'Failed to update testimonials');
                 }
@@ -5327,326 +5336,566 @@
         });
     }
 
-    // Find the setupBulkActions function and update the newsletter section
+    // ===== COMPREHENSIVE BULK ACTIONS HANDLER - SIMPLIFIED VERSION =====
     function setupBulkActions() {
-        // Select All functionality for each section
+        console.log('🔄 Setting up bulk actions...');
+
+        // Helper function to get selected IDs for any section
+        function getSelectedIds(section) {
+            if (section === 'testimonials') {
+                return window.testimonialManager ? window.testimonialManager.selectedIds : [];
+            }
+            if (section === 'admins') {
+                return window.adminManager ? window.adminManager.selectedAdmins : [];
+            }
+            if (section === 'expired-content') {
+                const selected = [];
+                document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(cb => {
+                    selected.push(cb.getAttribute('data-id'));
+                });
+                return selected;
+            }
+            if (section === 'trash') {
+                const selected = [];
+                document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(cb => {
+                    selected.push({
+                        id: cb.getAttribute('data-id'),
+                        type: cb.getAttribute('data-type'),
+                        table: cb.getAttribute('data-table')
+                    });
+                });
+                return selected;
+            }
+            return selectedItems[section] || [];
+        }
+
+        // Helper function to enable/disable bulk action button
+        function setBulkActionButtonState(section, selectedCount) {
+            let buttonId;
+
+            // Map section to button ID
+            if (section === 'testimonials') {
+                buttonId = 'applyTestimonialBulkAction';
+            } else if (section === 'admins') {
+                buttonId = 'applyAdminBulkAction';
+            } else if (section === 'expired-content') {
+                buttonId = 'applyExpiredContentBulkAction';
+            } else if (section === 'trash') {
+                buttonId = 'applyTrashBulkAction';
+            } else if (section === 'courses') {
+                buttonId = 'applyCourseBulkAction';
+            } else if (section === 'jobs') {
+                buttonId = 'applyJobBulkAction';
+            } else if (section === 'internships') {
+                buttonId = 'applyInternshipBulkAction';
+            } else if (section === 'blog') {
+                buttonId = 'applyBlogBulkAction';
+            } else if (section === 'users') {
+                buttonId = 'applyUserBulkAction';
+            } else if (section === 'messages') {
+                buttonId = 'applyMessageBulkAction';
+            } else if (section === 'newsletter') {
+                buttonId = 'applyNewsletterBulkAction';
+            }
+
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = selectedCount === 0;
+                console.log(`${section} bulk button ${selectedCount > 0 ? 'enabled' : 'disabled'} (${selectedCount} selected)`);
+            }
+        }
+
+        // Helper function to update select all checkbox state
+        function setSelectAllState(section, selectedCount, totalCount) {
+            let selectAllId;
+
+            // Map section to select all ID
+            if (section === 'testimonials') {
+                selectAllId = 'selectAllTestimonials';
+            } else if (section === 'admins') {
+                selectAllId = 'selectAllAdmins';
+            } else if (section === 'expired-content') {
+                selectAllId = 'selectAllExpired';
+            } else if (section === 'trash') {
+                selectAllId = 'selectAllTrash';
+            } else if (section === 'courses') {
+                selectAllId = 'selectAllCourses';
+            } else if (section === 'jobs') {
+                selectAllId = 'selectAllJobs';
+            } else if (section === 'internships') {
+                selectAllId = 'selectAllInternships';
+            } else if (section === 'blog') {
+                selectAllId = 'selectAllBlog';
+            } else if (section === 'users') {
+                selectAllId = 'selectAllUsers';
+            } else if (section === 'messages') {
+                selectAllId = 'selectAllMessages';
+            } else if (section === 'newsletter') {
+                selectAllId = 'selectAllNewsletter';
+            }
+
+            const selectAll = document.getElementById(selectAllId);
+            if (selectAll) {
+                selectAll.checked = totalCount > 0 && selectedCount === totalCount;
+                selectAll.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+            }
+        }
+
+        // ===== SELECT ALL CHECKBOXES =====
         document.querySelectorAll('thead input[type="checkbox"]').forEach(checkbox => {
-            // Remove existing listeners by cloning
             const newCheckbox = checkbox.cloneNode(true);
             checkbox.parentNode.replaceChild(newCheckbox, checkbox);
 
             newCheckbox.addEventListener('change', function() {
-                const sectionId = this.id.replace('selectAll', '');
-                if (!sectionId) return;
+                const sectionId = this.id.replace('selectAll', '').toLowerCase();
 
-                const sectionKey = sectionId.charAt(0).toLowerCase() + sectionId.slice(1);
-                const tableBody = document.getElementById(`${sectionKey}TableBody`);
+                // Map section IDs to proper section names
+                let section = sectionId;
+                if (sectionId === 'courses') section = 'courses';
+                else if (sectionId === 'jobs') section = 'jobs';
+                else if (sectionId === 'internships') section = 'internships';
+                else if (sectionId === 'blog') section = 'blog';
+                else if (sectionId === 'users') section = 'users';
+                else if (sectionId === 'messages') section = 'messages';
+                else if (sectionId === 'newsletter') section = 'newsletter';
+                else if (sectionId === 'testimonials') section = 'testimonials';
+                else if (sectionId === 'admins') section = 'admins';
+                else if (sectionId === 'expired') section = 'expired-content';
+                else if (sectionId === 'trash') section = 'trash';
 
+                const tableBody = document.getElementById(`${section}TableBody`);
                 if (!tableBody) return;
 
-                const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-
-                // Clear existing selections first
-                if (!this.checked) {
-                    selectedItems[sectionKey] = [];
+                // Get checkboxes based on section
+                let rowCheckboxes;
+                if (section === 'testimonials') {
+                    rowCheckboxes = tableBody.querySelectorAll('.testimonial-checkbox');
+                } else if (section === 'admins') {
+                    rowCheckboxes = tableBody.querySelectorAll('.admin-checkbox');
+                } else if (section === 'expired-content') {
+                    rowCheckboxes = tableBody.querySelectorAll('.expired-item-checkbox');
+                } else if (section === 'trash') {
+                    rowCheckboxes = tableBody.querySelectorAll('.trash-item-checkbox');
+                } else {
+                    rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
                 }
 
-                rowCheckboxes.forEach(cb => {
-                    cb.checked = this.checked;
-                    const id = cb.getAttribute('data-id');
+                const isChecked = this.checked;
 
-                    if (this.checked) {
-                        if (!selectedItems[sectionKey].includes(id)) {
-                            selectedItems[sectionKey].push(id);
+                // Update all checkboxes and selected items
+                rowCheckboxes.forEach(cb => {
+                    cb.checked = isChecked;
+                    const id = cb.getAttribute('data-id');
+                    const type = cb.getAttribute('data-type');
+
+                    if (isChecked) {
+                        // Add to selected arrays
+                        if (section === 'testimonials' && window.testimonialManager) {
+                            if (!window.testimonialManager.selectedIds.includes(id)) {
+                                window.testimonialManager.selectedIds.push(id);
+                            }
+                        } else if (section === 'admins' && window.adminManager) {
+                            if (!window.adminManager.selectedAdmins.includes(id)) {
+                                window.adminManager.selectedAdmins.push(id);
+                            }
+                        } else if (section === 'expired-content') {
+                            if (!selectedExpiredItems.find(item => item.content_id === id)) {
+                                selectedExpiredItems.push({ content_type: type, content_id: id });
+                            }
+                        } else if (section === 'trash') {
+                            if (!selectedTrashItems.find(item => item.content_id === id)) {
+                                selectedTrashItems.push({
+                                    content_type: type,
+                                    content_id: id,
+                                    table_name: cb.getAttribute('data-table')
+                                });
+                            }
+                        } else {
+                            if (!selectedItems[section]) selectedItems[section] = [];
+                            if (!selectedItems[section].includes(id)) {
+                                selectedItems[section].push(id);
+                            }
+                        }
+                    } else {
+                        // Remove from selected arrays
+                        if (section === 'testimonials' && window.testimonialManager) {
+                            window.testimonialManager.selectedIds = window.testimonialManager.selectedIds.filter(i => i !== id);
+                        } else if (section === 'admins' && window.adminManager) {
+                            window.adminManager.selectedAdmins = window.adminManager.selectedAdmins.filter(i => i !== id);
+                        } else if (section === 'expired-content') {
+                            selectedExpiredItems = selectedExpiredItems.filter(item => item.content_id !== id);
+                        } else if (section === 'trash') {
+                            selectedTrashItems = selectedTrashItems.filter(item => item.content_id !== id);
+                        } else {
+                            selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
                         }
                     }
                 });
 
-                updateSelectAllCheckbox(sectionKey);
-                updateBulkActionButton(sectionKey);
+                // Get final selected count
+                let selectedCount;
+                if (section === 'testimonials') {
+                    selectedCount = window.testimonialManager ? window.testimonialManager.selectedIds.length : 0;
+                } else if (section === 'admins') {
+                    selectedCount = window.adminManager ? window.adminManager.selectedAdmins.length : 0;
+                } else if (section === 'expired-content') {
+                    selectedCount = selectedExpiredItems.length;
+                } else if (section === 'trash') {
+                    selectedCount = selectedTrashItems.length;
+                } else {
+                    selectedCount = selectedItems[section] ? selectedItems[section].length : 0;
+                }
+
+                // Update bulk action button state
+                setBulkActionButtonState(section, selectedCount);
+
+                // Update select all checkbox (already handled by the checkbox itself)
+                if (section === 'testimonials' && window.testimonialManager) {
+                    const selectAll = document.getElementById('selectAllTestimonials');
+                    if (selectAll) {
+                        selectAll.checked = isChecked;
+                        selectAll.indeterminate = false;
+                    }
+                    window.testimonialManager.updateBulkActionButton();
+                } else if (section === 'admins' && window.adminManager) {
+                    window.adminManager.updateBulkActionButton();
+                }
             });
         });
 
-        // Individual row checkbox functionality
+        // ===== INDIVIDUAL CHECKBOX HANDLING =====
         document.addEventListener('change', function(e) {
+            // Handle testimonial checkboxes
+            if (e.target.classList.contains('testimonial-checkbox')) {
+                const checkbox = e.target;
+                const testimonialId = checkbox.getAttribute('data-id');
+
+                if (window.testimonialManager) {
+                    if (checkbox.checked) {
+                        if (!window.testimonialManager.selectedIds.includes(testimonialId)) {
+                            window.testimonialManager.selectedIds.push(testimonialId);
+                        }
+                    } else {
+                        window.testimonialManager.selectedIds = window.testimonialManager.selectedIds.filter(id => id !== testimonialId);
+                    }
+
+                    // Update bulk button
+                    window.testimonialManager.updateBulkActionButton();
+
+                    // Update select all checkbox
+                    const totalCheckboxes = document.querySelectorAll('#testimonialsTableBody .testimonial-checkbox').length;
+                    const checkedCount = window.testimonialManager.selectedIds.length;
+                    const selectAll = document.getElementById('selectAllTestimonials');
+                    if (selectAll) {
+                        selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                        selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+                    }
+                }
+                return;
+            }
+
+            // Handle admin checkboxes
+            if (e.target.classList.contains('admin-checkbox')) {
+                const checkbox = e.target;
+                const adminId = checkbox.getAttribute('data-id');
+
+                if (window.adminManager) {
+                    if (checkbox.checked) {
+                        if (!window.adminManager.selectedAdmins.includes(adminId)) {
+                            window.adminManager.selectedAdmins.push(adminId);
+                        }
+                    } else {
+                        window.adminManager.selectedAdmins = window.adminManager.selectedAdmins.filter(id => id !== adminId);
+                    }
+
+                    // Update bulk button and select all
+                    window.adminManager.updateBulkActionButton();
+                    window.adminManager.updateSelectAllCheckbox();
+                }
+                return;
+            }
+
+            // Handle expired content checkboxes
+            if (e.target.classList.contains('expired-item-checkbox')) {
+                updateSelectedExpiredItems();
+                const selectedCount = selectedExpiredItems.length;
+                setBulkActionButtonState('expired-content', selectedCount);
+                updateSelectAllExpiredCheckbox();
+                return;
+            }
+
+            // Handle trash checkboxes
+            if (e.target.classList.contains('trash-item-checkbox')) {
+                updateSelectedTrashItems();
+                const selectedCount = selectedTrashItems.length;
+                setBulkActionButtonState('trash', selectedCount);
+                updateSelectAllTrashCheckbox();
+                return;
+            }
+
+            // Handle regular row checkboxes (courses, jobs, internships, blog, users, messages, newsletter)
             if (e.target.classList.contains('row-checkbox')) {
                 const checkbox = e.target;
                 const row = checkbox.closest('tr');
-                const section = row.closest('.admin-section').id;
+                if (!row) return;
+
+                const section = row.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
                 const id = checkbox.getAttribute('data-id');
 
-                if (checkbox.checked) {
-                    if (!selectedItems[section].includes(id)) {
-                        selectedItems[section].push(id);
-                    }
-                } else {
-                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                // Initialize section array if not exists
+                if (!selectedItems[sectionId]) {
+                    selectedItems[sectionId] = [];
                 }
 
-                updateSelectAllCheckbox(section);
-                updateBulkActionButton(section);
+                if (checkbox.checked) {
+                    if (!selectedItems[sectionId].includes(id)) {
+                        selectedItems[sectionId].push(id);
+                    }
+                } else {
+                    selectedItems[sectionId] = selectedItems[sectionId].filter(itemId => itemId !== id);
+                }
+
+                const selectedCount = selectedItems[sectionId].length;
+
+                // Update bulk action button state
+                setBulkActionButtonState(sectionId, selectedCount);
+
+                // Update select all checkbox
+                const tableBody = document.getElementById(`${sectionId}TableBody`);
+                const totalCheckboxes = tableBody ? tableBody.querySelectorAll('.row-checkbox').length : 0;
+                setSelectAllState(sectionId, selectedCount, totalCheckboxes);
             }
         });
 
-        // Apply Bulk Actions
-        document.querySelectorAll('[id^="apply"][id$="BulkAction"]').forEach(button => {
-            // Remove existing listeners by cloning
+        // ===== BULK ACTION BUTTON HANDLERS =====
+        const bulkActionButtons = [
+            { btnId: 'applyCourseBulkAction', section: 'courses', actionSelectId: 'courseBulkAction' },
+            { btnId: 'applyJobBulkAction', section: 'jobs', actionSelectId: 'jobBulkAction' },
+            { btnId: 'applyInternshipBulkAction', section: 'internships', actionSelectId: 'internshipBulkAction' },
+            { btnId: 'applyBlogBulkAction', section: 'blog', actionSelectId: 'blogBulkAction' },
+            { btnId: 'applyUserBulkAction', section: 'users', actionSelectId: 'userBulkAction' },
+            { btnId: 'applyMessageBulkAction', section: 'messages', actionSelectId: 'messageBulkAction' },
+            { btnId: 'applyNewsletterBulkAction', section: 'newsletter', actionSelectId: 'newsletterBulkAction' },
+            { btnId: 'applyTestimonialBulkAction', section: 'testimonials', actionSelectId: 'testimonialBulkAction' },
+            { btnId: 'applyAdminBulkAction', section: 'admins', actionSelectId: 'adminBulkAction' },
+            { btnId: 'applyExpiredContentBulkAction', section: 'expired-content', actionSelectId: 'expiredContentBulkAction' },
+            { btnId: 'applyTrashBulkAction', section: 'trash', actionSelectId: 'trashBulkAction' }
+        ];
+
+        bulkActionButtons.forEach(({ btnId, section, actionSelectId }) => {
+            const button = document.getElementById(btnId);
+            if (!button) return;
+
             const newButton = button.cloneNode(true);
             button.parentNode.replaceChild(newButton, button);
 
-            newButton.addEventListener('click', function() {
-                const buttonId = this.id;
-                const section = buttonId.replace('apply', '').replace('BulkAction', '').toLowerCase();
-                const actionSelect = document.getElementById(`${section}BulkAction`);
-
-                if (!actionSelect) {
-                    console.error(`Bulk action select not found for section: ${section}`);
-                    return;
-                }
-
-                const action = actionSelect.value;
-
-                if (!action) {
-                    showNotification('Please select a bulk action first', 'warning');
-                    return;
-                }
-
-                if (selectedItems[section].length === 0) {
-                    showNotification('Please select at least one item', 'warning');
-                    return;
-                }
-
-                // Perform the bulk action based on type
-                switch(action) {
-                    case 'delete':
-                        showConfirmation('delete', `Are you sure you want to delete ${selectedItems[section].length} item(s)? This action cannot be undone.`, () => {
-                            performBulkDelete(section, selectedItems[section]);
-                        });
-                        break;
-                    case 'activate':
-                    case 'deactivate':
-                        showConfirmation('bulk_action', `Are you sure you want to ${action} ${selectedItems[section].length} item(s)?`, () => {
-                            performBulkStatusUpdate(section, selectedItems[section], action === 'activate');
-                        });
-                        break;
-                    case 'mark_read':
-                    case 'mark_unread':
-                    case 'mark_replied':
-                        showConfirmation('bulk_action', `Are you sure you want to ${action.replace('_', ' ')} ${selectedItems[section].length} message(s)?`, () => {
-                            performBulkMessageStatusUpdate(section, selectedItems[section], action.replace('mark_', ''));
-                        });
-                        break;
-                    default:
-                        showNotification('Unknown bulk action', 'error');
-                }
-            });
-        });
-    }
-
-    // function bulk actions
-    function setupBulkActionButtons() {
-        // Course bulk actions
-        document.getElementById('applyCourseBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('courseBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('courses', action);
-        });
-
-        // Job bulk actions
-        document.getElementById('applyJobBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('jobBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('jobs', action);
-        });
-
-        // Internship bulk actions
-        document.getElementById('applyInternshipBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('internshipBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('internships', action);
-        });
-
-        // Blog bulk actions
-        const applyBlogBtn = document.getElementById('applyBlogBulkAction');
-        if (applyBlogBtn) {
-            // Remove any existing listeners by cloning
-            const newBtn = applyBlogBtn.cloneNode(true);
-            applyBlogBtn.parentNode.replaceChild(newBtn, applyBlogBtn);
-
-            newBtn.addEventListener('click', function(e) {
+            newButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const actionSelect = document.getElementById('blogBulkAction');
-                if (!actionSelect) {
-                    console.error('Blog bulk action select not found');
-                    return;
-                }
-                const action = actionSelect.value;
+
+                const actionSelect = document.getElementById(actionSelectId);
+                const action = actionSelect ? actionSelect.value : '';
+
                 if (!action) {
                     showNotification('Please select a bulk action first', 'warning');
                     return;
                 }
-                console.log('Blog bulk action clicked:', action);
-                performBulkAction('blog', action);
-            });
-            console.log('✅ Blog bulk action button setup complete');
-        }
 
-        // User bulk actions
-        document.getElementById('applyUserBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('userBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('users', action);
-        });
+                // Get selected items
+                let selectedIds = getSelectedIds(section);
 
-        // Message bulk actions
-        document.getElementById('applyMessageBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('messageBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('messages', action);
-        });
+                if (section === 'expired-content') {
+                    selectedIds = selectedExpiredItems;
+                } else if (section === 'trash') {
+                    selectedIds = selectedTrashItems;
+                }
 
-        // Newsletter bulk actions
-        document.getElementById('applyNewsletterBulkAction')?.addEventListener('click', function() {
-            const action = document.getElementById('newsletterBulkAction').value;
-            if (!action) {
-                showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-            performBulkAction('newsletter', action);
-        });
-    }
-
-    // bulk action function
-    function performBulkAction(section, action) {
-        const selectedIds = selectedItems[section];
-
-        if (selectedIds.length === 0) {
-            showNotification('Please select at least one item', 'warning');
-            return;
-        }
-
-        const actionMessages = {
-            'activate': `activate ${selectedIds.length} ${section}`,
-            'deactivate': `deactivate ${selectedIds.length} ${section}`,
-            'delete': `delete ${selectedIds.length} ${section}`,
-            'mark_read': `mark ${selectedIds.length} messages as read`,
-            'mark_unread': `mark ${selectedIds.length} messages as unread`,
-            'mark_replied': `mark ${selectedIds.length} messages as replied`
-        };
-
-        const message = `Are you sure you want to ${actionMessages[action]}?`;
-
-        showConfirmation('bulk_action', message, () => {
-            showLoading();
-
-            let endpoint = '';
-            let method = 'POST';
-            let body = { ids: selectedIds };
-
-            // Fix API endpoints for different sections
-            switch(section) {
-                case 'courses':
-                case 'jobs':
-                case 'internships':
-                case 'users':
-                case 'messages':
-                case 'newsletter':
-                    if (action === 'activate' || action === 'deactivate') {
-                        endpoint = `/api/admin/${section}/bulk-status`;
-                        body.is_active = action === 'activate';
-                    } else if (action === 'delete') {
-                        endpoint = `/api/admin/${section}/bulk-delete`;
-                    }
-                    break;
-                case 'blog':
-                    // Blog needs special handling - use blog_posts for status, blog for delete
-                    if (action === 'activate' || action === 'deactivate') {
-                        endpoint = '/api/admin/blog_posts/bulk-status';
-                        body.is_active = action === 'activate';
-                        body.is_featured = action === 'activate'; // Blog posts also have featured
-                    } else if (action === 'delete') {
-                        endpoint = '/api/admin/blog/bulk-delete';
-                    }
-                    break;
-
-                case 'messages':
-                    if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_replied') {
-                        endpoint = '/api/admin/messages/bulk-status';
-                        body.status = action.replace('mark_', '');
-                    } else if (action === 'delete') {
-                        endpoint = '/api/admin/messages/bulk-delete';
-                    }
-                    break;
-
-                default:
-                    showNotification('Unknown section', 'error');
-                    hideLoading();
+                if (selectedIds.length === 0) {
+                    showNotification(`Please select at least one ${section} item`, 'warning');
                     return;
-            }
+                }
 
-            console.log(`Performing bulk action:`, { endpoint, method, body });
+                // Handle actions based on section (same as before)
+                if (section === 'testimonials') {
+                    if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} testimonial(s)?`, () => {
+                            window.testimonialManager.bulkDeleteTestimonials();
+                        });
+                    } else if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        showConfirmation('bulk_action', `${action} ${selectedIds.length} testimonial(s)?`, () => {
+                            window.testimonialManager.bulkUpdateTestimonialStatus(isActive);
+                        });
+                    }
+                    return;
+                }
 
-            fetch(endpoint, {
-                method: method,
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(body)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => {
-                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
+                if (section === 'admins') {
+                    if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} admin(s)?`, () => {
+                            window.adminManager.bulkDelete(selectedIds);
+                        });
+                    } else if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        showConfirmation('bulk_action', `${action} ${selectedIds.length} admin(s)?`, () => {
+                            window.adminManager.bulkUpdateStatus(selectedIds, isActive);
+                        });
+                    }
+                    return;
+                }
+
+                if (section === 'expired-content') {
+                    if (action === 'reactivate') {
+                        showConfirmation('bulk_reactivate', `Reactivate ${selectedIds.length} item(s)?`, () => {
+                            bulkReactivateExpiredContent(selectedIds);
+                        });
+                    } else if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} item(s)?`, () => {
+                            bulkDeleteExpiredContent(selectedIds);
+                        });
+                    }
+                    return;
+                }
+
+                if (section === 'trash') {
+                    if (action === 'restore') {
+                        showConfirmation('bulk_action', `Restore ${selectedIds.length} item(s)?`, () => {
+                            bulkRestoreTrashItems(selectedIds);
+                        });
+                    } else if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} item(s)?`, () => {
+                            bulkPermanentlyDeleteTrashItems(selectedIds);
+                        });
+                    }
+                    return;
+                }
+
+                // Regular sections
+                if (action === 'delete') {
+                    showConfirmation('delete', `Delete ${selectedIds.length} ${section}?`, () => {
+                        performBulkDelete(section, selectedIds);
+                    });
+                } else if (action === 'activate' || action === 'deactivate') {
+                    const isActive = action === 'activate';
+                    showConfirmation('bulk_action', `${action} ${selectedIds.length} ${section}?`, () => {
+                        performBulkStatusUpdate(section, selectedIds, isActive);
+                    });
+                } else if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_replied') {
+                    const status = action.replace('mark_', '');
+                    showConfirmation('bulk_action', `Mark ${selectedIds.length} message(s) as ${status}?`, () => {
+                        performBulkMessageStatusUpdate(section, selectedIds, status);
                     });
                 }
-                return response.json();
-            })
-            .then(result => {
-                console.log('Bulk action result:', result);
-                if (result.success) {
-                    showNotification(result.message || 'Bulk action completed successfully', 'success');
-
-                    // Clear selection
-                    selectedItems[section] = [];
-                    updateSelectAllCheckbox(section);
-                    updateBulkActionButton(section);
-
-                    // Reload data
-                    loadSectionData(section, currentPage[section]);
-                } else {
-                    showNotification(result.message || 'Failed to perform bulk action', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Bulk action error:', error);
-                showNotification(error.message || 'Failed to perform bulk action', 'error');
-            })
-            .finally(() => {
-                hideLoading();
             });
         });
+
+        console.log('✅ All bulk actions setup complete');
+    }
+
+    // ===== HELPER FUNCTION FOR BUTTON STATE - SINGLE SOURCE OF TRUTH =====
+    function updateBulkButtonState(section, selectedCount) {
+        // Map section to button ID
+        const buttonMap = {
+            'courses': 'applyCourseBulkAction',
+            'jobs': 'applyJobBulkAction',
+            'internships': 'applyInternshipBulkAction',
+            'blog': 'applyBlogBulkAction',
+            'users': 'applyUserBulkAction',
+            'messages': 'applyMessageBulkAction',
+            'newsletter': 'applyNewsletterBulkAction',
+            'testimonials': 'applyTestimonialBulkAction',
+            'admins': 'applyAdminBulkAction',
+            'expired-content': 'applyExpiredContentBulkAction',
+            'trash': 'applyTrashBulkAction'
+        };
+
+        const buttonId = buttonMap[section];
+        if (!buttonId) return;
+
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = selectedCount === 0;
+            // Optional: Add visual feedback
+            if (selectedCount > 0) {
+                button.style.opacity = '1';
+            } else {
+                button.style.opacity = '0.6';
+            }
+        }
     }
 
     // Update the select all checkbox state
     function updateSelectAllCheckbox(section) {
+        // Handle testimonial section separately
+        if (section === 'testimonials') {
+            const selectAll = document.getElementById('selectAllTestimonials');
+            if (!selectAll) return;
+
+            if (window.testimonialManager) {
+                const totalCheckboxes = document.querySelectorAll('#testimonialsTableBody .testimonial-checkbox').length;
+                const checkedCount = window.testimonialManager.selectedIds.length;
+
+                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+            }
+            return;
+        }
+
+        // Handle admin section separately
+        if (section === 'admins') {
+            const selectAll = document.getElementById('selectAllAdmins');
+            if (!selectAll) return;
+
+            if (window.adminManager) {
+                const totalCheckboxes = document.querySelectorAll('#adminsTableBody .admin-checkbox:not([disabled])').length;
+                const checkedCount = window.adminManager.selectedAdmins.length;
+
+                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+            }
+            return;
+        }
+
+        // Handle expired content section
+        if (section === 'expired-content') {
+            const selectAll = document.getElementById('selectAllExpired');
+            if (!selectAll) return;
+
+            const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
+            const checkedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
+
+            if (checkboxes.length > 0) {
+                selectAll.checked = checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            return;
+        }
+
+        // Handle trash section
+        if (section === 'trash') {
+            const selectAll = document.getElementById('selectAllTrash');
+            if (!selectAll) return;
+
+            const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
+            const checkedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
+
+            if (checkboxes.length > 0) {
+                selectAll.checked = checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            return;
+        }
+
+        // Handle regular sections
         const sectionId = section.charAt(0).toUpperCase() + section.slice(1);
         const selectAll = document.getElementById(`selectAll${sectionId}`);
         if (!selectAll) return;
@@ -5655,18 +5904,10 @@
         if (!tableBody) return;
 
         const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-        const checkedCount = selectedItems[section].length;
+        const checkedCount = selectedItems[section] ? selectedItems[section].length : 0;
 
         selectAll.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
         selectAll.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
-    }
-
-    // Update bulk action button state
-    function updateBulkActionButton(section) {
-        const button = document.getElementById(`apply${section.charAt(0).toUpperCase() + section.slice(1)}BulkAction`);
-        if (button) {
-            button.disabled = selectedItems[section].length === 0;
-        }
     }
 
     // Soft bulk delete function
@@ -5678,18 +5919,20 @@
 
         showLoading();
 
-        // Map section to API endpoint
-        let apiSection = section;
-        if (section === 'blog') apiSection = 'blog';
-        if (section === 'testimonials') apiSection = 'testimonials';
-        if (section === 'courses') apiSection = 'courses';
-        if (section === 'jobs') apiSection = 'jobs';
-        if (section === 'internships') apiSection = 'internships';
-        if (section === 'users') apiSection = 'users';
-        if (section === 'messages') apiSection = 'messages';
-        if (section === 'newsletter') apiSection = 'newsletter';
+        let endpoint = `/api/admin/${section}/bulk-delete`;
 
-        fetch(`/api/admin/${apiSection}/bulk-delete`, {
+        // Special handling for blog
+        if (section === 'blog') {
+            endpoint = '/api/admin/blog/bulk-delete';
+        } else if (section === 'newsletter') {
+            endpoint = '/api/admin/newsletter/bulk-delete';
+        } else if (section === 'users') {
+            endpoint = '/api/admin/users/bulk-delete';
+        } else if (section === 'messages') {
+            endpoint = '/api/admin/messages/bulk-delete';
+        }
+
+        fetch(endpoint, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -5708,27 +5951,19 @@
         })
         .then(result => {
             if (result.success) {
-                const message = result.moved_to_trash ?
-                    `${ids.length} ${section} moved to trash` :
-                    `${ids.length} ${section} deleted successfully`;
-                showNotification(message, 'success');
+                showNotification(`${ids.length} ${section} moved to trash`, 'success');
 
                 // Clear selection
                 selectedItems[section] = [];
                 updateSelectAllCheckbox(section);
-                updateBulkActionButton(section);
+                updateBulkButtonState(section, 0);  // Direct update after clearing
 
-                // Reload the current section to reflect changes
+                // Reload the section
                 loadSectionData(section, currentPage[section]);
 
-                // Update dashboard stats (including trash count)
+                // Update dashboard stats
                 loadDashboardStats();
                 loadTrashStats(true);
-
-                // If we're in the trash section, refresh it
-                if (currentSection === 'trash') {
-                    loadTrashItems(currentTrashPage);
-                }
             } else {
                 showNotification(result.message || `Failed to delete ${section}`, 'error');
             }
@@ -5752,25 +5987,25 @@
 
         showLoading();
 
-        // Fix section names for API endpoints
         let apiSection = section;
-        if (section === 'blog') apiSection = 'blog_posts';
-        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+        let endpoint = `/api/admin/${apiSection}/bulk-status`;
 
-        // Prepare update data
-        const updateData = { ids: ids, is_active: isActive };
-        if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
-            updateData.is_featured = isActive;
+        if (section === 'blog') {
+            apiSection = 'blog_posts';
+            endpoint = '/api/admin/blog_posts/bulk-status';
+        } else if (section === 'newsletter') {
+            apiSection = 'newsletter_subscribers';
+            endpoint = '/api/admin/newsletter_subscribers/bulk-status';
         }
 
-        fetch(`/api/admin/${apiSection}/bulk-status`, {
+        fetch(endpoint, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify({ ids: ids, is_active: isActive })
         })
         .then(response => {
             if (!response.ok) {
@@ -5788,7 +6023,7 @@
                 // Clear selection
                 selectedItems[section] = [];
                 updateSelectAllCheckbox(section);
-                updateBulkActionButton(section);
+                updateBulkButtonState(section, 0);  // Direct update after clearing
 
                 // Reload the section data
                 loadSectionData(section, currentPage[section]);
@@ -5805,7 +6040,8 @@
         });
     }
 
-    // Enhanced bulk message status update function
+
+    // bulk message status update function
     function performBulkMessageStatusUpdate(section, ids, status) {
         if (!ids || ids.length === 0) {
             showNotification('No items selected', 'warning');
@@ -5831,8 +6067,8 @@
         .then(result => {
             if (result.success) {
                 showNotification(`${ids.length} ${section} status updated to ${status} successfully`, 'success');
-                // Clear selection and reload data
                 selectedItems[section] = [];
+                updateBulkButtonState(section, 0);  // Direct update after clearing
                 loadSectionData(section, currentPage[section]);
             } else {
                 showNotification(result.message || `Failed to update ${section} status`, 'error');
@@ -7765,86 +8001,59 @@
             return;
         }
 
-        showConfirmation('delete',
-            `Permanently remove ${items.length} item(s) from trash? They will be hidden forever.`,
-            () => {
-                showLoading();
+        showLoading();
 
-                console.log('Bulk hiding items:', items);
-
-                fetch('/api/admin/trash/hide-permanently', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ items: items })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => {
-                            throw new Error(err.error || `HTTP ${response.status}: Failed to hide items`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Remove items from UI
-                        items.forEach(item => {
-                            const row = document.querySelector(`#trashTableBody tr .permanent-delete-item[data-id="${item.content_id}"]`)?.closest('tr');
-                            if (row) {
-                                row.remove();
-                            }
-                        });
-
-                        showNotification(`Permanently removed ${items.length} items from trash`, 'success');
-
-                        // Check if table is empty
-                        const tableBody = document.getElementById('trashTableBody');
-                        if (tableBody && tableBody.children.length === 0) {
-                            tableBody.innerHTML = `
-                                <tr>
-                                    <td colspan="8" style="text-align: center; padding: 40px;">
-                                        <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px; margin-bottom: 15px;"></i>
-                                        <h3 style="color: var(--text-primary); margin: 0;">Trash is Empty</h3>
-                                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">No items in the trash.</p>
-                                    </td>
-                                </tr>
-                            `;
-
-                            // Disable select all
-                            const selectAll = document.getElementById('selectAllTrash');
-                            if (selectAll) {
-                                selectAll.checked = false;
-                                selectAll.indeterminate = false;
-                                selectAll.disabled = true;
-                            }
-                        }
-
-                        // Update trash stats from server
-                        loadTrashStats(true);
-                        loadDashboardStats();
-
-                        // Clear selected items
-                        selectedTrashItems = [];
-                        updateTrashBulkActionButton();
-                        updateSelectAllTrashCheckbox();
-                        updateSelectedTrashItems();
-                    } else {
-                        throw new Error(data.error || 'Failed to hide items');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error hiding items:', error);
-                    showNotification(error.message || 'Failed to hide items', 'error');
-                })
-                .finally(() => {
-                    hideLoading();
+        fetch('/api/admin/trash/hide-permanently', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ items: items })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove items from UI
+                items.forEach(item => {
+                    const row = document.querySelector(`#trashTableBody tr .permanent-delete-item[data-id="${item.content_id}"]`)?.closest('tr');
+                    if (row) row.remove();
                 });
+
+                showNotification(`Permanently removed ${items.length} items from trash`, 'success');
+
+                // Check if table is empty
+                const tableBody = document.getElementById('trashTableBody');
+                if (tableBody && tableBody.children.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-trash-alt" style="color: var(--text-light); font-size: 48px;"></i>
+                                <h3>Trash is Empty</h3>
+                            </td>
+                        </tr>
+                    `;
+                    const selectAll = document.getElementById('selectAllTrash');
+                    if (selectAll) selectAll.disabled = true;
+                }
+
+                loadTrashStats(true);
+                loadDashboardStats();
+                selectedTrashItems = [];
+                updateTrashBulkActionButton();
+                updateSelectAllTrashCheckbox();
+            } else {
+                showNotification(data.error || 'Failed to delete items', 'error');
             }
-        );
+        })
+        .catch(error => {
+            console.error('Error hiding items:', error);
+            showNotification('Failed to delete items', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
     }
 
     // Empty trash - hide ALL items permanently
@@ -9566,9 +9775,6 @@
 
             setupBulkActions();
             console.log('✅ Bulk actions setup complete');
-
-            setupBulkActionButtons();
-            console.log('✅ Bulk action buttons setup complete');
 
             setupSearchFilters();
             console.log('✅ Search filters setup complete');
