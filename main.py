@@ -1,13 +1,13 @@
 import os
 
-from anyio import current_time
 from dotenv import load_dotenv
 
 load_dotenv()
 import uuid
 import secrets
-import hashlib
 import binascii
+import hashlib
+import user_agents
 from fuzzywuzzy import fuzz
 import ssl
 from email.mime.text import MIMEText
@@ -17,12 +17,11 @@ import logging
 from datetime import datetime, timedelta, timezone, time
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, \
-    make_response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, make_response
 from functools import wraps
 from dotenv import load_dotenv
 from flask_cors import CORS
-from supabase import create_client, Client
+from supabase import create_client
 import requests
 from PIL import Image
 import io
@@ -9127,6 +9126,457 @@ def hide_trash_items_permanently():
         logger.error(f"Error hiding trash items: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ===== VISITOR TRACKING FUNCTIONS =====
+
+def get_visitor_fingerprint():
+    """Create a unique fingerprint for each visitor"""
+    try:
+        # Get IP address (handles proxies)
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+
+        # Get user agent
+        user_agent = request.headers.get('User-Agent', '')
+
+        # Create fingerprint using IP + User Agent
+        fingerprint = f"{ip}|{user_agent}"
+        visitor_id = hashlib.sha256(fingerprint.encode()).hexdigest()[:32]
+
+        return visitor_id
+    except Exception as e:
+        logger.error(f"Error creating visitor fingerprint: {str(e)}")
+        return None
+
+
+def parse_user_agent_details(user_agent_string):
+    """Parse user agent for device details"""
+    try:
+        ua = user_agents.parse(user_agent_string)
+
+        # Determine device type
+        device_type = 'desktop'
+        if ua.is_mobile:
+            device_type = 'mobile'
+        elif ua.is_tablet:
+            device_type = 'tablet'
+        elif ua.is_bot or ua.is_touch_capable is False:
+            device_type = 'bot'
+
+        return {
+            'device_type': device_type,
+            'browser': ua.browser.family if ua.browser else 'Unknown',
+            'browser_version': ua.browser.version_string if ua.browser else '',
+            'os': ua.os.family if ua.os else 'Unknown',
+            'os_version': ua.os.version_string if ua.os else '',
+            'is_bot': ua.is_bot
+        }
+    except Exception as e:
+        logger.warning(f"Error parsing user agent: {str(e)}")
+        return {
+            'device_type': 'unknown',
+            'browser': 'Unknown',
+            'os': 'Unknown',
+            'is_bot': False
+        }
+
+
+def get_geo_location(ip):
+    """Get location from IP using free API (optional)"""
+    # Skip for localhost
+    if ip in ['127.0.0.1', 'localhost', '::1']:
+        return {'country': 'Local', 'city': 'Local'}
+
+    try:
+        # Using ip-api.com (free, no API key needed)
+        response = requests.get(f'http://ip-api.com/json/{ip}', timeout=3)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 'success':
+                return {
+                    'country': data.get('country', 'Unknown'),
+                    'city': data.get('city', 'Unknown'),
+                    'region': data.get('regionName', 'Unknown'),
+                    'lat': data.get('lat'),
+                    'lon': data.get('lon')
+                }
+    except Exception as e:
+        logger.warning(f"Error getting geolocation: {str(e)}")
+
+    return {'country': 'Unknown', 'city': 'Unknown'}
+
+
+def is_bot(user_agent):
+    """Check if visitor is a bot"""
+    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'headless',
+                    'selenium', 'puppeteer', 'googlebot', 'bingbot',
+                    'yandex', 'baidu', 'facebookexternalhit']
+    user_agent_lower = user_agent.lower()
+    return any(keyword in user_agent_lower for keyword in bot_keywords)
+
+
+def track_visitor(page_url, page_title):
+    """Main tracking function - called on every page view"""
+    try:
+        # Skip tracking for static files and API
+        skip_extensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp']
+        if any(page_url.endswith(ext) for ext in skip_extensions):
+            return
+
+        # Get visitor ID
+        visitor_id = get_visitor_fingerprint()
+        if not visitor_id:
+            return
+
+        # Get request details
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+
+        user_agent_string = request.headers.get('User-Agent', '')
+        referrer = request.headers.get('Referer', '')
+        session_id = request.cookies.get('session_id') or visitor_id
+
+        # Parse user agent
+        ua_info = parse_user_agent_details(user_agent_string)
+
+        # Skip bots
+        if ua_info['is_bot'] or is_bot(user_agent_string):
+            return
+
+        # Get location
+        location = get_geo_location(ip)
+
+        current_time = get_current_utc_time()
+        today_date = current_time.date()
+
+        # Use admin client to bypass RLS
+        supabase_track = supabase_admin
+
+        # Check if visitor exists
+        existing_visitor = supabase_track.table('visitors') \
+            .select('*') \
+            .eq('visitor_id', visitor_id) \
+            .execute()
+
+        is_new_visitor_today = True
+
+        if existing_visitor.data:
+            # Update existing visitor
+            visitor = existing_visitor.data[0]
+            supabase_track.table('visitors') \
+                .update({
+                'last_visit': current_time.isoformat(),
+                'visit_count': visitor['visit_count'] + 1,
+                'user_agent': user_agent_string,
+                'referrer': referrer
+            }) \
+                .eq('visitor_id', visitor_id) \
+                .execute()
+
+            # Check if visitor has visited today
+            last_visit_date = visitor['last_visit']
+            if isinstance(last_visit_date, str):
+                last_visit_date = datetime.fromisoformat(last_visit_date.replace('Z', '+00:00')).date()
+            else:
+                last_visit_date = last_visit_date.date() if hasattr(last_visit_date, 'date') else last_visit_date
+
+            is_new_visitor_today = last_visit_date != today_date
+        else:
+            # Create new visitor
+            supabase_track.table('visitors').insert({
+                'visitor_id': visitor_id,
+                'ip_address': ip,
+                'user_agent': user_agent_string,
+                'referrer': referrer,
+                'first_visit': current_time.isoformat(),
+                'last_visit': current_time.isoformat(),
+                'visit_count': 1,
+                'device_type': ua_info['device_type'],
+                'browser': ua_info['browser'],
+                'os': ua_info['os'],
+                'country': location.get('country'),
+                'city': location.get('city')
+            }).execute()
+
+        # Track page view
+        supabase_track.table('page_views').insert({
+            'visitor_id': visitor_id,
+            'page_url': page_url[:500],  # Limit URL length
+            'page_title': page_title[:200] if page_title else None,
+            'referrer': referrer[:500] if referrer else None,
+            'session_id': session_id[:100]
+        }).execute()
+
+        # Update daily analytics
+        update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor_today, ua_info['device_type'])
+
+    except Exception as e:
+        logger.error(f"Error tracking visitor: {str(e)}", exc_info=True)
+
+
+def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, device_type):
+    """Update aggregated daily analytics"""
+    try:
+        date_str = today_date.isoformat()
+        supabase_track = supabase_admin
+
+        # Get existing daily stats
+        existing = supabase_track.table('daily_analytics') \
+            .select('*') \
+            .eq('date', date_str) \
+            .execute()
+
+        if existing.data:
+            stats = existing.data[0]
+            page_views = stats.get('page_views', {}) or {}
+            devices = stats.get('devices', {}) or {}
+
+            # Update page views
+            page_views[page_url] = page_views.get(page_url, 0) + 1
+
+            # Update device stats
+            devices[device_type] = devices.get(device_type, 0) + 1
+
+            # Prepare update data
+            update_data = {
+                'total_views': stats['total_views'] + 1,
+                'page_views': page_views,
+                'devices': devices
+            }
+
+            # Update unique visitors if this is a new visitor today
+            if is_new_visitor:
+                update_data['unique_visitors'] = stats['unique_visitors'] + 1
+
+            supabase_track.table('daily_analytics') \
+                .update(update_data) \
+                .eq('date', date_str) \
+                .execute()
+        else:
+            # Create new daily stats
+            supabase_track.table('daily_analytics').insert({
+                'date': date_str,
+                'unique_visitors': 1,
+                'total_views': 1,
+                'page_views': {page_url: 1},
+                'devices': {device_type: 1}
+            }).execute()
+
+    except Exception as e:
+        logger.error(f"Error updating daily analytics: {str(e)}")
+
+
+# ===== TRACKING MIDDLEWARE =====
+
+@app.before_request
+def track_page_views():
+    """Middleware to track all page views"""
+    # Skip tracking for admin routes, static files, and API
+    skip_paths = ['/static/', '/favicon.ico', '/api/admin/', '/admin/']
+    if any(request.path.startswith(path) for path in skip_paths):
+        return
+
+    # Skip if it's an API request
+    if request.path.startswith('/api/'):
+        return
+
+    # Track the page view
+    page_title = request.endpoint or 'Unknown'
+    track_visitor(request.path, page_title)
+
+
+# ===== ANALYTICS API ENDPOINTS =====
+
+@app.route('/api/admin/analytics/summary')
+@admin_required
+def get_analytics_summary():
+    """Get analytics summary for dashboard"""
+    try:
+        # Get total unique visitors (all time)
+        total_visitors = supabase_admin.table('visitors') \
+            .select('id', count='exact') \
+            .execute()
+
+        # Get total page views (all time)
+        total_views = supabase_admin.table('page_views') \
+            .select('id', count='exact') \
+            .execute()
+
+        # Get last 7 days stats
+        week_ago = (get_current_utc_time() - timedelta(days=7)).date()
+        weekly_stats = supabase_admin.table('daily_analytics') \
+            .select('*') \
+            .gte('date', week_ago.isoformat()) \
+            .order('date', desc=True) \
+            .execute()
+
+        # Calculate weekly total
+        weekly_visitors = sum(stat.get('unique_visitors', 0) for stat in (weekly_stats.data or []))
+        weekly_views = sum(stat.get('total_views', 0) for stat in (weekly_stats.data or []))
+
+        # Get today's stats
+        today = get_current_utc_time().date().isoformat()
+        today_stats = supabase_admin.table('daily_analytics') \
+            .select('*') \
+            .eq('date', today) \
+            .execute()
+
+        today_visitors = today_stats.data[0]['unique_visitors'] if today_stats.data else 0
+        today_views = today_stats.data[0]['total_views'] if today_stats.data else 0
+
+        return jsonify({
+            'success': True,
+            'total_visitors': total_visitors.count or 0,
+            'total_views': total_views.count or 0,
+            'weekly_visitors': weekly_visitors,
+            'weekly_views': weekly_views,
+            'today_visitors': today_visitors,
+            'today_views': today_views
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting analytics summary: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/daily')
+@admin_required
+def get_daily_analytics():
+    """Get daily analytics for charts"""
+    try:
+        days = request.args.get('days', 30, type=int)
+
+        # Calculate date range
+        end_date = get_current_utc_time().date()
+        start_date = end_date - timedelta(days=days)
+
+        # Get daily stats
+        stats_response = supabase_admin.table('daily_analytics') \
+            .select('*') \
+            .gte('date', start_date.isoformat()) \
+            .lte('date', end_date.isoformat()) \
+            .order('date', asc=True) \
+            .execute()
+
+        # Format data for chart
+        daily_data = []
+        for stat in (stats_response.data or []):
+            daily_data.append({
+                'date': stat['date'],
+                'unique_visitors': stat['unique_visitors'],
+                'total_views': stat['total_views']
+            })
+
+        return jsonify({
+            'success': True,
+            'daily_data': daily_data,
+            'date_range': {
+                'start': start_date.isoformat(),
+                'end': end_date.isoformat()
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting daily analytics: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/popular-pages')
+@admin_required
+def get_popular_pages():
+    """Get most viewed pages"""
+    try:
+        days = request.args.get('days', 30, type=int)
+        limit = request.args.get('limit', 20, type=int)
+
+        # Calculate date range
+        start_date = (get_current_utc_time() - timedelta(days=days)).isoformat()
+
+        # Get page views from last X days
+        views_response = supabase_admin.table('page_views') \
+            .select('page_url, page_title') \
+            .gte('created_at', start_date) \
+            .execute()
+
+        # Aggregate by page
+        page_stats = {}
+        for view in (views_response.data or []):
+            url = view['page_url']
+            title = view['page_title'] or url
+
+            if url not in page_stats:
+                page_stats[url] = {
+                    'url': url,
+                    'title': title,
+                    'views': 0
+                }
+            page_stats[url]['views'] += 1
+
+        # Convert to list and sort
+        pages_list = list(page_stats.values())
+        pages_list.sort(key=lambda x: x['views'], reverse=True)
+
+        return jsonify({
+            'success': True,
+            'pages': pages_list[:limit]
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting popular pages: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/devices')
+@admin_required
+def get_device_analytics():
+    """Get device and browser statistics"""
+    try:
+        days = request.args.get('days', 30, type=int)
+
+        # Calculate date range
+        start_date = (get_current_utc_time() - timedelta(days=days)).date()
+
+        # Get daily analytics
+        stats_response = supabase_admin.table('daily_analytics') \
+            .select('devices') \
+            .gte('date', start_date.isoformat()) \
+            .execute()
+
+        # Aggregate device stats
+        device_stats = {
+            'desktop': 0,
+            'mobile': 0,
+            'tablet': 0,
+            'bot': 0,
+            'unknown': 0
+        }
+
+        for stat in (stats_response.data or []):
+            devices = stat.get('devices', {})
+            for device, count in devices.items():
+                device_stats[device] = device_stats.get(device, 0) + count
+
+        # Get browser stats from visitors table
+        visitors_response = supabase_admin.table('visitors') \
+            .select('browser') \
+            .gte('last_visit', start_date.isoformat()) \
+            .execute()
+
+        browser_stats = {}
+        for visitor in (visitors_response.data or []):
+            browser = visitor.get('browser', 'Unknown')
+            browser_stats[browser] = browser_stats.get(browser, 0) + 1
+
+        return jsonify({
+            'success': True,
+            'device_stats': device_stats,
+            'browser_stats': browser_stats
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting device analytics: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Terms and condition routes
 @app.route('/privacy')

@@ -9881,6 +9881,487 @@
         }
     }
 
+    // ===== ANALYTICS REFRESH BUTTON FIX =====
+
+    // Make sure this function is defined and accessible
+    function loadAnalyticsData() {
+        console.log('📊 Loading analytics data...');
+
+        // Show loading state on cards
+        showAnalyticsLoading();
+
+        // Load summary stats
+        fetch('/api/admin/analytics/summary', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch summary stats');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalVisitors').textContent = data.total_visitors.toLocaleString();
+                document.getElementById('totalViews').textContent = data.total_views.toLocaleString();
+                document.getElementById('weeklyVisitors').textContent = data.weekly_visitors.toLocaleString();
+                document.getElementById('todayVisitors').textContent = data.today_visitors.toLocaleString();
+            } else {
+                console.error('Error in summary data:', data.error);
+                showNotification('Failed to load analytics summary', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading summary:', error);
+            showNotification('Error loading analytics data', 'error');
+            // Set fallback values
+            document.getElementById('totalVisitors').textContent = '0';
+            document.getElementById('totalViews').textContent = '0';
+            document.getElementById('weeklyVisitors').textContent = '0';
+            document.getElementById('todayVisitors').textContent = '0';
+        })
+        .finally(() => {
+            // Load other data even if summary fails
+            loadDailyChart(currentDays || 30);
+            loadPopularPages();
+            loadDeviceStats();
+            hideAnalyticsLoading();
+        });
+    }
+
+    function loadDailyChart(days) {
+        fetch(`/api/admin/analytics/daily?days=${days}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderVisitorsChart(data.daily_data);
+            } else {
+                console.error('Error loading daily chart:', data.error);
+                showNotification('Failed to load chart data', 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading daily chart:', error);
+            showNotification('Error loading chart data', 'error');
+        });
+    }
+
+    function loadPopularPages() {
+        fetch('/api/admin/analytics/popular-pages?days=30&limit=10', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderPopularPages(data.pages);
+            } else {
+                console.error('Error loading popular pages:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading popular pages:', error);
+            renderPopularPages([]);
+        });
+    }
+
+    function loadDeviceStats() {
+        fetch('/api/admin/analytics/devices?days=30', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderDeviceStats(data.device_stats);
+                renderBrowserChart(data.browser_stats);
+            } else {
+                console.error('Error loading device stats:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading device stats:', error);
+            renderDeviceStats({ desktop: 0, mobile: 0, tablet: 0 });
+            renderBrowserChart({});
+        });
+    }
+
+    function showAnalyticsLoading() {
+        const statNumbers = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
+        statNumbers.forEach(id => {
+            const element = document.getElementById(id);
+            if (element && !element.classList.contains('loading')) {
+                element.dataset.originalValue = element.textContent;
+                element.classList.add('loading');
+                element.textContent = '...';
+            }
+        });
+    }
+
+    function hideAnalyticsLoading() {
+        const statNumbers = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
+        statNumbers.forEach(id => {
+            const element = document.getElementById(id);
+            if (element && element.classList.contains('loading')) {
+                element.classList.remove('loading');
+                if (element.dataset.originalValue) {
+                    element.textContent = element.dataset.originalValue;
+                    delete element.dataset.originalValue;
+                }
+            }
+        });
+    }
+
+    // ===== SETUP ANALYTICS SECTION WITH PROPER EVENT HANDLERS =====
+    function setupAnalyticsSection() {
+        console.log('📊 Setting up analytics section...');
+
+        // Find analytics link in sidebar
+        const analyticsLink = document.querySelector('.sidebar-menu a[href="#analytics"]');
+        if (!analyticsLink) {
+            console.warn('Analytics link not found in sidebar');
+            return;
+        }
+
+        // Remove any existing listeners by cloning
+        const newLink = analyticsLink.cloneNode(true);
+        analyticsLink.parentNode.replaceChild(newLink, analyticsLink);
+
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('📊 Opening analytics section...');
+
+            // Update active states
+            document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                item.classList.remove('active');
+            });
+            this.classList.add('active');
+
+            document.querySelectorAll('.admin-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            const analyticsSection = document.getElementById('analytics');
+            if (analyticsSection) {
+                analyticsSection.classList.add('active');
+                document.getElementById('pageTitle').textContent = 'Website Analytics';
+
+                // Load analytics data
+                loadAnalyticsData();
+            }
+        });
+
+        // Setup refresh button with proper event handling
+        const refreshBtn = document.getElementById('refreshAnalyticsBtn');
+        if (refreshBtn) {
+            console.log('🔄 Setting up analytics refresh button...');
+
+            // Remove existing listeners by cloning
+            const newRefreshBtn = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(newRefreshBtn, refreshBtn);
+
+            let isRefreshing = false;
+
+            newRefreshBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (isRefreshing) {
+                    console.log('Refresh already in progress...');
+                    return;
+                }
+
+                isRefreshing = true;
+                const originalHTML = this.innerHTML;
+
+                // Show spinner
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                this.disabled = true;
+
+                console.log('🔄 Refreshing analytics data...');
+
+                // Reload all analytics data
+                Promise.all([
+                    fetch('/api/admin/analytics/summary', { credentials: 'include' }),
+                    fetch('/api/admin/analytics/daily?days=30', { credentials: 'include' }),
+                    fetch('/api/admin/analytics/popular-pages?days=30&limit=10', { credentials: 'include' }),
+                    fetch('/api/admin/analytics/devices?days=30', { credentials: 'include' })
+                ])
+                .then(async ([summaryRes, dailyRes, pagesRes, devicesRes]) => {
+                    // Process summary
+                    if (summaryRes.ok) {
+                        const summary = await summaryRes.json();
+                        if (summary.success) {
+                            document.getElementById('totalVisitors').textContent = summary.total_visitors.toLocaleString();
+                            document.getElementById('totalViews').textContent = summary.total_views.toLocaleString();
+                            document.getElementById('weeklyVisitors').textContent = summary.weekly_visitors.toLocaleString();
+                            document.getElementById('todayVisitors').textContent = summary.today_visitors.toLocaleString();
+                        }
+                    }
+
+                    // Process daily chart
+                    if (dailyRes.ok) {
+                        const daily = await dailyRes.json();
+                        if (daily.success) {
+                            renderVisitorsChart(daily.daily_data);
+                        }
+                    }
+
+                    // Process popular pages
+                    if (pagesRes.ok) {
+                        const pages = await pagesRes.json();
+                        if (pages.success) {
+                            renderPopularPages(pages.pages);
+                        }
+                    }
+
+                    // Process device stats
+                    if (devicesRes.ok) {
+                        const devices = await devicesRes.json();
+                        if (devices.success) {
+                            renderDeviceStats(devices.device_stats);
+                            renderBrowserChart(devices.browser_stats);
+                        }
+                    }
+
+                    showNotification('Analytics data refreshed successfully', 'success');
+                })
+                .catch(error => {
+                    console.error('Error refreshing analytics:', error);
+                    showNotification('Failed to refresh analytics data', 'error');
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        newRefreshBtn.innerHTML = originalHTML;
+                        newRefreshBtn.disabled = false;
+                        isRefreshing = false;
+                    }, 1000);
+                });
+            });
+
+            console.log('✅ Analytics refresh button setup complete');
+        } else {
+            console.warn('Refresh button not found in DOM');
+        }
+
+        // Setup chart period buttons
+        const chartButtons = document.querySelectorAll('#analytics .chart-controls .btn-sm');
+        if (chartButtons.length > 0) {
+            console.log('📊 Setting up chart period buttons...');
+
+            chartButtons.forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.addEventListener('click', function() {
+                    const days = parseInt(this.getAttribute('data-days'));
+                    if (days) {
+                        // Update active state
+                        document.querySelectorAll('#analytics .chart-controls .btn-sm').forEach(b => {
+                            b.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        currentDays = days;
+                        loadDailyChart(days);
+                    }
+                });
+            });
+        }
+    }
+
+    // ===== RENDER FUNCTIONS FOR ANALYTICS =====
+    function renderVisitorsChart(dailyData) {
+        const canvas = document.getElementById('visitorsChart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+
+        const dates = dailyData.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        const uniqueVisitors = dailyData.map(d => d.unique_visitors);
+        const totalViews = dailyData.map(d => d.total_views);
+
+        // Destroy existing chart if exists
+        if (window.visitorsChartInstance) {
+            window.visitorsChartInstance.destroy();
+        }
+
+        window.visitorsChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Unique Visitors',
+                        data: uniqueVisitors,
+                        borderColor: '#4a6cf7',
+                        backgroundColor: 'rgba(74, 108, 247, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Total Page Views',
+                        data: totalViews,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderPopularPages(pages) {
+        const container = document.getElementById('popularPagesList');
+        if (!container) return;
+
+        if (!pages || pages.length === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>No page data available yet</p></div>';
+            return;
+        }
+
+        container.innerHTML = pages.map((page, index) => `
+            <div class="popular-page-item">
+                <span class="rank">${index + 1}</span>
+                <div class="page-info">
+                    <div class="page-title" title="${escapeHTML(page.title)}">
+                        ${page.title.length > 50 ? page.title.substring(0, 50) + '...' : page.title}
+                    </div>
+                    <div class="page-url">${escapeHTML(page.url)}</div>
+                </div>
+                <span class="page-views">${page.views.toLocaleString()} views</span>
+            </div>
+        `).join('');
+    }
+
+    function renderDeviceStats(deviceStats) {
+        const container = document.getElementById('deviceStats');
+        if (!container) return;
+
+        const devices = [
+            { name: 'Desktop', icon: '💻', count: deviceStats.desktop || 0 },
+            { name: 'Mobile', icon: '📱', count: deviceStats.mobile || 0 },
+            { name: 'Tablet', icon: '📟', count: deviceStats.tablet || 0 }
+        ];
+
+        const total = devices.reduce((sum, d) => sum + d.count, 0);
+
+        if (total === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-pie"></i><p>No device data available yet</p></div>';
+            return;
+        }
+
+        container.innerHTML = devices.map(device => {
+            const percentage = total > 0 ? ((device.count / total) * 100).toFixed(1) : 0;
+            return `
+                <div class="device-item">
+                    <div class="device-icon">${device.icon}</div>
+                    <div class="device-info">
+                        <div class="device-name">${device.name}</div>
+                        <div class="device-bar">
+                            <div class="device-bar-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="device-stats">
+                            <span class="device-count">${device.count.toLocaleString()}</span>
+                            <span class="device-percentage">(${percentage}%)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBrowserChart(browserStats) {
+        const canvas = document.getElementById('browserChart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+
+        const browsers = Object.keys(browserStats);
+        const counts = Object.values(browserStats);
+
+        if (browsers.length === 0) {
+            // Show empty state
+            if (window.browserChartInstance) {
+                window.browserChartInstance.destroy();
+            }
+            return;
+        }
+
+        if (window.browserChartInstance) {
+            window.browserChartInstance.destroy();
+        }
+
+        const colors = ['#4a6cf7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec489a', '#14b8a6'];
+
+        window.browserChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: browsers,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: colors.slice(0, browsers.length),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // ===== COMPLETE DASHBOARD INITIALIZATION =====
     function initializeDashboard() {
         console.log('🚀 Starting Admin Dashboard Initialization...');
@@ -10078,6 +10559,9 @@
             setTimeout(() => {
                 initAdminManager();
             }, 500);
+
+            // Initialize analytics
+            setupAnalyticsSection();
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);

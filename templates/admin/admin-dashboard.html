@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+    <!-- Chart.js CDN  -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div class="admin-dashboard">
@@ -22,14 +24,11 @@
             </li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-            <li class="menu-item"><a href="#internships"><i
-                    class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+            <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
-            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a>
-            </li>
+            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
-            <li class="menu-item"><a href="#expired-content"><i
-                    class="fas fa-clock"></i><span>Expired Content</span></a></li>
+            <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
 
             <!-- User Management with Submenu - VERTICAL -->
             <li class="menu-item has-submenu">
@@ -55,10 +54,9 @@
             </li>
 
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
-                    class="menu-badge" id="trashMenuBadge"></span></a></li>
-            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-            </li>
+            <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
+            <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
+            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
             <li class="menu-item dark-mode-item">
                 <div class="dark-mode-toggle" id="darkModeToggle">
                     <i class="fas fa-moon"></i><span>Dark Mode</span>
@@ -1115,6 +1113,99 @@
                 </div>
             </div>
         </section>
+
+        <!-- Analytics Section -->
+        <div class="admin-section" id="analytics">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line"></i> Website Analytics</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refreshAnalyticsBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="analytics-stats-grid">
+                <div class="stat-card info">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Visitors</h3>
+                        <div class="stat-number" id="totalVisitors">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Total Views</h3>
+                        <div class="stat-number" id="totalViews">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-card primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-week"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Weekly Visitors</h3>
+                        <div class="stat-number" id="weeklyVisitors">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-title">Today's Visitors</h3>
+                        <div class="stat-number" id="todayVisitors">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> Visitor Trends</h3>
+                    <div class="chart-controls">
+                        <button class="btn-sm" data-days="7">7 Days</button>
+                        <button class="btn-sm active" data-days="30">30 Days</button>
+                        <button class="btn-sm" data-days="90">90 Days</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="visitorsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="two-columns">
+                <div class="card">
+                    <h3><i class="fas fa-file-alt"></i> Popular Pages</h3>
+                    <div id="popularPagesList" class="popular-pages-list">
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading pages...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-chart-pie"></i> Device Statistics</h3>
+                    <div id="deviceStats" class="device-stats">
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading device data...</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <canvas id="browserChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
