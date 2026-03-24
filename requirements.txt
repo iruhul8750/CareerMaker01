@@ -25,3 +25,46 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.25.1
 Pillow==10.4.0
 itsdangerous==2.1.2
+
+# --- User Agent Parsing (for analytics) ---
+user-agents==2.2.0
+
+# --- Email Support ---
+email-validator==2.1.0
+secure-smtplib==0.1.1
+
+# --- Database & Date Handling ---
+python-dateutil==2.8.2
+pytz==2024.1
+
+# --- Security & Cryptography ---
+cryptography==41.0.7
+pyjwt==2.8.0
+passlib==1.7.4
+bcrypt==4.1.2
+
+# --- Image Processing ---
+python-magic==0.4.27
+blinker==1.7.0
+
+# --- Development & Debugging ---
+python-json-logger==2.0.7
+
+# --- Performance & Caching ---
+cachetools==5.3.2
+
+# --- Geolocation (optional for analytics) ---
+geoip2==4.8.0
+
+# --- File Upload Handling ---
+werkzeug==2.3.7  # Already included above
+
+# --- Logging & Monitoring ---
+prometheus-flask-exporter==0.22.4
+
+# --- API Rate Limiting (optional) ---
+flask-limiter==3.5.0
+
+# --- Testing (optional for production) ---
+pytest==7.4.3
+pytest-cov==4.1.0
