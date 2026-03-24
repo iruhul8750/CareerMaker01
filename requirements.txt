@@ -1,70 +1,43 @@
 # --- Web Framework ---
-Flask==2.3.3
-gunicorn==21.2.0
-Flask-Cors==4.0.0
-python-dotenv==1.0.1
-Werkzeug==2.3.7
+Flask
+gunicorn
+Flask-Cors
+python-dotenv
+Werkzeug
 
 # --- Supabase SDK Stack ---
-supabase==2.22.0
-postgrest==2.22.0
-storage3==2.22.0
-gotrue==2.9.1
-supabase-auth==2.22.0
-supabase-functions==2.22.0
+supabase
+postgrest
+storage3
+gotrue
 
-# --- Compatible httpx (shared requirement) ---
-httpx==0.27.0
+# --- HTTP Client ---
+httpx
 
 # --- Scheduler / Background Tasks ---
-APScheduler==3.10.4
+APScheduler
 
 # --- Utilities ---
-requests==2.32.3
-fuzzywuzzy==0.18.0
-python-Levenshtein==0.25.1
-Pillow==10.4.0
-itsdangerous==2.1.2
+requests
+fuzzywuzzy
+python-Levenshtein
+Pillow
+itsdangerous
 
-# --- User Agent Parsing (for analytics) ---
-user-agents==2.2.0
+# --- User Agent Parsing ---
+user-agents
 
 # --- Email Support ---
-email-validator==2.1.0
-secure-smtplib==0.1.1
+email-validator
 
 # --- Database & Date Handling ---
-python-dateutil==2.8.2
-pytz==2024.1
+python-dateutil
+pytz
 
-# --- Security & Cryptography ---
-cryptography==41.0.7
-pyjwt==2.8.0
-passlib==1.7.4
-bcrypt==4.1.2
+# --- Security ---
+cryptography
+passlib
+bcrypt
 
-# --- Image Processing ---
-python-magic==0.4.27
-blinker==1.7.0
-
-# --- Development & Debugging ---
-python-json-logger==2.0.7
-
-# --- Performance & Caching ---
-cachetools==5.3.2
-
-# --- Geolocation (optional for analytics) ---
-geoip2==4.8.0
-
-# --- File Upload Handling ---
-werkzeug==2.3.7  # Already included above
-
-# --- Logging & Monitoring ---
-prometheus-flask-exporter==0.22.4
-
-# --- API Rate Limiting (optional) ---
-flask-limiter==3.5.0
-
-# --- Testing (optional for production) ---
-pytest==7.4.3
-pytest-cov==4.1.0
+# --- Additional Dependencies ---
+blinker
