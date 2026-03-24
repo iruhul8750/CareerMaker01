@@ -764,9 +764,8 @@
     }
 
     @keyframes float {
-      0% { transform: translateY(0px); }
-      50% { transform: translateY(-20px); }
-      100% { transform: translateY(0px); }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }  /* very minimal movement */
     }
 
     .hero h1 {
@@ -6809,9 +6808,8 @@
 
     /* ANIMATIONS */
     @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); } /* very slight zoom */
     }
 
     @keyframes bounce {
@@ -12907,11 +12905,14 @@
     .hero-image {
       opacity: 0;
       transform: translateY(50px) scale(0.9);
-      animation: fadeInUp 1.2s ease 0.5s forwards, float 6s ease-in-out infinite 2s;
+
+      /* Very slow + smooth */
+      animation: fadeInUp 2.5s ease 0.5s forwards,
+                 float 20s ease-in-out infinite 2s;
     }
 
     .hero-image img {
-      animation: pulse 3s ease-in-out infinite 2s;
+      animation: pulse 10s ease-in-out infinite 2s;
     }
 
     /* Typewriter effect for hero text */
