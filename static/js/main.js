@@ -3146,467 +3146,582 @@
     };
 
     // =============================================
-    // BLOG MODAL SYSTEM - UPDATED
+    // LIGHTWEIGHT BLOG
     // =============================================
 
-    const blogModal = {
-        currentBlogId: null,
-        isOpen: false,
+    const LightweightBlog = {
+        currentId: null,
+        modal: null,
+        blogDataCache: new Map(),
 
-        init() {
-            console.log('🌟 Blog modal system initialized');
-            this.initializeEventListeners();
-            this.limitBlogCards(); // Show only 3 latest cards on homepage
+        init: function() {
+            this.modal = document.getElementById('lightweightBlogModal');
+            this.bindEvents();
+            this.bindCardClicks();
+            this.preloadBlogData();
         },
 
-        limitBlogCards() {
-            // Only apply to homepage, not blogs.html
-            if (!window.location.pathname.includes('blogs.html')) {
-                const blogCards = document.querySelectorAll('.blog-card-vertical');
-                if (blogCards.length > 3) {
-                    blogCards.forEach((card, index) => {
-                        if (index >= 3) {
-                            card.style.display = 'none';
-                        }
-                    });
-
-                    // Show View All button only if there are more than 3 blogs
-                    const viewAllSection = document.querySelector('.blog-section-footer');
-                    if (viewAllSection) {
-                        viewAllSection.style.display = 'block';
-                    }
-                } else {
-                    // Hide View All button if 3 or fewer blogs
-                    const viewAllSection = document.querySelector('.blog-section-footer');
-                    if (viewAllSection) {
-                        viewAllSection.style.display = 'none';
-                    }
-                }
-            }
-        },
-
-        initializeEventListeners() {
-            // Read More buttons
-            document.addEventListener('click', (e) => {
-                const readMoreBtn = e.target.closest('.read-more-btn-vertical');
-                if (readMoreBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const blogId = readMoreBtn.dataset.id;
-                    this.openModal(blogId);
-                }
-
-                // Bookmark buttons in cards
-                const bookmarkBtn = e.target.closest('.btn-bookmark-vertical');
-                if (bookmarkBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const blogId = bookmarkBtn.dataset.id;
-                    this.handleBookmark(bookmarkBtn, blogId);
-                }
-
-                // Bookmark button in modal
-                const modalBookmarkBtn = e.target.closest('#modalBookmarkBtn');
-                if (modalBookmarkBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const blogId = modalBookmarkBtn.dataset.id;
-                    this.handleBookmark(modalBookmarkBtn, blogId);
-                }
-
-                // Like buttons in cards - REQUIRES LOGIN
-                const likeBtn = e.target.closest('.btn-like-vertical');
-                if (likeBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const blogId = likeBtn.dataset.id;
-                    this.handleLike(likeBtn, blogId);
-                }
-
-                // Like button in modal - REQUIRES LOGIN
-                const modalLikeBtn = e.target.closest('.btn-like-modal');
-                if (modalLikeBtn) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const blogId = modalLikeBtn.dataset.id;
-                    this.handleLike(modalLikeBtn, blogId);
+        preloadBlogData: function() {
+            const cards = document.querySelectorAll('.lightweight-blog-card');
+            cards.forEach(card => {
+                const id = card.dataset.id;
+                if (id && !this.blogDataCache.has(id)) {
+                    fetch(`/api/blog/${id}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                this.blogDataCache.set(id, data.blog);
+                            }
+                        })
+                        .catch(e => console.warn('Preload failed:', e));
                 }
             });
+        },
 
-            // Close modal with escape key
+        bindEvents: function() {
+            const closeBtn = document.getElementById('lightweightModalClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => this.closeModal());
+            }
+
+            if (this.modal) {
+                this.modal.addEventListener('click', (e) => {
+                    if (e.target === this.modal) this.closeModal();
+                });
+            }
+
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && this.isOpen) {
+                if (e.key === 'Escape' && this.modal && this.modal.style.display === 'flex') {
                     this.closeModal();
                 }
             });
 
-            // Handle View All button
-            const viewAllBtn = document.querySelector('.view-all-blogs');
-            if (viewAllBtn) {
-                viewAllBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    window.location.href = '/blogs.html';
-                });
-            }
-        },
+            // Card button events via delegation
+            const grid = document.getElementById('lightweightBlogGrid');
+            if (grid) {
+                grid.addEventListener('click', (e) => {
+                    const likeBtn = e.target.closest('.lightweight-like-btn');
+                    const bookmarkBtn = e.target.closest('.lightweight-bookmark-btn');
+                    const readMore = e.target.closest('.lightweight-read-more');
 
-        async openModal(blogId) {
-            try {
-                console.log('📖 Opening blog modal for:', blogId);
-                showLoading();
-
-                // Fetch blog details
-                const response = await fetch(`/api/blog/${blogId}`);
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to load blog post');
-                }
-
-                if (!data.success) {
-                    throw new Error(data.error || 'Blog post not found');
-                }
-
-                const blog = data.blog;
-                this.currentBlogId = blogId;
-
-                // Populate modal with blog data
-                this.populateModal(blog);
-
-                // Show modal
-                document.getElementById('blogDetailModal').style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-                this.isOpen = true;
-
-                // Track view - COUNT VIEW WHEN MODAL OPENS (NO LOGIN REQUIRED)
-                this.trackView(blogId);
-
-            } catch (error) {
-                console.error('❌ Error loading blog:', error);
-                showToast('Failed to load blog post', 'error');
-            } finally {
-                hideLoading();
-            }
-        },
-
-        populateModal(blog) {
-            // Set category
-            const category = blog.categories?.[0] || 'Career';
-            document.getElementById('modalCategory').textContent = category;
-
-            // Set title
-            document.getElementById('modalTitle').textContent = blog.title;
-
-            // Set author info
-            document.getElementById('modalAuthorName').textContent = blog.author || 'CareerMaker Team';
-
-            // Format date
-            const date = blog.published_at || blog.created_at;
-            document.getElementById('modalDate').textContent = this.formatDate(date);
-
-            // Set read time and views
-            document.getElementById('modalReadTime').innerHTML =
-                `<i class="far fa-clock"></i> ${blog.read_time || '5 min read'}`;
-
-            // Set view count
-            document.getElementById('viewsCount').textContent = blog.views || 0;
-
-            // Set images
-            const modalImage = document.getElementById('modalImage');
-            modalImage.src = blog.image || '/static/images/default-blog.jpg';
-            modalImage.alt = blog.title;
-
-            const authorAvatar = document.getElementById('modalAuthorAvatar');
-            authorAvatar.src = blog.author_avatar ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
-            authorAvatar.alt = blog.author || 'CareerMaker Team';
-
-            // Set content
-            const contentElement = document.getElementById('modalContent');
-            contentElement.innerHTML = this.formatContent(blog.content || blog.description || 'No content available.');
-
-            // Setup bookmark button
-            const bookmarkBtn = document.getElementById('modalBookmarkBtn');
-            bookmarkBtn.dataset.id = blog.id;
-            bookmarkBtn.classList.toggle('bookmarked', blog.is_bookmarked);
-
-            const bookmarkIcon = bookmarkBtn.querySelector('i');
-            const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
-
-            if (blog.is_bookmarked) {
-                bookmarkIcon.className = 'fas fa-bookmark';
-                bookmarkText.textContent = 'Bookmarked';
-            } else {
-                bookmarkIcon.className = 'far fa-bookmark';
-                bookmarkText.textContent = 'Bookmark';
-            }
-
-            // Setup like button - REQUIRES LOGIN
-            const likeBtn = document.getElementById('modalLikeBtn');
-            likeBtn.dataset.id = blog.id;
-            const likeCount = blog.like_count || 0;
-            const isLiked = blog.is_liked || false;
-
-            this.updateLikeUI(likeBtn, likeCount, isLiked);
-
-            // Update card UI to match
-            this.updateCardBookmarkStatus(blog.id, blog.is_bookmarked);
-            this.updateCardLikeStatus(blog.id, likeCount, isLiked);
-            this.updateCardViewStatus(blog.id, blog.views || 0);
-        },
-
-        formatContent(content) {
-            // Convert plain text to HTML paragraphs
-            if (!content.includes('<')) {
-                return content.split('\n').filter(para => para.trim()).map(para =>
-                    `<p>${para.trim()}</p>`
-                ).join('');
-            }
-            return content;
-        },
-
-        formatDate(dateString) {
-            if (!dateString) return 'Unknown date';
-
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            } catch (error) {
-                return dateString;
-            }
-        },
-
-        async handleBookmark(button, blogId) {
-            try {
-                // Check if user is logged in (required for bookmarking)
-                const sessionResponse = await fetch('/api/check-session');
-                const sessionData = await sessionResponse.json();
-
-                if (!sessionData.logged_in) {
-                    showToast('Please login to bookmark articles', 'warning');
-                    openLoginModal();
-                    return;
-                }
-
-                const isCurrentlyBookmarked = button.classList.contains('bookmarked');
-                const newBookmarkState = !isCurrentlyBookmarked;
-
-                // Optimistic UI update
-                this.updateBookmarkUI(button, newBookmarkState);
-
-                // Make API call
-                const response = await fetch(`/api/bookmark/blog/${blogId}`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
+                    if (likeBtn) {
+                        e.stopPropagation();
+                        const id = likeBtn.dataset.id;
+                        if (id) this.handleLike(likeBtn, id);
+                    } else if (bookmarkBtn) {
+                        e.stopPropagation();
+                        const id = bookmarkBtn.dataset.id;
+                        if (id) this.handleBookmark(bookmarkBtn, id);
+                    } else if (readMore) {
+                        e.stopPropagation();
+                        const id = readMore.dataset.id;
+                        if (id) this.openModal(id);
                     }
                 });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Bookmark operation failed');
-                }
-
-                if (data.success) {
-                    const action = newBookmarkState ? 'added to' : 'removed from';
-                    showToast(`Article ${action} bookmarks`, 'success');
-
-                    // Sync all bookmark buttons for this blog
-                    this.syncAllBookmarkButtons(blogId, newBookmarkState);
-                } else {
-                    throw new Error(data.error || 'Bookmark operation failed');
-                }
-
-            } catch (error) {
-                console.error('❌ Bookmark error:', error);
-
-                // Revert optimistic update
-                const isCurrentlyBookmarked = button.classList.contains('bookmarked');
-                this.updateBookmarkUI(button, !isCurrentlyBookmarked);
-
-                showToast(error.message || 'Failed to update bookmark', 'error');
             }
         },
 
-        async handleLike(button, blogId) {
-            try {
-                // Check if user is logged in (REQUIRED FOR LIKES)
-                const sessionResponse = await fetch('/api/check-session');
-                const sessionData = await sessionResponse.json();
+        bindCardClicks: function() {
+            const cards = document.querySelectorAll('.lightweight-blog-card');
+            cards.forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('button')) return;
+                    const id = card.dataset.id;
+                    if (id) this.openModal(id);
+                });
+            });
+        },
 
-                if (!sessionData.logged_in) {
-                    showToast('Please login to like articles', 'warning');
-                    openLoginModal();
+        showMessage: function(message, type = 'success') {
+            if (typeof showToast === 'function') {
+                showToast(message, type);
+            } else {
+                alert(message);
+            }
+        },
+
+        openModal: async function(blogId) {
+            try {
+                this.modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                this.currentId = blogId;
+
+                let blog;
+                if (this.blogDataCache.has(blogId)) {
+                    blog = this.blogDataCache.get(blogId);
+                } else {
+                    const response = await fetch(`/api/blog/${blogId}`);
+                    const data = await response.json();
+                    if (!data.success) throw new Error('Failed to load');
+                    blog = data.blog;
+                    this.blogDataCache.set(blogId, blog);
+                }
+
+                this.populateModal(blog);
+                fetch(`/api/blog/${blogId}/view`, { method: 'POST' }).catch(e => null);
+
+            } catch (error) {
+                console.error('Error:', error);
+                this.closeModal();
+                this.showMessage('Could not load article', 'error');
+            }
+        },
+
+        populateModal: function(blog) {
+            // Basic info
+            document.getElementById('lightweightModalCategory').innerText = (blog.categories && blog.categories[0]) || 'Career';
+            document.getElementById('lightweightModalTitle').innerText = blog.title;
+            document.getElementById('lightweightModalAuthor').innerText = blog.author || 'CareerMaker';
+            document.getElementById('lightweightModalAuthorName').innerText = blog.author || 'CareerMaker Team';
+            document.getElementById('lightweightModalLikes').innerText = blog.like_count || 0;
+
+            const date = new Date(blog.published_at || blog.created_at);
+            document.getElementById('lightweightModalDate').innerText = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('lightweightModalReadTime').innerText = blog.read_time || '5 min read';
+            document.getElementById('lightweightModalViews').innerText = blog.views || 0;
+
+            // Images
+            const modalImg = document.getElementById('lightweightModalImage');
+            modalImg.src = blog.image || '/static/images/default-blog.jpg';
+
+            const modalAvatar = document.getElementById('lightweightModalAvatar');
+            modalAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CM')}&background=0f172a&color=fff`;
+
+            // Content
+            document.getElementById('lightweightModalContent').innerHTML = (blog.content || blog.description || 'No content.').replace(/\n/g, '<br>');
+
+            // Setup bookmark button
+            const modalBookmark = document.getElementById('lightweightModalBookmarkBtn');
+            const isBookmarked = blog.is_bookmarked || false;
+            modalBookmark.classList.toggle('bookmarked', isBookmarked);
+            modalBookmark.querySelector('i').className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+            modalBookmark.querySelector('span').innerText = isBookmarked ? 'Bookmarked' : 'Bookmark';
+
+            // Setup like button
+            const modalLikeBtn = document.getElementById('lightweightModalLikeBtn');
+            const isLiked = blog.is_liked || false;
+            modalLikeBtn.classList.toggle('liked', isLiked);
+            modalLikeBtn.querySelector('i').className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+            document.getElementById('lightweightModalLikeCount').innerText = blog.like_count || 0;
+
+            // Remove old listeners and add new ones
+            const newModalLikeBtn = modalLikeBtn.cloneNode(true);
+            modalLikeBtn.parentNode.replaceChild(newModalLikeBtn, modalLikeBtn);
+            newModalLikeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleModalLike(this.currentId);
+            });
+
+            const newModalBookmark = modalBookmark.cloneNode(true);
+            modalBookmark.parentNode.replaceChild(newModalBookmark, modalBookmark);
+            newModalBookmark.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleModalBookmark(this.currentId);
+            });
+        },
+
+        closeModal: function() {
+            if (this.modal) {
+                this.modal.style.display = 'none';
+                document.body.style.overflow = '';
+                this.currentId = null;
+            }
+        },
+
+        handleLike: async function(btn, blogId) {
+            try {
+                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
+                const session = await sessionCheck.json();
+
+                if (!session.logged_in) {
+                    this.showMessage('Please login to like articles', 'warning');
+                    if (typeof openLoginModal === 'function') openLoginModal();
                     return;
                 }
 
-                const isCurrentlyLiked = button.classList.contains('liked');
-                const currentCount = parseInt(button.querySelector('.like-count').textContent) || 0;
-                const newLikeState = !isCurrentlyLiked;
-                const newCount = newLikeState ? currentCount + 1 : Math.max(0, currentCount - 1);
+                const isCurrentlyLiked = btn.classList.contains('liked');
+                const countSpan = btn.querySelector('.like-count');
+                let currentCount = parseInt(countSpan.innerText) || 0;
 
-                // Optimistic UI update
-                this.updateLikeUI(button, newCount, newLikeState);
+                // Optimistic update
+                if (!isCurrentlyLiked) {
+                    btn.classList.add('liked');
+                    btn.querySelector('i').className = 'fas fa-heart';
+                    countSpan.innerText = currentCount + 1;
+                } else {
+                    btn.classList.remove('liked');
+                    btn.querySelector('i').className = 'far fa-heart';
+                    countSpan.innerText = Math.max(0, currentCount - 1);
+                }
 
-                // Make API call
                 const response = await fetch(`/api/blog/${blogId}/like`, {
                     method: 'POST',
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 const data = await response.json();
+                if (!response.ok || !data.success) throw new Error();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Like operation failed');
+                // Sync with server
+                countSpan.innerText = data.like_count;
+
+                if (data.action === 'liked') {
+                    btn.classList.add('liked');
+                    btn.querySelector('i').className = 'fas fa-heart';
+                    this.showMessage('You liked this article! ❤️', 'success');
+                } else if (data.action === 'unliked') {
+                    btn.classList.remove('liked');
+                    btn.querySelector('i').className = 'far fa-heart';
+                    this.showMessage('You unliked this article', 'info');
                 }
 
-                if (data.success) {
-                    const action = newLikeState ? 'liked' : 'unliked';
-                    showToast(`Article ${action}`, 'success');
+                // Update modal if open
+                if (this.currentId == blogId) {
+                    document.getElementById('lightweightModalLikeCount').innerText = data.like_count;
+                    document.getElementById('lightweightModalLikes').innerText = data.like_count;
+                    const modalLikeBtn = document.getElementById('lightweightModalLikeBtn');
+                    if (data.action === 'liked') {
+                        modalLikeBtn.classList.add('liked');
+                        modalLikeBtn.querySelector('i').className = 'fas fa-heart';
+                    } else {
+                        modalLikeBtn.classList.remove('liked');
+                        modalLikeBtn.querySelector('i').className = 'far fa-heart';
+                    }
+                }
 
-                    // Sync all like buttons for this blog
-                    this.syncAllLikeButtons(blogId, data.like_count || newCount, newLikeState);
-                } else {
-                    throw new Error(data.error || 'Like operation failed');
+                // Update cache
+                if (this.blogDataCache.has(blogId)) {
+                    this.blogDataCache.get(blogId).like_count = data.like_count;
+                    this.blogDataCache.get(blogId).is_liked = (data.action === 'liked');
                 }
 
             } catch (error) {
-                console.error('❌ Like error:', error);
+                console.error('Like error:', error);
+                this.showMessage('Like action failed', 'error');
+            }
+        },
+
+        handleModalLike: async function(blogId) {
+            const likeBtn = document.getElementById('lightweightModalLikeBtn');
+            const countSpan = document.getElementById('lightweightModalLikeCount');
+            const likesSpan = document.getElementById('lightweightModalLikes');
+
+            const isCurrentlyLiked = likeBtn.classList.contains('liked');
+            let currentCount = parseInt(countSpan.innerText) || 0;
+            const previousState = {
+                isLiked: isCurrentlyLiked,
+                count: currentCount
+            };
+
+            // Optimistic update
+            if (!isCurrentlyLiked) {
+                likeBtn.classList.add('liked');
+                likeBtn.querySelector('i').className = 'fas fa-heart';
+                countSpan.innerText = currentCount + 1;
+                if (likesSpan) likesSpan.innerText = currentCount + 1;
+            } else {
+                likeBtn.classList.remove('liked');
+                likeBtn.querySelector('i').className = 'far fa-heart';
+                countSpan.innerText = Math.max(0, currentCount - 1);
+                if (likesSpan) likesSpan.innerText = Math.max(0, currentCount - 1);
+            }
+
+            // Also update card button optimistically
+            const cardLikeBtn = document.querySelector(`.lightweight-like-btn[data-id="${blogId}"]`);
+            if (cardLikeBtn) {
+                const cardCountSpan = cardLikeBtn.querySelector('.like-count');
+                if (!isCurrentlyLiked) {
+                    cardLikeBtn.classList.add('liked');
+                    cardLikeBtn.querySelector('i').className = 'fas fa-heart';
+                    if (cardCountSpan) cardCountSpan.innerText = currentCount + 1;
+                } else {
+                    cardLikeBtn.classList.remove('liked');
+                    cardLikeBtn.querySelector('i').className = 'far fa-heart';
+                    if (cardCountSpan) cardCountSpan.innerText = Math.max(0, currentCount - 1);
+                }
+            }
+
+            try {
+                // First check if user is logged in
+                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
+                const session = await sessionCheck.json();
+
+                if (!session.logged_in) {
+                    // Revert optimistic update
+                    if (previousState.isLiked) {
+                        likeBtn.classList.add('liked');
+                        likeBtn.querySelector('i').className = 'fas fa-heart';
+                        countSpan.innerText = previousState.count;
+                        if (likesSpan) likesSpan.innerText = previousState.count;
+                    } else {
+                        likeBtn.classList.remove('liked');
+                        likeBtn.querySelector('i').className = 'far fa-heart';
+                        countSpan.innerText = previousState.count;
+                        if (likesSpan) likesSpan.innerText = previousState.count;
+                    }
+
+                    // Revert card button
+                    if (cardLikeBtn) {
+                        const cardCountSpan = cardLikeBtn.querySelector('.like-count');
+                        if (previousState.isLiked) {
+                            cardLikeBtn.classList.add('liked');
+                            cardLikeBtn.querySelector('i').className = 'fas fa-heart';
+                            if (cardCountSpan) cardCountSpan.innerText = previousState.count;
+                        } else {
+                            cardLikeBtn.classList.remove('liked');
+                            cardLikeBtn.querySelector('i').className = 'far fa-heart';
+                            if (cardCountSpan) cardCountSpan.innerText = previousState.count;
+                        }
+                    }
+
+                    // Close blog modal first
+                    this.closeModal();
+
+                    // Show login message
+                    if (typeof showToast === 'function') {
+                        showToast('Please login to like articles', 'warning');
+                    }
+
+                    // Open login modal after short delay
+                    setTimeout(() => {
+                        if (typeof openLoginModal === 'function') {
+                            openLoginModal();
+                        } else {
+                            const loginModal = document.getElementById('loginModal');
+                            if (loginModal) {
+                                loginModal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+                            }
+                        }
+                    }, 200);
+                    return;
+                }
+
+                // User is logged in, proceed with like
+                const response = await fetch(`/api/blog/${blogId}/like`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Like operation failed');
+
+                // Sync with server
+                countSpan.innerText = data.like_count;
+                if (likesSpan) likesSpan.innerText = data.like_count;
+
+                if (data.action === 'liked') {
+                    likeBtn.classList.add('liked');
+                    likeBtn.querySelector('i').className = 'fas fa-heart';
+                    if (typeof showToast === 'function') {
+                        showToast('You liked this article! ❤️', 'success');
+                    }
+                } else if (data.action === 'unliked') {
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('i').className = 'far fa-heart';
+                    if (typeof showToast === 'function') {
+                        showToast('You unliked this article', 'info');
+                    }
+                }
+
+                // Sync card button
+                if (cardLikeBtn) {
+                    const cardCountSpan = cardLikeBtn.querySelector('.like-count');
+                    if (cardCountSpan) cardCountSpan.innerText = data.like_count;
+                    if (data.action === 'liked') {
+                        cardLikeBtn.classList.add('liked');
+                        cardLikeBtn.querySelector('i').className = 'fas fa-heart';
+                    } else {
+                        cardLikeBtn.classList.remove('liked');
+                        cardLikeBtn.querySelector('i').className = 'far fa-heart';
+                    }
+                }
+
+                // Update cache
+                if (this.blogDataCache.has(blogId)) {
+                    this.blogDataCache.get(blogId).like_count = data.like_count;
+                    this.blogDataCache.get(blogId).is_liked = (data.action === 'liked');
+                }
+
+            } catch (error) {
+                console.error('Modal like error:', error);
 
                 // Revert optimistic update
-                const isCurrentlyLiked = button.classList.contains('liked');
-                const currentCount = parseInt(button.querySelector('.like-count').textContent) || 0;
-                const originalCount = isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
-                this.updateLikeUI(button, originalCount, !isCurrentlyLiked);
+                if (previousState.isLiked) {
+                    likeBtn.classList.add('liked');
+                    likeBtn.querySelector('i').className = 'fas fa-heart';
+                    countSpan.innerText = previousState.count;
+                    if (likesSpan) likesSpan.innerText = previousState.count;
+                } else {
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('i').className = 'far fa-heart';
+                    countSpan.innerText = previousState.count;
+                    if (likesSpan) likesSpan.innerText = previousState.count;
+                }
 
-                showToast(error.message || 'Failed to update like', 'error');
-            }
-        },
-
-        updateBookmarkUI(button, isBookmarked) {
-            const icon = button.querySelector('i');
-            const text = button.querySelector('.bookmark-text');
-
-            button.classList.toggle('bookmarked', isBookmarked);
-
-            if (icon) {
-                icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
-            }
-
-            if (text) {
-                text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
-            }
-        },
-
-        updateLikeUI(button, count, isLiked) {
-            const icon = button.querySelector('i');
-            const countElement = button.querySelector('.like-count');
-
-            button.classList.toggle('liked', isLiked);
-
-            if (icon) {
-                icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
-            }
-
-            if (countElement) {
-                countElement.textContent = count;
-            }
-        },
-
-        updateViewUI(blogId, viewCount) {
-            // Update modal view count
-            if (this.currentBlogId === blogId) {
-                document.getElementById('viewsCount').textContent = viewCount;
-            }
-
-            // Update card view count
-            const cardViewBadge = document.querySelector(`.blog-card-vertical[data-id="${blogId}"] .views-count`);
-            if (cardViewBadge) {
-                cardViewBadge.textContent = viewCount;
-            }
-        },
-
-        syncAllBookmarkButtons(blogId, isBookmarked) {
-            // Update all bookmark buttons for this blog
-            const allBookmarkButtons = document.querySelectorAll(`.btn-bookmark-vertical[data-id="${blogId}"], #modalBookmarkBtn[data-id="${blogId}"]`);
-
-            allBookmarkButtons.forEach(button => {
-                this.updateBookmarkUI(button, isBookmarked);
-            });
-        },
-
-        syncAllLikeButtons(blogId, count, isLiked) {
-            // Update all like buttons for this blog
-            const allLikeButtons = document.querySelectorAll(`.btn-like-vertical[data-id="${blogId}"], .btn-like-modal[data-id="${blogId}"]`);
-
-            allLikeButtons.forEach(button => {
-                this.updateLikeUI(button, count, isLiked);
-            });
-        },
-
-        updateCardBookmarkStatus(blogId, isBookmarked) {
-            const cardBookmarkBtn = document.querySelector(`.btn-bookmark-vertical[data-id="${blogId}"]`);
-            if (cardBookmarkBtn) {
-                this.updateBookmarkUI(cardBookmarkBtn, isBookmarked);
-            }
-        },
-
-        updateCardLikeStatus(blogId, count, isLiked) {
-            const cardLikeBtn = document.querySelector(`.btn-like-vertical[data-id="${blogId}"]`);
-            if (cardLikeBtn) {
-                this.updateLikeUI(cardLikeBtn, count, isLiked);
-            }
-        },
-
-        updateCardViewStatus(blogId, viewCount) {
-            const cardViewBadge = document.querySelector(`.blog-card-vertical[data-id="${blogId}"] .views-count`);
-            if (cardViewBadge) {
-                cardViewBadge.textContent = viewCount;
-            }
-        },
-
-        async trackView(blogId) {
-            try {
-                // Track view when modal opens (NO LOGIN REQUIRED)
-                const response = await fetch(`/api/blog/${blogId}/view`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                // Revert card button
+                if (cardLikeBtn) {
+                    const cardCountSpan = cardLikeBtn.querySelector('.like-count');
+                    if (previousState.isLiked) {
+                        cardLikeBtn.classList.add('liked');
+                        cardLikeBtn.querySelector('i').className = 'fas fa-heart';
+                        if (cardCountSpan) cardCountSpan.innerText = previousState.count;
+                    } else {
+                        cardLikeBtn.classList.remove('liked');
+                        cardLikeBtn.querySelector('i').className = 'far fa-heart';
+                        if (cardCountSpan) cardCountSpan.innerText = previousState.count;
                     }
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(error.message || 'Like action failed', 'error');
+                }
+            }
+        },
+
+        handleBookmark: async function(btn, blogId) {
+            try {
+                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
+                const session = await sessionCheck.json();
+
+                if (!session.logged_in) {
+                    this.showMessage('Please login to bookmark', 'warning');
+                    if (typeof openLoginModal === 'function') openLoginModal();
+                    return;
+                }
+
+                const isBookmarked = btn.classList.contains('bookmarked');
+                const willBeBookmarked = !isBookmarked;
+
+                btn.classList.toggle('bookmarked', willBeBookmarked);
+                btn.querySelector('i').className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+
+                const response = await fetch(`/api/bookmark/blog/${blogId}`, {
+                    method: 'POST',
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
+                if (!response.ok || !data.success) throw new Error();
 
-                if (data.success) {
-                    console.log('👀 View tracked for blog:', blogId, 'Total views:', data.views);
-                    // Update view count in UI
-                    this.updateViewUI(blogId, data.views);
-                } else {
-                    console.error('Failed to track view:', data.error);
+                if (data.status === 'added') {
+                    this.showMessage('Article saved to bookmarks! 📌', 'success');
+                } else if (data.status === 'removed') {
+                    this.showMessage('Article removed from bookmarks', 'info');
                 }
+
+                // Update modal if open
+                if (this.currentId == blogId) {
+                    const modalBookmark = document.getElementById('lightweightModalBookmarkBtn');
+                    modalBookmark.classList.toggle('bookmarked', willBeBookmarked);
+                    modalBookmark.querySelector('i').className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    modalBookmark.querySelector('span').innerText = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
+                }
+
+                if (this.blogDataCache.has(blogId)) {
+                    this.blogDataCache.get(blogId).is_bookmarked = willBeBookmarked;
+                }
+
             } catch (error) {
-                console.error('Error tracking view:', error);
+                console.error('Bookmark error:', error);
+                this.showMessage('Bookmark failed', 'error');
             }
         },
 
-        closeModal() {
-            const modal = document.getElementById('blogDetailModal');
-            if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-                this.isOpen = false;
-                this.currentBlogId = null;
+        handleModalBookmark: async function(blogId) {
+            const modalBookmark = document.getElementById('lightweightModalBookmarkBtn');
+            const isCurrentlyBookmarked = modalBookmark.classList.contains('bookmarked');
+            const willBeBookmarked = !isCurrentlyBookmarked;
+            const previousState = isCurrentlyBookmarked;
+
+            // Optimistic update
+            modalBookmark.classList.toggle('bookmarked', willBeBookmarked);
+            modalBookmark.querySelector('i').className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+            modalBookmark.querySelector('span').innerText = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
+
+            try {
+                // First check if user is logged in
+                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
+                const session = await sessionCheck.json();
+
+                if (!session.logged_in) {
+                    // Revert optimistic update
+                    modalBookmark.classList.toggle('bookmarked', previousState);
+                    modalBookmark.querySelector('i').className = previousState ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    modalBookmark.querySelector('span').innerText = previousState ? 'Bookmarked' : 'Bookmark';
+
+                    // Close blog modal first
+                    this.closeModal();
+
+                    // Show login message and open login modal
+                    if (typeof showToast === 'function') {
+                        showToast('Please login to bookmark articles', 'warning');
+                    }
+
+                    // Open login modal after a short delay to ensure blog modal is closed
+                    setTimeout(() => {
+                        if (typeof openLoginModal === 'function') {
+                            openLoginModal();
+                        } else {
+                            const loginModal = document.getElementById('loginModal');
+                            if (loginModal) {
+                                loginModal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+                            }
+                        }
+                    }, 200);
+                    return;
+                }
+
+                // User is logged in, proceed with bookmark
+                const response = await fetch(`/api/bookmark/blog/${blogId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Bookmark operation failed');
+
+                if (data.status === 'added') {
+                    if (typeof showToast === 'function') {
+                        showToast('Article saved to bookmarks! 📌', 'success');
+                    }
+                } else if (data.status === 'removed') {
+                    if (typeof showToast === 'function') {
+                        showToast('Article removed from bookmarks', 'info');
+                    }
+                }
+
+                // Update card bookmark
+                const cardBtn = document.querySelector(`.lightweight-bookmark-btn[data-id="${blogId}"]`);
+                if (cardBtn) {
+                    cardBtn.classList.toggle('bookmarked', willBeBookmarked);
+                    cardBtn.querySelector('i').className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                }
+
+                // Update cache
+                if (this.blogDataCache.has(blogId)) {
+                    this.blogDataCache.get(blogId).is_bookmarked = willBeBookmarked;
+                }
+
+            } catch (error) {
+                console.error('Modal bookmark error:', error);
+
+                // Revert optimistic update
+                modalBookmark.classList.toggle('bookmarked', previousState);
+                modalBookmark.querySelector('i').className = previousState ? 'fas fa-bookmark' : 'far fa-bookmark';
+                modalBookmark.querySelector('span').innerText = previousState ? 'Bookmarked' : 'Bookmark';
+
+                if (typeof showToast === 'function') {
+                    showToast(error.message || 'Bookmark failed', 'error');
+                }
             }
         }
+
     };
 
     // =============================================
@@ -4408,6 +4523,31 @@
             else if (!f || f.children.length === 0) c.classList.add('single-column-form');
         }
 
+        // Using existing withLoader function
+        const viewAllBtn = document.getElementById('viewAllBlogsBtn');
+        if (viewAllBtn) {
+            const newBtn = viewAllBtn.cloneNode(true);
+            viewAllBtn.parentNode.replaceChild(newBtn, viewAllBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                if (typeof withLoader === 'function') {
+                    withLoader(
+                        new Promise((resolve) => {
+                            setTimeout(() => {
+                                window.location.href = '/blogs.html';
+                                resolve();
+                            }, 300);
+                        }),
+                        'Loading articles...'
+                    );
+                } else {
+                    window.location.href = '/blogs.html';
+                }
+            });
+        }
+
         // Initialize dark mode
         initDarkMode();
 
@@ -4417,8 +4557,9 @@
         // Initialize content cards functionality
         initializeContentCards();
 
-        // Initialize blog modal system
-        blogModal.init();
+        // Initialize blog  system
+        LightweightBlog.init();
+
 
         // Initialize testimonial system
         if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {

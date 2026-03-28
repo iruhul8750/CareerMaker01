@@ -580,98 +580,84 @@
     </div>
 </section>
 
-<!-- Professional Blog Section -->
-<section class="professional-blog-section" id="blog">
+<!-- Lightweight Blog Section -->
+<section class="lightweight-blog-section" id="lightweight-blog">
     <div class="container">
-        <div class="section-header">
-            <h2 class="section-title scroll-animate">Latest Career Insights</h2>
-            <p class="section-subtitle scroll-animate">Expert advice to boost your career journey</p>
+        <div class="lightweight-blog-header">
+            <h2>Career Insights</h2>
+            <p>Expert advice, practical tips, and career strategies</p>
         </div>
 
-        <div class="blog-grid-vertical scroll-animate" id="blogGrid">
+        <div class="lightweight-blog-grid" id="lightweightBlogGrid">
             {% for post in blogs %}
-            <article class="blog-card-vertical animated-card" data-id="{{ post.id }}">
-                <div class="blog-card-inner-vertical">
-                    <!-- Blog Image (Top Half) -->
-                    <div class="blog-image-container-vertical">
-                        {% if post.image %}
-                        <img src="{{ post.image }}" alt="{{ post.title }}" class="blog-image-vertical"
-                             onerror="this.src='/static/images/default-blog.jpg'">
-                        {% else %}
-                        <img src="/static/images/default-blog.jpg" alt="{{ post.title }}" class="blog-image-vertical">
-                        {% endif %}
-                        <div class="blog-category-badge-vertical">
-                            {{ post.categories[0] if post.categories and post.categories|length > 0 else 'Career' }}
-                        </div>
-
-                        <!-- Views Counter Badge - LIVE DATA -->
-                        <div class="blog-views-badge-vertical">
-                            <i class="fas fa-eye"></i>
-                            <span class="views-count">{{ post.views or 0 }}</span>
-                        </div>
+            <article class="lightweight-blog-card" data-id="{{ post.id }}">
+                <div class="lightweight-blog-image-wrapper">
+                    {% if post.image %}
+                    <img class="lightweight-blog-image" src="{{ post.image }}" alt="{{ post.title }}" loading="lazy"
+                         onerror="this.src='/static/images/default-blog.jpg'">
+                    {% else %}
+                    <img class="lightweight-blog-image" src="/static/images/default-blog.jpg" alt="{{ post.title }}"
+                         loading="lazy">
+                    {% endif %}
+                    <span class="lightweight-blog-category">{{ post.categories[0] if post.categories else 'Career' }}</span>
+                    <div class="lightweight-blog-views">
+                        <i class="fas fa-eye"></i>
+                        <span class="views-count">{{ post.views or 0 }}</span>
                     </div>
-
-                    <!-- Blog Content (Lower Half) -->
-                    <div class="blog-content-vertical">
-                        <div class="blog-meta-vertical">
-                            <span class="blog-date-vertical">{{ (post.published_at or post.created_at) | format_date }}</span>
-                            <span class="blog-read-time-vertical">
-                                <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
-                            </span>
+                </div>
+                <div class="lightweight-blog-content">
+                    <div class="lightweight-blog-meta">
+                        <span class="lightweight-blog-date">{{ (post.published_at or post.created_at) | format_date }}</span>
+                        <span class="lightweight-blog-read-time">
+                            <i class="far fa-clock"></i> {{ post.read_time or '4 min read' }}
+                        </span>
+                    </div>
+                    <h3 class="lightweight-blog-title">{{ post.title }}</h3>
+                    <p class="lightweight-blog-excerpt">
+                        {{ (post.description or post.content or 'No content available')|truncate(100) }}
+                    </p>
+                    <div class="lightweight-blog-author-row">
+                        <div class="lightweight-author-info">
+                            {% if post.author_avatar %}
+                            <img class="lightweight-author-avatar" src="{{ post.author_avatar }}"
+                                 alt="{{ post.author }}">
+                            {% else %}
+                            <img class="lightweight-author-avatar"
+                                 src="https://ui-avatars.com/api/?name={{ post.author or 'CM' }}&background=8B5FBF&color=fff"
+                                 alt="{{ post.author }}">
+                            {% endif %}
+                            <span class="lightweight-author-name">{{ post.author or 'CareerMaker' }}</span>
                         </div>
-
-                        <h3 class="blog-title-vertical">{{ post.title }}</h3>
-                        <p class="blog-excerpt-vertical">
-                            {{ (post.description or post.content or 'No content available')|truncate(120) }}
-                        </p>
-
-                        <!-- Blog Footer with Author and Actions -->
-                        <div class="blog-footer-vertical">
-                            <div class="blog-author-vertical">
-                                <div class="author-avatar-vertical">
-                                    {% if post.author_avatar %}
-                                    <img src="{{ post.author_avatar }}" alt="{{ post.author }}"
-                                         onerror="this.src='https://ui-avatars.com/api/?name={{ post.author|urlencode }}&background=8B5FBF&color=fff&bold=true'">
-                                    {% else %}
-                                    <img src="https://ui-avatars.com/api/?name={{ post.author|urlencode }}&background=8B5FBF&color=fff&bold=true"
-                                         alt="{{ post.author }}">
-                                    {% endif %}
-                                </div>
-                                <span class="author-name-vertical">{{ post.author or 'CareerMaker Team' }}</span>
-                            </div>
-
-                            <div class="blog-actions-vertical">
-                                <!-- Like Button - REQUIRES LOGIN -->
-                                <button class="btn-like-vertical {% if post.is_liked %}liked{% endif %}"
-                                        data-id="{{ post.id }}">
-                                    <i class="{% if post.is_liked %}fas{% else %}far{% endif %} fa-heart"></i>
-                                    <span class="like-count">{{ post.like_count or 0 }}</span>
-                                </button>
-
-                                <!-- Bookmark Button - REQUIRES LOGIN -->
-                                <button class="btn-bookmark-vertical {% if post.is_bookmarked %}bookmarked{% endif %}"
-                                        data-id="{{ post.id }}">
-                                    <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
-                                </button>
-                            </div>
+                        <div class="lightweight-blog-actions">
+                            <button class="lightweight-like-btn {% if post.is_liked %}liked{% endif %}"
+                                    data-id="{{ post.id }}">
+                                <i class="{% if post.is_liked %}fas{% else %}far{% endif %} fa-heart"></i>
+                                <span class="like-count">{{ post.like_count or 0 }}</span>
+                            </button>
+                            <button class="lightweight-bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
+                                    data-id="{{ post.id }}">
+                                <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
+                            </button>
+                            <button class="lightweight-read-more" data-id="{{ post.id }}">
+                                Read <i class="fas fa-arrow-right"></i>
+                            </button>
                         </div>
-
-                        <!-- Read More Button -->
-                        <button class="read-more-btn-vertical" data-id="{{ post.id }}">
-                            Read More
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
                     </div>
                 </div>
             </article>
+            {% else %}
+            <div class="lightweight-empty-state">
+                <i class="fas fa-newspaper"></i>
+                <h3>No articles yet</h3>
+                <p>Check back soon for career insights.</p>
+            </div>
             {% endfor %}
         </div>
 
-        <!-- View All Blogs Button - Always show if there are any blogs -->
         {% if blogs and blogs|length > 0 %}
-        <div class="blog-section-footer scroll-animate" style="display: block; text-align: center; margin-top: 40px;">
-            <a href="/blogs.html" class="btn btn-primary view-all-blogs">
-                View All Articles
+        <div style="text-align: center; margin-top: 16px;">
+            <a href="/blogs.html" class="lightweight-view-all" id="viewAllBlogsBtn">
+                <span>View All Articles</span>
                 <i class="fas fa-arrow-right"></i>
             </a>
         </div>
@@ -679,56 +665,85 @@
     </div>
 </section>
 
-<!-- Blog Detail Modal -->
-<div class="modal" id="blogDetailModal" style="display: none;">
-    <div class="modal-overlay"></div> <!-- Removed onclick handler -->
-    <div class="modal-content blog-modal-content">
-        <!-- Enhanced Close Button -->
-        <button class="close-modal" onclick="blogModal.closeModal()" title="Close">
+<!-- Horizontal Blog Modal -->
+<div class="lightweight-blog-modal" id="lightweightBlogModal">
+    <div class="lightweight-modal-content">
+        <button class="lightweight-modal-close" id="lightweightModalClose">
             <i class="fas fa-times"></i>
         </button>
 
-        <div class="blog-modal-header">
-            <div class="blog-modal-category" id="modalCategory">Career</div>
-            <div class="blog-modal-meta">
-                <div class="modal-author">
-                    <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">
-                    <div>
-                        <span id="modalAuthorName">Author Name</span>
-                        <span class="modal-date" id="modalDate">January 1, 2024</span>
+        <div class="lightweight-modal-layout">
+            <div class="lightweight-modal-left">
+                <div class="lightweight-modal-image-container">
+                    <img id="lightweightModalImage" src="" alt="Blog image">
+                </div>
+                <div class="lightweight-modal-quick-info">
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-user-circle"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Author</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalAuthor">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Published</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalDate">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Read Time</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalReadTime">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-eye"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Views</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalViews">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-heart"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Likes</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalLikes">-</span>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-stats">
-                    <!-- Like Button in Modal - NO LOGIN REQUIRED -->
-                    <button class="btn-like-modal" id="modalLikeBtn" data-id="">
-                        <i class="far fa-heart"></i>
-                        <span class="like-count" id="modalLikeCount">0</span>
-                    </button>
-                    <span class="read-time" id="modalReadTime">
-                        <i class="far fa-clock"></i> 5 min read
-                    </span>
-                    <!-- Views Counter in Modal -->
-                    <span class="views-count-modal" id="modalViewsCount">
-                        <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
-                    </span>
+            </div>
+
+            <div class="lightweight-modal-right">
+                <span class="lightweight-modal-category" id="lightweightModalCategory">-</span>
+                <h2 class="lightweight-modal-title" id="lightweightModalTitle">-</h2>
+
+                <div class="lightweight-modal-meta">
+                    <div class="lightweight-modal-author">
+                        <img id="lightweightModalAvatar" src="" alt="Author">
+                        <div class="lightweight-modal-author-info">
+                            <strong id="lightweightModalAuthorName">-</strong>
+                            <span>Career Expert</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-modal-stats">
+                        <button class="lightweight-like-btn-modal" id="lightweightModalLikeBtn">
+                            <i class="far fa-heart"></i>
+                            <span id="lightweightModalLikeCount">0</span>
+                        </button>
+                        <button class="lightweight-bookmark-btn-modal" id="lightweightModalBookmarkBtn">
+                            <i class="far fa-bookmark"></i>
+                            <span>Bookmark</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lightweight-modal-content-text" id="lightweightModalContent">
+                    <div class="loading-spinner-mini" style="margin: 20px auto; display: block;"></div>
                 </div>
             </div>
-        </div>
-
-        <div class="blog-modal-body">
-            <div class="blog-modal-image">
-                <img id="modalImage" src="" alt="Blog Image">
-            </div>
-            <div class="blog-modal-content-text" id="modalContent">
-                <!-- Blog content will be loaded here -->
-            </div>
-        </div>
-
-        <div class="blog-modal-footer">
-            <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
-                <i class="far fa-bookmark"></i>
-                <span class="bookmark-text">Bookmark</span>
-            </button>
         </div>
     </div>
 </div>

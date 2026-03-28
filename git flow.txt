@@ -16,5 +16,7 @@ git push origin main
 #  To see the commit logs
 git log --oneline
 
+type "q" to exit
+
 # Go to Previous commit of the active branch
 git reset --hard HEAD~1

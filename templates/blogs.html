@@ -11,15 +11,15 @@
     </div>
 </section>
 
-<!-- Blogs Grid Section -->
-<section class="blogs-page-section">
+<!-- All Blogs Grid Section -->
+<section class="all-blogs-section">
     <div class="container">
-        <div class="blogs-header">
-            <div class="blogs-info">
+        <div class="all-blogs-header">
+            <div class="all-blogs-info">
                 <h2>All Articles</h2>
-                <p>Showing {{ posts|length }} articles</p>
+                <p class="blogs-count">Showing <span id="visibleCount">{{ posts|length }}</span> articles</p>
             </div>
-            <div class="blogs-filter">
+            <div class="all-blogs-filter">
                 <select class="filter-select" id="categoryFilter">
                     <option value="">All Categories</option>
                     <option value="Career Advice">Career Advice</option>
@@ -34,678 +34,252 @@
             </div>
         </div>
 
-        <div class="blog-grid-vertical" id="blogsGrid">
+        <!-- All Blogs Grid - Using same card styles as homepage -->
+        <div class="all-blogs-grid" id="allBlogsGrid">
             {% for post in posts %}
-            <article class="blog-card-vertical" data-id="{{ post.id }}" data-category="{{ post.categories[0] if post.categories else 'Career Advice' }}">
-                <div class="blog-card-inner-vertical">
-                    <!-- Blog Image - Upper Half -->
-                    <div class="blog-image-container-vertical">
-                        {% if post.image %}
-                        <img src="{{ post.image }}" alt="{{ post.title }}" class="blog-image-vertical"
-                             onerror="this.src='/static/images/default-blog.jpg'">
-                        {% else %}
-                        <img src="/static/images/default-blog.jpg" alt="{{ post.title }}" class="blog-image-vertical">
-                        {% endif %}
-                        <div class="blog-category-badge-vertical">
-                            {{ post.categories[0] if post.categories else 'Career Advice' }}
-                        </div>
-                        <!-- Views Badge -->
-                        <div class="blog-views-badge-vertical">
-                            <i class="fas fa-eye"></i>
-                            <span class="views-count">{{ post.views or 0 }}</span>
-                        </div>
+            <article class="lightweight-blog-card" data-id="{{ post.id }}"
+                     data-category="{{ post.categories[0] if post.categories else 'Career Advice' }}">
+                <div class="lightweight-blog-image-wrapper">
+                    {% if post.image %}
+                    <img class="lightweight-blog-image" src="{{ post.image }}" alt="{{ post.title }}" loading="lazy"
+                         onerror="this.src='/static/images/default-blog.jpg'">
+                    {% else %}
+                    <img class="lightweight-blog-image" src="/static/images/default-blog.jpg" alt="{{ post.title }}"
+                         loading="lazy">
+                    {% endif %}
+                    <span class="lightweight-blog-category">{{ post.categories[0] if post.categories else 'Career Advice' }}</span>
+                    <div class="lightweight-blog-views">
+                        <i class="fas fa-eye"></i>
+                        <span class="views-count">{{ post.views or 0 }}</span>
                     </div>
-
-                    <!-- Blog Content - Lower Half -->
-                    <div class="blog-content-vertical">
-                        <div class="blog-meta-vertical">
-                            <span class="blog-date-vertical">{{ post.published_at or post.created_at }}</span>
-                            <span class="blog-read-time-vertical">
-                                <i class="far fa-clock"></i>
-                                {{ post.read_time or '5 min read' }}
-                            </span>
+                </div>
+                <div class="lightweight-blog-content">
+                    <div class="lightweight-blog-meta">
+                        <span class="lightweight-blog-date">{{ (post.published_at or post.created_at) | format_date }}</span>
+                        <span class="lightweight-blog-read-time">
+                            <i class="far fa-clock"></i> {{ post.read_time or '4 min read' }}
+                        </span>
+                    </div>
+                    <h3 class="lightweight-blog-title">{{ post.title }}</h3>
+                    <p class="lightweight-blog-excerpt">
+                        {{ (post.description or post.content or 'No content available')|truncate(100) }}
+                    </p>
+                    <div class="lightweight-blog-author-row">
+                        <div class="lightweight-author-info">
+                            {% if post.author_avatar %}
+                            <img class="lightweight-author-avatar" src="{{ post.author_avatar }}"
+                                 alt="{{ post.author }}">
+                            {% else %}
+                            <img class="lightweight-author-avatar"
+                                 src="https://ui-avatars.com/api/?name={{ post.author or 'CM' }}&background=8B5FBF&color=fff"
+                                 alt="{{ post.author }}">
+                            {% endif %}
+                            <span class="lightweight-author-name">{{ post.author or 'CareerMaker' }}</span>
                         </div>
-
-                        <h3 class="blog-title-vertical">{{ post.title }}</h3>
-                        <p class="blog-excerpt-vertical">
-                            {{ (post.description or post.content or 'No content available')|truncate(100) }}
-                        </p>
-
-                        <!-- Blog Footer with Author and Actions -->
-                        <div class="blog-footer-vertical">
-                            <div class="blog-author-vertical">
-                                <div class="author-avatar-vertical">
-                                    {% if post.author_avatar %}
-                                    <img src="{{ post.author_avatar }}" alt="{{ post.author or 'CareerMaker Team' }}"
-                                         onerror="this.src='https://ui-avatars.com/api/?name={{ post.author or 'CareerMaker Team' }}&background=8B5FBF&color=fff&bold=true'">
-                                    {% else %}
-                                    <img src="https://ui-avatars.com/api/?name={{ post.author or 'CareerMaker Team' }}&background=8B5FBF&color=fff&bold=true"
-                                         alt="{{ post.author or 'CareerMaker Team' }}">
-                                    {% endif %}
-                                </div>
-                                <div class="author-info-vertical">
-                                    <span class="author-name-vertical">{{ post.author or 'CareerMaker Team' }}</span>
-                                    <span class="author-role-vertical">Career Expert</span>
-                                </div>
-                            </div>
-
-                            <div class="blog-actions-vertical">
-                                <!-- Like Button -->
-                                <button class="btn-like-vertical" data-id="{{ post.id }}" title="Like">
-                                    <i class="far fa-heart"></i>
-                                    <span class="like-count">{{ post.like_count or 0 }}</span>
-                                </button>
-
-                                <!-- Bookmark Button -->
-                                <button class="btn-bookmark-vertical {% if post.is_bookmarked %}bookmarked{% endif %}"
-                                        data-id="{{ post.id }}" data-type="blog" title="Bookmark">
-                                    <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
-                                </button>
-
-                                <!-- Read More Button -->
-                                <button class="read-more-btn-vertical" data-id="{{ post.id }}">
-                                    Read More <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </div>
+                        <div class="lightweight-blog-actions">
+                            <button class="lightweight-like-btn {% if post.is_liked %}liked{% endif %}"
+                                    data-id="{{ post.id }}">
+                                <i class="{% if post.is_liked %}fas{% else %}far{% endif %} fa-heart"></i>
+                                <span class="like-count">{{ post.like_count or 0 }}</span>
+                            </button>
+                            <button class="lightweight-bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
+                                    data-id="{{ post.id }}">
+                                <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
+                            </button>
+                            <button class="lightweight-read-more" data-id="{{ post.id }}">
+                                Read <i class="fas fa-arrow-right"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </article>
             {% else %}
-            <div class="no-blogs-message">
-                <div class="no-blogs-content">
-                    <i class="fas fa-newspaper"></i>
-                    <h3>No Articles Available</h3>
-                    <p>Check back later for new career insights and articles.</p>
-                </div>
+            <div class="lightweight-empty-state">
+                <i class="fas fa-newspaper"></i>
+                <h3>No Articles Available</h3>
+                <p>Check back later for new career insights and articles.</p>
             </div>
             {% endfor %}
         </div>
-
-        <!-- Load More Button -->
-        {% if posts|length >= 9 %}
-        <div class="load-more-section">
-            <button class="btn btn-outline load-more-btn" id="loadMoreBtn">
-                <i class="fas fa-redo"></i>
-                Load More Articles
-            </button>
-        </div>
-        {% endif %}
     </div>
 </section>
-<!-- Blog Detail Modal -->
-<div class="modal" id="blogDetailModal" style="display: none;">
-    <div class="modal-overlay"></div> <!-- Removed onclick handler -->
-    <div class="modal-content blog-modal-content">
-        <!-- Enhanced Close Button -->
-        <button class="close-modal" onclick="blogModal.closeModal()" title="Close">
+
+<!-- Blog Detail Modal (Same as homepage) -->
+<div class="lightweight-blog-modal" id="lightweightBlogModal">
+    <div class="lightweight-modal-content">
+        <button class="lightweight-modal-close" id="lightweightModalClose">
             <i class="fas fa-times"></i>
         </button>
 
-        <div class="blog-modal-header">
-            <div class="blog-modal-category" id="modalCategory">Career</div>
-            <h2 id="modalTitle">Blog Title</h2>
-            <div class="blog-modal-meta">
-                <div class="modal-author">
-                    <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">
-                    <div>
-                        <span id="modalAuthorName">Author Name</span>
-                        <span class="modal-date" id="modalDate">January 1, 2024</span>
+        <div class="lightweight-modal-layout">
+            <div class="lightweight-modal-left">
+                <div class="lightweight-modal-image-container">
+                    <img id="lightweightModalImage" src="" alt="Blog image">
+                </div>
+                <div class="lightweight-modal-quick-info">
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-user-circle"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Author</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalAuthor">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Published</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalDate">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Read Time</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalReadTime">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-eye"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Views</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalViews">-</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-quick-info-item">
+                        <i class="fas fa-heart"></i>
+                        <div>
+                            <span class="lightweight-quick-info-label">Likes</span>
+                            <span class="lightweight-quick-info-value" id="lightweightModalLikes">-</span>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-stats">
-                    <!-- Like Button in Modal - NO LOGIN REQUIRED -->
-                    <button class="btn-like-modal" id="modalLikeBtn" data-id="">
-                        <i class="far fa-heart"></i>
-                        <span class="like-count" id="modalLikeCount">0</span>
-                    </button>
-                    <span class="read-time" id="modalReadTime">
-                        <i class="far fa-clock"></i> 5 min read
-                    </span>
-                    <!-- Views Counter in Modal -->
-                    <span class="views-count-modal" id="modalViewsCount">
-                        <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
-                    </span>
+            </div>
+
+            <div class="lightweight-modal-right">
+                <span class="lightweight-modal-category" id="lightweightModalCategory">-</span>
+                <h2 class="lightweight-modal-title" id="lightweightModalTitle">-</h2>
+
+                <div class="lightweight-modal-meta">
+                    <div class="lightweight-modal-author">
+                        <img id="lightweightModalAvatar" src="" alt="Author">
+                        <div class="lightweight-modal-author-info">
+                            <strong id="lightweightModalAuthorName">-</strong>
+                            <span>Career Expert</span>
+                        </div>
+                    </div>
+                    <div class="lightweight-modal-stats">
+                        <button class="lightweight-like-btn-modal" id="lightweightModalLikeBtn">
+                            <i class="far fa-heart"></i>
+                            <span id="lightweightModalLikeCount">0</span>
+                        </button>
+                        <button class="lightweight-bookmark-btn-modal" id="lightweightModalBookmarkBtn">
+                            <i class="far fa-bookmark"></i>
+                            <span>Bookmark</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lightweight-modal-content-text" id="lightweightModalContent">
+                    <div class="loading-spinner-mini" style="margin: 20px auto; display: block;"></div>
                 </div>
             </div>
-        </div>
-
-        <div class="blog-modal-body">
-            <div class="blog-modal-image">
-                <img id="modalImage" src="" alt="Blog Image">
-            </div>
-            <div class="blog-modal-content-text" id="modalContent">
-                <!-- Blog content will be loaded here -->
-            </div>
-        </div>
-
-        <div class="blog-modal-footer">
-            <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
-                <i class="far fa-bookmark"></i>
-                <span class="bookmark-text">Bookmark</span>
-            </button>
         </div>
     </div>
 </div>
 {% endblock %}
-{% block extra_css %}
-<style>
-/* Blogs Page Specific Styles - Only what's not in base.css */
-.page-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 60px 0;
-    text-align: center;
-}
 
-.header-content h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 16px;
-}
-
-.header-content p {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.6;
-}
-
-.blogs-page-section {
-    padding: 50px 0;
-    background: #f8fafc;
-}
-
-.dark-mode .blogs-page-section {
-    background: #1a202c;
-}
-
-.blogs-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 40px;
-}
-
-.blogs-info h2 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #2d3748;
-    margin-bottom: 8px;
-}
-
-.dark-mode .blogs-info h2 {
-    color: #ffffff;
-}
-
-.blogs-info p {
-    color: #718096;
-    font-size: 0.9rem;
-}
-
-.dark-mode .blogs-info p {
-    color: #a0aec0;
-}
-
-.filter-select {
-    padding: 8px 12px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    background: white;
-    color: #4a5568;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.dark-mode .filter-select {
-    background: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
-}
-
-.filter-select:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.load-more-section {
-    text-align: center;
-    margin-top: 50px;
-}
-
-.load-more-btn {
-    padding: 12px 28px;
-    border: 2px solid #667eea;
-    color: #667eea;
-    background: transparent;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-}
-
-.dark-mode .load-more-btn {
-    color: #a3bffa;
-    border-color: #a3bffa;
-}
-
-.load-more-btn:hover {
-    background: #667eea;
-    color: white;
-    transform: translateY(-2px);
-}
-
-.dark-mode .load-more-btn:hover {
-    background: #a3bffa;
-    color: #2d3748;
-}
-
-/* Blog Grid for Blogs Page - Simplified */
-.blog-grid-vertical {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 30px;
-    margin-bottom: 50px;
-}
-
-/* Blog Card for Blogs Page - Simplified */
-.blog-card-vertical {
-    background: #fff;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    min-height: 480px;
-    height: auto;
-}
-
-.dark-mode .blog-card-vertical {
-    background: #2d3748;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.blog-card-vertical:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.dark-mode .blog-card-vertical:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-}
-
-/* Blog Content for Blogs Page */
-.blog-content-vertical {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-}
-
-.blog-title-vertical {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: #2d3748;
-    line-height: 1.4;
-    margin-bottom: 12px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    min-height: 2.8em;
-}
-
-.dark-mode .blog-title-vertical {
-    color: #ffffff;
-}
-
-.blog-excerpt-vertical {
-    color: #718096;
-    line-height: 1.5;
-    margin-bottom: 16px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    flex: 1;
-}
-
-.dark-mode .blog-excerpt-vertical {
-    color: #a0aec0;
-}
-
-/* Blog Footer for Blogs Page */
-.blog-footer-vertical {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid #e2e8f0;
-}
-
-.dark-mode .blog-footer-vertical {
-    border-top-color: #4a5568;
-}
-
-/* Blog Actions for Blogs Page */
-.blog-actions-vertical {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Empty State for Blogs Page */
-.no-blogs-message {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.no-blogs-content h3 {
-    font-size: 1.5rem;
-    color: #4a5568;
-    margin-bottom: 12px;
-}
-
-.dark-mode .no-blogs-content h3 {
-    color: #ffffff;
-}
-
-.no-blogs-content p {
-    color: #718096;
-    line-height: 1.6;
-}
-
-.dark-mode .no-blogs-content p {
-    color: #a0aec0;
-}
-
-/* Responsive Design for Blogs Page */
-@media (max-width: 768px) {
-    .page-header {
-        padding: 40px 0;
-    }
-
-    .header-content h1 {
-        font-size: 2rem;
-    }
-
-    .blogs-header {
-        flex-direction: column;
-        gap: 16px;
-        align-items: flex-start;
-    }
-
-    .blog-grid-vertical {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-
-    .blog-footer-vertical {
-        flex-direction: column;
-        gap: 16px;
-        align-items: flex-start;
-    }
-
-    .blog-actions-vertical {
-        width: 100%;
-        justify-content: space-between;
-    }
-}
-
-@media (max-width: 480px) {
-    .header-content h1 {
-        font-size: 1.6rem;
-    }
-
-    .header-content p {
-        font-size: 0.95rem;
-    }
-
-    .blog-content-vertical {
-        padding: 20px;
-    }
-
-    .blog-title-vertical {
-        font-size: 1.1rem;
-    }
-
-    .blog-meta-vertical {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-
-    .blog-actions-vertical {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-}
-</style>
-{% endblock %}
 {% block extra_js %}
 <script>
     // =============================================
-    // BLOG PAGE SPECIFIC FUNCTIONALITY
+    // ALL BLOGS PAGE - FILTER FUNCTIONALITY
     // =============================================
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Blog modal system should already be initialized from base.js
-        // Add click handlers for entire blog cards
-        document.querySelectorAll('.blog-card-vertical').forEach(card => {
-            card.addEventListener('click', function(e) {
-                // Don't trigger if clicking on buttons or links
-                if (e.target.closest('button') || e.target.closest('a')) {
-                    return;
-                }
 
-                const blogId = this.dataset.id;
-                if (typeof blogModal !== 'undefined') {
-                    blogModal.openModal(blogId);
+        // Category Filter Functionality
+        const categoryFilter = document.getElementById('categoryFilter');
+        const allBlogsGrid = document.getElementById('allBlogsGrid');
+        const visibleCountSpan = document.getElementById('visibleCount');
+        let allCards = [];
+
+        if (allBlogsGrid) {
+            allCards = Array.from(allBlogsGrid.querySelectorAll('.lightweight-blog-card'));
+        }
+
+        function updateVisibleCount(visibleCards) {
+            if (visibleCountSpan) {
+                visibleCountSpan.textContent = visibleCards.length;
+            }
+
+            const existingNoResults = allBlogsGrid.querySelector('.no-results-message');
+            if (visibleCards.length === 0 && allCards.length > 0) {
+                if (!existingNoResults) {
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'no-results-message';
+                    noResultsDiv.innerHTML = `
+                        <i class="fas fa-filter"></i>
+                        <h3>No articles found</h3>
+                        <p>Try changing your filter to see more articles</p>
+                    `;
+                    allBlogsGrid.appendChild(noResultsDiv);
+                }
+            } else if (existingNoResults) {
+                existingNoResults.remove();
+            }
+        }
+
+        function filterBlogsByCategory(category) {
+            if (!allCards.length) return;
+
+            let visibleCards = [];
+
+            allCards.forEach(card => {
+                const cardCategory = card.dataset.category;
+
+                if (!category || cardCategory === category) {
+                    card.style.display = 'flex';
+                    visibleCards.push(card);
+                } else {
+                    card.style.display = 'none';
                 }
             });
-        });
 
-        // Initialize page-specific functionality
-        initializeCategoryFilter();
-        initializeLoadMore();
+            updateVisibleCount(visibleCards);
+        }
 
-        console.log('🎯 Blog page fully initialized');
-    });
-
-    // Category filter functionality
-    function initializeCategoryFilter() {
-        const categoryFilter = document.getElementById('categoryFilter');
         if (categoryFilter) {
             categoryFilter.addEventListener('change', (e) => {
                 filterBlogsByCategory(e.target.value);
             });
         }
-    }
 
-    function filterBlogsByCategory(category) {
-        const blogCards = document.querySelectorAll('.blog-card-vertical');
-        let visibleCount = 0;
-
-        blogCards.forEach(card => {
-            if (!category || card.dataset.category === category) {
-                card.style.display = 'flex';
-                visibleCount++;
-            } else {
-                card.style.display = 'none';
-            }
+        // Add click handlers for read more buttons to use existing modal system
+        document.querySelectorAll('.lightweight-read-more').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const blogId = btn.dataset.id;
+                if (blogId && typeof LightweightBlog !== 'undefined' && LightweightBlog.openModal) {
+                    LightweightBlog.openModal(blogId);
+                }
+            });
         });
 
-        // Update article count
-        const totalCount = blogCards.length;
-        const blogsInfo = document.querySelector('.blogs-info p');
-
-        if (blogsInfo) {
-            if (category) {
-                blogsInfo.textContent = `Showing ${visibleCount} of ${totalCount} articles in ${category}`;
-            } else {
-                blogsInfo.textContent = `Showing ${totalCount} articles`;
-            }
-        }
-
-        // Show/hide no results message
-        const noBlogsMessage = document.querySelector('.no-blogs-message');
-        if (noBlogsMessage) {
-            if (visibleCount === 0 && totalCount > 0) {
-                noBlogsMessage.style.display = 'block';
-            } else {
-                noBlogsMessage.style.display = 'none';
-            }
-        }
-    }
-
-    // Load more functionality
-    function initializeLoadMore() {
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', loadMoreBlogs);
-        }
-    }
-
-    async function loadMoreBlogs() {
-        try {
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-            loadMoreBtn.disabled = true;
-
-            // Calculate current offset
-            const currentCount = document.querySelectorAll('.blog-card-vertical').length;
-
-            const response = await fetch(`/api/blogs?offset=${currentCount}&limit=9`);
-            const data = await response.json();
-
-            if (data.success && data.blogs.length > 0) {
-                // Append new blogs to the grid
-                appendBlogsToGrid(data.blogs);
-
-                if (typeof showToast !== 'undefined') {
-                    showToast(`Loaded ${data.blogs.length} more articles`, 'success');
+        // Add click handlers for cards to open modal
+        document.querySelectorAll('.lightweight-blog-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.lightweight-like-btn') ||
+                    e.target.closest('.lightweight-bookmark-btn') ||
+                    e.target.closest('.lightweight-read-more')) {
+                    return;
                 }
-
-                // If no more blogs, hide load more button
-                if (data.blogs.length < 9) {
-                    loadMoreBtn.style.display = 'none';
+                const blogId = card.dataset.id;
+                if (blogId && typeof LightweightBlog !== 'undefined' && LightweightBlog.openModal) {
+                    LightweightBlog.openModal(blogId);
                 }
-            } else {
-                if (typeof showToast !== 'undefined') {
-                    showToast('No more articles to load', 'info');
-                }
-                loadMoreBtn.style.display = 'none';
-            }
-
-        } catch (error) {
-            console.error('Error loading more blogs:', error);
-            if (typeof showToast !== 'undefined') {
-                showToast('Failed to load more articles', 'error');
-            }
-        } finally {
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (loadMoreBtn) {
-                loadMoreBtn.innerHTML = '<i class="fas fa-redo"></i> Load More Articles';
-                loadMoreBtn.disabled = false;
-            }
-        }
-    }
-
-    function appendBlogsToGrid(blogs) {
-        const blogGrid = document.getElementById('blogsGrid');
-
-        blogs.forEach(blog => {
-            const blogCard = createBlogCard(blog);
-            blogGrid.appendChild(blogCard);
-        });
-    }
-
-    function createBlogCard(blog) {
-        const card = document.createElement('article');
-        card.className = 'blog-card-vertical';
-        card.dataset.id = blog.id;
-        card.dataset.category = blog.categories?.[0] || 'Career Advice';
-
-        card.innerHTML = `
-            <div class="blog-card-inner-vertical">
-                <div class="blog-image-container-vertical">
-                    <img src="${blog.image || '/static/images/default-blog.jpg'}"
-                         alt="${blog.title}"
-                         class="blog-image-vertical"
-                         onerror="this.src='/static/images/default-blog.jpg'">
-                    <div class="blog-category-badge-vertical">
-                        ${blog.categories?.[0] || 'Career Advice'}
-                    </div>
-                    <div class="blog-views-badge-vertical">
-                        <i class="fas fa-eye"></i>
-                        <span class="views-count">${blog.views || 0}</span>
-                    </div>
-                </div>
-
-                <div class="blog-content-vertical">
-                    <div class="blog-meta-vertical">
-                        <span class="blog-date-vertical">${blog.published_at || blog.created_at}</span>
-                        <span class="blog-read-time-vertical">
-                            <i class="far fa-clock"></i>
-                            ${blog.read_time || '5 min read'}
-                        </span>
-                    </div>
-
-                    <h3 class="blog-title-vertical">${blog.title}</h3>
-                    <p class="blog-excerpt-vertical">
-                        ${(blog.description || blog.content || 'No content available').substring(0, 100)}...
-                    </p>
-
-                    <div class="blog-footer-vertical">
-                        <div class="blog-author-vertical">
-                            <div class="author-avatar-vertical">
-                                <img src="${blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`}"
-                                     alt="${blog.author || 'CareerMaker Team'}">
-                            </div>
-                            <div class="author-info-vertical">
-                                <span class="author-name-vertical">${blog.author || 'CareerMaker Team'}</span>
-                                <span class="author-role-vertical">Career Expert</span>
-                            </div>
-                        </div>
-
-                        <div class="blog-actions-vertical">
-                            <button class="btn-like-vertical ${blog.is_liked ? 'liked' : ''}" data-id="${blog.id}" title="Like">
-                                <i class="${blog.is_liked ? 'fas' : 'far'} fa-heart"></i>
-                                <span class="like-count">${blog.like_count || 0}</span>
-                            </button>
-
-                            <button class="btn-bookmark-vertical ${blog.is_bookmarked ? 'bookmarked' : ''}"
-                                    data-id="${blog.id}" data-type="blog" title="Bookmark">
-                                <i class="${blog.is_bookmarked ? 'fas' : 'far'} fa-bookmark"></i>
-                            </button>
-
-                            <button class="read-more-btn-vertical" data-id="${blog.id}">
-                                Read More <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Add event listeners to the new card
-        card.addEventListener('click', function(e) {
-            if (e.target.closest('button') || e.target.closest('a')) {
-                return;
-            }
-            if (typeof blogModal !== 'undefined') {
-                blogModal.openModal(blog.id);
-            }
+            });
         });
 
-        return card;
-    }
+        console.log('🎯 All blogs page initialized with', allCards.length, 'articles');
+    });
 </script>
 {% endblock %}
