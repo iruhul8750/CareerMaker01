@@ -3246,22 +3246,69 @@
                 document.body.style.overflow = 'hidden';
                 this.currentId = blogId;
 
+                document.getElementById('lightweightModalContent').innerHTML = '<div class="loading-spinner-mini" style="margin: 40px auto; display: block;"></div><p style="text-align:center;">Loading...</p>';
+
                 let blog;
+
                 if (this.blogDataCache.has(blogId)) {
                     blog = this.blogDataCache.get(blogId);
                 } else {
                     const response = await fetch(`/api/blog/${blogId}`);
                     const data = await response.json();
-                    if (!data.success) throw new Error('Failed to load');
+                    if (!data.success) throw new Error(data.error || 'Failed to load');
                     blog = data.blog;
                     this.blogDataCache.set(blogId, blog);
                 }
 
                 this.populateModal(blog);
-                fetch(`/api/blog/${blogId}/view`, { method: 'POST' }).catch(e => null);
+
+                // =============================================
+                // FIX: Track view count when modal opens
+                // =============================================
+                try {
+                    const viewResponse = await fetch(`/api/blog/${blogId}/view`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const viewData = await viewResponse.json();
+
+                    if (viewData.success) {
+                        console.log(`👀 View tracked for blog ${blogId}, total views: ${viewData.views}`);
+
+                        // Update the view count in the modal
+                        const modalViewsElement = document.getElementById('lightweightModalViews');
+                        if (modalViewsElement) {
+                            modalViewsElement.innerText = viewData.views;
+                        }
+
+                        // Update the views count in the card
+                        const cardViewBadge = document.querySelector(`.lightweight-blog-card[data-id="${blogId}"] .views-count`);
+                        if (cardViewBadge) {
+                            cardViewBadge.innerText = viewData.views;
+                        }
+
+                        // Update the view count in the left panel
+                        const modalQuickInfoViews = document.querySelector('#lightweightModalViews');
+                        if (modalQuickInfoViews) {
+                            modalQuickInfoViews.innerText = viewData.views;
+                        }
+
+                        // Update cache
+                        if (this.blogDataCache.has(blogId)) {
+                            this.blogDataCache.get(blogId).views = viewData.views;
+                        }
+                    } else {
+                        console.warn('View tracking response not successful:', viewData);
+                    }
+                } catch (viewError) {
+                    console.error('Error tracking view:', viewError);
+                }
 
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error opening blog:', error);
                 this.closeModal();
                 this.showMessage('Could not load article', 'error');
             }

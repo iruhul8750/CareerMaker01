@@ -1569,10 +1569,32 @@ def index():
                 .limit(4)
 
             blogs = blogs_query.execute().data or []
+
+            # Get view counts for each blog
+            if blogs:
+                blog_ids = [blog['id'] for blog in blogs]
+
+                # Fetch view counts from blog_views table
+                view_counts_response = supabase_admin.table('blog_views') \
+                    .select('blog_id, id') \
+                    .in_('blog_id', blog_ids) \
+                    .execute()
+
+                # Count views per blog
+                view_counts = {}
+                for view in (view_counts_response.data or []):
+                    blog_id = view['blog_id']
+                    view_counts[blog_id] = view_counts.get(blog_id, 0) + 1
+
+                # Add view count to each blog
+                for blog in blogs:
+                    blog['views'] = view_counts.get(blog['id'], 0)
+
             logger.info(f"📝 Found {len(blogs)} active featured blogs for homepage")
 
         except Exception as e:
             logger.error(f"Error loading blogs for homepage: {str(e)}")
+            blogs = []
 
         # ===== FETCH TESTIMONIALS =====
         try:
