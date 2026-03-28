@@ -1101,6 +1101,57 @@
       box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
     }
 
+    /* Minimal Horizontal Scrollbar Styling */
+    .lightweight-blog-grid {
+        scrollbar-width: thin;
+        scrollbar-color: #8b5fbf #e2e8f0;
+    }
+
+    .lightweight-blog-grid::-webkit-scrollbar {
+        height: 5px;
+    }
+
+    .lightweight-blog-grid::-webkit-scrollbar-track {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+
+    .lightweight-blog-grid::-webkit-scrollbar-thumb {
+        background: #8b5fbf;
+        border-radius: 10px;
+    }
+
+    .lightweight-blog-grid::-webkit-scrollbar-thumb:hover {
+        background: #6b46c1;
+    }
+
+    /* Dark Mode */
+    .dark-mode .lightweight-blog-grid {
+        scrollbar-color: #a78bfa #2d3748;
+    }
+
+    .dark-mode .lightweight-blog-grid::-webkit-scrollbar-track {
+        background: #2d3748;
+    }
+
+    .dark-mode .lightweight-blog-grid::-webkit-scrollbar-thumb {
+        background: #a78bfa;
+    }
+
+    .dark-mode .lightweight-blog-grid::-webkit-scrollbar-thumb:hover {
+        background: #8b5fbf;
+    }
+
+    /* Hide scrollbar track when not scrolling (optional) */
+    .lightweight-blog-grid {
+        scrollbar-gutter: stable;
+    }
+
+    /* For Firefox - hide scroll buttons */
+    .lightweight-blog-grid {
+        scrollbar-width: thin;
+    }
+
     /* Responsive to View All button styles */
     @media (max-width: 480px) {
       .view-all {
