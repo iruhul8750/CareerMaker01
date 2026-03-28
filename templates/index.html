@@ -799,11 +799,11 @@
     </div>
 </section>
 
-<!-- Read Full Experience Modal  -->
+<!-- Read Full Experience Modal -->
 <div class="testimonial-detail-modal" id="testimonialDetailModal">
     <div class="modal-overlay"></div>
     <div class="modal-content">
-        <button class="close-modal">&times;</button>
+        <button class="close-modal" id="detailModalClose">&times;</button>
         <div class="testimonial-detail-header">
             <div class="author-info">
                 <img src="" alt="" class="author-avatar" id="detailAvatar">
@@ -832,11 +832,13 @@
         </div>
         <div class="modal-body">
             <form id="testimonialForm">
-                <div class="form-group">
+                <!-- Username field with floating label -->
+                <div class="form-group floating-label-group">
+                    <input type="text" id="userName" name="userName" placeholder=" " readonly>
                     <label for="userName">Your Name</label>
-                    <input type="text" class="form-input" id="userName" disabled>
                 </div>
 
+                <!-- Rating field -->
                 <div class="form-group">
                     <label>Your Rating</label>
                     <div class="simple-rating" id="ratingStars">
@@ -849,24 +851,23 @@
                     <input type="hidden" id="ratingValue" value="5">
                 </div>
 
-                <div class="form-group">
+                <!-- Experience text field with floating label -->
+                <div class="form-group floating-label-group">
+                    <textarea id="testimonialText" name="testimonialText" rows="4" placeholder=" " required></textarea>
                     <label for="testimonialText">Your Experience *</label>
-                    <textarea id="testimonialText" class="form-textarea"
-                              placeholder="Tell us about your experience with CareerMaker..." required
-                              rows="4"></textarea>
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">
                         <span class="btn-text">Share Experience</span>
-                        <div class="loading-spinner" style="display: none;">
+                        <span class="loading-spinner" style="display: none;">
                             <i class="fas fa-spinner fa-spin"></i>
-                        </div>
+                        </span>
                     </button>
                 </div>
             </form>
-            <div id="formMessage" style="display: none;"></div>
+            <div id="formMessage"></div>
         </div>
     </div>
 </div>

@@ -1842,342 +1842,72 @@
     // =============================================
 
     const testimonialSystem = {
-        isModalOpen: false,
         currentTestimonials: [],
         currentIndex: 0,
         autoSlideInterval: null,
         testimonialToDelete: null,
         testimonialToEdit: null,
-        autoPlayDelay: 5000, // 5 seconds for smooth chain movement
-        cardsPerView: 3,
-        isAnimating: false,
+        autoPlayDelay: 5000,
         isAutoPlay: true,
-        direction: 'forward', // Always left to right
-        trackWidth: 0,
-        testimonialDetailModal: null,
-        currentDetailTestimonial: null,
-
-        // Add new properties for touch/swipe
-        touchStartX: 0,
-        touchStartY: 0,
-        touchEndX: 0,
-        touchEndY: 0,
-        minSwipeDistance: 50,
-        isTouchDevice: false,
-        isDragging: false,
-        dragStartX: 0,
-        currentTranslateX: 0,
+        isAnimating: false,
+        track: null,
+        currentUsername: null,
+        currentUserEmail: null,
 
         init() {
-            console.log('🚀 Initializing testimonial system...');
+            this.track = document.getElementById('testimonialTrack');
+            if (!this.track) return;
+
+            this.getCurrentUser();
             this.loadTestimonials();
             this.bindEvents();
-            this.setupDetailModal();
-            this.bindGlobalEventListeners();
             this.setupSwipeGestures();
-            if (this.currentTestimonials.length > 3 && this.isAutoPlay) {
-                setTimeout(() => this.startAutoSlide(), 1000);
-            }
         },
 
-        detectTouchDevice() {
-            this.isTouchDevice = ('ontouchstart' in window) ||
-                                (navigator.maxTouchPoints > 0) ||
-                                (navigator.msMaxTouchPoints > 0);
-            console.log('📱 Touch device detected:', this.isTouchDevice);
+        async getCurrentUser() {
+            try {
+                const response = await fetch('/api/check-session', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.logged_in) {
+                    this.currentUsername = data.username || data.name || 'User';
+                    this.currentUserEmail = data.email;
+                }
+            } catch (error) {
+                console.error('Error getting user:', error);
+                this.currentUsername = null;
+            }
         },
 
         setupSwipeGestures() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track) return;
+            if (!this.track) return;
 
-            // Mouse events for desktop touchpad
-            track.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-            track.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-            track.addEventListener('mouseup', () => this.handleMouseUp());
-            track.addEventListener('mouseleave', () => this.handleMouseUp());
+            let touchStartX = 0;
 
-            // Touch events for mobile devices
-            track.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
-            track.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
-            track.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+            this.track.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                this.pauseAutoSlide();
+            }, { passive: true });
 
-            // Prevent text selection while dragging
-            track.addEventListener('selectstart', (e) => {
-                if (this.isDragging) e.preventDefault();
-            });
-        },
+            this.track.addEventListener('touchend', (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const deltaX = touchEndX - touchStartX;
 
-        handleMouseDown(e) {
-            if (this.isAnimating) return;
-
-            this.isDragging = true;
-            this.dragStartX = e.clientX;
-            this.currentTranslateX = this.getCurrentTranslateX();
-
-            // Pause auto-slide during drag
-            this.pauseAutoSlide();
-
-            // Add dragging class for visual feedback
-            const track = document.getElementById('testimonialTrack');
-            if (track) track.classList.add('dragging');
-
-            // Prevent text selection
-            e.preventDefault();
-        },
-
-        handleMouseMove(e) {
-            if (!this.isDragging || this.isAnimating) return;
-
-            const dragCurrentX = e.clientX;
-            const dragDistance = dragCurrentX - this.dragStartX;
-
-            // Apply drag effect with resistance
-            const resistance = 0.5;
-            const newTranslateX = this.currentTranslateX + (dragDistance * resistance);
-
-            const track = document.getElementById('testimonialTrack');
-            if (track) {
-                track.style.transition = 'none';
-                track.style.transform = `translateX(${newTranslateX}px)`;
-            }
-
-            e.preventDefault();
-        },
-
-        handleMouseUp() {
-            if (!this.isDragging) return;
-
-            this.isDragging = false;
-
-            const track = document.getElementById('testimonialTrack');
-            if (track) {
-                track.classList.remove('dragging');
-
-                // Calculate final drag distance
-                const dragEndX = event ? event.clientX : 0;
-                const dragDistance = dragEndX - this.dragStartX;
-
-                // Determine if it's a swipe
-                if (Math.abs(dragDistance) > this.minSwipeDistance) {
-                    if (dragDistance < 0) {
-                        // Swipe left - next slide
-                        this.nextSlide();
-                    } else {
-                        // Swipe right - previous slide
-                        this.prevSlide();
-                    }
-                } else {
-                    // Not a swipe, snap back to current position
-                    this.updateCarousel();
-                }
-            }
-
-            // Resume auto-slide after a delay
-            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
-                setTimeout(() => this.startAutoSlide(), 1000);
-            }
-        },
-
-        handleTouchStart(e) {
-            if (this.isAnimating) return;
-
-            const touch = e.touches[0];
-            this.touchStartX = touch.clientX;
-            this.touchStartY = touch.clientY;
-            this.isDragging = true;
-
-            // Pause auto-slide during touch
-            this.pauseAutoSlide();
-
-            // Add dragging class
-            const track = document.getElementById('testimonialTrack');
-            if (track) track.classList.add('dragging');
-        },
-
-        handleTouchMove(e) {
-            if (!this.isDragging || this.isAnimating) return;
-
-            const touch = e.touches[0];
-            const touchCurrentX = touch.clientX;
-            const touchDistance = touchCurrentX - this.touchStartX;
-
-            // Only prevent default if horizontal movement is significant
-            if (Math.abs(touchDistance) > 10) {
-                e.preventDefault();
-            }
-
-            // Apply touch drag with resistance
-            const resistance = 0.7;
-            const newTranslateX = this.getCurrentTranslateX() + (touchDistance * resistance);
-
-            const track = document.getElementById('testimonialTrack');
-            if (track) {
-                track.style.transition = 'none';
-                track.style.transform = `translateX(${newTranslateX}px)`;
-            }
-        },
-
-        handleTouchEnd(e) {
-            if (!this.isDragging) return;
-
-            this.isDragging = false;
-
-            const touch = e.changedTouches[0];
-            this.touchEndX = touch.clientX;
-            this.touchEndY = touch.clientY;
-
-            const track = document.getElementById('testimonialTrack');
-            if (track) track.classList.remove('dragging');
-
-            // Calculate swipe distance and direction
-            const swipeDistanceX = this.touchEndX - this.touchStartX;
-            const swipeDistanceY = this.touchEndY - this.touchStartY;
-
-            // Check if it's a horizontal swipe (not vertical scroll)
-            if (Math.abs(swipeDistanceX) > Math.abs(swipeDistanceY) &&
-                Math.abs(swipeDistanceX) > this.minSwipeDistance) {
-
-                if (swipeDistanceX < 0) {
-                    // Swipe left - next slide
+                if (Math.abs(deltaX) > 50) {
+                    // Both left and right swipes move forward (chain movement)
                     this.nextSlide();
-                } else {
-                    // Swipe right - previous slide
-                    this.prevSlide();
-                }
-            } else {
-                // Not a valid swipe, snap back
-                this.updateCarousel();
-            }
-
-            // Resume auto-slide
-            if (this.isAutoPlay && this.currentTestimonials.length > 3) {
-                setTimeout(() => this.startAutoSlide(), 1500);
-            }
-        },
-
-        getCurrentTranslateX() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track) return 0;
-
-            const style = window.getComputedStyle(track);
-            const matrix = new DOMMatrixReadOnly(style.transform);
-            return matrix.m41; // The translateX value
-        },
-        // End Touch Functions //
-
-        // Detail modal :
-        setupDetailModal() {
-            this.testimonialDetailModal = document.getElementById('testimonialDetailModal');
-            if (this.testimonialDetailModal) {
-                // Close modal handlers
-                const closeBtn = this.testimonialDetailModal.querySelector('.close-modal');
-                const overlay = this.testimonialDetailModal.querySelector('.modal-overlay');
-
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.closeDetailModal();
-                    });
                 }
 
-                if (overlay) {
-                    overlay.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        this.closeDetailModal();
-                    });
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    setTimeout(() => this.startAutoSlide(), 3000);
                 }
-
-                // Close with escape key
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.testimonialDetailModal.style.display === 'flex') {
-                        this.closeDetailModal();
-                    }
-                });
-            }
-        },
-
-        // Add this function to open detail modal:
-        openDetailModal(testimonial) {
-            if (!this.testimonialDetailModal) return;
-
-            this.currentDetailTestimonial = testimonial;
-
-            // Populate modal with testimonial data
-            const avatar = document.getElementById('detailAvatar');
-            const authorName = document.getElementById('detailAuthorName');
-            const rating = document.getElementById('detailRating');
-            const fullText = document.getElementById('detailFullText');
-            const date = document.getElementById('detailDate');
-
-            if (avatar) {
-                avatar.src = testimonial.profile_pic_url ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true`;
-                avatar.alt = testimonial.username;
-            }
-
-            if (authorName) {
-                authorName.textContent = testimonial.username;
-            }
-
-            if (rating) {
-                rating.innerHTML = Array.from({length: 5}, (_, i) =>
-                    `<span class="star ${i < testimonial.rating ? '' : 'empty'}">★</span>`
-                ).join('');
-            }
-
-            if (fullText) {
-                fullText.textContent = testimonial.content;
-            }
-
-            if (date && testimonial.created_at) {
-                const formattedDate = new Date(testimonial.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                date.textContent = `Shared on ${formattedDate}`;
-            }
-
-            // Show modal
-            this.testimonialDetailModal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        },
-
-        // Add this function to handle Read More clicks:
-        setupReadMoreHandlers() {
-            const readMoreLinks = document.querySelectorAll('.read-more-link');
-            readMoreLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const testimonialId = link.getAttribute('data-testimonial-id');
-                    this.openTestimonialDetail(testimonialId);
-                });
             });
         },
-
-        // Add this function to open detail view:
-        openTestimonialDetail(testimonialId) {
-            const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
-            if (testimonial) {
-                this.openDetailModal(testimonial);
-            }
-        },
-
-        // Add this function to close detail modal:
-        closeDetailModal() {
-            if (!this.testimonialDetailModal) return;
-
-            this.testimonialDetailModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            this.currentDetailTestimonial = null;
-        },
-
 
         bindEvents() {
-            // Main testimonial button
             const testimonialBtn = document.getElementById('testimonialBtn');
             if (testimonialBtn) {
                 testimonialBtn.addEventListener('click', (e) => {
@@ -2186,633 +1916,175 @@
                 });
             }
 
-            // Navigation buttons
             const prevBtn = document.querySelector('.carousel-prev');
             const nextBtn = document.querySelector('.carousel-next');
-            if (prevBtn) prevBtn.addEventListener('click', () => this.prevSlide());
-            if (nextBtn) nextBtn.addEventListener('click', () => this.nextSlide());
 
-            // Auto-play indicator click
+            // Both buttons move forward in chain movement
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => this.nextSlide());
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => this.nextSlide());
+            }
+
             const autoPlayIndicator = document.getElementById('autoPlayIndicator');
             if (autoPlayIndicator) {
                 autoPlayIndicator.addEventListener('click', () => this.toggleAutoPlay());
             }
 
-            // Modal events
             this.setupModalEvents();
+            this.setupGlobalEventDelegation();
 
-            // Pause on hover (only for non-touch devices)
-            if (!this.isTouchDevice) {
-                const carousel = document.querySelector('.testimonials-carousel');
-                if (carousel) {
-                    carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
-                    carousel.addEventListener('mouseleave', () => {
-                        if (this.isAutoPlay && this.currentTestimonials.length > 3) this.startAutoSlide();
-                    });
-                }
+            // Pause on hover for desktop
+            const carousel = document.querySelector('.testimonials-carousel');
+            if (carousel && !('ontouchstart' in window)) {
+                carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
+                carousel.addEventListener('mouseleave', () => {
+                    if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                        this.startAutoSlide();
+                    }
+                });
             }
 
-            // Handle window resize
-            window.addEventListener('resize', () => this.handleResize());
-
-            // Handle wheel events for touchpad/mouse wheel
-            this.setupWheelNavigation();
+            window.addEventListener('resize', () => {
+                setTimeout(() => this.updateCarousel(), 100);
+            });
         },
 
-        setupWheelNavigation() {
-            const carousel = document.querySelector('.testimonials-carousel');
-            if (!carousel) return;
-
-            let wheelTimeout;
-            let wheelDelta = 0;
-
-            carousel.addEventListener('wheel', (e) => {
-                // Only handle horizontal wheel events
-                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        setupGlobalEventDelegation() {
+            document.addEventListener('click', async (e) => {
+                const editBtn = e.target.closest('.btn-edit');
+                if (editBtn) {
                     e.preventDefault();
-
-                    wheelDelta += e.deltaX;
-
-                    // Clear previous timeout
-                    clearTimeout(wheelTimeout);
-
-                    // Set a timeout to trigger navigation after wheel stops
-                    wheelTimeout = setTimeout(() => {
-                        if (Math.abs(wheelDelta) > 100) { // Sensitivity threshold
-                            if (wheelDelta > 0) {
-                                this.prevSlide(); // Wheel right = previous
-                            } else {
-                                this.nextSlide(); // Wheel left = next
-                            }
-                        }
-                        wheelDelta = 0; // Reset delta
-                    }, 150);
+                    const testimonialCard = editBtn.closest('.testimonial-card');
+                    const testimonialId = testimonialCard?.dataset.testimonialId;
+                    if (testimonialId) await this.handleEditClick(testimonialId);
                 }
-            }, { passive: false });
+
+                const deleteBtn = e.target.closest('.btn-delete');
+                if (deleteBtn) {
+                    e.preventDefault();
+                    const testimonialCard = deleteBtn.closest('.testimonial-card');
+                    const testimonialId = testimonialCard?.dataset.testimonialId;
+                    if (testimonialId) this.deleteTestimonial(testimonialId);
+                }
+
+                const readMoreLink = e.target.closest('.read-more-link');
+                if (readMoreLink) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const testimonialId = readMoreLink.getAttribute('data-testimonial-id');
+                    if (testimonialId) this.openTestimonialDetail(testimonialId);
+                }
+            });
         },
 
         setupModalEvents() {
-            // Close buttons
-            const closeButtons = document.querySelectorAll('.close-btn');
-            closeButtons.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const modal = btn.closest('.modal');
-                    if (modal.id === 'testimonialModal') {
-                        this.closeModal();
-                    } else if (modal.id === 'deleteConfirmModal') {
-                        this.closeDeleteModal();
-                    }
-                });
-            });
+            // Testimonial form modal close
+            const testimonialModalClose = document.querySelector('#testimonialModal .close-btn');
+            if (testimonialModalClose) {
+                testimonialModalClose.addEventListener('click', () => this.closeModal());
+            }
 
-            // Modal overlays
-            const overlays = document.querySelectorAll('.modal-overlay');
-            overlays.forEach(overlay => {
-                overlay.addEventListener('click', (e) => {
+            // Delete confirm modal close
+            const deleteModalClose = document.querySelector('#deleteConfirmModal .close-btn');
+            if (deleteModalClose) {
+                deleteModalClose.addEventListener('click', () => this.closeDeleteModal());
+            }
+
+            // Detail modal close
+            const detailModalClose = document.getElementById('detailModalClose');
+            if (detailModalClose) {
+                detailModalClose.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const modal = overlay.closest('.modal');
-                    if (modal.id === 'testimonialModal') {
-                        this.closeModal();
-                    } else if (modal.id === 'deleteConfirmModal') {
-                        this.closeDeleteModal();
-                    }
+                    this.closeDetailModal();
                 });
-            });
+            }
 
             // Cancel buttons
-            const cancelBtns = document.querySelectorAll('.btn-secondary');
+            const cancelBtns = document.querySelectorAll('#testimonialForm .btn-secondary, #deleteConfirmModal .btn-secondary');
             cancelBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const modal = btn.closest('.modal');
-                    if (modal.id === 'testimonialModal') {
-                        this.closeModal();
-                    } else if (modal.id === 'deleteConfirmModal') {
-                        this.closeDeleteModal();
-                    }
+                btn.addEventListener('click', () => {
+                    this.closeModal();
+                    this.closeDeleteModal();
                 });
             });
 
             // Form submission
             const form = document.getElementById('testimonialForm');
-            if (form) {
-                form.addEventListener('submit', (e) => this.handleSubmit(e));
-            }
+            if (form) form.addEventListener('submit', (e) => this.handleSubmit(e));
 
             // Delete confirmation
             const deleteBtn = document.getElementById('confirmDeleteBtn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => this.confirmDelete());
-            }
-        },
-
-        async openTestimonialForm() {
-            console.log('📝 Opening testimonial form...');
-
-            try {
-                const response = await fetch('/api/testimonial/auth-check', {
-                    credentials: 'include'
-                });
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error('Failed to check authentication');
-                }
-
-                if (data.can_post) {
-                    this.showModal(data.username);
-                } else {
-                    this.showLoginPrompt();
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                this.showLoginPrompt();
-            }
-        },
-
-        showModal(username, testimonial = null) {
-            const isEdit = !!testimonial;
-            const modal = document.getElementById('testimonialModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const userName = document.getElementById('userName');
-            const testimonialText = document.getElementById('testimonialText');
-            const ratingValue = document.getElementById('ratingValue');
-            const submitBtn = document.querySelector('#testimonialForm .btn-text');
-
-            if (!modal) {
-                console.error('❌ Testimonial modal not found');
-                return;
-            }
-
-            // Store the testimonial ID if editing
-            if (isEdit) {
-                this.testimonialToEdit = testimonial.id;
-            } else {
-                this.testimonialToEdit = null;
-            }
-
-            modalTitle.textContent = isEdit ? 'Edit Your Experience' : 'Share Your Experience';
-            userName.value = username || 'Current User';
-            testimonialText.value = isEdit ? testimonial.content : '';
-            ratingValue.value = isEdit ? testimonial.rating : 5;
-            if (submitBtn) submitBtn.textContent = isEdit ? 'Update Experience' : 'Share Experience';
-
-            this.setupStarRating(isEdit ? testimonial.rating : 5);
-            modal.style.display = 'flex';
-            this.isModalOpen = true;
-        },
-
-        setupStarRating(initialRating = 5) {
-            const stars = document.querySelectorAll('.star-btn');
-            const ratingInput = document.getElementById('ratingValue');
-
-            stars.forEach((star, index) => {
-                star.classList.toggle('active', index < initialRating);
-                star.innerHTML = index < initialRating ? '★' : '☆';
-
-                star.onclick = () => {
-                    const rating = parseInt(star.dataset.rating);
-                    ratingInput.value = rating;
-
-                    stars.forEach((s, i) => {
-                        s.classList.toggle('active', i < rating);
-                        s.innerHTML = i < rating ? '★' : '☆';
-                    });
-                };
-            });
-        },
-
-        async handleSubmit(event) {
-            event.preventDefault();
-            console.log('📤 Submitting testimonial...');
-
-            const form = event.target;
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const btnText = submitBtn.querySelector('.btn-text');
-            const spinner = submitBtn.querySelector('.loading-spinner');
-            const messageDiv = document.getElementById('formMessage');
-
-            const content = document.getElementById('testimonialText').value.trim();
-            const rating = parseInt(document.getElementById('ratingValue').value);
-
-            if (!content) {
-                this.showMessage('Please share your experience', 'error', messageDiv);
-                return;
-            }
-
-            btnText.style.display = 'none';
-            spinner.style.display = 'inline-block';
-            submitBtn.disabled = true;
-
-            try {
-                // Determine if this is an edit or create operation
-                const isEdit = !!this.testimonialToEdit;
-                const url = isEdit
-                    ? `/api/testimonial/update/${this.testimonialToEdit}`
-                    : '/api/testimonial/submit';
-
-                const method = isEdit ? 'PUT' : 'POST';
-
-                console.log(`${isEdit ? 'Editing' : 'Creating'} testimonial:`, {
-                    url,
-                    method,
-                    content,
-                    rating
-                });
-
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        content: content,
-                        rating: rating
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || `Failed to ${isEdit ? 'update' : 'submit'} testimonial`);
-                }
-
-                if (data.success) {
-                    this.showMessage(data.message, 'success', messageDiv);
-
-                    // Clear form
-                    document.getElementById('testimonialText').value = '';
-                    this.setupStarRating(5);
-
-                    setTimeout(() => {
-                        this.closeModal();
-                        this.loadTestimonials(); // Reload to get updated list
-                        if (typeof showToast === 'function') {
-                            showToast(
-                                isEdit
-                                    ? 'Your experience updated successfully!'
-                                    : 'Thank you for sharing your experience!',
-                                'success'
-                            );
-                        }
-                    }, 1500);
-                } else {
-                    throw new Error(data.message || 'Operation failed');
-                }
-
-            } catch (error) {
-                console.error('Submission error:', error);
-                this.showMessage(error.message, 'error', messageDiv);
-            } finally {
-                btnText.style.display = 'inline-block';
-                spinner.style.display = 'none';
-                submitBtn.disabled = false;
-            }
-        },
-
-        showDeleteConfirmation(testimonialId) {
-            this.testimonialToDelete = testimonialId;
-            const modal = document.getElementById('deleteConfirmModal');
-            if (modal) {
-                modal.style.display = 'flex';
-            }
-        },
-
-        async confirmDelete() {
-            if (!this.testimonialToDelete) return;
-
-            const deleteBtn = document.getElementById('confirmDeleteBtn');
-            const btnText = deleteBtn.querySelector('.btn-text');
-            const spinner = deleteBtn.querySelector('.loading-spinner');
-
-            btnText.style.display = 'none';
-            spinner.style.display = 'inline-block';
-            deleteBtn.disabled = true;
-
-            try {
-                const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || 'Failed to delete testimonial');
-                }
-
-                if (data.success) {
-                    this.closeDeleteModal();
-
-                    // Show success message
-                    if (typeof showToast === 'function') {
-                        showToast('Your testimonial has been deleted successfully', 'success');
-                    }
-
-                    // Reload testimonials to reflect changes
-                    this.loadTestimonials();
-
-                    // Remove the testimonial card from UI immediately
-                    const testimonialCard = document.querySelector(`.testimonial-card[data-testimonial-id="${this.testimonialToDelete}"]`);
-                    if (testimonialCard) {
-                        testimonialCard.style.opacity = '0';
-                        testimonialCard.style.transform = 'scale(0.8)';
-                        testimonialCard.style.transition = 'all 0.3s ease';
-
-                        setTimeout(() => {
-                            testimonialCard.remove();
-
-                            // If no testimonials left, show empty state
-                            if (this.currentTestimonials.length === 0) {
-                                this.renderEmptyState();
-                            }
-                        }, 300);
-                    }
-                } else {
-                    throw new Error(data.message || 'Failed to delete testimonial');
-                }
-
-            } catch (error) {
-                console.error('Delete error:', error);
-                if (typeof showToast === 'function') {
-                    showToast(error.message || 'Failed to delete testimonial', 'error');
-                }
-            } finally {
-                btnText.style.display = 'inline-block';
-                spinner.style.display = 'none';
-                deleteBtn.disabled = false;
-                this.testimonialToDelete = null;
-            }
-        },
-
-        // Add renderEmptyState method
-        renderEmptyState() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track) return;
-
-            track.innerHTML = `
-                <div class="empty-testimonials">
-                    <i class="fas fa-comments"></i>
-                    <h4>No Experiences Shared Yet</h4>
-                    <p>Be the first to share your journey with the CareerMaker community!</p>
-                </div>
-            `;
-        },
-
-        deleteTestimonial(testimonialId) {
-            console.log('🗑️ Deleting testimonial:', testimonialId);
-            this.showDeleteConfirmation(testimonialId);
-        },
-
-        showMessage(message, type, element) {
-            if (element) {
-                element.textContent = message;
-                element.className = `form-message ${type}`;
-                element.style.display = 'block';
-            }
-        },
-
-        showLoginPrompt() {
-            if (typeof showToast === 'function') {
-                showToast('Please login to share your experience', 'warning');
-            }
-
-            if (typeof openLoginModal === 'function') {
-                openLoginModal();
-            }
-        },
-
-        closeModal() {
-            const modal = document.getElementById('testimonialModal');
-            if (modal) {
-                modal.style.display = 'none';
-                this.clearForm();
-            }
-            this.isModalOpen = false;
-            this.testimonialToEdit = null; // Reset edit state
-        },
-
-        closeDeleteModal() {
-            const modal = document.getElementById('deleteConfirmModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-            this.testimonialToDelete = null;
-        },
-
-        clearForm() {
-            const testimonialText = document.getElementById('testimonialText');
-            const messageDiv = document.getElementById('formMessage');
-
-            if (testimonialText) testimonialText.value = '';
-            if (messageDiv) {
-                messageDiv.style.display = 'none';
-                messageDiv.textContent = '';
-            }
-
-            this.setupStarRating(5);
-            this.testimonialToEdit = null; // Reset edit state
+            if (deleteBtn) deleteBtn.addEventListener('click', () => this.confirmDelete());
         },
 
         async loadTestimonials() {
+            if (!this.track) return;
+
+            this.track.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-pulse"></i>
+                    <p>Loading experiences...</p>
+                </div>
+            `;
+
             try {
-                const track = document.getElementById('testimonialTrack');
-                if (!track) {
-                    console.error('❌ Testimonial track not found');
-                    return;
-                }
-
-                track.innerHTML = `
-                    <div class="loading-state">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading experiences...</p>
-                    </div>
-                `;
-
                 const response = await fetch('/api/testimonial/list', {
                     credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache'
-                    }
+                    headers: { 'Accept': 'application/json' }
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to load testimonials');
-                }
+                if (!response.ok) throw new Error('Failed to load');
 
                 const data = await response.json();
-
-                console.log('📊 Loaded testimonials from backend:', data);
-
-                if (data.testimonials) {
-                    // Filter out any soft-deleted testimonials (backend should already do this)
-                    this.currentTestimonials = data.testimonials.filter(t => !t.is_deleted);
-                } else {
-                    throw new Error('No testimonials data received');
-                }
+                this.currentTestimonials = (data.testimonials || []).filter(t => !t.is_deleted);
 
                 if (this.currentTestimonials.length === 0) {
                     this.renderEmptyState();
                 } else {
                     this.renderTestimonials();
+                    this.updateDots();
+                    this.updateNavigationState();
+
+                    if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                        this.startAutoSlide();
+                    }
                 }
-
-                this.updateNavigation();
-                this.updateDots();
-
             } catch (error) {
-                console.error('❌ Failed to load testimonials:', error);
-                const track = document.getElementById('testimonialTrack');
-                if (track) {
-                    track.innerHTML = `
-                        <div class="empty-testimonials error">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h4>Unable to Load Experiences</h4>
-                            <p>Please try again later</p>
-                        </div>`;
-                }
-            }
-        },
-
-        bindGlobalEventListeners() {
-            // Use event delegation for all testimonial actions
-            document.addEventListener('click', async (e) => {
-                // Edit button
-                if (e.target.closest('.btn-edit')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const editBtn = e.target.closest('.btn-edit');
-                    const testimonialCard = editBtn.closest('.testimonial-card');
-
-                    if (testimonialCard) {
-                        const testimonialId = testimonialCard.dataset.testimonialId;
-                        if (testimonialId) {
-                            await this.handleEditClick(testimonialId);
-                        }
-                    }
-                }
-
-                // Delete button
-                if (e.target.closest('.btn-delete')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const deleteBtn = e.target.closest('.btn-delete');
-                    const testimonialCard = deleteBtn.closest('.testimonial-card');
-
-                    if (testimonialCard) {
-                        const testimonialId = testimonialCard.dataset.testimonialId;
-                        if (testimonialId) {
-                            this.deleteTestimonial(testimonialId);
-                        }
-                    }
-                }
-
-                // Read More button (updated to use event delegation for buttons)
-                if (e.target.closest('.read-more-link')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const link = e.target.closest('.read-more-link');
-                    const testimonialId = link.getAttribute('data-testimonial-id');
-                    if (testimonialId) {
-                        this.openTestimonialDetail(testimonialId);
-                    }
-                }
-            });
-        },
-
-        async handleEditClick(testimonialId) {
-            console.log('✏️ Edit button clicked for testimonial:', testimonialId);
-
-            try {
-                // First check if user is logged in
-                const authResponse = await fetch('/api/testimonial/auth-check', {
-                    credentials: 'include'
-                });
-                const authData = await authResponse.json();
-
-                if (!authData.can_post) {
-                    this.showLoginPrompt();
-                    return;
-                }
-
-                // Find the testimonial in current list
-                const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
-
-                if (!testimonial) {
-                    console.error('Testimonial not found:', testimonialId);
-                    showToast('Testimonial not found', 'error');
-                    return;
-                }
-
-                // Check if user can edit this testimonial
-                if (!testimonial.can_edit) {
-                    showToast('You can only edit your own testimonials', 'error');
-                    return;
-                }
-
-                // Check if testimonial is soft-deleted
-                if (testimonial.is_deleted) {
-                    showToast('This testimonial has been deleted and cannot be edited', 'error');
-                    return;
-                }
-
-                // Open modal with testimonial data
-                this.showModal(authData.username || 'User', testimonial);
-
-            } catch (error) {
-                console.error('Error checking edit permissions:', error);
-                showToast('Unable to edit testimonial', 'error');
+                console.error('Load error:', error);
+                this.track.innerHTML = `
+                    <div class="empty-testimonials">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h4>Unable to Load</h4>
+                        <p>Please try again later</p>
+                    </div>`;
             }
         },
 
         renderTestimonials() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track) return;
-
-            // Filter out any testimonials that might have been soft-deleted (just in case)
             const activeTestimonials = this.currentTestimonials.filter(t => !t.is_deleted);
-
             if (activeTestimonials.length === 0) {
                 this.renderEmptyState();
                 return;
             }
 
-            // Create testimonial cards - ONE CARD PER TESTIMONIAL (NO DUPLICATE BUTTONS)
             const cardsHTML = activeTestimonials.map((testimonial, index) => {
                 const canEdit = testimonial.can_edit || false;
-                // Check if text is long enough to need truncation
-                const needsTruncation = testimonial.content.length > 300;
+                const needsTruncation = testimonial.content.length > 280;
                 const truncatedText = needsTruncation ?
-                    testimonial.content.substring(0, 300) + '...' :
+                    testimonial.content.substring(0, 280) + '...' :
                     testimonial.content;
 
                 return `
-                <div class="testimonial-card"
-                     data-index="${index}"
-                     data-testimonial-id="${testimonial.id}"
-                     data-deleted="${testimonial.is_deleted || false}">
+                <div class="testimonial-card" data-index="${index}" data-testimonial-id="${testimonial.id}">
                     <div class="testimonial-card-inner">
                         <div class="testimonial-quote">"</div>
 
                         ${canEdit ? `
                         <div class="testimonial-actions">
-                            <button class="btn-edit" data-testimonial-id="${testimonial.id}" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-delete" data-testimonial-id="${testimonial.id}" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button class="btn-edit" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-delete" title="Delete"><i class="fas fa-trash"></i></button>
                         </div>
                         ` : ''}
 
@@ -2823,7 +2095,7 @@
                         </div>
 
                         <div class="testimonial-text-container">
-                            <p class="testimonial-text" title="${testimonial.content.replace(/"/g, '&quot;')}">${truncatedText}</p>
+                            <p class="testimonial-text">${this.escapeHtml(truncatedText)}</p>
                         </div>
 
                         <div class="read-more-section">
@@ -2837,192 +2109,86 @@
                             <img src="${testimonial.profile_pic_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(testimonial.username) + '&background=10b981&color=fff&bold=true'}"
                                  alt="${testimonial.username}"
                                  class="author-avatar"
-                                 loading="lazy"
-                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true'">
+                                 loading="lazy">
                             <div class="author-info">
-                                <h4>${testimonial.username}</h4>
+                                <h4>${this.escapeHtml(testimonial.username)}</h4>
                                 <p>CareerMaker User</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            `}).join('');
+                </div>`;
+            }).join('');
 
-            track.innerHTML = cardsHTML;
-
-            // Add click handlers for Read More links
-            this.setupReadMoreHandlers();
-
-            // Calculate track width
-            this.calculateTrackWidth();
-
-            // Set initial position
+            this.track.innerHTML = cardsHTML;
             this.currentIndex = 0;
-            this.updateCarousel();
-            this.updateDots();
-            this.updateButtonStates();
-
-            // Start auto-slide only if we have more than 3 testimonials
-            if (this.isAutoPlay && activeTestimonials.length > 3) {
-                setTimeout(() => this.startAutoSlide(), 1000);
-            }
-        },
-
-        calculateTrackWidth() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track) return;
-
-            const cards = track.querySelectorAll('.testimonial-card');
-            const cardWidth = 340; // Fixed card width from CSS
-            const gap = 30; // Gap between cards from CSS
-
-            this.trackWidth = (cards.length * cardWidth) + ((cards.length - 1) * gap);
-            track.style.width = `${this.trackWidth}px`;
-        },
-
-        nextSlide() {
-            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
-
-            this.isAnimating = true;
-            this.pauseAutoSlide();
-
-            // Move to next testimonial - chain movement
-            const nextIndex = this.currentIndex + 1;
-
-            // Check if we're at the end
-            if (nextIndex >= this.currentTestimonials.length) {
-                // We've reached the end - for chain effect, we should animate to show
-                // that we're wrapping around, but visually continue in same direction
-                this.currentIndex = 0;
-
-                // Reset transform position for seamless chain effect
-                const track = document.getElementById('testimonialTrack');
-                if (track) {
-                    // Quickly reset to start without animation
-                    track.style.transition = 'none';
-                    track.style.transform = 'translateX(0)';
-
-                    // Force reflow
-                    void track.offsetWidth;
-
-                    // Restore transition
-                    track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                }
-            } else {
-                this.currentIndex = nextIndex;
-            }
-
-            this.updateCarousel();
-            this.updateDots();
-            this.updateButtonStates();
 
             setTimeout(() => {
-                this.isAnimating = false;
-                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
-                    this.startAutoSlide();
-                }
-            }, 600);
+                this.updateCarousel();
+                this.updateDots();
+            }, 50);
         },
 
-        prevSlide() {
-            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
-
-            this.isAnimating = true;
-            this.pauseAutoSlide();
-
-            // For chain movement in one direction, "previous" should actually show
-            // the last card to continue the visual flow
-            const prevIndex = this.currentIndex - 1;
-
-            if (prevIndex < 0) {
-                // Go to the last card to continue chain movement
-                this.currentIndex = this.currentTestimonials.length - 1;
-
-                // For visual continuity, we need to jump to a position that makes sense
-                const track = document.getElementById('testimonialTrack');
-                if (track) {
-                    const cardWidth = 340;
-                    const gap = 30;
-                    const totalCards = this.currentTestimonials.length;
-                    // Jump to a position that shows we're going "back" to the end
-                    const jumpPosition = -(totalCards * (cardWidth + gap));
-
-                    track.style.transition = 'none';
-                    track.style.transform = `translateX(${jumpPosition}px)`;
-
-                    // Force reflow
-                    void track.offsetWidth;
-
-                    // Restore transition and animate to correct position
-                    track.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                }
-            } else {
-                this.currentIndex = prevIndex;
+        renderEmptyState() {
+            if (this.track) {
+                this.track.innerHTML = `
+                    <div class="empty-testimonials">
+                        <i class="fas fa-comments"></i>
+                        <h4>No Experiences Yet</h4>
+                        <p>Be the first to share your journey!</p>
+                    </div>`;
             }
-
-            this.updateCarousel();
-            this.updateDots();
-            this.updateButtonStates();
-
-            setTimeout(() => {
-                this.isAnimating = false;
-                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
-                    this.startAutoSlide();
-                }
-            }, 600);
-        },
-
-        goToSlide(index) {
-            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
-
-            this.isAnimating = true;
-            this.pauseAutoSlide();
-
-            // Ensure index is within bounds
-            const targetIndex = Math.max(0, Math.min(index, this.currentTestimonials.length - 1));
-            this.currentIndex = targetIndex;
-
-            this.updateCarousel();
-            this.updateDots();
-            this.updateButtonStates();
-
-            setTimeout(() => {
-                this.isAnimating = false;
-                if (this.isAutoPlay) {
-                    this.startAutoSlide();
-                }
-            }, 600);
         },
 
         updateCarousel() {
-            const track = document.getElementById('testimonialTrack');
-            if (!track || this.currentTestimonials.length === 0) return;
+            if (!this.track) return;
 
-            const cardWidth = 340;
-            const gap = 30;
-            const translateX = -(this.currentIndex * (cardWidth + gap));
+            const cards = this.track.querySelectorAll('.testimonial-card');
+            const totalCards = cards.length;
 
-            track.style.transform = `translateX(${translateX}px)`;
+            if (totalCards === 0) return;
 
-            // Update card states for chain effect
-            this.updateCardStates();
+            // For 3 or fewer cards, just show them all without carousel movement
+            if (totalCards <= 3) {
+                this.track.style.transform = 'translateX(0)';
+                this.updateCardClasses();
+                return;
+            }
+
+            // Get card dimensions
+            const cardWidth = cards[0].offsetWidth;
+            const gap = parseInt(window.getComputedStyle(this.track).gap) || 24;
+            const cardTotalWidth = cardWidth + gap;
+
+            // Get container width
+            const container = this.track.parentElement;
+            const containerWidth = container ? container.offsetWidth : window.innerWidth - 40;
+
+            // Calculate offset to center the active card
+            const centerOffset = (containerWidth - cardWidth) / 2;
+            const translateX = centerOffset - (this.currentIndex * cardTotalWidth);
+
+            // Apply transform with smooth transition
+            this.track.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            this.track.style.transform = `translateX(${translateX}px)`;
+
+            // Update card classes
+            this.updateCardClasses();
         },
 
-        updateCardStates() {
-            const cards = document.querySelectorAll('.testimonial-card');
+        updateCardClasses() {
+            const cards = this.track.querySelectorAll('.testimonial-card');
+            const totalCards = cards.length;
 
-            cards.forEach((card, index) => {
-                // Remove all state classes
+            if (totalCards === 0) return;
+
+            cards.forEach((card, i) => {
                 card.classList.remove('active', 'prev-card', 'next-card');
 
-                if (index === this.currentIndex) {
-                    // Current active card
+                if (i === this.currentIndex) {
                     card.classList.add('active');
-                } else if (index === (this.currentIndex + 1) % this.currentTestimonials.length) {
-                    // Next card
+                } else if (i === (this.currentIndex + 1) % totalCards) {
                     card.classList.add('next-card');
-                } else if (index === (this.currentIndex - 1 + this.currentTestimonials.length) % this.currentTestimonials.length) {
-                    // Previous card
+                } else if (i === (this.currentIndex - 1 + totalCards) % totalCards) {
                     card.classList.add('prev-card');
                 }
             });
@@ -3032,7 +2198,6 @@
             const dotsContainer = document.getElementById('carouselDots');
             if (!dotsContainer) return;
 
-            // Only show dots when we have more than 3 testimonials
             if (this.currentTestimonials.length <= 3) {
                 dotsContainer.style.display = 'none';
                 return;
@@ -3041,87 +2206,81 @@
             dotsContainer.style.display = 'flex';
             dotsContainer.innerHTML = '';
 
-            // Create dots for each testimonial
             for (let i = 0; i < this.currentTestimonials.length; i++) {
                 const dot = document.createElement('button');
                 dot.className = `carousel-dot ${i === this.currentIndex ? 'active' : ''}`;
                 dot.setAttribute('data-index', i);
-                dot.setAttribute('aria-label', `Go to testimonial ${i + 1}`);
-                dot.title = i === this.currentIndex ? 'Current testimonial' : `Go to testimonial ${i + 1}`;
-
                 dot.addEventListener('click', () => this.goToSlide(i));
                 dotsContainer.appendChild(dot);
             }
         },
 
-        updateButtonStates() {
-            const prevBtn = document.querySelector('.carousel-prev');
-            const nextBtn = document.querySelector('.carousel-next');
+        updateNavigationState() {
+            const navContainer = document.querySelector('.carousel-nav-container');
+            const canScroll = this.currentTestimonials.length > 3;
 
-            if (prevBtn && nextBtn) {
-                // Only enable buttons when we have more than 3 testimonials
-                const canScroll = this.currentTestimonials.length > 3;
-                prevBtn.disabled = !canScroll;
-                nextBtn.disabled = !canScroll;
-
-                // Update tooltips
-                prevBtn.title = canScroll ? 'View previous testimonial' : 'No previous testimonials';
-                nextBtn.title = canScroll ? 'View next testimonial' : 'No more testimonials';
+            if (navContainer) {
+                navContainer.style.display = canScroll ? 'flex' : 'none';
             }
         },
 
-        updateNavigation() {
-            const navContainer = document.querySelector('.carousel-nav-container');
-            if (!navContainer) return;
+        nextSlide() {
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
-            // Show navigation only when we have more than 3 testimonials
-            const canScroll = this.currentTestimonials.length > 3;
-            navContainer.style.display = canScroll ? 'flex' : 'none';
+            this.isAnimating = true;
+            this.pauseAutoSlide();
 
-            // Also update button states
-            this.updateButtonStates();
+            // Chain movement: always move forward
+            this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
+
+            // Update carousel position
+            this.updateCarousel();
+            this.updateDots();
+
+            setTimeout(() => {
+                this.isAnimating = false;
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    this.startAutoSlide();
+                }
+            }, 500);
         },
 
-        toggleAutoPlay() {
-            this.isAutoPlay = !this.isAutoPlay;
+        goToSlide(index) {
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
-            const indicator = document.getElementById('autoPlayIndicator');
-            if (indicator) {
-                const icon = indicator.querySelector('i');
-                const text = indicator.querySelector('span');
+            this.isAnimating = true;
+            this.pauseAutoSlide();
 
-                if (this.isAutoPlay) {
-                    icon.className = 'fas fa-play-circle';
-                    text.textContent = 'Auto';
-                    indicator.title = 'Auto-play enabled';
-                    if (this.currentTestimonials.length > 3) {
+            // Always move forward to reach target index
+            let steps = index - this.currentIndex;
+            if (steps < 0) steps += this.currentTestimonials.length;
+
+            const animateStep = () => {
+                if (steps === 0) {
+                    this.isAnimating = false;
+                    if (this.isAutoPlay && this.currentTestimonials.length > 3) {
                         this.startAutoSlide();
                     }
-                } else {
-                    icon.className = 'fas fa-pause-circle';
-                    text.textContent = 'Paused';
-                    indicator.title = 'Auto-play paused';
-                    this.stopAutoSlide();
+                    return;
                 }
-            }
+
+                this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
+                this.updateCarousel();
+                this.updateDots();
+                steps--;
+
+                setTimeout(animateStep, 150);
+            };
+
+            animateStep();
         },
 
         startAutoSlide() {
             this.stopAutoSlide();
-
-            // Only start auto-slide when we have more than 3 testimonials AND auto-play is enabled
             if (this.currentTestimonials.length > 3 && this.isAutoPlay) {
                 this.autoSlideInterval = setInterval(() => {
                     this.nextSlide();
                 }, this.autoPlayDelay);
-
-                // Update indicator if exists
-                const indicator = document.getElementById('autoPlayIndicator');
-                if (indicator) {
-                    indicator.querySelector('i').className = 'fas fa-play-circle';
-                    indicator.querySelector('span').textContent = 'Auto';
-                    indicator.style.display = 'flex'; // Make sure it's visible
-                }
             }
         },
 
@@ -3136,13 +2295,373 @@
             this.stopAutoSlide();
         },
 
-        handleResize() {
-            // Recalculate on resize
-            this.calculateTrackWidth();
-            this.updateCarousel();
+        toggleAutoPlay() {
+            this.isAutoPlay = !this.isAutoPlay;
+            const indicator = document.getElementById('autoPlayIndicator');
+            if (indicator) {
+                const icon = indicator.querySelector('i');
+                const text = indicator.querySelector('span');
+                if (this.isAutoPlay) {
+                    icon.className = 'fas fa-play-circle';
+                    text.textContent = 'Auto';
+                    if (this.currentTestimonials.length > 3) this.startAutoSlide();
+                } else {
+                    icon.className = 'fas fa-pause-circle';
+                    text.textContent = 'Paused';
+                    this.stopAutoSlide();
+                }
+            }
+        },
+
+        async openTestimonialForm() {
+            try {
+                if (!this.currentUsername) {
+                    await this.getCurrentUser();
+                }
+
+                const response = await fetch('/api/testimonial/auth-check', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.can_post) {
+                    const displayName = this.currentUsername || data.username || data.name || 'User';
+                    this.showModal(displayName);
+                } else {
+                    this.showLoginPrompt();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                this.showLoginPrompt();
+            }
+        },
+
+        showModal(username, testimonial = null) {
+            const modal = document.getElementById('testimonialModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const userNameField = document.getElementById('userName');
+            const testimonialText = document.getElementById('testimonialText');
+            const ratingValue = document.getElementById('ratingValue');
+            const submitBtn = document.querySelector('#testimonialForm .btn-text');
+
+            if (!modal) return;
+
+            this.testimonialToEdit = testimonial ? testimonial.id : null;
+
+            modalTitle.textContent = testimonial ? 'Edit Your Experience' : 'Share Your Experience';
+
+            if (userNameField) {
+                const displayName = username || this.currentUsername || 'User';
+                userNameField.value = displayName;
+                userNameField.readOnly = true;
+            }
+
+            if (testimonialText) {
+                testimonialText.value = testimonial ? testimonial.content : '';
+            }
+
+            ratingValue.value = testimonial ? testimonial.rating : 5;
+            if (submitBtn) submitBtn.textContent = testimonial ? 'Update Experience' : 'Share Experience';
+
+            this.setupStarRating(testimonial ? testimonial.rating : 5);
+
+            setTimeout(() => {
+                this.initFloatingLabels();
+            }, 50);
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        },
+
+        initFloatingLabels() {
+            const formGroups = document.querySelectorAll('#testimonialForm .floating-label-group');
+
+            formGroups.forEach(group => {
+                const input = group.querySelector('input, textarea');
+                if (!input) return;
+
+                if (input.value && input.value.trim() !== '') {
+                    group.classList.add('has-value');
+                } else {
+                    group.classList.remove('has-value');
+                }
+
+                const newInput = input.cloneNode(true);
+                input.parentNode.replaceChild(newInput, input);
+
+                newInput.addEventListener('focus', () => {
+                    group.classList.add('focused');
+                });
+
+                newInput.addEventListener('blur', () => {
+                    group.classList.remove('focused');
+                    if (newInput.value && newInput.value.trim() !== '') {
+                        group.classList.add('has-value');
+                    } else {
+                        group.classList.remove('has-value');
+                    }
+                });
+
+                newInput.addEventListener('input', () => {
+                    if (newInput.value && newInput.value.trim() !== '') {
+                        group.classList.add('has-value');
+                    } else {
+                        group.classList.remove('has-value');
+                    }
+                });
+            });
+        },
+
+        setupStarRating(initialRating = 5) {
+            const stars = document.querySelectorAll('.star-btn');
+            const ratingInput = document.getElementById('ratingValue');
+
+            stars.forEach((star, index) => {
+                star.classList.toggle('active', index < initialRating);
+                star.innerHTML = index < initialRating ? '★' : '☆';
+
+                star.onclick = () => {
+                    const rating = parseInt(star.dataset.rating);
+                    ratingInput.value = rating;
+                    stars.forEach((s, i) => {
+                        s.classList.toggle('active', i < rating);
+                        s.innerHTML = i < rating ? '★' : '☆';
+                    });
+                };
+            });
+        },
+
+        async handleSubmit(event) {
+            event.preventDefault();
+
+            const content = document.getElementById('testimonialText').value.trim();
+            const rating = parseInt(document.getElementById('ratingValue').value);
+            const messageDiv = document.getElementById('formMessage');
+
+            if (!content) {
+                this.showMessage('Please share your experience', 'error', messageDiv);
+                return;
+            }
+
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const spinner = submitBtn.querySelector('.loading-spinner');
+
+            btnText.style.display = 'none';
+            if (spinner) spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+
+            try {
+                const isEdit = !!this.testimonialToEdit;
+                const url = isEdit ? `/api/testimonial/update/${this.testimonialToEdit}` : '/api/testimonial/submit';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content, rating })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.message || 'Operation failed');
+
+                if (data.success) {
+                    this.showMessage(data.message, 'success', messageDiv);
+                    document.getElementById('testimonialText').value = '';
+                    this.setupStarRating(5);
+
+                    setTimeout(() => {
+                        this.closeModal();
+                        this.loadTestimonials();
+                        if (typeof showToast === 'function') {
+                            showToast(isEdit ? 'Experience updated!' : 'Thank you for sharing!', 'success');
+                        }
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || 'Operation failed');
+                }
+            } catch (error) {
+                this.showMessage(error.message, 'error', messageDiv);
+            } finally {
+                btnText.style.display = 'inline-block';
+                if (spinner) spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        },
+
+        async handleEditClick(testimonialId) {
+            try {
+                const authResponse = await fetch('/api/testimonial/auth-check', { credentials: 'include' });
+                const authData = await authResponse.json();
+
+                if (!authData.can_post) {
+                    this.showLoginPrompt();
+                    return;
+                }
+
+                const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
+                if (!testimonial) throw new Error('Not found');
+                if (!testimonial.can_edit) throw new Error('Cannot edit');
+                if (testimonial.is_deleted) throw new Error('Already deleted');
+
+                this.showModal(this.currentUsername || authData.username, testimonial);
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message, 'error');
+                }
+            }
+        },
+
+        deleteTestimonial(testimonialId) {
+            this.testimonialToDelete = testimonialId;
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        },
+
+        async confirmDelete() {
+            if (!this.testimonialToDelete) return;
+
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            const btnText = deleteBtn.querySelector('.btn-text');
+            const spinner = deleteBtn.querySelector('.loading-spinner');
+
+            btnText.style.display = 'none';
+            if (spinner) spinner.style.display = 'inline-block';
+            deleteBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Delete failed');
+
+                if (data.success) {
+                    this.closeDeleteModal();
+                    if (typeof showToast === 'function') {
+                        showToast('Testimonial deleted', 'success');
+                    }
+                    this.loadTestimonials();
+                }
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message, 'error');
+                }
+            } finally {
+                btnText.style.display = 'inline-block';
+                if (spinner) spinner.style.display = 'none';
+                deleteBtn.disabled = false;
+                this.testimonialToDelete = null;
+            }
+        },
+
+        openTestimonialDetail(testimonialId) {
+            const testimonial = this.currentTestimonials.find(t => t.id === testimonialId);
+            if (!testimonial) return;
+
+            const modal = document.getElementById('testimonialDetailModal');
+            if (!modal) return;
+
+            const avatar = document.getElementById('detailAvatar');
+            const authorName = document.getElementById('detailAuthorName');
+            const rating = document.getElementById('detailRating');
+            const fullText = document.getElementById('detailFullText');
+            const date = document.getElementById('detailDate');
+
+            if (avatar) {
+                avatar.src = testimonial.profile_pic_url ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username)}&background=10b981&color=fff&bold=true`;
+                avatar.alt = testimonial.username;
+            }
+
+            if (authorName) authorName.textContent = testimonial.username;
+
+            if (rating) {
+                rating.innerHTML = Array.from({length: 5}, (_, i) =>
+                    `<span class="star ${i < testimonial.rating ? '' : 'empty'}">★</span>`
+                ).join('');
+            }
+
+            if (fullText) fullText.textContent = testimonial.content;
+
+            if (date && testimonial.created_at) {
+                date.textContent = `Shared on ${new Date(testimonial.created_at).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                })}`;
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        },
+
+        closeModal() {
+            const modal = document.getElementById('testimonialModal');
+            if (modal) {
+                modal.style.display = 'none';
+                this.clearForm();
+            }
+            document.body.style.overflow = 'auto';
+            this.testimonialToEdit = null;
+        },
+
+        closeDeleteModal() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) modal.style.display = 'none';
+            this.testimonialToDelete = null;
+            document.body.style.overflow = 'auto';
+        },
+
+        closeDetailModal() {
+            const modal = document.getElementById('testimonialDetailModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            document.body.style.overflow = 'auto';
+        },
+
+        clearForm() {
+            const textarea = document.getElementById('testimonialText');
+            const messageDiv = document.getElementById('formMessage');
+            if (textarea) textarea.value = '';
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+                messageDiv.textContent = '';
+            }
+            this.setupStarRating(5);
+        },
+
+        showMessage(message, type, element) {
+            if (element) {
+                element.textContent = message;
+                element.className = `form-message ${type}`;
+                element.style.display = 'block';
+
+                setTimeout(() => {
+                    if (element) element.style.display = 'none';
+                }, 5000);
+            }
+        },
+
+        showLoginPrompt() {
+            if (typeof showToast === 'function') {
+                showToast('Please login to share your experience', 'warning');
+            }
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) loginModal.style.display = 'flex';
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
-
-
     };
 
     // =============================================
