@@ -1853,15 +1853,45 @@
         track: null,
         currentUsername: null,
         currentUserEmail: null,
+        starButtons: null,
+        ratingInput: null,
 
         init() {
             this.track = document.getElementById('testimonialTrack');
             if (!this.track) return;
 
+            // Cache elements
+            this.starButtons = document.querySelectorAll('.star-btn');
+            this.ratingInput = document.getElementById('ratingValue');
+
+            // Add scroll event listener to update card classes while scrolling
+            const container = this.track.parentElement;
+            if (container) {
+                let scrollTimeout;
+                container.addEventListener('scroll', () => {
+                    if (scrollTimeout) {
+                        cancelAnimationFrame(scrollTimeout);
+                    }
+                    scrollTimeout = requestAnimationFrame(() => {
+                        this.updateCardClasses();
+                    });
+                });
+            }
+
             this.getCurrentUser();
             this.loadTestimonials();
             this.bindEvents();
             this.setupSwipeGestures();
+        },
+
+        preloadImages() {
+            const avatars = document.querySelectorAll('.author-avatar');
+            avatars.forEach(img => {
+                if (img.src && !img.complete) {
+                    const preloader = new Image();
+                    preloader.src = img.src;
+                }
+            });
         },
 
         async getCurrentUser() {
@@ -1882,29 +1912,126 @@
             }
         },
 
-        setupSwipeGestures() {
+         setupSwipeGestures() {
             if (!this.track) return;
 
             let touchStartX = 0;
+            let touchStartY = 0;
+            let startTransform = 0;
+            let isDragging = false;
 
             this.track.addEventListener('touchstart', (e) => {
                 touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                startTransform = this.getCurrentTranslateX();
+                isDragging = true;
                 this.pauseAutoSlide();
-            }, { passive: true });
+
+                // Disable transition during drag
+                this.track.style.transition = 'none';
+            });
+
+            this.track.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                const touchCurrentX = e.touches[0].clientX;
+                const deltaX = touchCurrentX - touchStartX;
+                const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+
+                // Only horizontal drag
+                if (Math.abs(deltaX) > deltaY) {
+                    e.preventDefault();
+                    const newTransform = startTransform + deltaX;
+                    this.track.style.transform = `translateX(${newTransform}px)`;
+                }
+            });
 
             this.track.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
                 const touchEndX = e.changedTouches[0].clientX;
                 const deltaX = touchEndX - touchStartX;
 
+                // Restore transition
+                this.track.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+                // Determine if swipe was significant
                 if (Math.abs(deltaX) > 50) {
-                    // Both left and right swipes move forward (chain movement)
-                    this.nextSlide();
+                    if (deltaX < 0) {
+                        this.nextSlide();
+                    } else {
+                        this.prevSlide();
+                    }
+                } else {
+                    // Snap back to current card
+                    this.updateCarousel();
                 }
 
                 if (this.isAutoPlay && this.currentTestimonials.length > 3) {
                     setTimeout(() => this.startAutoSlide(), 3000);
                 }
             });
+
+            // Mouse events for desktop drag
+            this.track.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                touchStartX = e.clientX;
+                startTransform = this.getCurrentTranslateX();
+                isDragging = true;
+                this.pauseAutoSlide();
+                this.track.style.transition = 'none';
+                this.track.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - touchStartX;
+                const newTransform = startTransform + deltaX;
+                this.track.style.transform = `translateX(${newTransform}px)`;
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                const deltaX = e.clientX - touchStartX;
+
+                this.track.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                this.track.style.cursor = 'grab';
+
+                if (Math.abs(deltaX) > 50) {
+                    if (deltaX < 0) {
+                        this.nextSlide();
+                    } else {
+                        this.prevSlide();
+                    }
+                } else {
+                    this.updateCarousel();
+                }
+
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    setTimeout(() => this.startAutoSlide(), 3000);
+                }
+            });
+
+            // Wheel support
+            const container = this.track.parentElement;
+            container.addEventListener('wheel', (e) => {
+                if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 30) {
+                    e.preventDefault();
+                    if (e.deltaX > 0) {
+                        this.nextSlide();
+                    } else {
+                        this.prevSlide();
+                    }
+                    this.pauseAutoSlide();
+                    if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                        setTimeout(() => this.startAutoSlide(), 3000);
+                    }
+                }
+            }, { passive: false });
         },
 
         bindEvents() {
@@ -1919,9 +2046,8 @@
             const prevBtn = document.querySelector('.carousel-prev');
             const nextBtn = document.querySelector('.carousel-next');
 
-            // Both buttons move forward in chain movement
             if (prevBtn) {
-                prevBtn.addEventListener('click', () => this.nextSlide());
+                prevBtn.addEventListener('click', () => this.prevSlide());
             }
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => this.nextSlide());
@@ -1935,7 +2061,6 @@
             this.setupModalEvents();
             this.setupGlobalEventDelegation();
 
-            // Pause on hover for desktop
             const carousel = document.querySelector('.testimonials-carousel');
             if (carousel && !('ontouchstart' in window)) {
                 carousel.addEventListener('mouseenter', () => this.pauseAutoSlide());
@@ -1980,19 +2105,16 @@
         },
 
         setupModalEvents() {
-            // Testimonial form modal close
             const testimonialModalClose = document.querySelector('#testimonialModal .close-btn');
             if (testimonialModalClose) {
                 testimonialModalClose.addEventListener('click', () => this.closeModal());
             }
 
-            // Delete confirm modal close
             const deleteModalClose = document.querySelector('#deleteConfirmModal .close-btn');
             if (deleteModalClose) {
                 deleteModalClose.addEventListener('click', () => this.closeDeleteModal());
             }
 
-            // Detail modal close
             const detailModalClose = document.getElementById('detailModalClose');
             if (detailModalClose) {
                 detailModalClose.addEventListener('click', (e) => {
@@ -2001,7 +2123,6 @@
                 });
             }
 
-            // Cancel buttons
             const cancelBtns = document.querySelectorAll('#testimonialForm .btn-secondary, #deleteConfirmModal .btn-secondary');
             cancelBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -2010,11 +2131,9 @@
                 });
             });
 
-            // Form submission
             const form = document.getElementById('testimonialForm');
             if (form) form.addEventListener('submit', (e) => this.handleSubmit(e));
 
-            // Delete confirmation
             const deleteBtn = document.getElementById('confirmDeleteBtn');
             if (deleteBtn) deleteBtn.addEventListener('click', () => this.confirmDelete());
         },
@@ -2109,7 +2228,8 @@
                             <img src="${testimonial.profile_pic_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(testimonial.username) + '&background=10b981&color=fff&bold=true'}"
                                  alt="${testimonial.username}"
                                  class="author-avatar"
-                                 loading="lazy">
+                                 loading="lazy"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=' + encodeURIComponent('${testimonial.username}') + '&background=10b981&color=fff&bold=true'">
                             <div class="author-info">
                                 <h4>${this.escapeHtml(testimonial.username)}</h4>
                                 <p>CareerMaker User</p>
@@ -2125,7 +2245,7 @@
             setTimeout(() => {
                 this.updateCarousel();
                 this.updateDots();
-            }, 50);
+            }, 100);
         },
 
         renderEmptyState() {
@@ -2147,7 +2267,6 @@
 
             if (totalCards === 0) return;
 
-            // For 3 or fewer cards, just show them all without carousel movement
             if (totalCards <= 3) {
                 this.track.style.transform = 'translateX(0)';
                 this.updateCardClasses();
@@ -2156,23 +2275,31 @@
 
             // Get card dimensions
             const cardWidth = cards[0].offsetWidth;
-            const gap = parseInt(window.getComputedStyle(this.track).gap) || 24;
+            const gap = 24;
             const cardTotalWidth = cardWidth + gap;
 
             // Get container width
             const container = this.track.parentElement;
             const containerWidth = container ? container.offsetWidth : window.innerWidth - 40;
 
-            // Calculate offset to center the active card
+            // Calculate center offset
             const centerOffset = (containerWidth - cardWidth) / 2;
-            const translateX = centerOffset - (this.currentIndex * cardTotalWidth);
 
-            // Apply transform with smooth transition
-            this.track.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            this.track.style.transform = `translateX(${translateX}px)`;
+            // Calculate translateX to center the current card
+            let translateX = centerOffset - (this.currentIndex * cardTotalWidth);
 
-            // Update card classes
-            this.updateCardClasses();
+            // Calculate boundaries
+            const maxTranslate = centerOffset;
+            const minTranslate = centerOffset - ((totalCards - 1) * cardTotalWidth);
+
+            // Clamp to boundaries
+            translateX = Math.max(minTranslate, Math.min(maxTranslate, translateX));
+
+            // Apply transform
+            requestAnimationFrame(() => {
+                this.track.style.transform = `translateX(${translateX}px)`;
+                this.updateCardClasses();
+            });
         },
 
         updateCardClasses() {
@@ -2181,6 +2308,33 @@
 
             if (totalCards === 0) return;
 
+            // Get container and calculate center
+            const container = this.track.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const containerCenter = containerRect.left + (containerRect.width / 2);
+
+            // Find which card is closest to center
+            let closestIndex = 0;
+            let minDistance = Infinity;
+
+            cards.forEach((card, i) => {
+                const cardRect = card.getBoundingClientRect();
+                const cardCenter = cardRect.left + (cardRect.width / 2);
+                const distance = Math.abs(cardCenter - containerCenter);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestIndex = i;
+                }
+            });
+
+            // Update currentIndex to the closest card
+            if (closestIndex !== this.currentIndex) {
+                this.currentIndex = closestIndex;
+                this.updateDots();
+            }
+
+            // Apply classes to all cards
             cards.forEach((card, i) => {
                 card.classList.remove('active', 'prev-card', 'next-card');
 
@@ -2230,10 +2384,9 @@
             this.isAnimating = true;
             this.pauseAutoSlide();
 
-            // Chain movement: always move forward
+            // Continuous chain movement - always move forward
             this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
 
-            // Update carousel position
             this.updateCarousel();
             this.updateDots();
 
@@ -2245,41 +2398,77 @@
             }, 500);
         },
 
+        prevSlide() {
+            if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
+
+            this.isAnimating = true;
+            this.pauseAutoSlide();
+
+            // For prev, we still move forward in chain?
+            // Actually let's make prev move backward but still maintain chain
+            this.currentIndex = (this.currentIndex - 1 + this.currentTestimonials.length) % this.currentTestimonials.length;
+
+            this.updateCarousel();
+            this.updateDots();
+
+            setTimeout(() => {
+                this.isAnimating = false;
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    this.startAutoSlide();
+                }
+            }, 500);
+        },
+
+        scrollToCenterCard() {
+            const cards = this.track.querySelectorAll('.testimonial-card');
+            if (!cards.length) return;
+
+            const container = this.track.parentElement;
+            const activeCard = cards[this.currentIndex];
+
+            if (container && activeCard) {
+                const containerRect = container.getBoundingClientRect();
+                const cardRect = activeCard.getBoundingClientRect();
+
+                // Calculate scroll position to center the active card
+                const scrollLeft = container.scrollLeft + (cardRect.left - containerRect.left) - (containerRect.width / 2) + (cardRect.width / 2);
+
+                container.scrollTo({
+                    left: Math.max(0, scrollLeft),
+                    behavior: 'smooth'
+                });
+
+                // Update card classes for all cards (show multiple cards)
+                this.updateCardClasses();
+            }
+        },
+
         goToSlide(index) {
             if (this.currentTestimonials.length <= 3 || this.isAnimating) return;
 
             this.isAnimating = true;
             this.pauseAutoSlide();
 
-            // Always move forward to reach target index
-            let steps = index - this.currentIndex;
-            if (steps < 0) steps += this.currentTestimonials.length;
+            this.currentIndex = Math.max(0, Math.min(index, this.currentTestimonials.length - 1));
+            this.scrollToCard();
+            this.updateDots();
 
-            const animateStep = () => {
-                if (steps === 0) {
-                    this.isAnimating = false;
-                    if (this.isAutoPlay && this.currentTestimonials.length > 3) {
-                        this.startAutoSlide();
-                    }
-                    return;
+            setTimeout(() => {
+                this.isAnimating = false;
+                if (this.isAutoPlay && this.currentTestimonials.length > 3) {
+                    this.startAutoSlide();
                 }
-
-                this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
-                this.updateCarousel();
-                this.updateDots();
-                steps--;
-
-                setTimeout(animateStep, 150);
-            };
-
-            animateStep();
+            }, 500);
         },
 
         startAutoSlide() {
             this.stopAutoSlide();
             if (this.currentTestimonials.length > 3 && this.isAutoPlay) {
                 this.autoSlideInterval = setInterval(() => {
-                    this.nextSlide();
+                    // Continuous chain movement - always move forward
+                    this.currentIndex = (this.currentIndex + 1) % this.currentTestimonials.length;
+                    this.updateCarousel();
+                    this.updateDots();
                 }, this.autoPlayDelay);
             }
         },
@@ -2315,18 +2504,24 @@
 
         async openTestimonialForm() {
             try {
-                if (!this.currentUsername) {
-                    await this.getCurrentUser();
+                let authData;
+
+                if (this.currentUsername) {
+                    authData = { can_post: true, username: this.currentUsername };
+                } else {
+                    const response = await fetch('/api/testimonial/auth-check', {
+                        credentials: 'include',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    authData = await response.json();
+
+                    if (authData.logged_in) {
+                        this.currentUsername = authData.username;
+                    }
                 }
 
-                const response = await fetch('/api/testimonial/auth-check', {
-                    credentials: 'include',
-                    headers: { 'Accept': 'application/json' }
-                });
-                const data = await response.json();
-
-                if (data.can_post) {
-                    const displayName = this.currentUsername || data.username || data.name || 'User';
+                if (authData.can_post) {
+                    const displayName = this.currentUsername || authData.username || 'User';
                     this.showModal(displayName);
                 } else {
                     this.showLoginPrompt();
@@ -2352,8 +2547,7 @@
             modalTitle.textContent = testimonial ? 'Edit Your Experience' : 'Share Your Experience';
 
             if (userNameField) {
-                const displayName = username || this.currentUsername || 'User';
-                userNameField.value = displayName;
+                userNameField.value = username;
                 userNameField.readOnly = true;
             }
 
@@ -2361,25 +2555,60 @@
                 testimonialText.value = testimonial ? testimonial.content : '';
             }
 
-            ratingValue.value = testimonial ? testimonial.rating : 5;
-            if (submitBtn) submitBtn.textContent = testimonial ? 'Update Experience' : 'Share Experience';
+            if (ratingValue) {
+                ratingValue.value = testimonial ? testimonial.rating : 5;
+            }
+
+            if (submitBtn) {
+                submitBtn.textContent = testimonial ? 'Update Experience' : 'Share Experience';
+            }
 
             this.setupStarRating(testimonial ? testimonial.rating : 5);
 
-            setTimeout(() => {
-                this.initFloatingLabels();
-            }, 50);
-
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+
+            setTimeout(() => {
+                this.initFloatingLabels();
+            }, 10);
+        },
+
+        setupStarRating(initialRating = 5) {
+            const stars = this.starButtons || document.querySelectorAll('.star-btn');
+            const ratingInput = this.ratingInput || document.getElementById('ratingValue');
+
+            if (!stars.length) return;
+
+            for (let i = 0; i < stars.length; i++) {
+                const star = stars[i];
+                const isActive = i < initialRating;
+                star.classList.toggle('active', isActive);
+                star.innerHTML = isActive ? '★' : '☆';
+
+                if (!star._hasListener) {
+                    star._hasListener = true;
+                    star.onclick = () => {
+                        const rating = parseInt(star.dataset.rating);
+                        if (ratingInput) ratingInput.value = rating;
+                        for (let j = 0; j < stars.length; j++) {
+                            const s = stars[j];
+                            const active = j < rating;
+                            s.classList.toggle('active', active);
+                            s.innerHTML = active ? '★' : '☆';
+                        }
+                    };
+                }
+            }
         },
 
         initFloatingLabels() {
             const formGroups = document.querySelectorAll('#testimonialForm .floating-label-group');
+            if (!formGroups.length) return;
 
-            formGroups.forEach(group => {
+            for (let i = 0; i < formGroups.length; i++) {
+                const group = formGroups[i];
                 const input = group.querySelector('input, textarea');
-                if (!input) return;
+                if (!input) continue;
 
                 if (input.value && input.value.trim() !== '') {
                     group.classList.add('has-value');
@@ -2387,49 +2616,31 @@
                     group.classList.remove('has-value');
                 }
 
-                const newInput = input.cloneNode(true);
-                input.parentNode.replaceChild(newInput, input);
+                if (!input._hasFloatingListener) {
+                    input._hasFloatingListener = true;
 
-                newInput.addEventListener('focus', () => {
-                    group.classList.add('focused');
-                });
-
-                newInput.addEventListener('blur', () => {
-                    group.classList.remove('focused');
-                    if (newInput.value && newInput.value.trim() !== '') {
-                        group.classList.add('has-value');
-                    } else {
-                        group.classList.remove('has-value');
-                    }
-                });
-
-                newInput.addEventListener('input', () => {
-                    if (newInput.value && newInput.value.trim() !== '') {
-                        group.classList.add('has-value');
-                    } else {
-                        group.classList.remove('has-value');
-                    }
-                });
-            });
-        },
-
-        setupStarRating(initialRating = 5) {
-            const stars = document.querySelectorAll('.star-btn');
-            const ratingInput = document.getElementById('ratingValue');
-
-            stars.forEach((star, index) => {
-                star.classList.toggle('active', index < initialRating);
-                star.innerHTML = index < initialRating ? '★' : '☆';
-
-                star.onclick = () => {
-                    const rating = parseInt(star.dataset.rating);
-                    ratingInput.value = rating;
-                    stars.forEach((s, i) => {
-                        s.classList.toggle('active', i < rating);
-                        s.innerHTML = i < rating ? '★' : '☆';
+                    input.addEventListener('focus', () => {
+                        group.classList.add('focused');
                     });
-                };
-            });
+
+                    input.addEventListener('blur', () => {
+                        group.classList.remove('focused');
+                        if (input.value && input.value.trim() !== '') {
+                            group.classList.add('has-value');
+                        } else {
+                            group.classList.remove('has-value');
+                        }
+                    });
+
+                    input.addEventListener('input', () => {
+                        if (input.value && input.value.trim() !== '') {
+                            group.classList.add('has-value');
+                        } else {
+                            group.classList.remove('has-value');
+                        }
+                    });
+                }
+            }
         },
 
         async handleSubmit(event) {
@@ -3888,28 +4099,54 @@
     // =============================================
     // Active Navigation on Scroll
     // =============================================
+    // Cache DOM elements for better performance
     const sections = document.querySelectorAll('section');
     const navLinks = document.querySelectorAll('.nav-links a');
 
+    // Throttled scroll handler
+    let scrollTimeout;
+    let lastScrollTime = 0;
+    const SCROLL_THROTTLE = 100;
+
     function updateActiveNav() {
       let current = '';
-      sections.forEach(section => {
+
+      // Use for loop instead of forEach for better performance
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
         const sectionTop = section.offsetTop;
         const sectionHeight = section.clientHeight;
-        if (pageYOffset >= (sectionTop - 200)) {
+        if (window.pageYOffset >= (sectionTop - 200)) {
           current = section.getAttribute('id');
         }
-      });
+      }
 
-      navLinks.forEach(link => {
+      // Update nav links
+      for (let i = 0; i < navLinks.length; i++) {
+        const link = navLinks[i];
         link.classList.remove('active-scroll');
         if (link.getAttribute('href').includes(current)) {
           link.classList.add('active-scroll');
         }
-      });
+      }
     }
 
-    window.addEventListener('scroll', updateActiveNav);
+    // Throttled scroll event listener
+    window.addEventListener('scroll', function() {
+      const now = Date.now();
+      if (now - lastScrollTime < SCROLL_THROTTLE) return;
+      lastScrollTime = now;
+
+      if (scrollTimeout) {
+        cancelAnimationFrame(scrollTimeout);
+      }
+
+      scrollTimeout = requestAnimationFrame(function() {
+        updateActiveNav();
+      });
+    });
+
+    // Initial call
     updateActiveNav();
 
     // =============================================
@@ -4804,14 +5041,13 @@
             '.contact-info, .contact-form, .filters'
         );
 
-        // Create Intersection Observer
+        // Use requestIdleCallback for non-critical animations
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    // Add active class when element comes into view
                     entry.target.classList.add('active');
 
-                    // For staggered animations
+                    // Handle staggered animations
                     if (entry.target.classList.contains('stagger-scroll')) {
                         const children = entry.target.children;
                         Array.from(children).forEach((child, index) => {
@@ -4819,19 +5055,30 @@
                         });
                     }
 
-                    // Stop observing after animation triggers
+                    // Unobserve after animation triggers to reduce load
                     observer.unobserve(entry.target);
                 }
             });
         }, {
-            threshold: 0.1, // Trigger when 10% of element is visible
-            rootMargin: '0px 0px -50px 0px' // Adjust trigger point
+            threshold: 0.1,
+            rootMargin: '50px 0px 50px 0px' // Smaller margin
         });
 
-        // Observe all animated elements
-        animatedElements.forEach(element => {
-            observer.observe(element);
-        });
+        // Observe elements in batches using setTimeout to prevent blocking
+        const batchSize = 20;
+        let index = 0;
+
+        function observeBatch() {
+            const batch = Array.from(animatedElements).slice(index, index + batchSize);
+            batch.forEach(element => observer.observe(element));
+            index += batchSize;
+
+            if (index < animatedElements.length) {
+                setTimeout(observeBatch, 100);
+            }
+        }
+
+        observeBatch();
 
         // Initialize card hover effects
         initializeCardHoverEffects();
@@ -4877,7 +5124,6 @@
      * Create ripple effect on button click
      */
     function createRippleEffect(button, e) {
-        // Check if ripple already exists
         if (button.querySelector('.ripple-effect')) return;
 
         const ripple = document.createElement('span');
@@ -4890,9 +5136,9 @@
         ripple.style.cssText = `
             position: absolute;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.6);
             transform: scale(0);
-            animation: ripple-animation 0.6s linear;
+            animation: ripple-animation 0.4s linear;
             width: ${size}px;
             height: ${size}px;
             top: ${y}px;
@@ -4905,12 +5151,11 @@
         button.style.overflow = 'hidden';
         button.appendChild(ripple);
 
-        // Remove ripple after animation
         setTimeout(() => {
             if (ripple.parentNode === button) {
                 button.removeChild(ripple);
             }
-        }, 600);
+        }, 400);
     }
 
     /**
