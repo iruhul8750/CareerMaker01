@@ -7678,35 +7678,177 @@
     }
 
     /* ============================================
-       DARK MODE SPECIFIC STYLES
-       ============================================ */
-
+    DARK MODE SPECIFIC STYLES
+    ============================================ */
     .dark-mode #analytics .stat-card {
         background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .dark-mode #analytics .stat-card .stat-title {
+        color: var(--text-secondary);
+    }
+
+    .dark-mode #analytics .stat-card .stat-number {
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .stat-card .stat-icon i {
+        color: var(--primary);
+    }
+
+    /* Popular Pages Dark Mode */
+    .dark-mode #analytics .popular-page-item {
+        border-bottom-color: var(--border-color);
     }
 
     .dark-mode #analytics .popular-page-item .rank {
         background: var(--bg-tertiary);
+        color: var(--primary);
+    }
+
+    .dark-mode #analytics .popular-page-item .page-title {
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .popular-page-item .page-url {
+        color: var(--text-muted);
     }
 
     .dark-mode #analytics .popular-page-item .page-views {
         background: var(--bg-tertiary);
+        color: var(--primary);
     }
 
+    /* Device Stats Dark Mode */
     .dark-mode #analytics .device-icon {
         background: var(--bg-tertiary);
+        color: var(--primary);
+    }
+
+    .dark-mode #analytics .device-name {
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .device-count {
+        color: var(--primary);
+    }
+
+    .dark-mode #analytics .device-percentage {
+        color: var(--text-muted);
     }
 
     .dark-mode #analytics .device-bar {
         background: var(--bg-tertiary);
     }
 
-    .dark-mode #analytics .section-header {
-        background: rgba(var(--bg-secondary-rgb, 30, 30, 30), 0.95);
+    .dark-mode #analytics .device-bar-fill {
+        background: var(--primary);
     }
 
+    /* Section Header Dark Mode */
+    .dark-mode #analytics .section-header {
+        background: rgba(var(--bg-secondary-rgb, 30, 30, 30), 0.95);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .dark-mode #analytics .section-header h2 {
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .section-header h2 i {
+        color: var(--primary);
+    }
+
+    /* Analytics Stats Grid Dark Mode */
     .dark-mode #analytics .analytics-stats-grid {
         background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 5px;
+    }
+
+    /* Card Dark Mode */
+    .dark-mode #analytics .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .dark-mode #analytics .card h3 {
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .card h3 i {
+        color: var(--primary);
+    }
+
+    .dark-mode #analytics .card-header {
+        border-bottom-color: var(--border-color);
+    }
+
+    /* Chart Controls Dark Mode */
+    .dark-mode #analytics .chart-controls .btn-sm {
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .dark-mode #analytics .chart-controls .btn-sm:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .dark-mode #analytics .chart-controls .btn-sm.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* Empty State Dark Mode */
+    .dark-mode #analytics .empty-state i {
+        color: var(--text-muted);
+    }
+
+    .dark-mode #analytics .empty-state p {
+        color: var(--text-secondary);
+    }
+
+    .dark-mode #analytics .empty-state small {
+        color: var(--text-muted);
+    }
+
+    /* Loading State Dark Mode */
+    .dark-mode #analytics .loading-state i {
+        color: var(--primary);
+    }
+
+    .dark-mode #analytics .loading-state p {
+        color: var(--text-secondary);
+    }
+
+    /* Chart Canvas Dark Mode - subtle adjustment */
+    .dark-mode #analytics canvas {
+        filter: brightness(0.95);
+    }
+
+    /* Scrollbar Dark Mode for analytics containers */
+    .dark-mode #popularPagesList::-webkit-scrollbar-track,
+    .dark-mode #deviceStats::-webkit-scrollbar-track {
+        background: var(--bg-tertiary);
+    }
+
+    .dark-mode #popularPagesList::-webkit-scrollbar-thumb,
+    .dark-mode #deviceStats::-webkit-scrollbar-thumb {
+        background: var(--primary);
+    }
+
+    /* Popular pages list container */
+    .dark-mode #popularPagesList {
+        scrollbar-color: var(--primary) var(--bg-tertiary);
+    }
+
+    /* Device stats container */
+    .dark-mode #deviceStats {
+        scrollbar-color: var(--primary) var(--bg-tertiary);
     }
 
     /* ============================================
@@ -7773,3 +7915,49 @@
             overflow: visible;
         }
     }
+
+    /* Scrollbar for Popular Pages */
+    #popularPagesList {
+        max-height: 350px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    /* Scrollbar for Device Stats */
+    #deviceStats {
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    /* Custom scrollbar styling (optional - for better appearance) */
+    #popularPagesList::-webkit-scrollbar,
+    #deviceStats::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #popularPagesList::-webkit-scrollbar-track,
+    #deviceStats::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+        border-radius: 10px;
+    }
+
+    #popularPagesList::-webkit-scrollbar-thumb,
+    #deviceStats::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    #popularPagesList::-webkit-scrollbar-thumb:hover,
+    #deviceStats::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+
+    /* Firefox scrollbar styling */
+    #popularPagesList,
+    #deviceStats {
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary) var(--bg-secondary);
+    }
+
+    /* End Analytical Styles */

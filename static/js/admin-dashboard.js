@@ -300,7 +300,7 @@
         const validSections = [
             'dashboard', 'courses', 'jobs', 'internships',
             'blog', 'newsletter', 'testimonials',
-            'expired-content', 'users', 'messages', 'trash', 'admins'  // Added 'admins' here
+            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics'
         ];
 
         console.log('Valid sections:', validSections);
@@ -522,7 +522,9 @@
                 'users': 'Users',
                 'messages': 'Messages',
                 'trash': 'Trash',
-                'admins': 'Admin Management'  // Added admins here
+                'admins': 'Admin Management',
+                'analytics': 'Website Analytics'
+
             };
             return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
         }
@@ -623,6 +625,19 @@
                 if (window.adminManager) {
                     window.adminManager.loadAdmins();
                 }
+                break;
+
+            case 'analytics':  // ADD THIS CASE
+                console.log('📈 Loading analytics section...');
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    if (typeof loadAnalyticsData === 'function') {
+                        loadAnalyticsData();
+                    }
+                    if (typeof setupAnalyticsEvents === 'function') {
+                        setupAnalyticsEvents();
+                    }
+                }, 100);
                 break;
 
             default:
@@ -3251,8 +3266,6 @@
                 this.toggleSelectAll(e.target.checked);
             });
 
-            // Add to global navigation
-            this.setupNavigation();
         }
 
         setupElementListener(id, event, handler) {
@@ -3328,51 +3341,6 @@
             });
 
             console.log(`✅ Search listener setup complete for ${id} (no auto-search)`);
-        }
-
-        setupNavigation() {
-            // Add testimonials to the global navigation system
-            const testimonialsLink = document.querySelector('a[href="#testimonials"]');
-            if (testimonialsLink) {
-                // Remove existing click listeners by cloning
-                const newLink = testimonialsLink.cloneNode(true);
-                testimonialsLink.parentNode.replaceChild(newLink, testimonialsLink);
-
-                newLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log('🎯 Testimonials link clicked');
-
-                    // Use the global navigateToSection function
-                    if (typeof navigateToSection === 'function') {
-                        navigateToSection('testimonials', newLink);
-                    }
-
-                    // Ensure testimonial manager is initialized and loaded
-                    setTimeout(() => {
-                        if (!this.isInitialized) {
-                            console.log('Initializing testimonial manager...');
-                            this.init();
-                        }
-
-                        // Force load testimonials data
-                        if (this.isSectionActive()) {
-                            console.log('Loading testimonials data...');
-                            this.loadTestimonialsData(1);
-                        } else {
-                            console.log('Waiting for section to become active...');
-                            // Check again after a short delay
-                            setTimeout(() => {
-                                if (this.isSectionActive()) {
-                                    this.loadTestimonialsData(1);
-                                }
-                            }, 100);
-                        }
-                    }, 100);
-                });
-                console.log('✅ Testimonials navigation setup complete');
-            }
         }
 
         async loadTestimonialsData(page = 1) {
@@ -10434,9 +10402,10 @@
     function initAnalyticsSection() {
         console.log('📊 Initializing analytics section...');
 
-        // Setup analytics navigation
+        // Setup analytics navigation link - EXACT same pattern as other sections
         const analyticsLink = document.querySelector('.sidebar-menu a[href="#analytics"]');
         if (analyticsLink) {
+            // Remove existing listeners by cloning (same as other sections)
             const newLink = analyticsLink.cloneNode(true);
             analyticsLink.parentNode.replaceChild(newLink, analyticsLink);
 
@@ -10446,50 +10415,25 @@
 
                 console.log('📊 Opening analytics section...');
 
-                // Update active states
-                document.querySelectorAll('.sidebar-menu a').forEach(item => {
-                    item.classList.remove('active');
-                });
-                this.classList.add('active');
-
-                document.querySelectorAll('.admin-section').forEach(section => {
-                    section.classList.remove('active');
-                });
-
-                const analyticsSection = document.getElementById('analytics');
-                if (analyticsSection) {
-                    analyticsSection.classList.add('active');
-                    const pageTitle = document.getElementById('pageTitle');
-                    if (pageTitle) pageTitle.textContent = 'Website Analytics';
-
-                    // Load analytics data
-                    setTimeout(() => {
-                        loadAnalyticsData();
-                        setupAnalyticsEvents();
-                    }, 100);
+                // Use the global navigateToSection function (SAME as other sections)
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('analytics', this);
                 }
             });
+            console.log('✅ Analytics navigation setup complete');
         }
 
-        // Setup analytics events
+        // Setup analytics events (refresh button, chart buttons)
         setupAnalyticsEvents();
 
-        // Check if analytics section is already active
+        // Setup observer for when analytics section becomes active (SAME as expired-content, testimonials)
         const analyticsSection = document.getElementById('analytics');
-        if (analyticsSection && analyticsSection.classList.contains('active')) {
-            console.log('Analytics section already active, loading data...');
-            setTimeout(() => {
-                loadAnalyticsData();
-            }, 500);
-        }
-
-        // Setup observer for when analytics section becomes active
         if (analyticsSection) {
             const observer = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         if (analyticsSection.classList.contains('active')) {
-                            console.log('Analytics section activated via observer');
+                            console.log('🎯 Analytics section activated - loading data');
                             loadAnalyticsData();
                             setupAnalyticsEvents();
                         }
@@ -10497,6 +10441,16 @@
                 });
             });
             observer.observe(analyticsSection, { attributes: true });
+            console.log('✅ Analytics observer setup complete');
+        }
+
+        // Check if analytics section is already active on page load
+        if (analyticsSection && analyticsSection.classList.contains('active')) {
+            console.log('📊 Analytics section already active, loading data...');
+            setTimeout(() => {
+                loadAnalyticsData();
+                setupAnalyticsEvents();
+            }, 100);
         }
     }
 
