@@ -24,11 +24,14 @@
             </li>
             <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
             <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-            <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+            <li class="menu-item"><a href="#internships"><i
+                    class="fas fa-user-graduate"></i><span>Internships</span></a></li>
             <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
-            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
+            <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a>
+            </li>
             <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
-            <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
+            <li class="menu-item"><a href="#expired-content"><i
+                    class="fas fa-clock"></i><span>Expired Content</span></a></li>
 
             <!-- User Management with Submenu - VERTICAL -->
             <li class="menu-item has-submenu">
@@ -54,9 +57,11 @@
             </li>
 
             <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-            <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
+            <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
+                    class="menu-badge" id="trashMenuBadge"></span></a></li>
             <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
-            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+            <li class="menu-item"><a href="/admin/logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+            </li>
             <li class="menu-item dark-mode-item">
                 <div class="dark-mode-toggle" id="darkModeToggle">
                     <i class="fas fa-moon"></i><span>Dark Mode</span>
@@ -117,8 +122,10 @@
         <!-- Dashboard Section -->
         <div class="admin-section active" id="dashboard">
             <div class="section-header">
-                <h2>Admin Dashboard</h2>
-                <div class="dashboard-actions">
+                <div class="header-title-section">
+                    <h2><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h2>
+                </div>
+                <div class="header-actions">
                     <button class="btn btn-outline" id="refreshDashboardBtn">
                         <i class="fas fa-sync-alt"></i> Refresh Dashboard
                     </button>
@@ -280,8 +287,14 @@
         <!-- Courses Section -->
         <div class="admin-section" id="courses">
             <div class="section-header">
-                <h2>Course Management</h2>
-                <button class="btn btn-primary" id="addCourseBtn"><i class="fas fa-plus"></i> Add Course</button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-book"></i> Course Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addCourseBtn">
+                        <i class="fas fa-plus"></i> Add Course
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -342,8 +355,14 @@
         <!-- Jobs Section -->
         <div class="admin-section" id="jobs">
             <div class="section-header">
-                <h2>Job Management</h2>
-                <button class="btn btn-primary" id="addJobBtn"><i class="fas fa-plus"></i> Add Job</button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-briefcase"></i> Job Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addJobBtn">
+                        <i class="fas fa-plus"></i> Add Job
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -405,9 +424,14 @@
         <!-- Internships Section -->
         <div class="admin-section" id="internships">
             <div class="section-header">
-                <h2>Internship Management</h2>
-                <button class="btn btn-primary" id="addInternshipBtn"><i class="fas fa-plus"></i> Add Internship
-                </button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-user-graduate"></i> Internship Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addInternshipBtn">
+                        <i class="fas fa-plus"></i> Add Internship
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -470,8 +494,14 @@
         <!-- Blog Section -->
         <div class="admin-section" id="blog">
             <div class="section-header">
-                <h2>Blog Management</h2>
-                <button class="btn btn-primary" id="addBlogBtn"><i class="fas fa-plus"></i> Add Post</button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-blog"></i> Blog Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addBlogBtn">
+                        <i class="fas fa-plus"></i> Add Post
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -532,10 +562,14 @@
         <!-- Testimonials Section -->
         <div class="admin-section" id="testimonials">
             <div class="section-header">
-                <h2>Testimonial Management</h2>
-                <button class="btn btn-outline" id="refreshTestimonialsBtn">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-comments"></i> Testimonial Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="refreshTestimonialsBtn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -597,10 +631,14 @@
         <!-- Newsletter Section -->
         <div class="admin-section" id="newsletter">
             <div class="section-header">
-                <h2>Newsletter Management</h2>
-                <button class="btn btn-primary" id="sendNewsletterBtn"><i class="fas fa-paper-plane"></i> Send
-                    Newsletter
-                </button>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-newspaper"></i> Newsletter Management</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="sendNewsletterBtn">
+                        <i class="fas fa-paper-plane"></i> Send Newsletter
+                    </button>
+                </div>
             </div>
 
             <div class="content-filters">
@@ -657,16 +695,15 @@
         <!-- Expired Content Section -->
         <div class="admin-section" id="expired-content">
             <div class="section-header">
-                <h2>Expired Content Management</h2>
-                <div class="section-actions">
+                <div class="header-title-section">
+                    <h2><i class="fas fa-clock"></i> Expired Content Management</h2>
+                </div>
+                <div class="header-actions">
                     <button class="btn btn-outline" id="refreshExpiredContentBtn">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                     <button class="btn btn-success" id="reactivateAllExpiredBtn">
                         <i class="fas fa-play-circle"></i> Reactivate All
-                    </button>
-                    <button class="btn btn-danger" id="deleteAllExpiredBtn" style="display: none;">
-                        <i class="fas fa-trash"></i> Delete All
                     </button>
                 </div>
             </div>
@@ -753,7 +790,10 @@
         <!-- Users Section -->
         <div class="admin-section" id="users">
             <div class="section-header">
-                <h2>User Management</h2>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-users"></i> User Management</h2>
+                </div>
+                <div class="header-actions"></div>
             </div>
 
             <div class="content-filters">
@@ -811,14 +851,15 @@
         <!-- Admins Section -->
         <div class="admin-section" id="admins">
             <div class="section-header">
-                <h2><i class="fas fa-user-shield"></i> Admin Management</h2>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-user-shield"></i> Admin Management</h2>
+                </div>
                 <div class="header-actions">
                     <button class="btn btn-primary" id="addAdminBtn">
                         <i class="fas fa-user-plus"></i> Add Admin
                     </button>
                 </div>
             </div>
-
             <div class="content-filters">
                 <div class="search-box">
                     <input type="text" placeholder="Search admins..." id="adminSearch" class="search-input">
@@ -958,7 +999,10 @@
         <!-- Messages Section -->
         <div class="admin-section" id="messages">
             <div class="section-header">
-                <h2>Message Management</h2>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-envelope"></i> Message Management</h2>
+                </div>
+                <div class="header-actions"></div>
             </div>
 
             <div class="content-filters">
@@ -1018,7 +1062,9 @@
         <!-- Trash Section -->
         <section id="trash" class="admin-section">
             <div class="section-header">
-                <h2><i class="fas fa-trash-alt"></i> Trash Management</h2>
+                <div class="header-title-section">
+                    <h2><i class="fas fa-trash-alt"></i> Trash Management</h2>
+                </div>
                 <div class="header-actions">
                     <button class="btn btn-outline" id="refreshTrashBtn">
                         <i class="fas fa-sync-alt"></i> Refresh
@@ -1087,12 +1133,7 @@
                     </tr>
                     </thead>
                     <tbody id="trashTableBody">
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
-                            <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
-                        </td>
-                    </tr>
+                    <!-- Table content goes here -->
                     </tbody>
                 </table>
             </div>
@@ -1114,98 +1155,78 @@
             </div>
         </section>
 
-        <!-- Analytics Section -->
-        <div class="admin-section" id="analytics">
-            <div class="section-header">
-                <h2><i class="fas fa-chart-line"></i> Website Analytics</h2>
-                <div class="header-actions">
-                    <button class="btn btn-outline" id="refreshAnalyticsBtn">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-            </div>
+<!-- Analytics Section - Make sure this exists -->
+<div class="admin-section" id="analytics">
+    <div class="section-header">
+        <div class="header-title-section">
+            <h2><i class="fas fa-chart-line"></i> Website Analytics</h2>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" id="refreshAnalyticsBtn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
 
-            <div class="analytics-stats-grid">
-                <div class="stat-card info">
-                    <div class="stat-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-title">Total Visitors</h3>
-                        <div class="stat-number" id="totalVisitors">0</div>
-                    </div>
-                </div>
-
-                <div class="stat-card success">
-                    <div class="stat-icon">
-                        <i class="fas fa-eye"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-title">Total Views</h3>
-                        <div class="stat-number" id="totalViews">0</div>
-                    </div>
-                </div>
-
-                <div class="stat-card primary">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-week"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-title">Weekly Visitors</h3>
-                        <div class="stat-number" id="weeklyVisitors">0</div>
-                    </div>
-                </div>
-
-                <div class="stat-card warning">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-day"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 class="stat-title">Today's Visitors</h3>
-                        <div class="stat-number" id="todayVisitors">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-chart-line"></i> Visitor Trends</h3>
-                    <div class="chart-controls">
-                        <button class="btn-sm" data-days="7">7 Days</button>
-                        <button class="btn-sm active" data-days="30">30 Days</button>
-                        <button class="btn-sm" data-days="90">90 Days</button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="visitorsChart"></canvas>
-                </div>
-            </div>
-
-            <div class="two-columns">
-                <div class="card">
-                    <h3><i class="fas fa-file-alt"></i> Popular Pages</h3>
-                    <div id="popularPagesList" class="popular-pages-list">
-                        <div class="loading-spinner">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <p>Loading pages...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-chart-pie"></i> Device Statistics</h3>
-                    <div id="deviceStats" class="device-stats">
-                        <div class="loading-spinner">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <p>Loading device data...</p>
-                        </div>
-                    </div>
-                    <div style="margin-top: 20px;">
-                        <canvas id="browserChart"></canvas>
-                    </div>
-                </div>
+    <div class="analytics-stats-grid">
+        <div class="stat-card info">
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <h3 class="stat-title">Total Visitors</h3>
+                <div class="stat-number" id="totalVisitors">0</div>
             </div>
         </div>
+        <div class="stat-card success">
+            <div class="stat-icon"><i class="fas fa-eye"></i></div>
+            <div class="stat-content">
+                <h3 class="stat-title">Total Views</h3>
+                <div class="stat-number" id="totalViews">0</div>
+            </div>
+        </div>
+        <div class="stat-card primary">
+            <div class="stat-icon"><i class="fas fa-calendar-week"></i></div>
+            <div class="stat-content">
+                <h3 class="stat-title">Weekly Visitors</h3>
+                <div class="stat-number" id="weeklyVisitors">0</div>
+            </div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+            <div class="stat-content">
+                <h3 class="stat-title">Today's Visitors</h3>
+                <div class="stat-number" id="todayVisitors">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Visitor Trends</h3>
+            <div class="chart-controls">
+                <button class="btn-sm" data-days="7">7 Days</button>
+                <button class="btn-sm active" data-days="30">30 Days</button>
+                <button class="btn-sm" data-days="90">90 Days</button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="visitorsChart"></canvas>
+        </div>
+    </div>
+
+    <div class="two-columns">
+        <div class="card">
+            <h3><i class="fas fa-file-alt"></i> Popular Pages</h3>
+            <div id="popularPagesList"></div>
+        </div>
+        <div class="card">
+            <h3><i class="fas fa-chart-pie"></i> Device Statistics</h3>
+            <div id="deviceStats"></div>
+            <div style="margin-top: 20px;">
+                <canvas id="browserChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
