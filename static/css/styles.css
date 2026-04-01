@@ -1,18 +1,24 @@
     :root {
-      /* Updated Color Theme - Emerald Green */
-      --primary-color: #10b981;
-      --secondary-color: #059669;
-      --accent-color: #34d399;
-      --dark-color: #1f2937;
-      --light-color: #f9fafb;
+      --primary-color: #7c3aed;
+      --secondary-color: #5b21b6;
+      --accent-color: #f472b6;        /* Pink accent */
+
+      --dark-color: #0f172a;
+      --light-color: #f8fafc;
+
+      --success-color: #a78bfa;
       --danger-color: #ef4444;
       --warning-color: #f59e0b;
-      --success-color: #10b981;
-      --info-color: #3b82f6;
-      --dark-mode-bg: #111827;
-      --dark-mode-text: #e5e7eb;
-      --dark-mode-card: #1f2937;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --info-color: #f97316;
+
+      --dark-mode-bg: #020617;
+      --dark-mode-text: #e2e8f0;
+      --dark-mode-card: #0f172a;
+
+      --border-color: #e5e7eb;
+      --card-bg: #ffffff;
+
+      --transition: all 0.3s ease;
     }
 
     /* Base Styles */
@@ -717,7 +723,7 @@
 
     /* Hero Section */
     .hero {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%);
+      background: linear-gradient(135deg, #020617 0%, #7f1d1d 100%);
       padding: 4rem 0;
       color: white;
       position: relative;
@@ -732,7 +738,7 @@
       width: 100%;
       height: 100%;
       background: url('/static/images/hero-pattern.png') repeat;
-      opacity: 0.1;
+      opacity: 0.08;
     }
 
     .hero-content {
@@ -740,7 +746,7 @@
       grid-template-columns: 1fr 1fr;
       align-items: center;
       gap: 2rem;
-      max-width: 1400px; /* Match container width */
+      max-width: 1400px;
       margin: 0 auto;
       padding: 0 1rem;
     }
@@ -753,19 +759,20 @@
       z-index: 1;
       position: relative;
       animation: float 6s ease-in-out infinite;
-      margin-top: 50px
+      margin-top: 50px;
     }
 
     .hero-image img {
       max-width: 100%;
       height: auto;
-      border-radius: 10px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
     }
 
+    /* Smooth floating animation */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }  /* very minimal movement */
+      50% { transform: translateY(-6px); }
     }
 
     .hero h1 {
@@ -787,10 +794,11 @@
       gap: 1rem;
       margin-top: 1.5rem;
     }
-    /* Hero Section Buttons — Both White Initially */
+
+    /* Buttons (clean white + purple interaction) */
     .hero .btn {
       background-color: white !important;
-      color: #065f46 !important;  /* dark green text */
+      color: #4c1d95 !important;   /* deep violet text */
       padding: 0.8rem 1.5rem;
       border-radius: 8px;
       font-weight: 600;
@@ -799,12 +807,12 @@
       align-items: center;
       gap: 0.5rem;
       transition: 0.3s ease;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.25);
     }
 
-    /* Hover Effect (green background + white text) */
+    /* Hover effect (purple gradient) */
     .hero .btn:hover {
-      background-color: #0f9d75 !important;   /* hover color */
+      background: var(--primary-color) !important;
       color: white !important;
     }
 
@@ -2062,11 +2070,6 @@
     /* ====================== */
     /* MAIN SECTION BACKGROUND COLORS - ENHANCED VISIBILITY */
     /* ====================== */
-
-    /* Hero Section (keep as is) */
-    .hero {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
 
     /* Features Section - Vibrant Emerald */
     #features {
@@ -5204,7 +5207,7 @@
     }
 
     .contact-info {
-        background: var(--card-bg);
+        background: var(--primary bg);
         padding: 1.5rem;
         border-radius: 8px;
         border-left: 4px solid var(--primary-color);
