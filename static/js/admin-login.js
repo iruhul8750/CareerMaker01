@@ -1,132 +1,160 @@
+    // admin-login.js - Simple and Clean
     document.addEventListener('DOMContentLoaded', function() {
-      // Password toggle functionality
-      const passwordToggle = document.querySelector('.password-toggle');
-      const passwordInput = document.getElementById('password');
+        // DOM Elements
+        const passwordToggle = document.querySelector('.password-toggle');
+        const passwordInput = document.getElementById('password');
+        const loginForm = document.getElementById('adminLoginForm');
+        const usernameField = document.getElementById('username');
+        const formMessages = document.getElementById('formMessages');
 
-      if (passwordToggle && passwordInput) {
-        passwordToggle.addEventListener('click', function() {
-          const isPassword = passwordInput.type === 'password';
-          passwordInput.type = isPassword ? 'text' : 'password';
-          const icon = this.querySelector('i');
-          icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
-        });
-      }
-
-      // Form submission handling
-      const loginForm = document.getElementById('adminLoginForm');
-      if (loginForm) {
-        loginForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-
-          const form = e.target;
-          const formData = new FormData(form);
-          const submitButton = form.querySelector('button[type="submit"]');
-          const originalButtonText = submitButton.innerHTML;
-
-          // Show loading state
-          submitButton.disabled = true;
-          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-
-          // Clear previous errors
-          clearErrors();
-
-          fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          })
-          .then(response => {
-            // Check if response is JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              return response.json().then(data => {
-                if (response.ok) {
-                  return { success: true, data };
-                } else {
-                  return { success: false, data };
+        // Password toggle functionality
+        if (passwordToggle && passwordInput) {
+            passwordToggle.addEventListener('click', function() {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
                 }
-              });
-            } else {
-              // If not JSON, it's probably a redirect or HTML response
-              if (response.redirected) {
-                window.location.href = response.url;
-                return { redirected: true };
-              }
-              // If we get HTML when expecting JSON, show error
-              return { success: false, data: { error: 'Unexpected response from server' } };
-            }
-          })
-          .then(result => {
-            if (result.redirected) {
-              return; // Already handled redirect
-            }
+            });
+        }
 
-            if (result.success) {
-              if (result.data.success) {
-                // Successful login via AJAX
-                window.location.href = result.data.redirect || '/admin/dashboard';
-              } else {
-                // Login failed via AJAX
-                showError(result.data.error || 'Invalid credentials');
-              }
-            } else {
-              // Error case
-              showError(result.data.error || 'An error occurred. Please try again.');
-            }
-          })
-          .catch(error => {
-            console.error('Login error:', error);
-            showError('An error occurred. Please try again.');
-          })
-          .finally(() => {
-            submitButton.disabled = false;
-            submitButton.innerHTML = originalButtonText;
-          });
+        // Focus on username field when page loads
+        if (usernameField) {
+            usernameField.focus();
+        }
+
+        // Auto-hide flash messages after 5 seconds
+        const flashMessages = document.querySelectorAll('.flashed-message');
+        flashMessages.forEach(message => {
+            setTimeout(() => {
+                message.style.transition = 'opacity 0.3s ease';
+                message.style.opacity = '0';
+                setTimeout(() => {
+                    if (message.parentNode) {
+                        message.remove();
+                    }
+                }, 300);
+            }, 5000);
         });
-      }
 
-      function showError(message) {
-        const formMessages = document.getElementById('formMessages');
-        if (formMessages) {
-          formMessages.innerHTML = `
-            <div class="alert alert-danger">
-              <i class="fas fa-exclamation-circle"></i> ${message}
-            </div>
-          `;
+        // Show error message
+        function showError(message) {
+            if (formMessages) {
+                formMessages.innerHTML = `
+                    <div class="admin-message admin-message-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        ${message}
+                    </div>
+                `;
 
-          // Auto-hide error after 5 seconds
-          setTimeout(() => {
-            clearErrors();
-          }, 5000);
-        }
-      }
-
-      function clearErrors() {
-        const formMessages = document.getElementById('formMessages');
-        if (formMessages) {
-          formMessages.innerHTML = '';
-        }
-      }
-
-      // Auto-hide flash messages after 5 seconds
-      const flashMessages = document.querySelectorAll('.flashed-message');
-      flashMessages.forEach(message => {
-        setTimeout(() => {
-          message.style.transition = 'opacity 0.3s ease';
-          message.style.opacity = '0';
-          setTimeout(() => {
-            if (message.parentNode) {
-              message.remove();
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    if (formMessages) {
+                        formMessages.innerHTML = '';
+                    }
+                }, 5000);
             }
-          }, 300);
-        }, 5000);
-      });
+        }
 
-      // Focus on username field when page loads
-      const usernameField = document.getElementById('username');
-      if (usernameField) {
-        usernameField.focus();
-      }
+        // Clear error messages
+        function clearErrors() {
+            if (formMessages) {
+                formMessages.innerHTML = '';
+            }
+        }
+
+        // Form submission
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // Get form values
+                const username = usernameField ? usernameField.value.trim() : '';
+                const password = passwordInput ? passwordInput.value : '';
+
+                // Basic validation
+                if (!username) {
+                    showError('Username is required');
+                    if (usernameField) {
+                        usernameField.focus();
+                        usernameField.style.borderColor = '#ef4444';
+                    }
+                    return;
+                }
+
+                if (!password) {
+                    showError('Password is required');
+                    if (passwordInput) {
+                        passwordInput.focus();
+                        passwordInput.style.borderColor = '#ef4444';
+                    }
+                    return;
+                }
+
+                // Clear previous errors and border colors
+                clearErrors();
+                if (usernameField) usernameField.style.borderColor = '';
+                if (passwordInput) passwordInput.style.borderColor = '';
+
+                // Set loading state
+                const submitButton = loginForm.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+
+                // Prepare form data
+                const formData = new FormData(loginForm);
+
+                // Send login request
+                fetch(loginForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Login successful - redirect
+                        window.location.href = data.redirect || '/admin/dashboard';
+                    } else {
+                        // Login failed - show error message
+                        showError(data.error || 'Invalid username or password');
+                        // Clear password field for security
+                        if (passwordInput) {
+                            passwordInput.value = '';
+                            passwordInput.focus();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('An error occurred. Please try again.');
+                    if (passwordInput) {
+                        passwordInput.value = '';
+                    }
+                })
+                .finally(() => {
+                    // Reset button state
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                });
+            });
+        }
+
+        // Clear border color when user starts typing
+        if (usernameField) {
+            usernameField.addEventListener('input', function() {
+                this.style.borderColor = '';
+                clearErrors();
+            });
+        }
+
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                this.style.borderColor = '';
+            });
+        }
     });

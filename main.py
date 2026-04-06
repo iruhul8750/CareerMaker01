@@ -4744,49 +4744,65 @@ def admin_login():
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
-    if not username or not password:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'error': 'Both username and password are required'})
-        flash('Both username and password are required', 'danger')
+    # Check if AJAX request
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    # Validation 1: Check if username is empty
+    if not username:
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Username is required'})
+        flash('Username is required', 'danger')
+        return render_template('admin/admin-login.html')
+
+    # Validation 2: Check if password is empty
+    if not password:
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Password is required'})
+        flash('Password is required', 'danger')
         return render_template('admin/admin-login.html')
 
     try:
-        # Use admin client to check admin credentials
+        # Query admin from database
         response = supabase_admin.table('admins') \
             .select('*') \
             .eq('username', username) \
             .maybe_single() \
             .execute()
 
-        if not response.data:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'error': 'Invalid credentials'})
-            flash('Invalid credentials', 'danger')
-            return render_template('admin/admin-login.html')
+        # FIXED: Check if response is None or response.data is None/empty
+        # SINGLE VALIDATION for both wrong username AND wrong password
+        admin = None
+        password_valid = False
 
-        admin = response.data
+        # Check if admin exists
+        if response and response.data:
+            admin = response.data
+            # Verify password only if admin exists
+            if verify_password(admin['password_hash'], password):
+                password_valid = True
+
+        # SINGLE VALIDATION: If admin doesn't exist OR password is wrong
+        if not admin or not password_valid:
+            if is_ajax:
+                return jsonify({'success': False, 'error': 'Invalid username or password'})
+            flash('Invalid username or password', 'danger')
+            return render_template('admin/admin-login.html')
 
         # Check if admin is active
         if not admin.get('is_active', True):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if is_ajax:
                 return jsonify({'success': False, 'error': 'Account is deactivated. Contact administrator.'})
             flash('Account is deactivated. Contact administrator.', 'danger')
             return render_template('admin/admin-login.html')
 
         # Check if admin is deleted
         if admin.get('is_deleted', False):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if is_ajax:
                 return jsonify({'success': False, 'error': 'Account is deleted. Contact administrator.'})
             flash('Account is deleted. Contact administrator.', 'danger')
             return render_template('admin/admin-login.html')
 
-        # Verify password
-        if not verify_password(admin['password_hash'], password):
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'error': 'Invalid credentials'})
-            flash('Invalid credentials', 'danger')
-            return render_template('admin/admin-login.html')
-
+        # All validations passed - Login successful
         # Update last login time
         try:
             current_time = get_current_utc_time().isoformat()
@@ -4797,21 +4813,21 @@ def admin_login():
         except Exception as e:
             logger.warning(f"Could not update last login time: {str(e)}")
 
-        # Set session variables - CRITICAL for AdminManager
+        # Set session variables
         session.update({
             'admin_id': str(admin['id']),
             'admin_username': admin['username'],
             'admin_email': admin.get('email', ''),
             'admin_full_name': admin.get('full_name', admin['username']),
-            'is_superadmin': bool(admin.get('is_superadmin', False)),  # ← IMPORTANT: Convert to boolean
+            'is_superadmin': bool(admin.get('is_superadmin', False)),
             'admin_logged_in': True
         })
 
-        # Log the session for debugging
+        # Log successful login
         logger.info(f"Admin login successful: {username}")
-        logger.info(f"Session values - admin_id: {session['admin_id']}, is_superadmin: {session['is_superadmin']}")
 
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Return success response
+        if is_ajax:
             return jsonify({
                 'success': True,
                 'message': 'Login successful!',
@@ -4823,11 +4839,10 @@ def admin_login():
 
     except Exception as e:
         logger.error(f"Admin login error: {str(e)}", exc_info=True)
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if is_ajax:
             return jsonify({'success': False, 'error': 'An error occurred. Please try again.'})
         flash('An error occurred. Please try again.', 'danger')
         return render_template('admin/admin-login.html')
-
 
 @app.route('/admin/logout')
 def admin_logout():
