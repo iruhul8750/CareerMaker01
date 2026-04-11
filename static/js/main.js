@@ -703,99 +703,186 @@
     }
 
     async function handleBookmarkAction(bookmarkBtn) {
+        // Prevent multiple clicks while processing
+        if (bookmarkBtn.disabled) {
+            console.log('Bookmark button already processing');
+            return;
+        }
+
         const itemId = bookmarkBtn.dataset.id;
         const itemType = bookmarkBtn.dataset.type;
         const currentState = bookmarkBtn.classList.contains('bookmarked');
+        const newState = !currentState;
 
-        // Check if user is logged in first
+        console.log(`📌 Bookmark clicked: ${itemType}/${itemId}, current: ${currentState}, new: ${newState}`);
+
+        // INSTANT UI UPDATE - Change immediately
+        bookmarkBtn.classList.toggle('bookmarked', newState);
+        updateBookmarkIcon(bookmarkBtn, newState);
+
+        // Show loading state on the button
+        const originalHTML = bookmarkBtn.innerHTML;
+        bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        bookmarkBtn.disabled = true;
+
         try {
-            const sessionResponse = await fetch('/api/check-session', {
-                credentials: 'include'
+            // Make API call
+            const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
             });
 
-            if (!sessionResponse.ok) {
-                throw new Error('Failed to check session');
-            }
+            const data = await response.json();
 
-            const sessionData = await sessionResponse.json();
-
-            if (!sessionData.logged_in) {
+            // Handle unauthorized (401)
+            if (response.status === 401) {
+                // Revert UI
+                bookmarkBtn.classList.toggle('bookmarked', currentState);
+                updateBookmarkIcon(bookmarkBtn, currentState);
                 showToast('Please login to bookmark items', 'warning');
                 openLoginModal();
                 return;
             }
 
-            // User is logged in - perform optimistic update
-            const newState = !currentState;
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
 
-            // INSTANT UI UPDATE - Optimistic update
-            bookmarkBtn.classList.toggle('bookmarked', newState);
-            updateBookmarkIcon(bookmarkBtn, newState);
-            bookmarkState.set(`${itemType}-${itemId}`, newState);
+            if (data.success) {
+                // Keep the new state (already updated)
+                showToast(data.message || `Bookmark ${data.status} successfully`, 'success');
 
-            // Show loading state
-            const loader = showLoader(newState ? 'Adding bookmark...' : 'Removing bookmark...');
-            const originalHTML = bookmarkBtn.innerHTML;
-            bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            bookmarkBtn.disabled = true;
-
-            // Make API call
-            try {
-                const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                // Ensure icon is correct based on server response
+                const finalState = (data.status === 'added');
+                if (finalState !== newState) {
+                    // Server returned different state than expected - sync UI
+                    bookmarkBtn.classList.toggle('bookmarked', finalState);
+                    updateBookmarkIcon(bookmarkBtn, finalState);
                 }
-
-                if (data.success) {
-                    hideLoader();
-                    const action = newState ? 'added' : 'removed';
-                    showToast(data.message || `Bookmark ${action} successfully`, 'success');
-                } else {
-                    throw new Error(data.error || 'Bookmark operation failed');
-                }
-            } catch (error) {
-                console.error('Bookmark API error:', error);
-                hideLoader();
-
-                // REVERT UI UPDATE on error
-                bookmarkBtn.classList.toggle('bookmarked', currentState);
-                updateBookmarkIcon(bookmarkBtn, currentState);
-                bookmarkState.set(`${itemType}-${itemId}`, currentState);
-
-                showToast(error.message || 'Failed to update bookmark', 'error');
-            } finally {
-                // Restore button state
-                bookmarkBtn.disabled = false;
-                const finalState = bookmarkBtn.classList.contains('bookmarked');
-                updateBookmarkIcon(bookmarkBtn, finalState);
+            } else {
+                throw new Error(data.error || 'Bookmark operation failed');
             }
 
         } catch (error) {
-            console.error('Bookmark session check error:', error);
-            showToast('Please login to bookmark items', 'warning');
-            openLoginModal();
+            console.error('Bookmark API error:', error);
+
+            // REVERT UI UPDATE on error
+            bookmarkBtn.classList.toggle('bookmarked', currentState);
+            updateBookmarkIcon(bookmarkBtn, currentState);
+
+            showToast(error.message || 'Failed to update bookmark', 'error');
+        } finally {
+            // Restore button state
+            bookmarkBtn.disabled = false;
+            bookmarkBtn.innerHTML = originalHTML;
+            // Final sync to ensure correct icon
+            const finalState = bookmarkBtn.classList.contains('bookmarked');
+            updateBookmarkIcon(bookmarkBtn, finalState);
+        }
+    }
+
+    // Bookmark sync function for modal and card
+    async function handleModalBookmark(courseId) {
+        const modalBookmark = document.getElementById('horizontalModalBookmarkBtn');
+        if (!modalBookmark) return;
+
+        const isCurrentlyBookmarked = modalBookmark.classList.contains('bookmarked');
+        const willBeBookmarked = !isCurrentlyBookmarked;
+
+        // Update modal button
+        modalBookmark.classList.toggle('bookmarked', willBeBookmarked);
+        const icon = modalBookmark.querySelector('i');
+        const text = modalBookmark.querySelector('.bookmark-text');
+        if (icon) icon.className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+        if (text) text.textContent = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
+
+        // Update card button (sync)
+        const cardBtn = document.querySelector(`.bookmark-btn[data-id="${courseId}"][data-type="course"]`);
+        if (cardBtn) {
+            cardBtn.classList.toggle('bookmarked', willBeBookmarked);
+            const cardIcon = cardBtn.querySelector('i');
+            const cardText = cardBtn.querySelector('.bookmark-text');
+            if (cardIcon) cardIcon.className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+            if (cardText) cardText.textContent = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
+        }
+
+        try {
+            // Check session
+            const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
+            const session = await sessionCheck.json();
+
+            if (!session.logged_in) {
+                // Revert both
+                modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
+                if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
+                if (cardBtn) {
+                    cardBtn.classList.toggle('bookmarked', isCurrentlyBookmarked);
+                    const cardIcon = cardBtn.querySelector('i');
+                    const cardText = cardBtn.querySelector('.bookmark-text');
+                    if (cardIcon) cardIcon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    if (cardText) cardText.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
+                }
+                showToast('Please login to bookmark courses', 'warning');
+                openLoginModal();
+                return;
+            }
+
+            // API call
+            const response = await fetch(`/api/bookmark/course/${courseId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            showToast(data.message, data.status === 'added' ? 'success' : 'info');
+
+        } catch (error) {
+            console.error('Modal bookmark error:', error);
+
+            // Revert both on error
+            modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
+            if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+            if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
+            if (cardBtn) {
+                cardBtn.classList.toggle('bookmarked', isCurrentlyBookmarked);
+                const cardIcon = cardBtn.querySelector('i');
+                const cardText = cardBtn.querySelector('.bookmark-text');
+                if (cardIcon) cardIcon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                if (cardText) cardText.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
+            }
+
+            showToast(error.message || 'Bookmark failed', 'error');
         }
     }
 
     function updateBookmarkIcon(element, isBookmarked) {
         const icon = element.querySelector('i');
+        const bookmarkText = element.querySelector('.bookmark-text');
+
         if (icon) {
             if (isBookmarked) {
                 icon.className = 'fas fa-bookmark';
                 icon.style.color = '#007bff';
+                if (bookmarkText) bookmarkText.textContent = 'Bookmarked';
             } else {
                 icon.className = 'far fa-bookmark';
                 icon.style.color = '';
+                if (bookmarkText) bookmarkText.textContent = 'Bookmark';
             }
+        }
+
+        // Also update the button's class for CSS styling
+        if (isBookmarked) {
+            element.classList.add('bookmarked');
+        } else {
+            element.classList.remove('bookmarked');
         }
     }
 
@@ -828,43 +915,8 @@
 
         console.log(`📊 Apply button clicked: ${contentType} ID: ${contentId}`);
 
-        // Track enrollment for courses
-        if (contentType === 'course') {
-            trackCourseEnrollment(contentId);
-        }
-
         // Call the original apply function
         applyForContent(contentId, contentType, this);
-    }
-
-    // function to track course enrollment
-    function trackCourseEnrollment(courseId) {
-        // Don't wait for this - fire and forget
-        fetch(`/api/course/${courseId}/enroll`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log(`✅ Enrollment tracked: ${data.enrollment_count} total`);
-
-                // Update enrollment count in modal if it's open
-                const modalEnrollment = document.getElementById('horizontalModalEnrollment');
-                if (modalEnrollment) {
-                    modalEnrollment.textContent = data.enrollment_count;
-                }
-
-                // Update enrollment count in the card if it exists
-                const card = document.querySelector(`.course-card-layout[data-id="${courseId}"] .enrollment-count`);
-                if (card) {
-                    card.textContent = data.enrollment_count;
-                }
-            }
-        })
-        .catch(error => console.warn('⚠️ Could not track enrollment:', error));
     }
 
     // =============================================
@@ -4535,7 +4587,10 @@
         document.getElementById('horizontalModalBookmarkBtn')?.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            handleBookmarkAction(this);
+            const courseId = this.dataset.id;
+            if (courseId) {
+                handleModalBookmark(courseId);
+            }
         });
 
         // Modal apply button handler
@@ -5400,18 +5455,33 @@
         const priceElement = document.getElementById('horizontalModalCoursePrice');
         priceElement.textContent = (course.price && course.price !== 'Free') ? `$${course.price}` : 'Free';
 
+        // Also update mobile price if it exists
+        const mobilePrice = document.getElementById('mobileCoursePrice');
+        if (mobilePrice) {
+            mobilePrice.textContent = (course.price && course.price !== 'Free') ? `$${course.price}` : 'Free';
+        }
+
         // Level
         document.getElementById('horizontalModalCourseLevel').textContent = course.level || 'All Levels';
+        const mobileLevel = document.getElementById('mobileCourseLevel');
+        if (mobileLevel) mobileLevel.textContent = course.level || 'All Levels';
 
         // Duration
         document.getElementById('horizontalModalCourseDuration').textContent = course.duration || 'N/A';
+        const mobileDuration = document.getElementById('mobileCourseDuration');
+        if (mobileDuration) mobileDuration.textContent = course.duration || 'N/A';
 
         // Language
         document.getElementById('horizontalModalCourseLanguage').textContent = course.language || 'N/A';
+        const mobileLanguage = document.getElementById('mobileCourseLanguage');
+        if (mobileLanguage) mobileLanguage.textContent = course.language || 'N/A';
 
-        // Stats
-        document.getElementById('horizontalModalEnrollment').textContent = course.enrollment_count || 0;
+        // Views - KEEP THIS (not enrollment)
         document.getElementById('horizontalModalViews').textContent = course.views || 0;
+        const mobileViews = document.getElementById('mobileViews');
+        if (mobileViews) mobileViews.textContent = course.views || 0;
+
+        // REMOVED: enrollment count references
 
         // Instructor
         const instructorSection = document.getElementById('horizontalInstructorSection');
@@ -5431,7 +5501,7 @@
         if (course.curriculum && course.curriculum.length > 0) {
             curriculumSection.style.display = 'block';
             curriculumList.innerHTML = course.curriculum.map(item =>
-                `<li><i class="fas fa-check-circle"></i> ${item}</li>`
+                `<li><i class="fas fa-check-circle"></i> ${escapeHtml(item)}</li>`
             ).join('');
         } else {
             curriculumSection.style.display = 'none';
@@ -5439,61 +5509,97 @@
 
         // Bookmark button
         const bookmarkBtn = document.getElementById('horizontalModalBookmarkBtn');
-        bookmarkBtn.dataset.id = course.id;
+        if (bookmarkBtn) {
+            bookmarkBtn.dataset.id = course.id;
+            bookmarkBtn.dataset.type = 'course';
 
-        if (course.is_bookmarked) {
-            bookmarkBtn.classList.add('bookmarked');
-            bookmarkBtn.querySelector('i').className = 'fas fa-bookmark';
-            bookmarkBtn.querySelector('.bookmark-text').textContent = 'Bookmarked';
-        } else {
-            bookmarkBtn.classList.remove('bookmarked');
-            bookmarkBtn.querySelector('i').className = 'far fa-bookmark';
-            bookmarkBtn.querySelector('.bookmark-text').textContent = 'Bookmark';
+            if (course.is_bookmarked) {
+                bookmarkBtn.classList.add('bookmarked');
+                const icon = bookmarkBtn.querySelector('i');
+                const text = bookmarkBtn.querySelector('.bookmark-text');
+                if (icon) icon.className = 'fas fa-bookmark';
+                if (text) text.textContent = 'Bookmarked';
+            } else {
+                bookmarkBtn.classList.remove('bookmarked');
+                const icon = bookmarkBtn.querySelector('i');
+                const text = bookmarkBtn.querySelector('.bookmark-text');
+                if (icon) icon.className = 'far fa-bookmark';
+                if (text) text.textContent = 'Bookmark';
+            }
         }
 
         // Apply button
         const applyBtn = document.getElementById('horizontalModalApplyBtn');
-        applyBtn.dataset.id = course.id;
-        applyBtn.dataset.type = 'course';
+        if (applyBtn) {
+            applyBtn.dataset.id = course.id;
+            applyBtn.dataset.type = 'course';
 
-        if (!course.application_link) {
-            applyBtn.disabled = true;
-            applyBtn.title = 'No application link available';
-        } else {
-            applyBtn.disabled = false;
-            applyBtn.title = '';
+            if (!course.application_link) {
+                applyBtn.disabled = true;
+                applyBtn.title = 'No application link available';
+            } else {
+                applyBtn.disabled = false;
+                applyBtn.title = '';
+            }
         }
 
         // Handle expiration in modal
         const expirationSection = document.getElementById('modalExpirationSection');
         const expirationInfo = document.getElementById('modalExpirationInfo');
+        const modalExpirationItem = document.getElementById('modalExpirationItem');
+        const modalExpirationText = document.getElementById('modalExpirationText');
+        const mobileExpirationChip = document.getElementById('mobileExpirationChip');
+        const mobileExpirationText = document.getElementById('mobileExpirationText');
 
         if (course.expiration_date) {
             const expDate = new Date(course.expiration_date);
             const now = new Date();
             const isExpired = expDate < now;
+            const formattedDate = expDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
 
-            expirationSection.style.display = 'block';
+            // Desktop expiration
+            if (expirationSection) expirationSection.style.display = 'block';
+            if (modalExpirationItem) modalExpirationItem.style.display = 'flex';
 
-            if (isExpired) {
-                expirationInfo.innerHTML = `
-                    <i class="fas fa-clock" style="color: #ef4444;"></i>
-                    <span class="expired-text" style="color: #ef4444; font-weight: 600;">Expired</span>
-                `;
-            } else {
-                const formattedDate = expDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-                expirationInfo.innerHTML = `
-                    <i class="fas fa-clock" style="color: #10b981;"></i>
-                    <span class="active-text" style="color: #10b981; font-weight: 600;">Expires: ${formattedDate}</span>
-                `;
+            if (expirationInfo) {
+                if (isExpired) {
+                    expirationInfo.innerHTML = `
+                        <i class="fas fa-clock" style="color: #ef4444;"></i>
+                        <span class="expired-text" style="color: #ef4444; font-weight: 600;">Expired</span>
+                    `;
+                } else {
+                    expirationInfo.innerHTML = `
+                        <i class="fas fa-clock" style="color: #10b981;"></i>
+                        <span class="active-text" style="color: #10b981; font-weight: 600;">Expires: ${formattedDate}</span>
+                    `;
+                }
+            }
+
+            if (modalExpirationText) {
+                modalExpirationText.textContent = isExpired ? 'Expired' : `Expires: ${formattedDate}`;
+            }
+
+            // Mobile expiration
+            if (mobileExpirationChip) mobileExpirationChip.style.display = 'flex';
+            if (mobileExpirationText) {
+                mobileExpirationText.textContent = isExpired ? 'Expired' : `Expires: ${formattedDate}`;
             }
         } else {
-            expirationSection.style.display = 'none';
+            if (expirationSection) expirationSection.style.display = 'none';
+            if (modalExpirationItem) modalExpirationItem.style.display = 'none';
+            if (mobileExpirationChip) mobileExpirationChip.style.display = 'none';
         }
+    }
+
+    // Helper function for escaping HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // =============================================
@@ -5524,11 +5630,6 @@
 
         console.log(`📊 Apply clicked: ${contentType} ID: ${contentId}`);
 
-        // For courses, increment enrollment count (fire and forget)
-        if (contentType === 'course') {
-            trackCourseEnrollment(contentId);
-        }
-
         // Open the application link
         openApplicationLink(contentId, contentType, this);
     }
@@ -5557,39 +5658,5 @@
         .finally(() => {
             button.innerHTML = originalHTML;
             button.disabled = false;
-        });
-    }
-
-    // Track course enrollment
-    function trackCourseEnrollment(courseId) {
-        console.log(`📊 Enrolling in course: ${courseId}`);
-
-        fetch(`/api/course/${courseId}/enroll`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log(`✅ Enrollment counted: ${data.enrollment_count}`);
-
-                // Update the count in the UI
-                const countElements = document.querySelectorAll(`.course-card-layout[data-id="${courseId}"] .enrollment-count`);
-                countElements.forEach(el => {
-                    el.textContent = data.enrollment_count;
-                });
-
-                // Update modal count if open
-                const modalCount = document.getElementById('horizontalModalEnrollment');
-                if (modalCount) {
-                    modalCount.textContent = data.enrollment_count;
-                }
-            }
-        })
-        .catch(error => {
-            console.error('❌ Enrollment count failed:', error);
-            // Don't show error to user - it's not critical
         });
     }

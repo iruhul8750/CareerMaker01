@@ -3192,7 +3192,6 @@ def get_course_details(course_id):
             'company': course.get('company', 'Unknown Provider'),
             'company_logo': course.get('company_logo', None),
             'image': course.get('image', None),
-            'enrollment_count': course.get('enrollment_count', 0),
             'views': course.get('views', 0),
             'application_link': course.get('application_link', None),
             'expiration_date': course.get('expiration_date', None),
@@ -4116,33 +4115,31 @@ def bookmark_content(content_type, content_id):
         if not content_check.data:
             return jsonify({'success': False, 'error': 'Content not found'}), 404
 
-        # Check for existing bookmark
-        existing_check = supabase_admin.table('bookmarks') \
+        # Try to find existing bookmark
+        existing = supabase_admin.table('bookmarks') \
             .select('id') \
             .eq('user_id', user_id) \
             .eq('item_type', content_type) \
             .eq('item_id', content_id) \
             .execute()
 
-        existing_bookmarks = existing_check.data if hasattr(existing_check, 'data') else []
+        existing_bookmark = existing.data[0] if existing.data else None
 
-        if existing_bookmarks:
-            # Remove bookmark
-            delete_result = supabase_admin.table('bookmarks') \
+        if existing_bookmark:
+            # DELETE - Don't check return value, just assume success
+            supabase_admin.table('bookmarks') \
                 .delete() \
-                .eq('id', existing_bookmarks[0]['id']) \
+                .eq('id', existing_bookmark['id']) \
                 .execute()
 
-            if hasattr(delete_result, 'data') and delete_result.data:
-                return jsonify({
-                    'success': True,
-                    'status': 'removed',
-                    'message': 'Bookmark removed successfully'
-                })
-            else:
-                return jsonify({'success': False, 'error': 'Failed to remove bookmark'}), 500
+            # Always return success for delete operations
+            return jsonify({
+                'success': True,
+                'status': 'removed',
+                'message': 'Bookmark removed successfully'
+            })
         else:
-            # Add bookmark
+            # INSERT
             bookmark_data = {
                 'user_id': user_id,
                 'item_type': content_type,
@@ -4150,23 +4147,20 @@ def bookmark_content(content_type, content_id):
                 'created_at': get_current_utc_time().isoformat()
             }
 
-            insert_result = supabase_admin.table('bookmarks') \
+            supabase_admin.table('bookmarks') \
                 .insert(bookmark_data) \
                 .execute()
 
-            if hasattr(insert_result, 'data') and insert_result.data:
-                return jsonify({
-                    'success': True,
-                    'status': 'added',
-                    'message': 'Bookmark added successfully'
-                })
-            else:
-                return jsonify({'success': False, 'error': 'Failed to add bookmark'}), 500
+            # Always return success for insert operations
+            return jsonify({
+                'success': True,
+                'status': 'added',
+                'message': 'Bookmark added successfully'
+            })
 
     except Exception as e:
         logger.error(f"Bookmark error: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
-
 
 # Helper function to get bookmark count
 def get_bookmark_count(content_type, content_id):

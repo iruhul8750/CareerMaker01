@@ -2627,46 +2627,76 @@
       }
     }
 
-    /* Course Details Modal */
+    /* Course Details Modal - NO ENROLLMENT COUNTER */
     .horizontal-course-modal .horizontal-modal-content {
         max-width: 1300px;
-        width: 100%;
+        width: 90%;
         padding: 0;
-        border-radius: 20px;
+        border-radius: 24px;
         overflow: hidden;
         background: white;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+        position: relative;
+    }
+
+    /* CIRCLE CLOSE BUTTON */
+    .horizontal-course-modal .close-modal {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .horizontal-course-modal .close-modal:hover {
+        background: rgba(0, 0, 0, 0.8);
+        transform: scale(1.1);
+        rotate: 90deg;
     }
 
     .horizontal-modal-layout {
         display: flex;
-        min-height: 400px;
-        max-height: 70vh;
-        height: auto;
+        min-height: 500px;
+        height: 85vh;
+        max-height: 85vh;
     }
 
-    /* Left Side */
+    /* Left Side - Compact */
     .horizontal-modal-left {
-        width: 28%;
+        width: 30%;
         background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        padding: 20px 15px;
+        padding: 24px 20px;
         display: flex;
         flex-direction: column;
         color: white;
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    /* Image container - square with rounded corners */
+    /* Image container */
     .horizontal-image-container {
-        width: 100px;
-        height: 100px;
-        border-radius: 16px;
+        width: 120px;
+        height: 120px;
+        border-radius: 20px;
         overflow: hidden;
         background: white;
         border: 3px solid rgba(255, 255, 255, 0.3);
-        margin: 0 auto 15px;
+        margin: 0 auto 20px;
         position: relative;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -2675,7 +2705,8 @@
     .horizontal-course-image {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
+        object-position: center;
     }
 
     .horizontal-image-placeholder {
@@ -2684,38 +2715,39 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 40px;
+        font-size: 48px;
         color: var(--primary-color);
         background: #f0f9ff;
     }
 
-    /* Category badge in modal */
+    /* Category badge */
     .horizontal-category-badge {
         position: absolute;
-        bottom: -10px;
+        bottom: -12px;
         left: 50%;
         transform: translateX(-50%);
         background: white;
         color: var(--primary-color);
-        padding: 4px 12px;
+        padding: 5px 14px;
         border-radius: 30px;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 700;
         white-space: nowrap;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         border: 2px solid var(--primary-color);
         z-index: 10;
     }
 
+    /* DESKTOP: Original vertical layout */
     .horizontal-quick-info {
-        margin: 15px 0;
+        margin: 20px 0;
     }
 
     .quick-info-item {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 6px 0;
+        gap: 12px;
+        padding: 10px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
 
@@ -2724,15 +2756,15 @@
     }
 
     .quick-info-item i {
-        width: 20px;
-        font-size: 16px;
+        width: 24px;
+        font-size: 18px;
         color: white;
     }
 
     .quick-info-label {
         display: block;
         font-size: 10px;
-        opacity: 0.9;
+        opacity: 0.8;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: rgba(255, 255, 255, 0.9);
@@ -2744,53 +2776,51 @@
         color: white;
     }
 
-    .horizontal-stats {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
+    /* MOBILE: Row layout - hidden on desktop */
+    .horizontal-quick-info-row {
+        display: none;
     }
 
-    .stat-badge {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(5px);
-        padding: 5px 10px;
-        border-radius: 30px;
-        font-size: 12px;
-        display: flex;
+    .quick-info-chip {
+        display: inline-flex;
         align-items: center;
         gap: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: white;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(4px);
+        padding: 6px 12px;
+        border-radius: 30px;
+        font-size: 11px;
         font-weight: 500;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    .stat-badge i {
-        font-size: 12px;
+    .quick-info-chip i {
+        font-size: 11px;
         color: white;
     }
 
-    /* Right Side - Only this scrolls */
+    /* Right Side - Description Area */
     .horizontal-modal-right {
-        width: 72%;
-        padding: 20px;
+        width: 70%;
+        padding: 24px 28px;
         background: white;
         overflow-y: auto;
-        max-height: 400px;
-        scrollbar-width: thin;
+        display: flex;
+        flex-direction: column;
     }
 
+    /* Header */
     .horizontal-header {
-        margin-bottom: 12px;
+        margin-bottom: 20px;
         border-bottom: 2px solid #eef2f6;
-        padding-bottom: 8px;
+        padding-bottom: 12px;
     }
 
     .horizontal-header h3 {
-        font-size: 22px;
+        font-size: 26px;
         color: #1f2937;
-        margin: 0 0 4px 0;
+        margin: 0 0 8px 0;
         line-height: 1.3;
         font-weight: 700;
     }
@@ -2798,56 +2828,64 @@
     .horizontal-provider {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         color: #4b5563;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 500;
     }
 
     .horizontal-provider i {
         color: var(--primary-color);
-        font-size: 14px;
+        font-size: 16px;
     }
 
-    .horizontal-description,
-    .horizontal-curriculum,
-    .horizontal-instructor {
-        margin-bottom: 15px;
+    /* DESCRIPTION - MAXIMUM AREA */
+    .horizontal-description {
+        margin-bottom: 24px;
     }
 
-    .horizontal-description h4,
-    .horizontal-curriculum h4,
-    .horizontal-instructor h4 {
-        font-size: 15px;
+    .horizontal-description h4 {
+        font-size: 18px;
         color: #1f2937;
-        margin: 0 0 8px 0;
+        margin: 0 0 12px 0;
         display: flex;
         align-items: center;
-        gap: 6px;
-        border-bottom: 2px solid #eef2f6;
-        padding-bottom: 6px;
-        font-weight: 600;
+        gap: 10px;
+        font-weight: 700;
     }
 
-    .horizontal-description h4 i,
-    .horizontal-curriculum h4 i,
-    .horizontal-instructor h4 i {
+    .horizontal-description h4 i {
         color: var(--primary-color);
-        font-size: 14px;
+        font-size: 18px;
     }
 
-    .horizontal-description p {
+    .description-content {
         color: #374151;
-        font-size: 13px;
-        line-height: 1.6;
-        margin: 0;
-        max-height: 80px;
-        overflow-y: auto;
-        padding: 8px;
+        font-size: 15px;
+        line-height: 1.7;
         background: #f9fafb;
-        border-radius: 8px;
-        font-weight: 400;
+        padding: 20px;
+        border-radius: 12px;
+        max-height: 250px;
+        overflow-y: auto;
         scrollbar-width: thin;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    /* Curriculum Section */
+    .horizontal-curriculum {
+        margin-bottom: 20px;
+    }
+
+    .horizontal-curriculum h4 {
+        font-size: 18px;
+        color: #1f2937;
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
     }
 
     .horizontal-curriculum ul {
@@ -2855,55 +2893,66 @@
         padding: 0;
         margin: 0;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 6px;
-        max-height: 100px;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 10px;
+        background: #f9fafb;
+        padding: 16px;
+        border-radius: 12px;
+        max-height: 180px;
         overflow-y: auto;
-        padding-right: 5px;
-        scrollbar-width: thin;
     }
 
     .horizontal-curriculum li {
-        padding: 5px 8px;
-        background: #f3f4f6;
-        border-radius: 6px;
-        font-size: 12px;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 8px;
+        font-size: 13px;
         color: #1f2937;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         border-left: 3px solid var(--primary-color);
         font-weight: 500;
     }
 
-    .horizontal-curriculum li i {
-        color: var(--primary-color);
-        font-size: 11px;
+    /* Instructor Section */
+    .horizontal-instructor {
+        margin-bottom: 20px;
+    }
+
+    .horizontal-instructor h4 {
+        font-size: 18px;
+        color: #1f2937;
+        margin: 0 0 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
     }
 
     .instructor-info {
         display: flex;
         align-items: center;
-        gap: 10px;
-        background: #f3f4f6;
-        padding: 8px 12px;
-        border-radius: 8px;
+        gap: 12px;
+        background: #f9fafb;
+        padding: 14px 18px;
+        border-radius: 12px;
         color: #1f2937;
-        font-weight: 500;
-        font-size: 13px;
+        font-weight: 600;
+        font-size: 15px;
     }
 
     .instructor-icon {
-        font-size: 28px;
+        font-size: 40px;
         color: var(--primary-color);
     }
 
-    /* Footer - Sticky to always show buttons */
+    /* Footer - Both buttons */
     .horizontal-footer {
         display: flex;
-        gap: 10px;
-        margin-top: 15px;
-        padding-top: 12px;
+        gap: 15px;
+        margin-top: auto;
+        padding-top: 20px;
         border-top: 2px solid #eef2f6;
         position: sticky;
         bottom: 0;
@@ -2916,14 +2965,14 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        padding: 8px 12px;
+        gap: 8px;
+        padding: 12px 16px;
         border: 2px solid #e5e7eb;
-        border-radius: 8px;
+        border-radius: 12px;
         background: white;
         color: #374151;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 15px;
         transition: all 0.3s ease;
         cursor: pointer;
     }
@@ -2941,34 +2990,37 @@
 
     .horizontal-footer .apply-btn {
         flex: 2;
-        padding: 8px 12px;
-        border-radius: 8px;
+        padding: 12px 20px;
+        border-radius: 12px;
         background: var(--primary-color);
         color: white;
         border: none;
-        font-weight: 600;
-        font-size: 14px;
+        font-weight: 700;
+        font-size: 15px;
         transition: all 0.3s ease;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
 
     .horizontal-footer .apply-btn:hover {
         background: var(--secondary-color);
         transform: translateY(-2px);
-        box-shadow: 0 10px 20px -10px var(--primary-color);
     }
 
     .horizontal-footer .apply-btn:disabled {
         background: #9ca3af;
         cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-        opacity: 0.7;
     }
 
-    /* Left panel scrollbar styling */
-    .horizontal-modal-left::-webkit-scrollbar {
-        width: 4px;
+    /* Scrollbar */
+    .horizontal-modal-left::-webkit-scrollbar,
+    .horizontal-modal-right::-webkit-scrollbar,
+    .description-content::-webkit-scrollbar,
+    .horizontal-curriculum ul::-webkit-scrollbar {
+        width: 6px;
     }
 
     .horizontal-modal-left::-webkit-scrollbar-track {
@@ -2977,155 +3029,274 @@
 
     .horizontal-modal-left::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.3);
-        border-radius: 4px;
-    }
-
-    /* Right panel scrollbar styling */
-    .horizontal-modal-right::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .horizontal-modal-right::-webkit-scrollbar-track {
-        background: #f1f1f1;
         border-radius: 3px;
     }
 
-    .horizontal-modal-right::-webkit-scrollbar-thumb {
+    .horizontal-modal-right::-webkit-scrollbar-track,
+    .description-content::-webkit-scrollbar-track,
+    .horizontal-curriculum ul::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    .horizontal-modal-right::-webkit-scrollbar-thumb,
+    .description-content::-webkit-scrollbar-thumb,
+    .horizontal-curriculum ul::-webkit-scrollbar-thumb {
         background: var(--primary-color);
         border-radius: 3px;
     }
 
-    .horizontal-modal-right::-webkit-scrollbar-thumb:hover {
-        background: var(--secondary-color);
-    }
+    /* ============================================ */
+    /* MOBILE: Row layout - Only on mobile */
+    /* ============================================ */
 
-    /* Dark Mode */
-    @media (prefers-color-scheme: dark) {
-        .horizontal-modal-content {
-            background: #1a1a1a;
-            border: 1px solid #333;
+    @media (max-width: 768px) {
+        .horizontal-course-modal .close-modal {
+            width: 36px;
+            height: 36px;
+            top: 12px;
+            right: 12px;
         }
 
+        .horizontal-modal-layout {
+            flex-direction: column;
+            height: 92vh;
+            max-height: 92vh;
+        }
+
+        /* Left sidebar - Hide desktop vertical layout */
         .horizontal-modal-left {
-            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+            width: 100%;
+            padding: 15px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            min-height: auto;
+            max-height: 110px;
         }
 
+        /* Hide desktop vertical info */
+        .desktop-info {
+            display: none !important;
+        }
+
+        /* Show mobile row layout */
+        .horizontal-quick-info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-start;
+            flex: 1;
+            margin-top: 0;
+        }
+
+        .horizontal-image-container {
+            width: 70px;
+            height: 70px;
+            margin: 0;
+        }
+
+        .horizontal-category-badge {
+            font-size: 10px;
+            padding: 3px 10px;
+            bottom: -8px;
+        }
+
+        .quick-info-chip {
+            padding: 5px 10px;
+            font-size: 10px;
+            gap: 5px;
+        }
+
+        .quick-info-chip i {
+            font-size: 10px;
+        }
+
+        /* Right side */
         .horizontal-modal-right {
-            background: #1a1a1a;
+            width: 100%;
+            padding: 16px;
+            max-height: calc(92vh - 110px);
         }
 
         .horizontal-header h3 {
-            color: #ffffff !important;
+            font-size: 18px;
         }
 
         .horizontal-provider {
-            color: #e5e7eb !important;
+            font-size: 13px;
+        }
+
+        .description-content {
+            padding: 14px;
+            font-size: 14px;
+            max-height: 260px;
+        }
+
+        .horizontal-curriculum ul {
+            grid-template-columns: 1fr;
+            max-height: 140px;
+            padding: 12px;
+        }
+
+        .horizontal-curriculum li {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .instructor-info {
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+
+        .instructor-icon {
+            font-size: 32px;
+        }
+
+        .horizontal-footer {
+            gap: 10px;
+            padding-top: 14px;
+        }
+
+        .horizontal-footer .bookmark-btn,
+        .horizontal-footer .apply-btn {
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+    }
+
+    /* Small Mobile */
+    @media (max-width: 480px) {
+        .horizontal-modal-left {
+            padding: 12px;
+            max-height: 100px;
+        }
+
+        .horizontal-image-container {
+            width: 55px;
+            height: 55px;
+        }
+
+        .quick-info-chip {
+            padding: 3px 8px;
+            font-size: 9px;
+        }
+
+        .quick-info-chip i {
+            font-size: 9px;
+        }
+
+        .horizontal-modal-right {
+            padding: 12px;
+            max-height: calc(92vh - 100px);
+        }
+
+        .horizontal-header h3 {
+            font-size: 16px;
+        }
+
+        .description-content {
+            padding: 12px;
+            font-size: 13px;
+            max-height: 220px;
+        }
+    }
+
+    /* Dark Mode */
+    .dark-mode .horizontal-modal-content,
+    .dark-mode .horizontal-modal-right,
+    .dark-mode .horizontal-footer {
+        background: #1e1e2a;
+    }
+
+    .dark-mode .horizontal-header h3,
+    .dark-mode .horizontal-description h4,
+    .dark-mode .horizontal-curriculum h4,
+    .dark-mode .horizontal-instructor h4 {
+        color: #ffffff;
+    }
+
+    .dark-mode .description-content,
+    .dark-mode .horizontal-curriculum ul,
+    .dark-mode .instructor-info {
+        background: #2a2a35;
+        color: #d4d4d8;
+    }
+
+    .dark-mode .horizontal-curriculum li {
+        background: #1e1e2a;
+        color: #d4d4d8;
+    }
+
+    .dark-mode .horizontal-footer .bookmark-btn {
+        background: #2a2a35;
+        border-color: #3f3f46;
+        color: #d4d4d8;
+    }
+
+    .dark-mode .horizontal-footer .bookmark-btn.bookmarked {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .dark-mode .horizontal-header {
+        border-bottom-color: #3f3f46;
+    }
+
+    .dark-mode .horizontal-provider {
+        color: #a1a1aa;
+    }
+    .dark-mode .horizontal-modal-content,
+    @media (prefers-color-scheme: dark) {
+        .horizontal-modal-content {
+            background: #1e1e2a;
+        }
+
+        .horizontal-modal-right {
+            background: #1e1e2a;
+        }
+
+        .horizontal-header h3 {
+            color: #ffffff;
+        }
+
+        .horizontal-provider {
+            color: #a1a1aa;
         }
 
         .horizontal-description h4,
         .horizontal-curriculum h4,
         .horizontal-instructor h4 {
-            color: #ffffff !important;
-            border-bottom-color: #333;
+            color: #ffffff;
         }
 
-        .horizontal-description p {
-            color: #f3f4f6 !important;
-            background: #2d2d2d;
-            border: 1px solid #404040;
-        }
-
-        .horizontal-curriculum li {
-            background: #2d2d2d;
-            color: #f3f4f6 !important;
-        }
-
-        .instructor-info {
-            background: #2d2d2d;
-            color: #f3f4f6 !important;
-        }
-
-        .horizontal-footer {
-            background: #1a1a1a;
-            border-top-color: #333;
-        }
-
-        .horizontal-footer .bookmark-btn {
-            background: #2d2d2d;
-            border-color: #404040;
-            color: #f3f4f6 !important;
-        }
-
-        .horizontal-footer .bookmark-btn:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color) !important;
-        }
-
-        .horizontal-footer .bookmark-btn.bookmarked {
-            background: var(--primary-color);
-            border-color: var(--primary-color);
-            color: white !important;
-        }
-
-        .horizontal-footer .apply-btn {
-            background: var(--primary-color);
-            color: white !important;
-        }
-
-        .horizontal-footer .apply-btn:hover {
-            background: var(--secondary-color);
-        }
-
-        .horizontal-footer .apply-btn:disabled {
-            background: #404040;
-            color: #9ca3af !important;
-        }
-
-        .horizontal-modal-right::-webkit-scrollbar-track {
-            background: #333;
-        }
-    }
-
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-        .horizontal-modal-layout {
-            flex-direction: column;
-            min-height: auto;
-            max-height: 90vh;
-        }
-
-        .horizontal-modal-left,
-        .horizontal-modal-right {
-            width: 100%;
-        }
-
-        .horizontal-modal-left {
-            padding: 15px;
-        }
-
-        .horizontal-image-container {
-            width: 80px;
-            height: 80px;
-        }
-
-        .horizontal-modal-right {
-            max-height: 50vh;
-            padding: 15px;
+        .description-content {
+            background: #2a2a35;
+            color: #d4d4d8;
         }
 
         .horizontal-curriculum ul {
-            grid-template-columns: 1fr;
-            max-height: 120px;
+            background: #2a2a35;
+        }
+
+        .horizontal-curriculum li {
+            background: #1e1e2a;
+            color: #d4d4d8;
+        }
+
+        .instructor-info {
+            background: #2a2a35;
+            color: #d4d4d8;
         }
 
         .horizontal-footer {
-            flex-direction: column;
-            gap: 8px;
+            background: #1e1e2a;
+            border-top-color: #3f3f46;
         }
 
-        .horizontal-footer .bookmark-btn,
-        .horizontal-footer .apply-btn {
-            width: 100%;
+        .horizontal-footer .bookmark-btn {
+            background: #2a2a35;
+            border-color: #3f3f46;
+            color: #d4d4d8;
         }
     }
 
@@ -3144,6 +3315,7 @@
     .horizontal-modal-content {
         animation: slideInHorizontal 0.3s ease-out;
     }
+
     /* COURSE , INTERNSHIP AND JOBS SECTIONS END */
 
     /*      MODALS      */

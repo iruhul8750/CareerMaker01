@@ -223,7 +223,7 @@
     </div>
 </section>
 
-<!-- Horizontal Course Details Modal -->
+<!-- Horizontal Course Details Modal - NO ENROLLMENT COUNTER -->
 <div class="modal horizontal-course-modal" id="horizontalCourseModal" style="display: none;">
     <div class="modal-overlay" onclick="closeHorizontalCourseModal()"></div>
     <div class="modal-content horizontal-modal-content">
@@ -232,7 +232,7 @@
         </button>
 
         <div class="horizontal-modal-layout">
-            <!-- Left Side - Image & Key Info -->
+            <!-- Left Side - Image & Basic Info -->
             <div class="horizontal-modal-left">
                 <div class="horizontal-image-container">
                     <img id="horizontalModalCourseImage" src="" alt="Course" class="horizontal-course-image"
@@ -243,7 +243,8 @@
                     <span class="horizontal-category-badge" id="horizontalModalCourseCategory"></span>
                 </div>
 
-                <div class="horizontal-quick-info">
+                <!-- DESKTOP: Original vertical layout -->
+                <div class="horizontal-quick-info desktop-info">
                     <div class="quick-info-item">
                         <i class="fas fa-tag"></i>
                         <div>
@@ -251,7 +252,6 @@
                             <span class="quick-info-value" id="horizontalModalCoursePrice"></span>
                         </div>
                     </div>
-
                     <div class="quick-info-item">
                         <i class="fas fa-chart-line"></i>
                         <div>
@@ -259,7 +259,6 @@
                             <span class="quick-info-value" id="horizontalModalCourseLevel"></span>
                         </div>
                     </div>
-
                     <div class="quick-info-item">
                         <i class="fas fa-clock"></i>
                         <div>
@@ -267,7 +266,6 @@
                             <span class="quick-info-value" id="horizontalModalCourseDuration">N/A</span>
                         </div>
                     </div>
-
                     <div class="quick-info-item">
                         <i class="fas fa-language"></i>
                         <div>
@@ -275,21 +273,54 @@
                             <span class="quick-info-value" id="horizontalModalCourseLanguage">N/A</span>
                         </div>
                     </div>
+                    <div class="quick-info-item">
+                        <i class="fas fa-eye"></i>
+                        <div>
+                            <span class="quick-info-label">Views</span>
+                            <span class="quick-info-value" id="horizontalModalViews">0</span>
+                        </div>
+                    </div>
+                    <div class="quick-info-item" id="modalExpirationItem" style="display: none;">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <span class="quick-info-label">Expires</span>
+                            <span class="quick-info-value" id="modalExpirationText"></span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="horizontal-stats">
-                    <div class="stat-badge">
-                        <i class="fas fa-users"></i>
-                        <span id="horizontalModalEnrollment">0</span> enrolled
+                <!-- MOBILE: Row layout chips (hidden on desktop) -->
+                <div class="horizontal-quick-info-row mobile-info">
+                    <div class="quick-info-chip">
+                        <i class="fas fa-tag"></i>
+                        <span id="mobileCoursePrice"></span>
                     </div>
-                    <div class="stat-badge">
+                    <div class="quick-info-chip">
+                        <i class="fas fa-chart-line"></i>
+                        <span id="mobileCourseLevel"></span>
+                    </div>
+                    <div class="quick-info-chip">
+                        <i class="fas fa-clock"></i>
+                        <span id="mobileCourseDuration">N/A</span>
+                    </div>
+                    <div class="quick-info-chip">
+                        <i class="fas fa-language"></i>
+                        <span id="mobileCourseLanguage">N/A</span>
+                    </div>
+                    <div class="quick-info-chip">
                         <i class="fas fa-eye"></i>
-                        <span id="horizontalModalViews">0</span> views
+                        <span id="mobileViews">0</span>
+                    </div>
+                    <div class="quick-info-chip" id="mobileExpirationChip" style="display: none;">
+                        <i class="fas fa-clock"></i>
+                        <span id="mobileExpirationText"></span>
                     </div>
                 </div>
+
+                <!-- ENROLLMENT COUNTER REMOVED - No stats badge section -->
             </div>
 
-            <!-- Right Side - Details -->
+            <!-- Right Side - Description Area -->
             <div class="horizontal-modal-right">
                 <div class="horizontal-header">
                     <h3 id="horizontalModalCourseTitle"></h3>
@@ -299,12 +330,13 @@
                     </div>
                 </div>
 
+                <!-- DESCRIPTION - MAXIMUM SPACE -->
                 <div class="horizontal-description">
                     <h4><i class="fas fa-align-left"></i> About this course</h4>
-                    <p id="horizontalModalCourseDescription"></p>
+                    <div class="description-content" id="horizontalModalCourseDescription"></div>
                 </div>
 
-                <!-- Curriculum Section (if available) -->
+                <!-- What You'll Learn (Curriculum) -->
                 <div class="horizontal-curriculum" id="horizontalCurriculumSection" style="display: none;">
                     <h4><i class="fas fa-list-ul"></i> What you'll learn</h4>
                     <ul id="horizontalModalCurriculum"></ul>
@@ -319,18 +351,13 @@
                     </div>
                 </div>
 
-                <!-- Expiration Info in Modal -->
-                <div class="modal-expiration-info" id="modalExpirationSection" style="display: none;">
-                    <h4><i class="fas fa-clock"></i> Availability</h4>
-                    <div class="expiration-info" id="modalExpirationInfo"></div>
-                </div>
-
+                <!-- Footer with Bookmark and Enroll Buttons -->
                 <div class="horizontal-footer">
-                    <button class="btn btn-outline bookmark-btn" id="horizontalModalBookmarkBtn" data-type="course">
+                    <button class="btn bookmark-btn" id="horizontalModalBookmarkBtn" data-type="course">
                         <i class="far fa-bookmark"></i>
                         <span class="bookmark-text">Bookmark</span>
                     </button>
-                    <button class="btn btn-primary apply-btn" id="horizontalModalApplyBtn" data-type="course">
+                    <button class="btn apply-btn" id="horizontalModalApplyBtn" data-type="course">
                         Enroll Now <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
