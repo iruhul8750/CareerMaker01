@@ -1,7 +1,9 @@
 import os
 
 from dotenv import load_dotenv
-
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import httpx
+import time
 load_dotenv()
 import uuid
 import secrets
@@ -1739,7 +1741,18 @@ def register():
         # Check if user exists
         existing = supabase.table('users').select('email').eq('email', email).execute()
         if existing.data:
-            return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
+            return jsonify({
+                'status': 'error',
+                'message': 'Email already registered. Please use a different email or login.'
+            }), 400
+
+        # Also check for existing username
+        existing_username = supabase.table('users').select('username').eq('username', username).execute()
+        if existing_username.data:
+            return jsonify({
+                'status': 'error',
+                'message': 'Username already taken. Please choose another username.'
+            }), 400
 
         # Generate and store OTP
         otp, expires_at = generate_otp()
@@ -4089,17 +4102,47 @@ def get_testimonial(testimonial_id):
 
 
 # ===== BOOKMARK ENDPOINT FIX =====
+
+# Simple retry decorator without external library
+def retry_db_operation(max_retries=3, delay=1):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        time.sleep(delay * (2 ** attempt))  # Exponential backoff
+                        continue
+                    raise
+            raise last_error
+
+        return wrapper
+
+    return decorator
+
+
 @app.route('/api/bookmark/<content_type>/<content_id>', methods=['POST'])
-@login_required
 def bookmark_content(content_type, content_id):
+    """Toggle bookmark for content"""
     try:
+        # Check authentication first
+        if 'user_id' not in session:
+            return jsonify({
+                'success': False,
+                'error': 'Please login to bookmark items',
+                'requires_login': True
+            }), 401
+
         valid_types = ['course', 'job', 'internship', 'blog']
         if content_type not in valid_types:
             return jsonify({'success': False, 'error': 'Invalid content type'}), 400
 
         user_id = session['user_id']
 
-        # Check if content exists
+        # Check if content exists with retry
         table_map = {
             'course': 'courses',
             'job': 'jobs',
@@ -4107,39 +4150,49 @@ def bookmark_content(content_type, content_id):
             'blog': 'blog_posts'
         }
 
-        content_check = supabase_admin.table(table_map[content_type]) \
-            .select('id') \
-            .eq('id', content_id) \
-            .execute()
+        @retry_db_operation(max_retries=3)
+        def check_content_exists():
+            return supabase_admin.table(table_map[content_type]) \
+                .select('id') \
+                .eq('id', content_id) \
+                .execute()
+
+        content_check = check_content_exists()
 
         if not content_check.data:
             return jsonify({'success': False, 'error': 'Content not found'}), 404
 
-        # Try to find existing bookmark
-        existing = supabase_admin.table('bookmarks') \
-            .select('id') \
-            .eq('user_id', user_id) \
-            .eq('item_type', content_type) \
-            .eq('item_id', content_id) \
-            .execute()
-
-        existing_bookmark = existing.data[0] if existing.data else None
-
-        if existing_bookmark:
-            # DELETE - Don't check return value, just assume success
-            supabase_admin.table('bookmarks') \
-                .delete() \
-                .eq('id', existing_bookmark['id']) \
+        # Check for existing bookmark with retry
+        @retry_db_operation(max_retries=3)
+        def check_existing_bookmark():
+            return supabase_admin.table('bookmarks') \
+                .select('id') \
+                .eq('user_id', user_id) \
+                .eq('item_type', content_type) \
+                .eq('item_id', content_id) \
                 .execute()
 
-            # Always return success for delete operations
+        existing_check = check_existing_bookmark()
+        existing_bookmarks = existing_check.data if hasattr(existing_check, 'data') else []
+
+        if existing_bookmarks:
+            # Remove bookmark - don't check return value
+            @retry_db_operation(max_retries=3)
+            def delete_bookmark():
+                return supabase_admin.table('bookmarks') \
+                    .delete() \
+                    .eq('id', existing_bookmarks[0]['id']) \
+                    .execute()
+
+            delete_bookmark()
+
             return jsonify({
                 'success': True,
                 'status': 'removed',
                 'message': 'Bookmark removed successfully'
             })
         else:
-            # INSERT
+            # Add bookmark
             bookmark_data = {
                 'user_id': user_id,
                 'item_type': content_type,
@@ -4147,20 +4200,33 @@ def bookmark_content(content_type, content_id):
                 'created_at': get_current_utc_time().isoformat()
             }
 
-            supabase_admin.table('bookmarks') \
-                .insert(bookmark_data) \
-                .execute()
+            @retry_db_operation(max_retries=3)
+            def add_bookmark():
+                return supabase_admin.table('bookmarks') \
+                    .insert(bookmark_data) \
+                    .execute()
 
-            # Always return success for insert operations
+            add_bookmark()
+
             return jsonify({
                 'success': True,
                 'status': 'added',
                 'message': 'Bookmark added successfully'
             })
 
+    except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+        logger.error(f"Database connection error in bookmark: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Network issue. Please try again.',
+            'retry': True
+        }), 503
     except Exception as e:
         logger.error(f"Bookmark error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+        return jsonify({
+            'success': False,
+            'error': 'An unexpected error occurred. Please try again.'
+        }), 500
 
 # Helper function to get bookmark count
 def get_bookmark_count(content_type, content_id):
