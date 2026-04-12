@@ -1555,7 +1555,7 @@
         const btnText = submitBtn.querySelector('.btn-text');
         const responseDiv = document.getElementById('loginResponse');
 
-        btnText.style.display = 'none';
+        btnText.textContent = "Logging in...";
         submitBtn.disabled = true;
         responseDiv.style.display = 'none';
 
@@ -1591,10 +1591,11 @@
             hideLoader();
             responseDiv.style.display = 'block';
             responseDiv.className = 'form-response error';
-            responseDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.error || 'Login failed'}`;
+            responseDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Invalid email or password.`;
         })
         .finally(() => {
             btnText.style.display = 'inline-block';
+            btnText.textContent = "Login";
             submitBtn.disabled = false;
         });
     });

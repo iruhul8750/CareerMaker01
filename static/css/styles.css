@@ -3758,9 +3758,8 @@
 
     /* Login/Register Buttons */
     .login-btn {
-      background-color: transparent;
-      color: var(--primary-color);
-      border: 2px solid var(--primary-color);
+        min-width: 150px;   /* prevents shrink */
+        height: 42px;
     }
 
     .login-btn:hover {
@@ -3809,8 +3808,37 @@
       color: var(--accent-color);
     }
 
+    .dark-mode .password-requirements{
+      background-color: var(--dark-mode-bg);
+    }
     .dark-mode .nav-links li a.active-scroll::after {
       background-color: var(--accent-color);
+    }
+
+    /* Checkbox pointer */
+    #termsAgreement {
+        cursor: pointer;
+    }
+
+    /* Scrollbar width */
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    /* Track (background) */
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    /* Scroll thumb (draggable part) */
+    ::-webkit-scrollbar-thumb {
+        background: #4e73df;   /* 🔥 your primary color */
+        border-radius: 5px;
+    }
+
+    /* Hover effect */
+    ::-webkit-scrollbar-thumb:hover {
+        background: #2e59d9;
     }
 
     /* Error Pages */
