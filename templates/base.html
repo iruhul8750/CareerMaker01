@@ -49,7 +49,7 @@
                     <li><a href="#lightweight-blog"><i class="fas fa-newspaper"></i> Blogs</a></li>
                     <li><a href="#testimonials"><i class="fas fa-comment"></i> Testimonials</a></li>
                     <li><a href="#contact"><i class="fas fa-envelope"></i> Contact Us</a></li>
-<!--                    <li><a href="#support"><i class="fas fa-heart"></i>Support Us</a></li>-->
+                    <!--                    <li><a href="#support"><i class="fas fa-heart"></i>Support Us</a></li>-->
 
                 </ul>
 
@@ -123,26 +123,27 @@
                 <h3>CareerMaker</h3>
                 <p>Empowering your career journey with quality education and job opportunities.</p>
                 <div class="social-links">
-                     <a href="https://www.linkedin.com/company/careermaker25/?viewAsMember=true" target="_blank" rel="noopener noreferrer"
+                    <a href="https://www.linkedin.com/company/careermaker25/?viewAsMember=true" target="_blank"
+                       rel="noopener noreferrer"
                        aria-label="LinkedIn">
                         <i class="fab fa-linkedin-in"></i>
                     </a>
-                 <!--   <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer"
-                       aria-label="Facebook">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <a href="https://twitter.com/yourhandle" target="_blank" rel="noopener noreferrer"
-                       aria-label="Twitter">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                    <a href="https://www.instagram.com/yourprofile/" target="_blank" rel="noopener noreferrer"
-                       aria-label="Instagram">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                    <a href="https://www.youtube.com/@yourchannel" target="_blank" rel="noopener noreferrer"
-                       aria-label="YouTube">
-                        <i class="fab fa-youtube"></i>
-                    </a> -->
+                    <!--   <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer"
+                          aria-label="Facebook">
+                           <i class="fab fa-facebook-f"></i>
+                       </a>
+                       <a href="https://twitter.com/yourhandle" target="_blank" rel="noopener noreferrer"
+                          aria-label="Twitter">
+                           <i class="fab fa-twitter"></i>
+                       </a>
+                       <a href="https://www.instagram.com/yourprofile/" target="_blank" rel="noopener noreferrer"
+                          aria-label="Instagram">
+                           <i class="fab fa-instagram"></i>
+                       </a>
+                       <a href="https://www.youtube.com/@yourchannel" target="_blank" rel="noopener noreferrer"
+                          aria-label="YouTube">
+                           <i class="fab fa-youtube"></i>
+                       </a> -->
                 </div>
             </div>
             <div class="footer-col">
@@ -185,7 +186,7 @@
             <div class="footer-links">
                 <a href="/privacy">Privacy Policy</a>
                 <a href="/terms">Terms of Service</a>
-<!--                <a href="/sitemap">Sitemap</a>-->
+                <!--                <a href="/sitemap">Sitemap</a>-->
             </div>
         </div>
     </div>
@@ -219,7 +220,7 @@
             </div>
             <div class="form-footer">
                 <div class="login-links">
-                    <a href="/reset-password" class="forgot-password">Forgot password?</a>
+                    <a href="#" class="forgot-password" id="forgotPasswordLink">Forgot password?</a>
                 </div>
                 <button type="submit" class="btn btn-primary">
                     <span class="btn-text">Login</span>
@@ -295,6 +296,106 @@
             <button class="btn btn-outline" id="cancelLogoutBtn">Cancel</button>
             <button class="btn btn-primary" id="confirmLogoutBtn">Logout</button>
         </div>
+    </div>
+</div>
+
+<!-- Password Reset Request Modal (Step 1) -->
+<div class="modal" id="passwordResetRequestModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content small">
+        <button class="close-modal" id="closePasswordResetRequestModal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Reset Password</h2>
+            <p>Enter your email to receive a verification OTP</p>
+        </div>
+        <form id="passwordResetRequestForm" class="modal-form">
+            <div class="form-group floating-label-group">
+                <input type="email" id="resetEmail" name="email" required placeholder=" ">
+                <label for="resetEmail">Email Address</label>
+            </div>
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span class="btn-text">Send OTP</span>
+                    <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                </button>
+            </div>
+            <div id="resetPasswordResponse" class="form-response" style="display: none;"></div>
+        </form>
+        <div class="modal-footer" style="margin-top: 15px; text-align: center;">
+            <p>Remember your password? <a href="#" id="showLoginFromResetModal">Login here</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- Password Reset OTP Modal (Step 2) -->
+<div class="modal" id="passwordResetOtpModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content small">
+        <button class="close-modal" id="closePasswordResetOtpModal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Verify OTP</h2>
+            <p id="otpEmailDisplay">Enter the 6-digit code sent to your email</p>
+        </div>
+        <form id="passwordResetOtpForm" class="modal-form">
+            <input type="hidden" id="otpResetEmail" name="email">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="resetOtpCode" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Enter OTP Code</label>
+                <input type="text" id="resetOtpCode" name="otp" maxlength="6" required
+                       autocomplete="off" inputmode="numeric"
+                       style="width: 100%; padding: 12px; font-size: 18px; letter-spacing: 8px;
+                              text-align: center; border: 2px solid #ddd; border-radius: 8px;
+                              outline: none; box-sizing: border-box;">
+                <div class="form-error" id="resetOtpError" style="display:none; color: #dc3545; font-size: 12px; margin-top: 5px;"></div>
+            </div>
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span class="btn-text">Verify OTP</span>
+                    <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                </button>
+            </div>
+            <div id="resetOtpResponse" class="form-response" style="display: none;"></div>
+            <div class="resend-section" style="margin-top: 15px; text-align: center;">
+                <p>Didn't receive code? <a href="#" id="resendResetOtp">Resend</a> <span id="resendResetTimer" style="display:none">(Wait <span id="timerResetCount">60</span>s)</span></p>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password New Password Modal (Step 3) -->
+<div class="modal" id="resetPasswordNewModal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content small">
+        <button class="close-modal" id="closeResetPasswordNewModal"><i class="fas fa-times"></i></button>
+        <div class="modal-header">
+            <h2>Set New Password</h2>
+            <p>Create a new password for your account</p>
+        </div>
+        <form id="resetPasswordNewForm" class="modal-form">
+            <div class="form-group floating-label-group">
+                <input type="password" id="newPassword" name="new_password" required placeholder=" " minlength="8">
+                <label for="newPassword">New Password</label>
+            </div>
+            <div class="form-group floating-label-group">
+                <input type="password" id="confirmNewPassword" name="confirm_password" required placeholder=" ">
+                <label for="confirmNewPassword">Confirm Password</label>
+            </div>
+            <div class="password-requirements" style="margin-bottom: 15px;">
+                <p class="requirements-title">Password must contain:</p>
+                <ul class="requirements-list" style="list-style: none; padding-left: 0;">
+                    <li id="reqLength" style="font-size: 12px; margin: 3px 0;">❌ At least 8 characters</li>
+                    <li id="reqUppercase" style="font-size: 12px; margin: 3px 0;">❌ At least one uppercase letter</li>
+                    <li id="reqNumber" style="font-size: 12px; margin: 3px 0;">❌ At least one number</li>
+                    <li id="reqSpecial" style="font-size: 12px; margin: 3px 0;">❌ At least one special character</li>
+                </ul>
+            </div>
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span class="btn-text">Reset Password</span>
+                    <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
+                </button>
+            </div>
+            <div id="newPasswordResponse" class="form-response" style="display: none;"></div>
+        </form>
     </div>
 </div>
 

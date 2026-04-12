@@ -1601,6 +1601,465 @@
     });
 
     // =============================================
+    // PASSWORD RESET MODAL SYSTEM
+    // =============================================
+
+    const PasswordResetModal = {
+        init() {
+            console.log('🔐 Password reset modal initialized');
+            this.bindEvents();
+        },
+
+        // NEW: Reset all modals and data
+        resetAllModals() {
+            // Reset Step 1 Modal (Request)
+            const requestForm = document.getElementById('passwordResetRequestForm');
+            if (requestForm) requestForm.reset();
+
+            const resetEmail = document.getElementById('resetEmail');
+            if (resetEmail) {
+                resetEmail.value = '';
+                resetEmail.classList.remove('input-error');
+            }
+
+            const resetResponse = document.getElementById('resetPasswordResponse');
+            if (resetResponse) {
+                resetResponse.style.display = 'none';
+                resetResponse.className = 'form-response';
+                resetResponse.innerHTML = '';
+            }
+
+            // Reset Step 2 Modal (OTP)
+            const otpForm = document.getElementById('passwordResetOtpForm');
+            if (otpForm) otpForm.reset();
+
+            const otpCode = document.getElementById('resetOtpCode');
+            if (otpCode) {
+                otpCode.value = '';
+                otpCode.disabled = false;
+            }
+
+            const otpResponse = document.getElementById('resetOtpResponse');
+            if (otpResponse) {
+                otpResponse.style.display = 'none';
+                otpResponse.className = 'form-response';
+                otpResponse.innerHTML = '';
+            }
+
+            const otpError = document.getElementById('resetOtpError');
+            if (otpError) {
+                otpError.style.display = 'none';
+                otpError.textContent = '';
+            }
+
+            // Reset Step 3 Modal (New Password)
+            const newPasswordForm = document.getElementById('resetPasswordNewForm');
+            if (newPasswordForm) newPasswordForm.reset();
+
+            const newPassword = document.getElementById('newPassword');
+            const confirmPassword = document.getElementById('confirmNewPassword');
+            if (newPassword) newPassword.value = '';
+            if (confirmPassword) confirmPassword.value = '';
+
+            const newPasswordResponse = document.getElementById('newPasswordResponse');
+            if (newPasswordResponse) {
+                newPasswordResponse.style.display = 'none';
+                newPasswordResponse.className = 'form-response';
+                newPasswordResponse.innerHTML = '';
+            }
+
+            // Reset password validation styles
+            this.resetPasswordValidation();
+
+            // Clear stored data
+            this.currentEmail = null;
+            this.currentResetToken = null;
+
+            // Stop any running timers
+            this.stopResendTimer();
+
+            console.log('🔄 All reset modals cleared');
+        },
+
+        resetPasswordValidation() {
+            const checks = [
+                { id: 'reqLength', text: 'At least 8 characters' },
+                { id: 'reqUppercase', text: 'At least one uppercase letter' },
+                { id: 'reqNumber', text: 'At least one number' },
+                { id: 'reqSpecial', text: 'At least one special character' }
+            ];
+            checks.forEach(check => {
+                const el = document.getElementById(check.id);
+                if (el) {
+                    el.innerHTML = '❌ ' + check.text;
+                    el.style.color = '#dc3545';
+                }
+            });
+        },
+
+        stopResendTimer() {
+            if (this.resendTimer) {
+                clearInterval(this.resendTimer);
+                this.resendTimer = null;
+            }
+            // Reset resend button UI
+            const resendBtn = document.getElementById('resendResetOtp');
+            const timerSpan = document.getElementById('resendResetTimer');
+            if (resendBtn) {
+                resendBtn.style.display = 'inline';
+                resendBtn.style.pointerEvents = 'auto';
+            }
+            if (timerSpan) {
+                timerSpan.style.display = 'none';
+            }
+        },
+
+        bindEvents() {
+            // Close all modals with reset
+            const closeBtns = ['closePasswordResetRequestModal', 'closePasswordResetOtpModal', 'closeResetPasswordNewModal'];
+            closeBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.onclick = () => {
+                        this.closeAllModals();
+                        this.resetAllModals(); // Reset when closing
+                    };
+                }
+            });
+
+            // Step 1: Send OTP
+            const requestForm = document.getElementById('passwordResetRequestForm');
+            if (requestForm) {
+                requestForm.onsubmit = (e) => this.handleSendOtp(e);
+            }
+
+            // Step 2: Verify OTP
+            const otpForm = document.getElementById('passwordResetOtpForm');
+            if (otpForm) {
+                otpForm.onsubmit = (e) => this.handleVerifyOtp(e);
+            }
+
+            // Step 3: Reset password
+            const newPasswordForm = document.getElementById('resetPasswordNewForm');
+            if (newPasswordForm) {
+                newPasswordForm.onsubmit = (e) => this.handleResetPassword(e);
+            }
+
+            // Resend OTP
+            const resendBtn = document.getElementById('resendResetOtp');
+            if (resendBtn) {
+                resendBtn.onclick = (e) => this.resendOtp(e);
+            }
+
+            // Login link in modal
+            const loginLink = document.getElementById('showLoginFromResetModal');
+            if (loginLink) {
+                loginLink.onclick = (e) => {
+                    e.preventDefault();
+                    this.closeAllModals();
+                    this.resetAllModals(); // Reset when switching to login
+                    if (typeof openLoginModal === 'function') openLoginModal();
+                };
+            }
+
+            // Password validation
+            const newPassword = document.getElementById('newPassword');
+            if (newPassword) {
+                newPassword.oninput = () => this.validatePassword();
+            }
+        },
+
+        closeAllModals() {
+            const modals = ['passwordResetRequestModal', 'passwordResetOtpModal', 'resetPasswordNewModal'];
+            modals.forEach(id => {
+                const modal = document.getElementById(id);
+                if (modal) modal.style.display = 'none';
+            });
+            document.body.style.overflow = 'auto';
+        },
+
+        async handleSendOtp(e) {
+            e.preventDefault();
+
+            // Reset previous responses
+            const resetResponse = document.getElementById('resetPasswordResponse');
+            if (resetResponse) {
+                resetResponse.style.display = 'none';
+                resetResponse.className = 'form-response';
+            }
+
+            const email = document.getElementById('resetEmail')?.value.trim();
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                this.showError('Please enter a valid email address', 'resetPasswordResponse');
+                return;
+            }
+
+            this.setLoading('passwordResetRequestForm', true);
+
+            try {
+                const response = await fetch('/reset-password-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    this.showToast(data.message, 'success');
+                    this.closeAllModals();
+
+                    // Clear OTP modal before opening
+                    const otpCode = document.getElementById('resetOtpCode');
+                    if (otpCode) otpCode.value = '';
+
+                    const otpResponse = document.getElementById('resetOtpResponse');
+                    if (otpResponse) {
+                        otpResponse.style.display = 'none';
+                        otpResponse.className = 'form-response';
+                    }
+
+                    document.getElementById('otpResetEmail').value = email;
+                    document.getElementById('passwordResetOtpModal').style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                this.showError(error.message, 'resetPasswordResponse');
+            } finally {
+                this.setLoading('passwordResetRequestForm', false);
+            }
+        },
+
+        async handleVerifyOtp(e) {
+            e.preventDefault();
+
+            // Reset previous responses
+            const otpResponse = document.getElementById('resetOtpResponse');
+            if (otpResponse) {
+                otpResponse.style.display = 'none';
+                otpResponse.className = 'form-response';
+            }
+
+            const otpError = document.getElementById('resetOtpError');
+            if (otpError) otpError.style.display = 'none';
+
+            const email = document.getElementById('otpResetEmail')?.value;
+            const otp = document.getElementById('resetOtpCode')?.value.trim();
+
+            if (!otp || otp.length !== 6) {
+                this.showError('Please enter a valid 6-digit OTP', 'resetOtpResponse', 'resetOtpError');
+                return;
+            }
+
+            this.setLoading('passwordResetOtpForm', true);
+
+            try {
+                const response = await fetch('/reset-password-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    this.showToast('OTP verified!', 'success');
+                    this.closeAllModals();
+                    window.currentResetToken = data.reset_token;
+
+                    // Clear new password modal before opening
+                    const newPassword = document.getElementById('newPassword');
+                    const confirmPassword = document.getElementById('confirmNewPassword');
+                    if (newPassword) newPassword.value = '';
+                    if (confirmPassword) confirmPassword.value = '';
+
+                    const newPasswordResponse = document.getElementById('newPasswordResponse');
+                    if (newPasswordResponse) {
+                        newPasswordResponse.style.display = 'none';
+                        newPasswordResponse.className = 'form-response';
+                    }
+
+                    this.resetPasswordValidation();
+
+                    document.getElementById('resetPasswordNewModal').style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                this.showError(error.message, 'resetOtpResponse', 'resetOtpError');
+            } finally {
+                this.setLoading('passwordResetOtpForm', false);
+            }
+        },
+
+        async handleResetPassword(e) {
+            e.preventDefault();
+
+            // Reset previous response
+            const newPasswordResponse = document.getElementById('newPasswordResponse');
+            if (newPasswordResponse) {
+                newPasswordResponse.style.display = 'none';
+                newPasswordResponse.className = 'form-response';
+            }
+
+            const newPassword = document.getElementById('newPassword')?.value;
+            const confirmPassword = document.getElementById('confirmNewPassword')?.value;
+
+            if (!newPassword || newPassword.length < 8) {
+                this.showError('Password must be at least 8 characters', 'newPasswordResponse');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                this.showError('Passwords do not match', 'newPasswordResponse');
+                return;
+            }
+
+            this.setLoading('resetPasswordNewForm', true);
+
+            try {
+                const response = await fetch('/reset-password-confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reset_token: window.currentResetToken,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    this.showToast('Password reset successfully!', 'success');
+                    this.closeAllModals();
+                    this.resetAllModals(); // Reset all data after successful reset
+                    setTimeout(() => {
+                        if (typeof openLoginModal === 'function') openLoginModal();
+                    }, 1500);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                this.showError(error.message, 'newPasswordResponse');
+            } finally {
+                this.setLoading('resetPasswordNewForm', false);
+            }
+        },
+
+        async resendOtp(e) {
+            e.preventDefault();
+            const email = document.getElementById('otpResetEmail')?.value;
+            const btn = e.target;
+            const originalText = btn.innerHTML;
+
+            // Clear previous OTP input
+            const otpCode = document.getElementById('resetOtpCode');
+            if (otpCode) otpCode.value = '';
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const response = await fetch('/reset-password-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                this.showToast(data.message || 'New OTP sent', data.status === 'success' ? 'success' : 'error');
+
+                if (data.status === 'success') {
+                    // Focus on OTP input after resend
+                    setTimeout(() => {
+                        if (otpCode) otpCode.focus();
+                    }, 100);
+                }
+            } catch (error) {
+                this.showToast('Failed to resend', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                setTimeout(() => { btn.style.pointerEvents = 'auto'; }, 30000);
+            }
+        },
+
+        validatePassword() {
+            const password = document.getElementById('newPassword')?.value || '';
+            const checks = [
+                { id: 'reqLength', condition: password.length >= 8, text: 'At least 8 characters' },
+                { id: 'reqUppercase', condition: /[A-Z]/.test(password), text: 'At least one uppercase letter' },
+                { id: 'reqNumber', condition: /\d/.test(password), text: 'At least one number' },
+                { id: 'reqSpecial', condition: /[!@#$%^&*(),.?":{}|<>]/.test(password), text: 'At least one special character' }
+            ];
+            checks.forEach(check => {
+                const el = document.getElementById(check.id);
+                if (el) {
+                    el.innerHTML = (check.condition ? '✓ ' : '❌ ') + check.text;
+                    el.style.color = check.condition ? '#10b981' : '#dc3545';
+                }
+            });
+        },
+
+        setLoading(formId, loading) {
+            const btn = document.querySelector(`#${formId} button[type="submit"]`);
+            if (!btn) return;
+            const btnText = btn.querySelector('.btn-text');
+            const loadingIcon = btn.querySelector('.loading-icon');
+
+            if (loading) {
+                if (btnText) btnText.style.display = 'none';
+                if (loadingIcon) loadingIcon.style.display = 'inline-block';
+                btn.disabled = true;
+            } else {
+                if (btnText) btnText.style.display = 'inline-block';
+                if (loadingIcon) loadingIcon.style.display = 'none';
+                btn.disabled = false;
+            }
+        },
+
+        showError(message, responseId, errorId = null) {
+            const response = document.getElementById(responseId);
+            if (response) {
+                response.className = 'form-response error';
+                response.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+                response.style.display = 'block';
+                setTimeout(() => {
+                    if (response.style.display === 'block') {
+                        response.style.display = 'none';
+                    }
+                }, 5000);
+            }
+        },
+
+        showToast(message, type) {
+            if (typeof showToast === 'function') {
+                showToast(message, type);
+            } else {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        }
+    };
+
+    // Bind forgot password links
+    document.querySelectorAll('.forgot-password, a[href="/reset-password"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            PasswordResetModal.resetAllModals(); // Reset before opening
+            document.getElementById('passwordResetRequestModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    // =============================================
     // Logout Handling
     // =============================================
 
@@ -4688,6 +5147,8 @@
         // Initialize blog  system
         LightweightBlog.init();
 
+        // ADD THIS LINE - Initialize password reset modal
+        PasswordResetModal.init();
 
         // Initialize testimonial system
         if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {

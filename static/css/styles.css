@@ -4575,102 +4575,37 @@
       color: inherit;
     }
 
-    /* Reset Password OTP Page Styles */
-    .password-reset {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 2rem;
-      background-color: #f8f9fa;
+    /* Password Reset Modal */
+    #resetOtp {
+        letter-spacing: 4px;
+        font-family: monospace;
+        font-size: 18px;
+        text-align: center;
     }
 
-    .reset-card {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 2rem;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .reset-header {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .reset-header h1 {
-      font-size: 1.8rem;
-      color: #2d3748;
-      margin-bottom: 0.5rem;
-    }
-
-    .reset-header p {
-      color: #718096;
-      font-size: 0.9rem;
-    }
-
-    .reset-form {
-      margin-bottom: 1.5rem;
-    }
-
-    .reset-form .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .reset-footer {
-      text-align: center;
-      font-size: 0.9rem;
-      color: #718096;
-    }
-
-    .reset-footer a {
-      color: #4361ee;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .reset-footer a:hover {
-      text-decoration: underline;
-    }
-
-    /* Password Requirements */
     .password-requirements {
-      margin-top: 10px;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 5px;
-      font-size: 0.85rem;
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 6px;
     }
 
-    .password-requirements .requirements-title {
-      font-weight: 600;
-      margin-bottom: 5px;
+    .requirement.valid {
+        color: #10b981;
     }
 
-    .password-requirements .requirements-list {
-      list-style: none;
-      padding-left: 0;
-      margin: 0;
+    .requirement.valid:before {
+        content: "✓ ";
+        color: #10b981;
     }
 
-    .password-requirements .requirement {
-      color: #6c757d;
-      position: relative;
-      padding-left: 20px;
-      margin-bottom: 5px;
+    .requirement:before {
+        content: "✗ ";
+        color: #dc3545;
     }
 
-    .password-requirements .requirement:before {
-      content: "✗";
-      position: absolute;
-      left: 0;
-      color: #dc3545;
-    }
-
-    .password-requirements .requirement.valid:before {
-      content: "✓";
-      color: #28a745;
+    .dark-mode .password-requirements {
+        background: rgba(255,255,255,0.1);
     }
 
     .shake-animation {
