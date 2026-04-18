@@ -4367,47 +4367,6 @@ def get_application_link(content_type, content_id):
         return jsonify({'error': 'Failed to get application link'}), 500
 
 
-# Share Route
-@app.route('/share/<content_type>/<content_id>')
-def share_content(content_type, content_id):
-    try:
-        table_map = {
-            'course': ('courses', 'title', 'description', 'application_link'),
-            'job': ('jobs', 'title', 'company', 'application_link'),
-            'internship': ('internships', 'title', 'company', 'application_link'),
-            'blog': ('blog_posts', 'title', 'description', 'application_link')
-        }
-
-        if content_type not in table_map:
-            return jsonify({'error': 'Invalid content type'}), 400
-
-        table, title_field, desc_field, link_field = table_map[content_type]
-
-        content = supabase.table(table).select(f'id, {title_field}, {desc_field}, {link_field}') \
-            .eq('id', content_id).single().execute().data
-
-        if not content:
-            return jsonify({'error': 'Content not found'}), 404
-
-        # Use application_link as the primary share URL
-        share_url = content.get(link_field) or request.host_url.rstrip('/') + url_for('index')
-
-        # Return JSON data for the modal
-        return jsonify({
-            'success': True,
-            'content_type': content_type,
-            'content_id': content_id,
-            'title': content[title_field],
-            'description': content.get(desc_field, ''),
-            'share_url': share_url,
-            'direct_link': share_url  # This is the application link
-        })
-
-    except Exception as e:
-        logger.error(f"Share error: {str(e)}")
-        return jsonify({'error': 'Failed to generate share data'}), 500
-
-
 # Contact and newsletter subscribe routes
 @app.route('/api/contact', methods=['POST'])
 def contact():

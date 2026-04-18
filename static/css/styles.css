@@ -7191,7 +7191,6 @@
        ========================== */
 
     #testimonialModal,
-    #deleteConfirmModal {
       position: fixed;
       top: 0;
       left: 0;
@@ -7206,7 +7205,6 @@
     }
 
     #testimonialModal .modal-overlay,
-    #deleteConfirmModal .modal-overlay {
       position: absolute;
       top: 0;
       left: 0;
@@ -7218,7 +7216,6 @@
     }
 
     #testimonialModal .modal-content,
-    #deleteConfirmModal .modal-content {
       position: relative;
       z-index: 10;
       width: 94%;
@@ -7237,7 +7234,6 @@
     }
 
     .dark-mode #testimonialModal .modal-content,
-    .dark-mode #deleteConfirmModal .modal-content {
       background: #1f1b2e;
       color: #fff;
     }
@@ -7286,6 +7282,261 @@
     .dark-mode #deleteConfirmModal .close-btn {
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
+    }
+
+    /* Delete Confirmation Modal */
+    #deleteConfirmModal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 1rem;
+    }
+
+    #deleteConfirmModal .modal-content {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        position: relative;
+        animation: modalSlideUp 0.3s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* Top colored bar */
+    #deleteConfirmModal .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #f72585, #4361ee, #4cc9f0);
+        border-radius: 20px 20px 0 0;
+    }
+
+    /* Dark mode */
+    .dark-mode #deleteConfirmModal .modal-content {
+        background: linear-gradient(135deg, #1e1e2a 0%, #2d2d35 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Close button */
+    #deleteConfirmModal .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.1);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        color: #666;
+        z-index: 10;
+    }
+
+    #deleteConfirmModal .close-btn:hover {
+        background: rgba(0, 0, 0, 0.2);
+        transform: rotate(90deg);
+    }
+
+    .dark-mode #deleteConfirmModal .close-btn {
+        color: #a1a1aa;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode #deleteConfirmModal .close-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Icon */
+    #deleteConfirmModal .confirm-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ff6b9d 0%, #f72585 100%);
+        color: white;
+        box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+    }
+
+    #deleteConfirmModal .confirm-icon i {
+        color: white;
+    }
+
+    /* Title */
+    #deleteConfirmModal .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #2d3748;
+        line-height: 1.3;
+    }
+
+    .dark-mode #deleteConfirmModal .modal-title {
+        color: #f7fafc;
+    }
+
+    /* Message */
+    #deleteConfirmModal .modal-message {
+        color: #718096;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        font-size: 1rem;
+    }
+
+    .dark-mode #deleteConfirmModal .modal-message {
+        color: #cbd5e0;
+    }
+
+    /* Action buttons container */
+    #deleteConfirmModal .modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Base button styles */
+    #deleteConfirmModal .modal-btn {
+        padding: 0.875rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Shine effect */
+    #deleteConfirmModal .modal-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.6s;
+    }
+
+    #deleteConfirmModal .modal-btn:hover::before {
+        left: 100%;
+    }
+
+    /* Cancel button */
+    #deleteConfirmModal .modal-btn-cancel {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #64748b;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+    }
+
+    #deleteConfirmModal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        color: #475569;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(100, 116, 139, 0.15);
+    }
+
+    .dark-mode #deleteConfirmModal .modal-btn-cancel {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        color: #d1d5db;
+        border: 2px solid #4b5563;
+    }
+
+    .dark-mode #deleteConfirmModal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+        color: #f3f4f6;
+    }
+
+    /* Confirm/Delete button */
+    #deleteConfirmModal .modal-btn-confirm {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        border: 2px solid transparent;
+    }
+
+    #deleteConfirmModal .modal-btn-confirm:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Loading spinner inside button */
+    #deleteConfirmModal .loading-spinner {
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    #deleteConfirmModal .loading-spinner i {
+        animation: fa-spin 1s infinite linear;
+    }
+
+    @keyframes fa-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        #deleteConfirmModal .modal-content {
+            padding: 1.5rem;
+            width: 85%;
+        }
+
+        #deleteConfirmModal .modal-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        #deleteConfirmModal .modal-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        #deleteConfirmModal .modal-title {
+            font-size: 1.3rem;
+        }
+
+        #deleteConfirmModal .modal-message {
+            font-size: 0.9rem;
+        }
+
+        #deleteConfirmModal .confirm-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+        }
     }
 
     /* Form styles */
@@ -7399,7 +7650,7 @@
       transition: all 0.2s ease;
       padding: 0;
       line-height: 1;
-      margin-top: 5px;
+      margin-top: 20px;
       transition: transform 0.1s ease, color 0.1s ease;
       will-change: transform;
     }
@@ -8467,42 +8718,425 @@
       border: 1px solid #ef4444;
     }
 
-    /* Delete confirmation specific styles */
-    #deleteConfirmModal .confirm-icon {
-      text-align: center;
-      margin-bottom: 20px;
+    /* =============================================
+       ENHANCED CONFIRMATION MODAL STYLES
+       For Logout Modal & Delete Confirmation Modal
+       ============================================= */
+
+    /* Enhanced modal content with gradient */
+    .confirmation-modal .modal-content {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
-    #deleteConfirmModal .confirm-icon i {
-      font-size: 3rem;
-      color: #ef4444;
+    .confirmation-modal .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #f72585, #4361ee, #4cc9f0);
     }
 
-    #deleteConfirmModal p {
-      text-align: center;
-      margin-bottom: 25px;
-      line-height: 1.5;
+    .dark-mode .confirmation-modal .modal-content {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     }
 
-    #deleteConfirmModal .form-actions {
-      justify-content: center;
+    /* Enhanced modal icon */
+    .confirmation-modal .modal-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ff6b9d 0%, #f72585 100%);
+        color: white;
+        box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
     }
 
-    #deleteConfirmModal .btn-danger {
-      background: linear-gradient(90deg, #ef4444, #dc2626);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
+    /* Enhanced buttons with shine effect */
+    .confirmation-modal .modal-btn {
+        padding: 0.875rem 2rem;
+        border-radius: 12px;
+        font-size: 1rem;
+        position: relative;
+        overflow: hidden;
     }
 
-    #deleteConfirmModal .btn-danger:hover {
-      background: linear-gradient(90deg, #dc2626, #b91c1c);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    .confirmation-modal .modal-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.6s;
+    }
+
+    .confirmation-modal .modal-btn:hover::before {
+        left: 100%;
+    }
+
+    /* Cancel button */
+    .confirmation-modal .modal-btn-cancel {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #64748b;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+    }
+
+    .confirmation-modal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        color: #475569;
+        transform: translateY(-2px);
+    }
+
+    .dark-mode .confirmation-modal .modal-btn-cancel {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        color: #d1d5db;
+        border: 2px solid #4b5563;
+    }
+
+    .dark-mode .confirmation-modal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+        color: #f3f4f6;
+    }
+
+    /* Confirm button */
+    .confirmation-modal .modal-btn-confirm {
+        background: linear-gradient(135deg, #f72585 0%, #b5179e 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(247, 37, 133, 0.3);
+        border: 2px solid transparent;
+    }
+
+    .confirmation-modal .modal-btn-confirm:hover {
+        background: linear-gradient(135deg, #e11575 0%, #9c1485 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(247, 37, 133, 0.4);
+    }
+
+    /* Close button for confirmation modal */
+    .confirmation-modal .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.1);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        color: #666;
+        z-index: 10;
+    }
+
+    .confirmation-modal .close-modal:hover {
+        background: rgba(0, 0, 0, 0.2);
+        transform: rotate(90deg);
+    }
+
+    .dark-mode .confirmation-modal .close-modal {
+        color: #a1a1aa;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode .confirmation-modal .close-modal:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Logout Modal Specific Styles */
+    #logoutModal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 1rem;
+    }
+
+    #logoutModal .modal-content {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        padding: 2rem 2rem;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        position: relative;
+        animation: modalSlideUp 0.3s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* Top colored bar */
+    #logoutModal .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #f72585, #4361ee, #4cc9f0);
+        border-radius: 20px 20px 0 0;
+    }
+
+    /* Dark mode */
+    .dark-mode #logoutModal .modal-content {
+        background: linear-gradient(135deg, #1e1e2a 0%, #2d2d35 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Close button */
+    #logoutModal .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.1);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        color: #666;
+        z-index: 10;
+    }
+
+    #logoutModal .close-modal:hover {
+        background: rgba(0, 0, 0, 0.2);
+        transform: rotate(90deg);
+    }
+
+    .dark-mode #logoutModal .close-modal {
+        color: #a1a1aa;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode #logoutModal .close-modal:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Modal icon */
+    #logoutModal .modal-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #ff6b9d 0%, #f72585 100%);
+        color: white;
+        box-shadow: 0 8px 25px rgba(247, 37, 133, 0.3);
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+    }
+
+    /* Title */
+    #logoutModal .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #2d3748;
+        line-height: 1.3;
+    }
+
+    .dark-mode #logoutModal .modal-title {
+        color: #f7fafc;
+    }
+
+    /* Message */
+    #logoutModal .modal-message {
+        color: #718096;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        font-size: 1rem;
+    }
+
+    .dark-mode #logoutModal .modal-message {
+        color: #cbd5e0;
+    }
+
+    /* Action buttons container */
+    #logoutModal .modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Base button styles */
+    #logoutModal .modal-btn {
+        padding: 0.875rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Shine effect on buttons */
+    #logoutModal .modal-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.6s;
+    }
+
+    #logoutModal .modal-btn:hover::before {
+        left: 100%;
+    }
+
+    /* Cancel button */
+    #logoutModal .modal-btn-cancel {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #64748b;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+    }
+
+    #logoutModal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        color: #475569;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(100, 116, 139, 0.15);
+    }
+
+    .dark-mode #logoutModal .modal-btn-cancel {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+        color: #d1d5db;
+        border: 2px solid #4b5563;
+    }
+
+    .dark-mode #logoutModal .modal-btn-cancel:hover {
+        background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+        color: #f3f4f6;
+    }
+
+    /* Confirm/Logout button */
+    #logoutModal .modal-btn-confirm {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        border: 2px solid transparent;
+    }
+
+    #logoutModal .modal-btn-confirm:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Animation */
+    @keyframes modalSlideUp {
+        0% {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        #logoutModal .modal-content {
+            padding: 1.5rem;
+            width: 85%;
+        }
+
+        #logoutModal .modal-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        #logoutModal .modal-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        #logoutModal .modal-title {
+            font-size: 1.3rem;
+        }
+
+        #logoutModal .modal-message {
+            font-size: 0.9rem;
+        }
+
+        #logoutModal .modal-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+        }
+    }
+
+    /* Responsive styles for confirmation modals */
+    @media (max-width: 480px) {
+        .confirmation-modal .modal-content {
+            padding: 1.5rem;
+            width: 85%;
+        }
+
+        .confirmation-modal .modal-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .confirmation-modal .modal-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .confirmation-modal .modal-title {
+            font-size: 1.3rem;
+        }
+
+        .confirmation-modal .modal-message {
+            font-size: 0.9rem;
+            padding: 0;
+        }
+
+        .confirmation-modal .modal-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+        }
     }
 
     /* Contact Section */

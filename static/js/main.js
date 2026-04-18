@@ -2888,14 +2888,30 @@
         },
 
         setupModalEvents() {
+            // Testimonial modal close button
             const testimonialModalClose = document.querySelector('#testimonialModal .close-btn');
             if (testimonialModalClose) {
                 testimonialModalClose.addEventListener('click', () => this.closeModal());
             }
 
+            // Delete modal close button - UPDATED for your new modal
             const deleteModalClose = document.querySelector('#deleteConfirmModal .close-btn');
             if (deleteModalClose) {
-                deleteModalClose.addEventListener('click', () => this.closeDeleteModal());
+                // Remove old listener and add new one
+                const newCloseBtn = deleteModalClose.cloneNode(true);
+                deleteModalClose.parentNode.replaceChild(newCloseBtn, deleteModalClose);
+                newCloseBtn.addEventListener('click', () => this.closeDeleteModal());
+            }
+
+            // Cancel button for delete modal - UPDATED
+            const cancelDeleteBtn = document.querySelector('#deleteConfirmModal .btn-secondary');
+            console.log('Cancel button found:', cancelDeleteBtn); // Debug line
+            if (cancelDeleteBtn) {
+                const newCancelBtn = cancelDeleteBtn.cloneNode(true);
+                cancelDeleteBtn.parentNode.replaceChild(newCancelBtn, cancelDeleteBtn);
+                newCancelBtn.addEventListener('click', () => {
+                    this.closeDeleteModal();
+                });
             }
 
             const detailModalClose = document.getElementById('detailModalClose');
@@ -2906,19 +2922,36 @@
                 });
             }
 
-            const cancelBtns = document.querySelectorAll('#testimonialForm .btn-secondary, #deleteConfirmModal .btn-secondary');
+            // Cancel buttons for testimonial form
+            const cancelBtns = document.querySelectorAll('#testimonialForm .btn-secondary');
             cancelBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     this.closeModal();
-                    this.closeDeleteModal();
                 });
             });
 
             const form = document.getElementById('testimonialForm');
             if (form) form.addEventListener('submit', (e) => this.handleSubmit(e));
 
+            // Confirm delete button - UPDATED for your new modal
             const deleteBtn = document.getElementById('confirmDeleteBtn');
-            if (deleteBtn) deleteBtn.addEventListener('click', () => this.confirmDelete());
+            if (deleteBtn) {
+                // Remove old listener and add new one
+                const newDeleteBtn = deleteBtn.cloneNode(true);
+                deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+                newDeleteBtn.addEventListener('click', () => this.confirmDelete());
+            }
+
+            // Also handle overlay click for delete modal
+            const deleteModal = document.getElementById('deleteConfirmModal');
+            if (deleteModal) {
+                const overlay = deleteModal.querySelector('.modal-overlay');
+                if (overlay) {
+                    const newOverlay = overlay.cloneNode(true);
+                    overlay.parentNode.replaceChild(newOverlay, overlay);
+                    newOverlay.addEventListener('click', () => this.closeDeleteModal());
+                }
+            }
         },
 
         async loadTestimonials() {
@@ -3523,7 +3556,7 @@
             const btnText = deleteBtn.querySelector('.btn-text');
             const spinner = deleteBtn.querySelector('.loading-spinner');
 
-            btnText.style.display = 'none';
+            if (btnText) btnText.style.display = 'none';
             if (spinner) spinner.style.display = 'inline-block';
             deleteBtn.disabled = true;
 
@@ -3540,16 +3573,17 @@
                 if (data.success) {
                     this.closeDeleteModal();
                     if (typeof showToast === 'function') {
-                        showToast('Testimonial deleted', 'success');
+                        showToast('Testimonial deleted successfully', 'success');
                     }
-                    this.loadTestimonials();
+                    this.loadTestimonials(); // Refresh the list
                 }
             } catch (error) {
+                console.error('Delete error:', error);
                 if (typeof showToast === 'function') {
-                    showToast(error.message, 'error');
+                    showToast(error.message || 'Failed to delete testimonial', 'error');
                 }
             } finally {
-                btnText.style.display = 'inline-block';
+                if (btnText) btnText.style.display = 'inline-block';
                 if (spinner) spinner.style.display = 'none';
                 deleteBtn.disabled = false;
                 this.testimonialToDelete = null;
@@ -3607,9 +3641,11 @@
 
         closeDeleteModal() {
             const modal = document.getElementById('deleteConfirmModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
             this.testimonialToDelete = null;
-            document.body.style.overflow = 'auto';
         },
 
         closeDetailModal() {

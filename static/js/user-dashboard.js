@@ -68,172 +68,172 @@
     // ======================
 
     const LoaderManager = {
-    config: {
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        spinnerColor: '#ffffff',
-        textColor: '#ffffff',
-        blurEffect: '5px',
-        animationDuration: '0.3s'
-    },
+        config: {
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            spinnerColor: '#ffffff',
+            textColor: '#ffffff',
+            blurEffect: '5px',
+            animationDuration: '0.3s'
+        },
 
-    activeLoaders: 0,
+        activeLoaders: 0,
 
-    show: function(message = 'Loading...', options = {}) {
-        this.activeLoaders++;
+        show: function(message = 'Loading...', options = {}) {
+            this.activeLoaders++;
 
-        let overlay = document.getElementById('universalLoadingOverlay');
+            let overlay = document.getElementById('universalLoadingOverlay');
 
-        if (!overlay) {
-            overlay = this.createLoader();
-        }
-
-        if (message) {
-            const messageElement = overlay.querySelector('.loading-message');
-            if (messageElement) {
-                messageElement.textContent = message;
+            if (!overlay) {
+                overlay = this.createLoader();
             }
-        }
 
-        this.applyOptions(overlay, options);
+            if (message) {
+                const messageElement = overlay.querySelector('.loading-message');
+                if (messageElement) {
+                    messageElement.textContent = message;
+                }
+            }
 
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+            this.applyOptions(overlay, options);
 
-        console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
 
-        return overlay;
-    },
+            console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
 
-    hide: function(force = false) {
-        if (force) {
+            return overlay;
+        },
+
+        hide: function(force = false) {
+            if (force) {
+                this.activeLoaders = 0;
+            } else {
+                this.activeLoaders = Math.max(0, this.activeLoaders - 1);
+            }
+
+            if (this.activeLoaders <= 0) {
+                const overlay = document.getElementById('universalLoadingOverlay');
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    overlay.style.transition = `opacity ${this.config.animationDuration} ease`;
+
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        overlay.style.opacity = '1';
+                        document.body.style.overflow = '';
+                        console.log('✅ All loaders hidden');
+                    }, 300);
+                }
+                this.activeLoaders = 0;
+            } else {
+                console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
+            }
+        },
+
+        createLoader: function() {
+            const overlay = document.createElement('div');
+            overlay.id = 'universalLoadingOverlay';
+            overlay.className = 'universal-loading-overlay';
+
+            overlay.innerHTML = `
+                <div class="universal-loading-content">
+                    <div class="universal-spinner"></div>
+                    <p class="loading-message">Loading...</p>
+                </div>
+            `;
+
+            this.applyStyles(overlay);
+            document.body.appendChild(overlay);
+
+            return overlay;
+        },
+
+        applyStyles: function(overlay) {
+            Object.assign(overlay.style, {
+                display: 'none',
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                backgroundColor: this.config.backgroundColor,
+                zIndex: this.config.zIndex,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backdropFilter: `blur(${this.config.blurEffect})`,
+                transition: `opacity ${this.config.animationDuration} ease`
+            });
+
+            const content = overlay.querySelector('.universal-loading-content');
+            if (content) {
+                Object.assign(content.style, {
+                    textAlign: 'center',
+                    color: this.config.textColor,
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    padding: '30px 40px',
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                });
+            }
+
+            const spinner = overlay.querySelector('.universal-spinner');
+            if (spinner) {
+                Object.assign(spinner.style, {
+                    width: '50px',
+                    height: '50px',
+                    border: `4px solid rgba(255, 255, 255, 0.3)`,
+                    borderTop: `4px solid ${this.config.spinnerColor}`,
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    margin: '0 auto 20px',
+                    display: 'block'
+                });
+            }
+
+            const message = overlay.querySelector('.loading-message');
+            if (message) {
+                Object.assign(message.style, {
+                    margin: '0',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: this.config.textColor
+                });
+            }
+        },
+
+        applyOptions: function(overlay, options) {
+            if (options.backgroundColor) {
+                overlay.style.backgroundColor = options.backgroundColor;
+            }
+
+            if (options.zIndex) {
+                overlay.style.zIndex = options.zIndex;
+            }
+
+            if (options.message) {
+                const messageElement = overlay.querySelector('.loading-message');
+                if (messageElement) {
+                    messageElement.textContent = options.message;
+                }
+            }
+        },
+
+        reset: function() {
             this.activeLoaders = 0;
-        } else {
-            this.activeLoaders = Math.max(0, this.activeLoaders - 1);
+            this.hide(true);
+            console.log('🔄 All loaders reset');
+        },
+
+        getStatus: function() {
+            return {
+                active: this.activeLoaders > 0,
+                count: this.activeLoaders,
+                visible: document.getElementById('universalLoadingOverlay')?.style.display === 'flex'
+            };
         }
-
-        if (this.activeLoaders <= 0) {
-            const overlay = document.getElementById('universalLoadingOverlay');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                overlay.style.transition = `opacity ${this.config.animationDuration} ease`;
-
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    overlay.style.opacity = '1';
-                    document.body.style.overflow = '';
-                    console.log('✅ All loaders hidden');
-                }, 300);
-            }
-            this.activeLoaders = 0;
-        } else {
-            console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
-        }
-    },
-
-    createLoader: function() {
-        const overlay = document.createElement('div');
-        overlay.id = 'universalLoadingOverlay';
-        overlay.className = 'universal-loading-overlay';
-
-        overlay.innerHTML = `
-            <div class="universal-loading-content">
-                <div class="universal-spinner"></div>
-                <p class="loading-message">Loading...</p>
-            </div>
-        `;
-
-        this.applyStyles(overlay);
-        document.body.appendChild(overlay);
-
-        return overlay;
-    },
-
-    applyStyles: function(overlay) {
-        Object.assign(overlay.style, {
-            display: 'none',
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            backgroundColor: this.config.backgroundColor,
-            zIndex: this.config.zIndex,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backdropFilter: `blur(${this.config.blurEffect})`,
-            transition: `opacity ${this.config.animationDuration} ease`
-        });
-
-        const content = overlay.querySelector('.universal-loading-content');
-        if (content) {
-            Object.assign(content.style, {
-                textAlign: 'center',
-                color: this.config.textColor,
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '30px 40px',
-                borderRadius: '12px',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)'
-            });
-        }
-
-        const spinner = overlay.querySelector('.universal-spinner');
-        if (spinner) {
-            Object.assign(spinner.style, {
-                width: '50px',
-                height: '50px',
-                border: `4px solid rgba(255, 255, 255, 0.3)`,
-                borderTop: `4px solid ${this.config.spinnerColor}`,
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 20px',
-                display: 'block'
-            });
-        }
-
-        const message = overlay.querySelector('.loading-message');
-        if (message) {
-            Object.assign(message.style, {
-                margin: '0',
-                fontSize: '16px',
-                fontWeight: '500',
-                color: this.config.textColor
-            });
-        }
-    },
-
-    applyOptions: function(overlay, options) {
-        if (options.backgroundColor) {
-            overlay.style.backgroundColor = options.backgroundColor;
-        }
-
-        if (options.zIndex) {
-            overlay.style.zIndex = options.zIndex;
-        }
-
-        if (options.message) {
-            const messageElement = overlay.querySelector('.loading-message');
-            if (messageElement) {
-                messageElement.textContent = options.message;
-            }
-        }
-    },
-
-    reset: function() {
-        this.activeLoaders = 0;
-        this.hide(true);
-        console.log('🔄 All loaders reset');
-    },
-
-    getStatus: function() {
-        return {
-            active: this.activeLoaders > 0,
-            count: this.activeLoaders,
-            visible: document.getElementById('universalLoadingOverlay')?.style.display === 'flex'
-        };
-    }
-};
+    };
 
     // ======================
     // CONVENIENCE FUNCTIONS
@@ -299,6 +299,7 @@
     setupBlogReading();
     setupTestimonials();
     setupLogout();
+    handleTestimonialAddButton();
 
     // Initialize dynamic button layout AFTER everything else
     setupDynamicButtonLayout();
@@ -500,28 +501,6 @@
 
             const contentExists = hasContent();
 
-            if (!contentExists) {
-                if (tabId === 'testimonials') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
-
-                    // Direct click handler
-                    browseBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        // Set the flag
-                        localStorage.setItem('dashboardTestimonialAction', 'scroll-and-open');
-
-                        // Navigate
-                        window.location.href = '/#testimonials-section';
-                    };
-
-                    if (browseBtn.tagName === 'A') {
-                        browseBtn.href = '#';
-                    }
-                }
-            }
-
             // Update dashboard card class
             dashboardCard.classList.toggle('empty-state', !contentExists);
 
@@ -529,6 +508,14 @@
             if (!contentExists) {
                 if (tabId === 'testimonials') {
                     browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
+
+                    // Direct click handler - Open modal
+                    browseBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openTestimonialShareModal();
+                    };
+
                 } else if (tabId === 'courses') {
                     browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Courses';
                 } else if (tabId === 'jobs') {
@@ -549,6 +536,12 @@
                 // Restore original button text
                 if (tabId === 'testimonials') {
                     browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add New Testimonial';
+                    browseBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openTestimonialShareModal();
+                    };
+
                 } else if (tabId === 'courses') {
                     browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Courses';
                 } else if (tabId === 'jobs') {
@@ -918,44 +911,50 @@
     }
 
     function showRemoveConfirmationModal(itemId, itemType, bookmarkItem) {
-        let modal = document.getElementById('removeBookmarkModal');
+        const modal = document.getElementById('removeBookmarkModal');
         if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'removeBookmarkModal';
-            modal.className = 'confirmation-modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-icon">
-                        <i class="fas fa-trash-alt"></i>
-                    </div>
-                    <h3 class="modal-title">Remove Bookmark</h3>
-                    <p class="modal-message">Are you sure you want to remove this bookmark? This action cannot be undone.</p>
-                    <div class="modal-actions">
-                        <button class="modal-btn modal-btn-cancel" id="cancelRemove">
-                            <i class="fas fa-times"></i>
-                            Cancel
-                        </button>
-                        <button class="modal-btn modal-btn-confirm" id="confirmRemove">
-                            <i class="fas fa-check"></i>
-                            Remove
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
+            console.error('Remove bookmark modal not found');
+            return;
         }
 
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
 
-        const cancelBtn = document.getElementById('cancelRemove');
-        const confirmBtn = document.getElementById('confirmRemove');
+        // Store data on modal
+        modal.dataset.itemId = itemId;
+        modal.dataset.itemType = itemType;
+        modal.dataset.bookmarkItemId = bookmarkItem?.id || '';
+
+        // Get buttons - use the correct IDs from the modal in user-dashboard.html
+        const cancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
+        const closeBtn = document.getElementById('closeRemoveBookmarkModal');
+        const confirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
+
+        if (!cancelBtn || !closeBtn || !confirmBtn) {
+            console.error('Modal buttons not found');
+            return;
+        }
+
+        // Remove existing listeners by cloning
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newCloseBtn = closeBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        // Get fresh references
+        const freshCancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
+        const freshCloseBtn = document.getElementById('closeRemoveBookmarkModal');
+        const freshConfirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
 
         const cleanup = () => {
             modal.style.display = 'none';
             document.body.style.overflow = '';
-            cancelBtn.removeEventListener('click', cancelHandler);
-            confirmBtn.removeEventListener('click', confirmHandler);
+            delete modal.dataset.itemId;
+            delete modal.dataset.itemType;
+            delete modal.dataset.bookmarkItemId;
         };
 
         const cancelHandler = () => {
@@ -963,14 +962,19 @@
         };
 
         const confirmHandler = async () => {
+            const id = modal.dataset.itemId;
+            const type = modal.dataset.itemType;
+            const itemElement = bookmarkItem || document.getElementById(modal.dataset.bookmarkItemId);
             cleanup();
-            await removeBookmark(itemId, itemType, bookmarkItem);
+            await removeBookmark(id, type, itemElement);
         };
 
-        cancelBtn.addEventListener('click', cancelHandler);
-        confirmBtn.addEventListener('click', confirmHandler);
+        freshCancelBtn.addEventListener('click', cancelHandler);
+        freshCloseBtn.addEventListener('click', cancelHandler);
+        freshConfirmBtn.addEventListener('click', confirmHandler);
 
-        modal.addEventListener('click', (e) => {
+        // Close when clicking outside
+        modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 cleanup();
             }
@@ -981,11 +985,11 @@
         try {
             showLoader('Removing bookmark...');
 
-            const btn = bookmarkItem.querySelector('.remove-bookmark');
+            const btn = bookmarkItem?.querySelector('.remove-bookmark');
             if (btn) btn.disabled = true;
 
             // Add removal animation class
-            bookmarkItem.classList.add('bookmark-removing');
+            if (bookmarkItem) bookmarkItem.classList.add('bookmark-removing');
 
             // Get current tab ID BEFORE removal
             const currentTabId = getCurrentTabId();
@@ -1013,10 +1017,10 @@
             // Wait for animation to complete
             setTimeout(() => {
                 // Remove the item from DOM
-                bookmarkItem.remove();
+                if (bookmarkItem) bookmarkItem.remove();
 
                 // Force a DOM update
-                void bookmarkItem.offsetHeight;
+                refreshCurrentTab();
 
                 // Get all remaining items in this tab
                 const tabContent = document.getElementById(currentTabId);
@@ -1060,14 +1064,14 @@
                     }, 50);
                 }
 
-                showToast('Bookmark removed successfully', 'success');
+                updateDashboardUI('remove', 'bookmark', { id: itemId, itemType: itemType });
 
             }, 700);
 
         } catch (error) {
             console.error('Remove bookmark error:', error);
-            bookmarkItem.classList.remove('bookmark-removing');
-            const btn = bookmarkItem.querySelector('.remove-bookmark');
+            if (bookmarkItem) bookmarkItem.classList.remove('bookmark-removing');
+            const btn = bookmarkItem?.querySelector('.remove-bookmark');
             if (btn) btn.disabled = false;
             showToast(error.message || 'Failed to remove bookmark', 'error');
         } finally {
@@ -1138,7 +1142,252 @@
     }
 
     // ======================
-    // Blog Reading Functionality
+    // COURSE MODAL FUNCTIONS
+    // ======================
+
+    function setupCourseView() {
+        document.addEventListener('click', function(e) {
+            const viewBtn = e.target.closest('.view-content-btn');
+            if (viewBtn && viewBtn.dataset.type === 'course') {
+                e.preventDefault();
+                e.stopPropagation();
+                const courseId = viewBtn.dataset.id;
+                openCourseModal(courseId);
+            }
+        });
+    }
+
+    async function openCourseModal(courseId) {
+        return withLoader(
+            (async () => {
+                const response = await fetch(`/api/course/${courseId}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Course not found');
+
+                showCourseModal(data.course);
+                trackCourseView(courseId);
+                return data.course;
+            })(),
+            'Loading course details...',
+            null,
+            'Failed to load course details'
+        );
+    }
+
+    function showCourseModal(course) {
+        const modal = document.getElementById('horizontalCourseModal');
+        if (!modal) return;
+
+        // Update modal content
+        document.getElementById('horizontalModalCourseTitle').textContent = course.title || 'Course Title';
+        document.getElementById('horizontalModalCourseProvider').textContent = course.company || course.provider || 'Unknown Provider';
+        document.getElementById('horizontalModalCourseCategory').textContent = course.category || 'Course';
+        document.getElementById('horizontalModalCourseDescription').innerHTML = course.description || 'No description available.';
+
+        // Price
+        const priceElement = document.getElementById('horizontalModalCoursePrice');
+        if (priceElement) {
+            priceElement.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
+        }
+
+        // Level
+        const levelElement = document.getElementById('horizontalModalCourseLevel');
+        if (levelElement) {
+            levelElement.textContent = course.level || 'All Levels';
+        }
+
+        // Duration
+        const durationElement = document.getElementById('horizontalModalCourseDuration');
+        if (durationElement) {
+            durationElement.textContent = course.duration || 'Self-paced';
+        }
+
+        // Language
+        const languageElement = document.getElementById('horizontalModalCourseLanguage');
+        if (languageElement) {
+            languageElement.textContent = course.language || 'English';
+        }
+
+        // Views
+        const viewsElement = document.getElementById('horizontalModalViews');
+        if (viewsElement) {
+            viewsElement.textContent = course.views || 0;
+        }
+
+        // Instructor
+        const instructorElement = document.getElementById('horizontalModalInstructor');
+        if (instructorElement && course.instructor) {
+            document.getElementById('horizontalInstructorSection').style.display = 'block';
+            instructorElement.textContent = course.instructor;
+        } else if (document.getElementById('horizontalInstructorSection')) {
+            document.getElementById('horizontalInstructorSection').style.display = 'none';
+        }
+
+        // Curriculum
+        if (course.curriculum && course.curriculum.length > 0) {
+            const curriculumList = document.getElementById('horizontalModalCurriculum');
+            if (curriculumList) {
+                curriculumList.innerHTML = course.curriculum.map(item => `<li><i class="fas fa-check"></i> ${item}</li>`).join('');
+                document.getElementById('horizontalCurriculumSection').style.display = 'block';
+            }
+        } else if (document.getElementById('horizontalCurriculumSection')) {
+            document.getElementById('horizontalCurriculumSection').style.display = 'none';
+        }
+
+        // Image
+        const imageElement = document.getElementById('horizontalModalCourseImage');
+        const placeholderElement = document.querySelector('.horizontal-image-placeholder');
+        if (course.image && course.image !== 'None') {
+            imageElement.src = course.image;
+            imageElement.style.display = 'block';
+            if (placeholderElement) placeholderElement.style.display = 'none';
+        } else if (course.company_logo && course.company_logo !== 'None') {
+            imageElement.src = course.company_logo;
+            imageElement.style.display = 'block';
+            if (placeholderElement) placeholderElement.style.display = 'none';
+        } else if (course.thumbnail && course.thumbnail !== 'None') {
+            imageElement.src = course.thumbnail;
+            imageElement.style.display = 'block';
+            if (placeholderElement) placeholderElement.style.display = 'none';
+        } else {
+            imageElement.style.display = 'none';
+            if (placeholderElement) placeholderElement.style.display = 'flex';
+        }
+
+        // Mobile info updates
+        const mobilePrice = document.getElementById('mobileCoursePrice');
+        if (mobilePrice) mobilePrice.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
+
+        const mobileLevel = document.getElementById('mobileCourseLevel');
+        if (mobileLevel) mobileLevel.textContent = course.level || 'All Levels';
+
+        const mobileDuration = document.getElementById('mobileCourseDuration');
+        if (mobileDuration) mobileDuration.textContent = course.duration || 'Self-paced';
+
+        const mobileLanguage = document.getElementById('mobileCourseLanguage');
+        if (mobileLanguage) mobileLanguage.textContent = course.language || 'English';
+
+        const mobileViews = document.getElementById('mobileViews');
+        if (mobileViews) mobileViews.textContent = course.views || 0;
+
+        // Setup bookmark button
+        const bookmarkBtn = document.getElementById('horizontalModalBookmarkBtn');
+        if (bookmarkBtn) {
+            bookmarkBtn.dataset.id = course.id;
+            bookmarkBtn.dataset.type = 'course';
+            const isBookmarked = course.is_bookmarked || false;
+            const bookmarkIcon = bookmarkBtn.querySelector('i');
+            const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
+            if (isBookmarked) {
+                bookmarkIcon.className = 'fas fa-bookmark';
+                bookmarkText.textContent = 'Bookmarked';
+            } else {
+                bookmarkIcon.className = 'far fa-bookmark';
+                bookmarkText.textContent = 'Bookmark';
+            }
+
+            // Remove old event listener and add new one
+            const newBookmarkBtn = bookmarkBtn.cloneNode(true);
+            bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
+            newBookmarkBtn.addEventListener('click', () => handleCourseBookmark(course.id, newBookmarkBtn));
+        }
+
+        // Setup apply/enroll button
+        const applyBtn = document.getElementById('horizontalModalApplyBtn');
+        if (applyBtn) {
+            const newApplyBtn = applyBtn.cloneNode(true);
+            applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+            newApplyBtn.addEventListener('click', async () => {
+                try {
+                    showLoader('Getting enrollment link...');
+
+                    const response = await fetch(`/get-application-link/course/${course.id}`, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+
+                    const data = await response.json();
+
+                    // Check for application_link from database
+                    let link = null;
+                    if (data.application_link) {
+                        link = data.application_link;
+                    } else if (data.link) {
+                        link = data.link;
+                    } else if (course.link) {
+                        link = course.link;
+                    }
+
+                    if (link) {
+                        window.open(link, '_blank');
+                        showToast('Opening enrollment page...', 'success');
+                    } else {
+                        showToast('Enrollment link not available', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('Failed to get enrollment link', 'error');
+                } finally {
+                    hideLoader();
+                }
+            });
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    async function handleCourseBookmark(courseId, button) {
+        try {
+            const response = await fetch(`/api/bookmark/course/${courseId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const isBookmarked = data.status === 'added';
+                const icon = button.querySelector('i');
+                const text = button.querySelector('.bookmark-text');
+                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+                await refreshCurrentTab();
+                showToast(`Course ${data.status} bookmarks`, 'success');
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            showToast(error.message || 'Failed to update bookmark', 'error');
+        }
+    }
+
+    async function trackCourseView(courseId) {
+        try {
+            await fetch(`/api/course/${courseId}/view`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('View tracking error:', error);
+        }
+    }
+
+    function closeHorizontalCourseModal() {
+        const modal = document.getElementById('horizontalCourseModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // ======================
+    // Blog Reading Functionality (UPDATED to use lightweight modal)
     // ======================
 
     function setupBlogReading() {
@@ -1148,12 +1397,12 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const blogId = readBlogBtn.dataset.id;
-                openBlogModal(blogId);
+                openLightweightBlogModal(blogId);
             }
         });
     }
 
-    async function openBlogModal(blogId) {
+    async function openLightweightBlogModal(blogId) {
         return withLoader(
             (async () => {
                 const response = await fetch(`/api/blog/${blogId}`);
@@ -1163,7 +1412,7 @@
                 if (!data.success) throw new Error(data.error || 'Blog post not found');
 
                 const blog = data.blog;
-                showBlogModal(blog);
+                showLightweightBlogModal(blog);
                 trackBlogView(blogId);
                 return blog;
             })(),
@@ -1173,136 +1422,161 @@
         );
     }
 
-    function showBlogModal(blog) {
-        let modal = document.getElementById('blogDetailModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'blogDetailModal';
-            modal.className = 'modal';
-            modal.style.display = 'none';
-            modal.innerHTML = `
-                <div class="modal-overlay" onclick="closeBlogModal()"></div>
-                <div class="modal-content blog-modal-content">
-                    <button class="close-modal" onclick="closeBlogModal()" title="Close">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <div class="blog-modal-header">
-                        <div class="blog-modal-category" id="modalCategory">Career</div>
-                        <h2 id="modalTitle">Blog Title</h2>
-                        <div class="blog-modal-meta">
-                            <div class="modal-author">
-                                <img id="modalAuthorAvatar" src="" alt="Author" class="modal-avatar">
-                                <div>
-                                    <span id="modalAuthorName">Author Name</span>
-                                    <span class="modal-date" id="modalDate">January 1, 2024</span>
-                                </div>
-                            </div>
-                            <div class="modal-stats">
-                                <button class="btn-like-modal" id="modalLikeBtn" data-id="">
-                                    <i class="far fa-heart"></i>
-                                    <span class="like-count" id="modalLikeCount">0</span>
-                                </button>
-                                <span class="read-time" id="modalReadTime">
-                                    <i class="far fa-clock"></i> 5 min read
-                                </span>
-                                <span class="views-count-modal" id="modalViewsCount">
-                                    <i class="fas fa-eye"></i> <span id="viewsCount">0</span> views
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="blog-modal-body">
-                        <div class="blog-modal-image">
-                            <img id="modalImage" src="" alt="Blog Image">
-                        </div>
-                        <div class="blog-modal-content-text" id="modalContent">
-                        </div>
-                    </div>
-                    <div class="blog-modal-footer">
-                        <button class="btn btn-outline bookmark-modal-btn" id="modalBookmarkBtn" data-id="" data-type="blog">
-                            <i class="far fa-bookmark"></i>
-                            <span class="bookmark-text">Bookmark</span>
-                        </button>
-                        <button class="btn btn-primary share-modal-btn" onclick="shareBlog()">
-                            <i class="fas fa-share-alt"></i>
-                            Share Article
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            setTimeout(() => setupModalEventListeners(), 100);
-        } else {
-            updateBlogModalContent(blog);
-            setupModalEventListeners();
+    function showLightweightBlogModal(blog) {
+        const modal = document.getElementById('lightweightBlogModal');
+        if (!modal) return;
+
+        // Update modal content
+        document.getElementById('lightweightModalTitle').textContent = blog.title || 'Blog Title';
+        document.getElementById('lightweightModalCategory').textContent = blog.categories?.[0] || 'Career';
+        document.getElementById('lightweightModalAuthor').textContent = blog.author || 'CareerMaker Team';
+        document.getElementById('lightweightModalAuthorName').textContent = blog.author || 'CareerMaker Team';
+
+        const date = blog.published_at || blog.created_at;
+        document.getElementById('lightweightModalDate').textContent = formatDate(date);
+        document.getElementById('lightweightModalReadTime').textContent = blog.read_time || '5 min read';
+        document.getElementById('lightweightModalViews').textContent = blog.views || 0;
+        document.getElementById('lightweightModalLikes').textContent = blog.like_count || 0;
+
+        // Image
+        const modalImage = document.getElementById('lightweightModalImage');
+        if (modalImage) {
+            modalImage.src = blog.image || '/static/images/default-blog.jpg';
+            modalImage.alt = blog.title;
         }
 
+        // Author Avatar
+        const authorAvatar = document.getElementById('lightweightModalAvatar');
+        if (authorAvatar) {
+            authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
+            authorAvatar.alt = blog.author || 'CareerMaker Team';
+        }
+
+        // Content
+        const contentElement = document.getElementById('lightweightModalContent');
+        if (contentElement) {
+            contentElement.innerHTML = formatBlogContent(blog.content || blog.description || 'No content available.');
+        }
+
+        // Like button
+        const likeBtn = document.getElementById('lightweightModalLikeBtn');
+        if (likeBtn) {
+            likeBtn.dataset.id = blog.id;
+            const likeCount = blog.like_count || 0;
+            const isLiked = blog.is_liked || false;
+            updateLightweightLikeUI(likeBtn, likeCount, isLiked);
+
+            const newLikeBtn = likeBtn.cloneNode(true);
+            likeBtn.parentNode.replaceChild(newLikeBtn, likeBtn);
+            newLikeBtn.addEventListener('click', () => handleLightweightBlogLike(blog.id, newLikeBtn));
+        }
+
+        // Bookmark button
+        const bookmarkBtn = document.getElementById('lightweightModalBookmarkBtn');
+        if (bookmarkBtn) {
+            bookmarkBtn.dataset.id = blog.id;
+            const isBookmarked = blog.is_bookmarked || false;
+            const bookmarkIcon = bookmarkBtn.querySelector('i');
+            const bookmarkText = bookmarkBtn.querySelector('span');
+            if (isBookmarked) {
+                bookmarkIcon.className = 'fas fa-bookmark';
+                bookmarkText.textContent = 'Bookmarked';
+            } else {
+                bookmarkIcon.className = 'far fa-bookmark';
+                bookmarkText.textContent = 'Bookmark';
+            }
+
+            const newBookmarkBtn = bookmarkBtn.cloneNode(true);
+            bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
+            newBookmarkBtn.addEventListener('click', () => handleLightweightBlogBookmark(blog.id, newBookmarkBtn));
+        }
+
+        // Show modal
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
 
-    function updateBlogModalContent(blog) {
-        document.getElementById('modalCategory').textContent = blog.categories?.[0] || 'Career';
-        document.getElementById('modalTitle').textContent = blog.title;
-        document.getElementById('modalAuthorName').textContent = blog.author || 'CareerMaker Team';
-        document.getElementById('modalDate').textContent = formatDate(blog.published_at || blog.created_at);
-        document.getElementById('modalReadTime').innerHTML = `<i class="far fa-clock"></i> ${blog.read_time || '5 min read'}`;
-        document.getElementById('viewsCount').textContent = blog.views || 0;
+    function updateLightweightLikeUI(button, count, isLiked) {
+        const icon = button.querySelector('i');
+        const countElement = document.getElementById('lightweightModalLikeCount');
 
-        const modalImage = document.getElementById('modalImage');
-        modalImage.src = blog.image || '/static/images/default-blog.jpg';
-        modalImage.alt = blog.title;
-
-        const authorAvatar = document.getElementById('modalAuthorAvatar');
-        authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
-        authorAvatar.alt = blog.author || 'CareerMaker Team';
-
-        const contentElement = document.getElementById('modalContent');
-        contentElement.innerHTML = formatBlogContent(blog.content || blog.description || 'No content available.');
-
-        const bookmarkBtn = document.getElementById('modalBookmarkBtn');
-        bookmarkBtn.dataset.id = blog.id;
-        bookmarkBtn.classList.toggle('bookmarked', blog.is_bookmarked);
-
-        const bookmarkIcon = bookmarkBtn.querySelector('i');
-        const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
-        if (blog.is_bookmarked) {
-            bookmarkIcon.className = 'fas fa-bookmark';
-            bookmarkText.textContent = 'Bookmarked';
-        } else {
-            bookmarkIcon.className = 'far fa-bookmark';
-            bookmarkText.textContent = 'Bookmark';
-        }
-
-        const likeBtn = document.getElementById('modalLikeBtn');
-        likeBtn.dataset.id = blog.id;
-        const likeCount = blog.like_count || 0;
-        const isLiked = blog.is_liked || false;
-        updateLikeUI(likeBtn, likeCount, isLiked);
+        if (icon) icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+        if (countElement) countElement.textContent = count;
     }
 
-    function setupModalEventListeners() {
-        const likeBtn = document.getElementById('modalLikeBtn');
-        const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+    async function handleLightweightBlogLike(blogId, button) {
+        try {
+            const response = await fetch(`/api/blog/${blogId}/like`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
 
-        if (likeBtn) {
-            likeBtn.onclick = () => handleBlogLike(likeBtn.dataset.id, likeBtn);
-        }
-        if (bookmarkBtn) {
-            bookmarkBtn.onclick = () => handleBlogBookmark(bookmarkBtn.dataset.id, bookmarkBtn);
-        }
+            const data = await response.json();
 
-        const overlay = document.querySelector('#blogDetailModal .modal-overlay');
-        if (overlay) {
-            overlay.onclick = closeBlogModal;
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeBlogModal();
+            if (data.success) {
+                updateLightweightLikeUI(button, data.like_count, data.action === 'liked');
+                showToast(`Article ${data.action}`, 'success');
+            } else {
+                throw new Error(data.error);
             }
-        });
+        } catch (error) {
+            console.error('Like error:', error);
+            showToast(error.message || 'Failed to update like', 'error');
+        }
     }
+
+    async function handleLightweightBlogBookmark(blogId, button) {
+        try {
+            const response = await fetch(`/api/bookmark/blog/${blogId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const isBookmarked = data.status === 'added';
+                const icon = button.querySelector('i');
+                const text = button.querySelector('span');
+                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+                await refreshCurrentTab();
+                showToast(`Article ${data.status} bookmarks`, 'success');
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            showToast(error.message || 'Failed to update bookmark', 'error');
+        }
+    }
+
+    function closeLightweightBlogModal() {
+        const modal = document.getElementById('lightweightBlogModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Close lightweight modal when clicking close button or overlay
+    document.addEventListener('DOMContentLoaded', function() {
+        const closeBtn = document.getElementById('lightweightModalClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeLightweightBlogModal);
+        }
+
+        const modal = document.getElementById('lightweightBlogModal');
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeLightweightBlogModal();
+                }
+            });
+        }
+    });
 
     function formatDate(dateString) {
         if (!dateString) return 'Unknown date';
@@ -1327,66 +1601,6 @@
         return content;
     }
 
-    function updateLikeUI(button, count, isLiked) {
-        const icon = button.querySelector('i');
-        const countElement = button.querySelector('.like-count');
-
-        button.classList.toggle('liked', isLiked);
-        if (icon) icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
-        if (countElement) countElement.textContent = count;
-    }
-
-    async function handleBlogLike(blogId, button) {
-        try {
-            const response = await fetch(`/api/blog/${blogId}/like`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                updateLikeUI(button, data.like_count, data.action === 'liked');
-                showToast(`Article ${data.action}`, 'success');
-            } else {
-                throw new Error(data.error);
-            }
-        } catch (error) {
-            console.error('Like error:', error);
-            showToast(error.message || 'Failed to update like', 'error');
-        }
-    }
-
-    async function handleBlogBookmark(blogId, button) {
-        try {
-            const response = await fetch(`/api/bookmark/blog/${blogId}`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                const isBookmarked = data.status === 'added';
-                button.classList.toggle('bookmarked', isBookmarked);
-
-                const icon = button.querySelector('i');
-                const text = button.querySelector('.bookmark-text');
-                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
-                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
-
-                showToast(`Article ${data.status} bookmarks`, 'success');
-            } else {
-                throw new Error(data.error);
-            }
-        } catch (error) {
-            console.error('Bookmark error:', error);
-            showToast(error.message || 'Failed to update bookmark', 'error');
-        }
-    }
-
     async function trackBlogView(blogId) {
         try {
             await fetch(`/api/blog/${blogId}/view`, {
@@ -1399,14 +1613,14 @@
     }
 
     // ======================
-    // TESTIMONIALS MANAGEMENT
+    // TESTIMONIALS MANAGEMENT (UPDATED to use base modals)
     // ======================
 
     function setupTestimonials() {
         setupTestimonialActions();
-        setupTestimonialReadModal();
-        setupEditTestimonialModal();
-        setupTestimonialScrolling();
+        setupTestimonialReadModalClose();
+        setupEditTestimonialModalClose();
+        setupDeleteConfirmationModalClose();
 
         setTimeout(() => {
             checkTestimonialsEmptyState();
@@ -1415,6 +1629,7 @@
 
     function setupTestimonialActions() {
         document.addEventListener('click', function(e) {
+            // View button - Open read full experience modal
             if (e.target.closest('.view-testimonial')) {
                 const viewBtn = e.target.closest('.view-testimonial');
                 e.preventDefault();
@@ -1424,28 +1639,56 @@
                 return;
             }
 
+            // Edit button - Open testimonial share modal (for editing)
             if (e.target.closest('.edit-testimonial')) {
                 const editBtn = e.target.closest('.edit-testimonial');
                 e.preventDefault();
                 e.stopPropagation();
                 const testimonialId = editBtn.dataset.id;
-                editTestimonial(testimonialId);
+                openTestimonialShareModalForEdit(testimonialId);
                 return;
             }
 
+            // Delete button - Open delete confirmation modal
             if (e.target.closest('.delete-testimonial')) {
                 const deleteBtn = e.target.closest('.delete-testimonial');
                 e.preventDefault();
                 e.stopPropagation();
                 const testimonialId = deleteBtn.dataset.id;
-                deleteTestimonial(testimonialId);
+                openDeleteConfirmationModal(testimonialId);
                 return;
             }
         });
     }
 
-    function setupTestimonialReadModal() {
-        const overlay = document.querySelector('#testimonialReadModal .modal-overlay');
+    // testimonial add button to open modal
+    function handleTestimonialAddButton() {
+        const addBtn = document.querySelector('#testimonials .browse-action-btn');
+        if (addBtn) {
+            // Remove any existing click listeners
+            const newBtn = addBtn.cloneNode(true);
+            addBtn.parentNode.replaceChild(newBtn, addBtn);
+
+            // Add click event to open modal
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openTestimonialShareModal();
+            });
+        }
+    }
+
+    // Setup read modal close
+    function setupTestimonialReadModalClose() {
+        const modal = document.getElementById('testimonialDetailModal');
+        if (!modal) return;
+
+        const closeBtn = document.getElementById('detailModalClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeTestimonialReadModal);
+        }
+
+        const overlay = modal.querySelector('.modal-overlay');
         if (overlay) {
             overlay.addEventListener('click', closeTestimonialReadModal);
         }
@@ -1458,25 +1701,94 @@
         });
     }
 
-    function setupEditTestimonialModal() {
-        const form = document.getElementById('editTestimonialForm');
-        if (form) {
-            form.addEventListener('submit', handleTestimonialUpdate);
-        }
-
-        const contentTextarea = document.getElementById('editTestimonialContent');
-        if (contentTextarea) {
-            contentTextarea.addEventListener('input', function() {
-                const charCount = this.value.length;
-                document.getElementById('editCharCount').textContent = charCount;
-                if (charCount > 500) {
-                    this.value = this.value.substring(0, 500);
-                    document.getElementById('editCharCount').textContent = 500;
-                }
-            });
+    function closeTestimonialReadModal() {
+        const modal = document.getElementById('testimonialDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
         }
     }
 
+    // Setup edit modal close and styling
+    function setupEditTestimonialModalClose() {
+        const modal = document.getElementById('testimonialModal');
+        if (!modal) return;
+
+        const closeBtn = modal.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeEditTestimonialModal);
+        }
+
+        const overlay = modal.querySelector('.modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', closeEditTestimonialModal);
+        }
+    }
+
+    function closeEditTestimonialModal() {
+        const modal = document.getElementById('testimonialModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            // Reset form
+            const form = document.getElementById('testimonialForm');
+            if (form) {
+                form.reset();
+                delete form.dataset.mode;
+                delete form.dataset.testimonialId;
+            }
+            document.getElementById('ratingValue').value = '5';
+            const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+            starBtns.forEach(btn => btn.classList.add('active'));
+
+            // Reset button text back to "Share Experience"
+            const submitBtn = modal.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const btnText = submitBtn.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = 'Share Experience';
+                }
+            }
+
+            // Reset modal title
+            const modalTitle = modal.querySelector('.modal-header h3');
+            if (modalTitle) {
+                modalTitle.textContent = 'Share Your Experience';
+            }
+        }
+    }
+
+    // Setup delete confirmation modal close
+    function setupDeleteConfirmationModalClose() {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (!modal) return;
+
+        const closeBtn = document.getElementById('closeDeleteConfirmModal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeDeleteConfirmationModal);
+        }
+
+        const cancelBtn = document.getElementById('cancelDeleteModalBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeDeleteConfirmationModal);
+        }
+
+        const overlay = modal.querySelector('.modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', closeDeleteConfirmationModal);
+        }
+    }
+
+    function closeDeleteConfirmationModal() {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            delete modal.dataset.testimonialId;
+        }
+    }
+
+    // Open read full experience modal
     async function openTestimonialReadModal(testimonialId) {
         try {
             showLoader('Loading testimonial...');
@@ -1501,14 +1813,24 @@
     }
 
     function showTestimonialReadModal(testimonial) {
-        const modal = document.getElementById('testimonialReadModal');
+        const modal = document.getElementById('testimonialDetailModal');
         if (!modal) return;
 
-        document.getElementById('testimonialModalContent').textContent = testimonial.content || 'No content available';
-        document.getElementById('testimonialModalAuthor').textContent = testimonial.username || 'User';
-        document.getElementById('testimonialModalRole').textContent = testimonial.role || 'CareerMaker User';
+        // Set content
+        document.getElementById('detailFullText').textContent = testimonial.content || 'No content available';
+        document.getElementById('detailAuthorName').textContent = testimonial.username || 'User';
+        document.getElementById('detailAuthorRole').textContent = testimonial.role || 'CareerMaker User';
 
-        const dateElement = document.getElementById('testimonialModalDate');
+        // Set rating
+        const ratingContainer = document.getElementById('detailRating');
+        if (ratingContainer && testimonial.rating) {
+            ratingContainer.innerHTML = generateStarRating(testimonial.rating);
+        } else if (ratingContainer) {
+            ratingContainer.innerHTML = generateStarRating(5);
+        }
+
+        // Set date
+        const dateElement = document.getElementById('detailDate');
         if (testimonial.created_at) {
             const date = new Date(testimonial.created_at);
             dateElement.innerHTML = `<i class="far fa-calendar"></i> ${date.toLocaleDateString('en-US', {
@@ -1520,7 +1842,8 @@
             dateElement.innerHTML = `<i class="far fa-calendar"></i> Recently`;
         }
 
-        const avatarElement = document.getElementById('testimonialModalAvatar');
+        // Set avatar
+        const avatarElement = document.getElementById('detailAvatar');
         if (testimonial.profile_pic_url) {
             avatarElement.src = testimonial.profile_pic_url;
         } else {
@@ -1529,21 +1852,148 @@
         }
         avatarElement.alt = testimonial.username || 'User';
 
+        // Store testimonial id for any actions
         modal.dataset.currentTestimonialId = testimonial.id;
+
+        // Show modal
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
 
-    function closeTestimonialReadModal() {
-        const modal = document.getElementById('testimonialReadModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            delete modal.dataset.currentTestimonialId;
+    function generateStarRating(rating) {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                stars.push('<i class="fas fa-star" style="color: #ffc107;"></i>');
+            } else {
+                stars.push('<i class="far fa-star" style="color: #ddd;"></i>');
+            }
         }
+        return stars.join(' ');
     }
 
-    async function editTestimonial(testimonialId) {
+    // Open testimonial share modal for adding new testimonial
+    function openTestimonialShareModal() {
+        const modal = document.getElementById('testimonialModal');
+        if (!modal) {
+            console.error('Testimonial modal not found');
+            return;
+        }
+
+        // Reset form for new testimonial (add mode)
+        const form = document.getElementById('testimonialForm');
+        if (form) {
+            form.reset();
+            form.dataset.mode = 'add';
+            delete form.dataset.testimonialId;
+
+            // Trigger floating labels to reset
+            const inputs = form.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.dispatchEvent(new Event('input'));
+            });
+        }
+
+        // Reset rating
+        document.getElementById('ratingValue').value = '5';
+        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+        starBtns.forEach(btn => btn.classList.add('active'));
+
+        // Get username from page
+        const usernameElement = document.querySelector('.user-info h2');
+        const userName = usernameElement ? usernameElement.textContent.trim() : '';
+        const userNameInput = document.getElementById('userName');
+        if (userNameInput) {
+            userNameInput.value = userName;
+            userNameInput.dispatchEvent(new Event('input'));
+        }
+
+        // Clear content textarea
+        const contentTextarea = document.getElementById('testimonialText');
+        if (contentTextarea) {
+            contentTextarea.value = '';
+        }
+
+        // Clear role input if exists
+        const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+        if (roleInput) {
+            roleInput.value = '';
+        }
+
+        // Reset button text to "Share Experience"
+        const submitBtn = modal.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            const btnText = submitBtn.querySelector('.btn-text');
+            if (btnText) {
+                btnText.textContent = 'Share Experience';
+            }
+        }
+
+        // Set modal title
+        const modalTitle = modal.querySelector('.modal-header h3');
+        if (modalTitle) {
+            modalTitle.textContent = 'Share Your Experience';
+        }
+
+        // Setup form submission for add (using the new route)
+        setupTestimonialFormSubmit('add');
+
+        // Setup floating labels for the modal
+        setupFloatingLabelsInModal();
+
+        // Fix cancel button for add mode
+        const cancelButton = modal.querySelector('.btn-secondary');
+        if (cancelButton) {
+            const newCancelBtn = cancelButton.cloneNode(true);
+            cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
+            newCancelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                closeEditTestimonialModal();
+            });
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Setup star rating
+        setupStarRating();
+    }
+
+    // Setup floating labels for testimonial modal
+    function setupFloatingLabelsInModal() {
+        const modal = document.getElementById('testimonialModal');
+        if (!modal) return;
+
+        // Handle floating labels for input fields
+        const floatingGroups = modal.querySelectorAll('.floating-label-group');
+        floatingGroups.forEach(group => {
+            const input = group.querySelector('input, textarea');
+            const label = group.querySelector('label');
+
+            if (input && label) {
+                // Check if input has value
+                const updateLabelPosition = () => {
+                    if (input.value.trim() !== '') {
+                        label.style.top = '0px';
+                        label.style.fontSize = '11px';
+                        label.style.opacity = '0.8';
+                    } else {
+                        label.style.top = '';
+                        label.style.fontSize = '';
+                        label.style.opacity = '';
+                    }
+                };
+
+                input.addEventListener('input', updateLabelPosition);
+                input.addEventListener('blur', updateLabelPosition);
+                updateLabelPosition();
+            }
+        });
+    }
+
+    // Open testimonial share modal for editing existing testimonial
+    async function openTestimonialShareModalForEdit(testimonialId) {
         try {
             showLoader('Loading testimonial...');
             const response = await fetch(`/api/testimonials/${testimonialId}`, {
@@ -1554,7 +2004,7 @@
 
             const data = await response.json();
             if (data.success) {
-                showEditTestimonialModal(data.testimonial);
+                showTestimonialShareModalForEdit(data.testimonial);
             } else {
                 throw new Error(data.error || 'Failed to load testimonial');
             }
@@ -1566,128 +2016,227 @@
         }
     }
 
-    function showEditTestimonialModal(testimonial) {
-        const modal = document.getElementById('editTestimonialModal');
+    function showTestimonialShareModalForEdit(testimonial) {
+        const modal = document.getElementById('testimonialModal');
         if (!modal) return;
 
-        document.getElementById('editTestimonialId').value = testimonial.id;
-        document.getElementById('editTestimonialRole').value = testimonial.role || '';
-        document.getElementById('editTestimonialContent').value = testimonial.content || '';
-        document.getElementById('editCharCount').textContent = testimonial.content ? testimonial.content.length : 0;
-
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeEditTestimonialModal() {
-        const modal = document.getElementById('editTestimonialModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    async function handleTestimonialUpdate(e) {
-        e.preventDefault();
-
-        const formData = new FormData(e.target);
-        const testimonialId = document.getElementById('editTestimonialId').value;
-        const testimonialData = {
-            content: formData.get('content'),
-            rating: 5
-        };
-
-        const role = formData.get('role');
-        if (role && role.trim()) {
-            testimonialData.role = role.trim();
+        // Fill form with existing data
+        const form = document.getElementById('testimonialForm');
+        if (form) {
+            form.dataset.mode = 'edit';
+            form.dataset.testimonialId = testimonial.id;
         }
 
-        if (!testimonialData.content.trim()) {
-            showToast('Please enter your testimonial content', 'error');
-            return;
+        // Set content
+        const contentTextarea = document.getElementById('testimonialText');
+        if (contentTextarea) {
+            contentTextarea.value = testimonial.content || '';
+            // Trigger floating label
+            contentTextarea.dispatchEvent(new Event('input'));
         }
 
-        try {
-            showLoader('Updating testimonial...');
-
-            const response = await fetch(`/api/testimonial/update/${testimonialId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(testimonialData)
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Set role if exists
+        let roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+        if (!roleInput && testimonial.role) {
+            const formContainer = document.getElementById('testimonialForm');
+            const ratingGroup = document.querySelector('#testimonialForm .simple-rating')?.closest('.form-group');
+            if (ratingGroup && formContainer) {
+                const roleDiv = document.createElement('div');
+                roleDiv.className = 'form-group floating-label-group';
+                roleDiv.innerHTML = `
+                    <input type="text" id="userRole" name="userRole" placeholder=" ">
+                    <label for="userRole">Your Role/Position (Optional)</label>
+                `;
+                ratingGroup.insertAdjacentElement('afterend', roleDiv);
+                roleInput = roleDiv.querySelector('input');
             }
+        }
+        if (roleInput && testimonial.role) {
+            roleInput.value = testimonial.role;
+            roleInput.dispatchEvent(new Event('input'));
+        }
 
-            if (data.success) {
-                showToast(data.message || 'Testimonial updated successfully!', 'success');
+        // Set rating
+        const rating = testimonial.rating || 5;
+        document.getElementById('ratingValue').value = rating;
+        updateStarRatingUI(rating);
+
+        // Set username (readonly)
+        const userNameInput = document.getElementById('userName');
+        if (userNameInput) {
+            userNameInput.value = testimonial.username || '';
+        }
+
+        // Change button text
+        const submitBtn = modal.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            const btnText = submitBtn.querySelector('.btn-text');
+            if (btnText) {
+                btnText.textContent = 'Update Experience';
+            }
+        }
+
+        // Change modal title
+        const modalTitle = modal.querySelector('.modal-header h3');
+        if (modalTitle) {
+            modalTitle.textContent = 'Edit Your Experience';
+        }
+
+        // Setup form submission for edit
+        setupTestimonialFormSubmit('edit');
+
+        // Setup floating labels
+        setupFloatingLabelsInModal();
+
+        // Fix cancel button
+        const cancelButton = modal.querySelector('.btn-secondary');
+        if (cancelButton) {
+            const newCancelBtn = cancelButton.cloneNode(true);
+            cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
+            newCancelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 closeEditTestimonialModal();
-                await loadTestimonialsContent();
-            } else {
-                throw new Error(data.message || 'Failed to update testimonial');
-            }
-
-        } catch (error) {
-            console.error('Testimonial update error:', error);
-            showToast(error.message || 'Failed to update testimonial', 'error');
-        } finally {
-            hideLoader();
-        }
-    }
-
-    async function deleteTestimonial(testimonialId) {
-        showDeleteConfirmationModal(testimonialId);
-    }
-
-    function showDeleteConfirmationModal(testimonialId) {
-        const modal = document.getElementById('deleteTestimonialModal');
-        if (!modal) {
-            console.error('Delete confirmation modal not found');
-            return;
+            });
         }
 
+        // Show modal
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
 
-        const cancelBtn = document.getElementById('cancelTestimonialDelete');
-        const confirmBtn = document.getElementById('confirmTestimonialDelete');
+        // Setup star rating
+        setupStarRating();
+    }
 
-        cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-        confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    function setupStarRating() {
+        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+        starBtns.forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                document.getElementById('ratingValue').value = rating;
+                updateStarRatingUI(rating);
+            });
+        });
+    }
 
-        const newCancelBtn = document.getElementById('cancelTestimonialDelete');
-        const newConfirmBtn = document.getElementById('confirmTestimonialDelete');
-
-        const cleanup = () => {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
-        };
-
-        const cancelHandler = () => {
-            cleanup();
-        };
-
-        const confirmHandler = async () => {
-            cleanup();
-            await performTestimonialDelete(testimonialId);
-        };
-
-        newCancelBtn.addEventListener('click', cancelHandler);
-        newConfirmBtn.addEventListener('click', confirmHandler);
-
-        const overlayHandler = (e) => {
-            if (e.target === modal) {
-                cleanup();
-                modal.removeEventListener('click', overlayHandler);
+    function updateStarRatingUI(rating) {
+        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+        starBtns.forEach((btn, index) => {
+            if (index < rating) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
             }
-        };
-        modal.addEventListener('click', overlayHandler);
+        });
+    }
+
+    function setupTestimonialFormSubmit(mode) {
+        const form = document.getElementById('testimonialForm');
+        if (!form) return;
+
+        // Remove existing listener
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const content = document.getElementById('testimonialText').value;
+            const rating = parseInt(document.getElementById('ratingValue').value);
+            const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+            const role = roleInput ? roleInput.value : '';
+
+            if (!content.trim()) {
+                showToast('Please enter your testimonial content', 'error');
+                return;
+            }
+
+            // Prepare data as JSON for both add and edit
+            const testimonialData = {
+                content: content.trim(),
+                rating: rating
+            };
+
+            if (role && role.trim()) {
+                testimonialData.role = role.trim();
+            }
+
+            const isEditMode = newForm.dataset.mode === 'edit';
+            const testimonialId = newForm.dataset.testimonialId;
+
+            // Use JSON for both routes
+            const url = isEditMode ? `/api/testimonial/update/${testimonialId}` : '/api/testimonial/submit';
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            try {
+                showLoader(isEditMode ? 'Updating testimonial...' : 'Adding testimonial...');
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(testimonialData)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+                }
+
+                if (data.success) {
+                    closeEditTestimonialModal();
+
+                    // Refresh testimonials to show the new/updated one
+                    await refreshCurrentTab();
+
+                    // Update button position
+                    if (typeof updateButtonPosition === 'function') {
+                        updateButtonPosition('testimonials');
+                    }
+
+                    // Dispatch event to update button state
+                    const event = new CustomEvent('testimonialUpdated', {
+                        detail: { action: isEditMode ? 'updated' : 'added' }
+                    });
+                    document.dispatchEvent(event);
+
+                    showToast(data.message || (isEditMode ? 'Testimonial updated successfully!' : 'Testimonial added successfully!'), 'success');
+                } else {
+                    throw new Error(data.message || data.error || 'Operation failed');
+                }
+
+            } catch (error) {
+                console.error('Testimonial operation error:', error);
+                showToast(error.message || 'Operation failed', 'error');
+            } finally {
+                hideLoader();
+            }
+        });
+    }
+
+    // Open delete confirmation modal
+    function openDeleteConfirmationModal(testimonialId) {
+        const modal = document.getElementById('deleteConfirmModal');
+        if (!modal) return;
+
+        // Store testimonial id for deletion
+        modal.dataset.testimonialId = testimonialId;
+
+        // Setup confirm button
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', () => performTestimonialDelete(modal.dataset.testimonialId));
+        }
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
     }
 
     async function performTestimonialDelete(testimonialId) {
@@ -1706,16 +2255,15 @@
             }
 
             if (data.success) {
-                showToast(data.message || 'Testimonial deleted successfully', 'success');
+                closeDeleteConfirmationModal();
+                // Update UI directly without refresh
+                await refreshCurrentTab();
 
-                const testimonialItem = document.querySelector(`.testimonial-item[data-id="${testimonialId}"]`);
-                if (testimonialItem) {
-                    testimonialItem.classList.add('bookmark-removing');
-                    setTimeout(() => {
-                        testimonialItem.remove();
-                        checkTestimonialsEmptyState();
-                    }, 700);
-                }
+                // Dispatch event to update button state
+                const event = new CustomEvent('testimonialUpdated', {
+                    detail: { action: 'deleted' }
+                });
+                document.dispatchEvent(event);
             } else {
                 throw new Error(data.message || 'Failed to delete testimonial');
             }
@@ -1739,21 +2287,9 @@
 
         testimonialsContainer.innerHTML = testimonials.map(testimonial => `
             <div class="testimonial-item" data-id="${testimonial.id}">
-                <div class="testimonial-header">
-                    <div class="testimonial-user-info">
-                        <img src="${testimonial.profile_pic_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonial.username || 'User')}&background=10b981&color=fff&bold=true`}"
-                             alt="${testimonial.username || 'User'}"
-                             class="testimonial-avatar">
-                        <div class="testimonial-user-details">
-                            <div class="testimonial-username">${testimonial.username || 'User'}</div>
-                            <div class="testimonial-user-type">${testimonial.role || 'CareerMaker User'}</div>
-                        </div>
-                    </div>
-                    <div class="testimonial-date">${formatTestimonialDate(testimonial.created_at)}</div>
-                </div>
                 <div class="testimonial-content-wrapper">
-                    <div class="testimonial-content">${testimonial.content}</div>
-                    ${testimonial.role ? `<div class="testimonial-role">${testimonial.role}</div>` : ''}
+                    <div class="testimonial-content">${escapeHtml(testimonial.content)}</div>
+                    ${testimonial.role ? `<div class="testimonial-role">${escapeHtml(testimonial.role)}</div>` : ''}
                 </div>
                 <div class="testimonial-actions">
                     <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View">
@@ -1772,26 +2308,12 @@
         setupTestimonialActions();
     }
 
-    function formatTestimonialDate(dateString) {
-        if (!dateString) return 'Recently';
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 1) return 'Yesterday';
-            if (diffDays < 7) return `${diffDays} days ago`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            return dateString;
-        }
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     function checkTestimonialsEmptyState() {
@@ -1816,23 +2338,29 @@
                     <i class="fas fa-comment-dots"></i>
                     <h4>No testimonials yet</h4>
                     <p>Share your experience and help others in their career journey</p>
-                    <a href="/#testimonials-section" class="btn btn-primary">
+                    <button class="btn btn-primary add-testimonial-empty-btn">
                         <i class="fas fa-plus"></i> Add Your Testimonial
-                    </a>
+                    </button>
                 </div>
             `;
             dashboardCard.innerHTML = emptyHTML;
+
+            // Add event listener to the empty state button
+            const addBtn = dashboardCard.querySelector('.add-testimonial-empty-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', openTestimonialShareModal);
+            }
         } else if (hasTestimonials && emptyState) {
             emptyState.remove();
         }
     }
 
     function shareTestimonial() {
-        const modal = document.getElementById('testimonialReadModal');
+        const modal = document.getElementById('testimonialDetailModal');
         if (!modal) return;
 
-        const content = document.getElementById('testimonialModalContent').textContent;
-        const author = document.getElementById('testimonialModalAuthor').textContent;
+        const content = document.getElementById('detailFullText').textContent;
+        const author = document.getElementById('detailAuthorName').textContent;
         const shareText = `"${content}" - ${author}`;
 
         if (navigator.share) {
@@ -1858,7 +2386,7 @@
     }
 
     // ======================
-    // SIMPLE TESTIMONIAL BUTTON - SCROLL + MODAL
+    // SIMPLE TESTIMONIAL BUTTON - Opens Share Modal
     // ======================
 
     function setupTestimonialScrolling() {
@@ -1874,11 +2402,8 @@
 
                     console.log('🎯 Testimonial button clicked from dashboard');
 
-                    // Set flag to trigger BOTH scroll AND modal open
-                    localStorage.setItem('dashboardTestimonialAction', 'scroll-and-open');
-
-                    // Navigate to homepage
-                    window.location.href = '/#testimonials-section';
+                    // Open testimonial share modal directly
+                    openTestimonialShareModal();
 
                     return;
                 }
@@ -1959,7 +2484,7 @@
     }
 
     // ======================
-    // LOGOUT FUNCTIONALITY
+    // LOGOUT FUNCTIONALITY - FIXED
     // ======================
 
     function setupLogout() {
@@ -1990,7 +2515,7 @@
         const modal = document.getElementById('logoutModal');
         if (!modal) {
             console.error('Logout modal not found!');
-            // Fallback to simple confirm
+            // Fallback to direct logout
             performLogout();
             return;
         }
@@ -2007,15 +2532,24 @@
         const modal = document.getElementById('logoutModal');
         if (!modal) return;
 
-        // Cancel button
+        // Get buttons using correct IDs from user-dashboard.html
         const cancelBtn = document.getElementById('cancelLogoutBtn');
         const closeBtn = document.getElementById('closeLogoutModal');
         const confirmBtn = document.getElementById('confirmLogoutBtn');
 
-        // Clear existing listeners
-        cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-        closeBtn.replaceWith(closeBtn.cloneNode(true));
-        confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+        if (!cancelBtn || !closeBtn || !confirmBtn) {
+            console.error('Logout modal buttons not found');
+            return;
+        }
+
+        // Remove existing listeners by cloning
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newCloseBtn = closeBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
         // Get fresh references
         const freshCancelBtn = document.getElementById('cancelLogoutBtn');
@@ -2031,7 +2565,10 @@
         // Event handlers
         freshCancelBtn.addEventListener('click', closeModal);
         freshCloseBtn.addEventListener('click', closeModal);
-        freshConfirmBtn.addEventListener('click', performLogout);
+        freshConfirmBtn.addEventListener('click', () => {
+            closeModal();
+            performLogout();
+        });
 
         // Close when clicking outside modal
         modal.addEventListener('click', function(e) {
@@ -2097,19 +2634,13 @@
             // Show success message
             if (typeof showToast === 'function') {
                 showToast('Logged out successfully! Redirecting...', 'success');
-            } else {
-                alert('Logged out successfully!');
             }
 
             // Force redirect with cache busting
             setTimeout(() => {
                 // Force hard redirect to clear any cached states
                 window.location.href = '/?logout=' + Date.now();
-                // Fallback redirect
-                setTimeout(() => {
-                    window.location.replace('/');
-                }, 1000);
-            }, 1000);
+            }, 500);
 
         } catch (error) {
             console.error('Logout failed:', error);
@@ -2117,68 +2648,262 @@
             // Show error message
             if (typeof showToast === 'function') {
                 showToast('Logout failed. Please try again.', 'error');
-            } else {
-                alert('Logout failed. Please try again.');
             }
 
             // Fallback redirect on error
             setTimeout(() => {
                 window.location.href = '/logout';
-            }, 2000);
+            }, 1000);
         } finally {
             hideLoader();
         }
     }
 
     // ======================
-    // USAGE EXAMPLES
+    // Mutation Observer for dynamic content
     // ======================
 
-    async function fetchUserData() {
-        showLoader('Loading user data...');
+    function setupMutationObserver() {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList' && mutation.target.classList &&
+                    (mutation.target.classList.contains('content-area') ||
+                     mutation.target.classList.contains('bookmarks-list') ||
+                     mutation.target.classList.contains('testimonials-list'))) {
+                    const activeTab = document.querySelector('.tab-content.active');
+                    if (activeTab && typeof updateButtonPosition === 'function') {
+                        setTimeout(() => updateButtonPosition(activeTab.id), 100);
+                    }
+                }
+            });
+        });
+
+        const contentAreas = document.querySelectorAll('.content-area');
+        contentAreas.forEach(area => {
+            observer.observe(area, { childList: true, subtree: true });
+        });
+    }
+
+    // Universal function to refresh current tab content from API
+    async function refreshCurrentTab() {
+        const activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab) return;
+
+        const tabId = activeTab.id;
+        console.log(`Refreshing ${tabId}...`);
+
+        // Show loading indicator
+        showTabLoading(tabId);
+
         try {
-            const response = await fetch('/api/user/data');
-            const data = await response.json();
-            return data;
+            // Map tabId to API endpoint
+            const apiMap = {
+                'courses': '/api/bookmarks/courses',
+                'jobs': '/api/bookmarks/jobs',
+                'internships': '/api/bookmarks/internships',
+                'blogs': '/api/bookmarks/blogs',
+                'testimonials': '/api/testimonials/user'
+            };
+
+            const endpoint = apiMap[tabId];
+            if (!endpoint) {
+                console.error(`No API endpoint for tab: ${tabId}`);
+                return;
+            }
+
+            const response = await fetch(endpoint, {
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (tabId === 'testimonials') {
+                    if (data.success) {
+                        renderTestimonials(data.testimonials);
+                    }
+                } else {
+                    if (data.success && data.items) {
+                        renderBookmarks(tabId, data.items);
+                    }
+                }
+
+                // Update UI states
+                if (tabId === 'testimonials') {
+                    checkTestimonialsEmptyState();
+                } else {
+                    checkEmptyTabState();
+                }
+
+                if (typeof updateButtonPosition === 'function') {
+                    updateButtonPosition(tabId);
+                }
+
+                console.log(`${tabId} refreshed successfully`);
+            }
+        } catch (error) {
+            console.error(`Error refreshing ${tabId}:`, error);
         } finally {
-            hideLoader();
+            hideTabLoading(tabId);
         }
     }
 
-    async function updateProfile(data) {
-        return withLoader(
-            fetch('/api/profile', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            }),
-            'Updating profile...',
-            'Profile updated successfully!',
-            'Failed to update profile'
-        );
-    }
+    // Universal render function for bookmarks
+    function renderBookmarks(tabId, items) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
 
-    async function performMultipleOperations() {
-        showLoader('Starting process...');
-        try {
-            showLoader('Loading user data...');
-            await fetch('/api/user');
+        const contentArea = tabContent.querySelector('.content-area');
+        if (!contentArea) return;
 
-            showLoader('Loading preferences...');
-            await fetch('/api/preferences');
-
-            showLoader('Finalizing...');
-            await fetch('/api/finalize');
-
-        } finally {
-            hideLoader();
+        if (!items || items.length === 0) {
+            contentArea.innerHTML = '';
+            return;
         }
+
+        // Get the appropriate template
+        let html = '<div class="bookmarks-list">';
+
+        items.forEach(item => {
+            switch(tabId) {
+                case 'courses':
+                    html += `
+                        <div class="bookmark-item" data-id="${item.id}" data-type="course">
+                            <img src="${item.image || item.company_logo || item.thumbnail || '/static/images/default-course.jpg'}"
+                                 alt="${escapeHtml(item.title)}"
+                                 class="bookmark-img"
+                                 onerror="this.src='/static/images/default-course.jpg'">
+                            <div class="bookmark-info">
+                                <h4>${escapeHtml(item.title)}</h4>
+                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                <div class="bookmark-meta">
+                                    <span><i class="fas fa-dollar-sign"></i> ${item.price || 'Free'}</span>
+                                    <span><i class="fas fa-tag"></i> ${item.level || 'All Levels'}</span>
+                                    ${item.company ? `<span><i class="fas fa-building"></i> ${escapeHtml(item.company)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="bookmark-actions">
+                                <button class="btn btn-outline view-content-btn" data-type="course" data-id="${item.id}">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </button>
+                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="course">
+                                    <i class="fas fa-trash-alt"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'jobs':
+                    html += `
+                        <div class="bookmark-item" data-id="${item.id}" data-type="job">
+                            <img src="${item.company_logo || item.image || '/static/images/default-job.jpg'}"
+                                 alt="${escapeHtml(item.title)}"
+                                 class="bookmark-img"
+                                 onerror="this.src='/static/images/default-job.jpg'">
+                            <div class="bookmark-info">
+                                <h4>${escapeHtml(item.title)}</h4>
+                                <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
+                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                <div class="bookmark-meta">
+                                    <span><i class="fas fa-dollar-sign"></i> ${item.salary || 'Not Specified'}</span>
+                                    <span><i class="fas fa-tag"></i> ${item.type || 'Full-time'}</span>
+                                </div>
+                            </div>
+                            <div class="bookmark-actions">
+                                <button class="btn btn-outline view-content-btn" data-type="job" data-id="${item.id}">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </button>
+                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="job">
+                                    <i class="fas fa-trash-alt"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'internships':
+                    html += `
+                        <div class="bookmark-item" data-id="${item.id}" data-type="internship">
+                            <img src="${item.company_logo || item.image || '/static/images/default-internship.jpg'}"
+                                 alt="${escapeHtml(item.title)}"
+                                 class="bookmark-img"
+                                 onerror="this.src='/static/images/default-internship.jpg'">
+                            <div class="bookmark-info">
+                                <h4>${escapeHtml(item.title)}</h4>
+                                <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
+                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                <div class="bookmark-meta">
+                                    <span><i class="fas fa-dollar-sign"></i> ${item.stipend || 'Unpaid'}</span>
+                                    <span><i class="fas fa-tag"></i> ${item.duration || 'Flexible'}</span>
+                                </div>
+                            </div>
+                            <div class="bookmark-actions">
+                                <button class="btn btn-outline view-content-btn" data-type="internship" data-id="${item.id}">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </button>
+                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="internship">
+                                    <i class="fas fa-trash-alt"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'blogs':
+                    html += `
+                        <div class="bookmark-item" data-id="${item.id}" data-type="blog">
+                            <img src="${item.image || '/static/images/default-blog.jpg'}"
+                                 alt="${escapeHtml(item.title)}"
+                                 class="bookmark-img"
+                                 onerror="this.src='/static/images/default-blog.jpg'">
+                            <div class="bookmark-info">
+                                <h4>${escapeHtml(item.title)}</h4>
+                                <p>${escapeHtml((item.description || item.content || 'No description').substring(0, 100))}...</p>
+                                <div class="bookmark-meta">
+                                    <span><i class="fas fa-user"></i> ${escapeHtml(item.author || 'CareerMaker Team')}</span>
+                                    <span><i class="far fa-clock"></i> ${item.read_time || '5 min read'}</span>
+                                    <span><i class="fas fa-eye"></i> ${item.views || 0} views</span>
+                                </div>
+                            </div>
+                            <div class="bookmark-actions">
+                                <button class="btn btn-outline read-blog-btn" data-id="${item.id}">
+                                    <i class="fas fa-book-open"></i> Read
+                                </button>
+                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="blog">
+                                    <i class="fas fa-trash-alt"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+        });
+
+        html += '</div>';
+        contentArea.innerHTML = html;
+
+        // Re-attach event listeners
+        setupBookmarkRemoval();
+        if (tabId === 'blogs') setupBlogReading();
+        if (tabId === 'courses') setupCourseView();
     }
 
     // ======================
-    // Global functions
+    // Initialize course view and other event listeners
     // ======================
 
+    // Add course view event listener
+    setupCourseView();
+
+    // Make functions globally available
+    window.closeHorizontalCourseModal = closeHorizontalCourseModal;
+    window.closeLightweightBlogModal = closeLightweightBlogModal;
     window.closeTestimonialReadModal = closeTestimonialReadModal;
     window.closeEditTestimonialModal = closeEditTestimonialModal;
     window.shareTestimonial = shareTestimonial;
-});
+    window.openTestimonialShareModal = openTestimonialShareModal;
+    });
