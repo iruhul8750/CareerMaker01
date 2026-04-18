@@ -2196,13 +2196,14 @@ def upload_profile_pic():
         unique_name = f"{user_id}/{uuid.uuid4().hex}_{timestamp}.{ext}"
 
         # Delete old profile picture if exists
+        old_profile_pic_path = None
         try:
             user_response = supabase_admin.table('users').select('profile_pic').eq('id', user_id).execute()
             if user_response.data and user_response.data[0].get('profile_pic'):
-                old_file_path = user_response.data[0]['profile_pic']
+                old_profile_pic_path = user_response.data[0]['profile_pic']
                 # Try to delete old file from storage
                 try:
-                    supabase_admin.storage.from_("profile-pictures").remove([old_file_path])
+                    supabase_admin.storage.from_("profile-pictures").remove([old_profile_pic_path])
                 except Exception as delete_error:
                     logger.warning(f"Could not delete old profile picture: {str(delete_error)}")
         except Exception as e:
@@ -2223,12 +2224,27 @@ def upload_profile_pic():
             logger.error(f"Supabase upload error: {response}")
             return jsonify({'success': False, 'error': 'Failed to upload image'}), 500
 
-        # Get public URL - FORCE CACHE BUSTING
-        project_ref = supabase_url.split('//')[1].split('.')[0]
-        image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{unique_name}?t={timestamp}"
-
         # Store the file path in DB using admin client (bypasses RLS)
         supabase_admin.table('users').update({'profile_pic': unique_name}).eq('id', user_id).execute()
+
+        # ========== FIX: Update all testimonials with new profile picture path ==========
+        try:
+            # Update testimonials table with new profile_pic path
+            supabase_admin.table('testimonials').update({'profile_pic': unique_name}).eq('user_id', user_id).execute()
+            logger.info(f"Updated {user_id}'s profile picture in testimonials table")
+        except Exception as testimonial_error:
+            logger.warning(f"Could not update testimonials: {str(testimonial_error)}")
+
+        # Also update any other tables that store profile pictures (comments, etc.)
+        # Uncomment if you have other tables
+        # try:
+        #     supabase_admin.table('comments').update({'profile_pic': unique_name}).eq('user_id', user_id).execute()
+        # except Exception as e:
+        #     logger.warning(f"Could not update comments: {str(e)}")
+
+        # Generate public URL with cache busting
+        project_ref = supabase_url.split('//')[1].split('.')[0]
+        image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{unique_name}?t={timestamp}"
 
         # Clear any cached user data
         if 'user_profile_pic' in session:
@@ -2249,7 +2265,14 @@ def upload_profile_pic():
 @app.route('/get-profile-pic')
 @login_required
 def get_profile_pic():
-    user_id = session['user_id']
+    # Support fetching by user_id parameter (for testimonials)
+    user_id = request.args.get('user_id') or session['user_id']
+
+    # If user_id is from request, verify it's valid (optional security check)
+    if request.args.get('user_id') and request.args.get('user_id') != session['user_id']:
+        # Still allow, but you might want to verify the user exists
+        pass
+
     try:
         # Get current timestamp for cache busting
         cache_bust_timestamp = request.args.get('t') or str(int(datetime.now().timestamp()))
@@ -2280,6 +2303,32 @@ def get_profile_pic():
             'error': str(e),
             'default_url': f"https://ui-avatars.com/api/?name=User&background=007bff&color=fff&bold=true"
         }), 500
+
+
+@app.route('/api/user-profile-pic/<user_id>')
+def get_user_profile_pic(user_id):
+    """Public endpoint to get user's profile picture (for testimonials)"""
+    try:
+        cache_bust_timestamp = request.args.get('t') or str(int(datetime.now().timestamp()))
+
+        user = supabase_admin.table('users').select('profile_pic').eq('id', user_id).single().execute().data
+        if user and user.get('profile_pic'):
+            project_ref = supabase_url.split('//')[1].split('.')[0]
+            image_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={cache_bust_timestamp}"
+
+            return jsonify({
+                'success': True,
+                'image_url': image_url
+            })
+
+        return jsonify({
+            'success': False,
+            'image_url': None
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching profile pic for user {user_id}: {str(e)}")
+        return jsonify({'success': False, 'image_url': None}), 500
 
 
 @app.route('/api/clear-profile-cache', methods=['POST'])

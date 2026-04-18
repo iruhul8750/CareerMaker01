@@ -282,1466 +282,1645 @@
     // ======================
 
     document.addEventListener('DOMContentLoaded', function() {
-    const avatarInitials = document.getElementById('userAvatarInitials');
-    const avatarImg = document.getElementById('userAvatarImage');
-    const profilePicUpload = document.getElementById('profilePicUpload');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-    const flashMessages = document.querySelector('.flash-messages');
+        const avatarInitials = document.getElementById('userAvatarInitials');
+        const avatarImg = document.getElementById('userAvatarImage');
+        const profilePicUpload = document.getElementById('profilePicUpload');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const flashMessages = document.querySelector('.flash-messages');
 
-    // Initialize everything
-    DashboardState.init();
-    initProfilePicture();
-    setupTabs();
-    setupBookmarkRemoval();
-    setupAvatarUpload();
-    setupFlashMessages();
-    setupBlogReading();
-    setupTestimonials();
-    setupLogout();
-    handleTestimonialAddButton();
+        // Initialize everything
+        DashboardState.init();
+        initProfilePicture();
+        setupTabs();
+        setupBookmarkRemoval();
+        setupAvatarUpload();
+        setupFlashMessages();
+        setupBlogReading();
+        setupTestimonials();
+        setupLogout();
+        handleTestimonialAddButton();
 
-    // Initialize dynamic button layout AFTER everything else
-    setupDynamicButtonLayout();
+        // Initialize dynamic button layout AFTER everything else
+        setupDynamicButtonLayout();
 
-    // ======================
-    // Tab Management with State Preservation
-    // ======================
+        // ======================
+        // Tab Management with State Preservation
+        // ======================
 
-    function setupTabs() {
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const tabId = this.dataset.tab;
+        function setupTabs() {
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.dataset.tab;
 
-                // Don't do anything if already active
-                if (this.classList.contains('active')) return;
+                    // Don't do anything if already active
+                    if (this.classList.contains('active')) return;
 
-                // Show loading state for the tab
-                showTabLoading(tabId);
+                    // Show loading state for the tab
+                    showTabLoading(tabId);
 
-                // Update active tab button
-                tabBtns.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.setAttribute('aria-selected', 'false');
-                });
-                this.classList.add('active');
-                this.setAttribute('aria-selected', 'true');
+                    // Update active tab button
+                    tabBtns.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.setAttribute('aria-selected', 'false');
+                    });
+                    this.classList.add('active');
+                    this.setAttribute('aria-selected', 'true');
 
-                // Hide all tab contents
-                tabContents.forEach(content => {
-                    content.classList.remove('active');
-                    content.setAttribute('aria-hidden', 'true');
-                });
+                    // Hide all tab contents
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        content.setAttribute('aria-hidden', 'true');
+                    });
 
-                // Show selected tab content with animation
-                setTimeout(() => {
-                    const tabContent = document.getElementById(tabId);
-                    if (tabContent) {
-                        tabContent.classList.add('active');
-                        tabContent.setAttribute('aria-hidden', 'false');
+                    // Show selected tab content with animation
+                    setTimeout(() => {
+                        const tabContent = document.getElementById(tabId);
+                        if (tabContent) {
+                            tabContent.classList.add('active');
+                            tabContent.setAttribute('aria-hidden', 'false');
 
-                        // Update button position for this tab
-                        if (typeof updateButtonPosition === 'function') {
-                            updateButtonPosition(tabId);
-                        }
-
-                        // Hide loading state
-                        hideTabLoading(tabId);
-
-                        // Load tab-specific content if needed
-                        loadTabContent(tabId);
-
-                        // Dispatch tab changed event
-                        const event = new CustomEvent('tabChanged', {
-                            detail: {
-                                tabId: tabId,
-                                previousTab: DashboardState.currentTab
+                            // Update button position for this tab
+                            if (typeof updateButtonPosition === 'function') {
+                                updateButtonPosition(tabId);
                             }
-                        });
-                        document.dispatchEvent(event);
 
-                        // Save state
-                        DashboardState.currentTab = tabId;
-                        DashboardState.saveState();
-                    }
-                }, 300);
-            });
-        });
+                            // Hide loading state
+                            hideTabLoading(tabId);
 
-        const savedTab = localStorage.getItem('dashboardActiveTab');
-        if (savedTab && document.querySelector(`[data-tab="${savedTab}"]`)) {
-            setTimeout(() => {
-                document.querySelector(`[data-tab="${savedTab}"]`).click();
-            }, 200);
-        } else if (tabBtns.length > 0) {
-            tabBtns[0].click();
-        }
-    }
+                            // Load tab-specific content if needed
+                            loadTabContent(tabId);
 
-    function showTabLoading(tabId) {
-        const tabContent = document.getElementById(tabId);
-        if (!tabContent) return;
+                            // Dispatch tab changed event
+                            const event = new CustomEvent('tabChanged', {
+                                detail: {
+                                    tabId: tabId,
+                                    previousTab: DashboardState.currentTab
+                                }
+                            });
+                            document.dispatchEvent(event);
 
-        let loadingOverlay = tabContent.querySelector('.tab-loading-overlay');
-        if (!loadingOverlay) {
-            loadingOverlay = document.createElement('div');
-            loadingOverlay.className = 'tab-loading-overlay';
-            loadingOverlay.innerHTML = `
-                <div class="tab-loading-content">
-                    <div class="tab-spinner"></div>
-                    <p>Loading...</p>
-                </div>
-            `;
-            tabContent.appendChild(loadingOverlay);
-        }
-        loadingOverlay.style.display = 'flex';
-    }
-
-    function hideTabLoading(tabId) {
-        const tabContent = document.getElementById(tabId);
-        if (!tabContent) return;
-
-        const loadingOverlay = tabContent.querySelector('.tab-loading-overlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'none';
-        }
-    }
-
-    async function loadTabContent(tabId) {
-        showTabLoading(tabId);
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            if (tabId === 'testimonials') {
-                await loadTestimonialsContent();
-            }
-        } catch (error) {
-            console.error(`Error loading ${tabId}:`, error);
-        } finally {
-            hideTabLoading(tabId);
-        }
-    }
-
-    async function loadTestimonialsContent() {
-        try {
-            const response = await fetch('/api/testimonials/user', {
-                credentials: 'include'
+                            // Save state
+                            DashboardState.currentTab = tabId;
+                            DashboardState.saveState();
+                        }
+                    }, 300);
+                });
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    renderTestimonials(data.testimonials);
-                }
+            const savedTab = localStorage.getItem('dashboardActiveTab');
+            if (savedTab && document.querySelector(`[data-tab="${savedTab}"]`)) {
+                setTimeout(() => {
+                    document.querySelector(`[data-tab="${savedTab}"]`).click();
+                }, 200);
+            } else if (tabBtns.length > 0) {
+                tabBtns[0].click();
             }
-        } catch (error) {
-            console.error('Failed to load testimonials:', error);
         }
-    }
 
-    // ======================
-    // DYNAMIC BUTTON POSITIONING
-    // ======================
-
-    function setupDynamicButtonLayout() {
-        // Function to update button position based on content
-        function updateButtonPosition(tabId) {
+        function showTabLoading(tabId) {
             const tabContent = document.getElementById(tabId);
             if (!tabContent) return;
 
-            const dashboardCard = tabContent.querySelector('.dashboard-card');
-            const contentArea = tabContent.querySelector('.content-area');
-            const browseBtn = tabContent.querySelector('.browse-action-btn');
-
-            if (!dashboardCard || !contentArea || !browseBtn) return;
-
-            // Check if content area has content
-            const hasContent = () => {
-                // Get all items (including those with empty containers)
-                const bookmarkList = contentArea.querySelector('.bookmarks-list');
-                const testimonialsList = contentArea.querySelector('.testimonials-list');
-
-                // If there's a list container, check its children
-                if (bookmarkList) {
-                    const items = bookmarkList.querySelectorAll(
-                        '.bookmark-item:not(.bookmark-removing), ' +
-                        '.testimonial-item:not(.bookmark-removing)'
-                    );
-                    return items.length > 0;
-                }
-
-                if (testimonialsList) {
-                    const items = testimonialsList.querySelectorAll('.testimonial-item:not(.bookmark-removing)');
-                    return items.length > 0;
-                }
-
-                // Direct children check
-                const directItems = contentArea.querySelectorAll(
-                    '.bookmark-item:not(.bookmark-removing), ' +
-                    '.testimonial-item:not(.bookmark-removing), ' +
-                    '.bookmarks-list, ' +
-                    '.testimonials-list'
-                );
-
-                for (let item of directItems) {
-                    if (item.childNodes.length > 0 &&
-                        item.style.display !== 'none' &&
-                        item.style.visibility !== 'hidden') {
-                        return true;
-                    }
-                }
-
-                // Final fallback - check innerHTML
-                const html = contentArea.innerHTML.trim();
-                const isEmpty = html === '' ||
-                               html === '<div class="bookmarks-list"></div>' ||
-                               html === '<div class="testimonials-list"></div>';
-
-                return !isEmpty;
-            };
-
-            const contentExists = hasContent();
-
-            // Update dashboard card class
-            dashboardCard.classList.toggle('empty-state', !contentExists);
-
-            // Update button text based on content
-            if (!contentExists) {
-                if (tabId === 'testimonials') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
-
-                    // Direct click handler - Open modal
-                    browseBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openTestimonialShareModal();
-                    };
-
-                } else if (tabId === 'courses') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Courses';
-                } else if (tabId === 'jobs') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Jobs';
-                } else if (tabId === 'internships') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Internships';
-                } else if (tabId === 'blogs') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Articles';
-                }
-
-                // Ensure subtitle is visible
-                const subtitle = tabContent.querySelector('.tab-subtitle');
-                if (subtitle) {
-                    subtitle.style.display = 'block';
-                    subtitle.style.opacity = '1';
-                }
-            } else {
-                // Restore original button text
-                if (tabId === 'testimonials') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add New Testimonial';
-                    browseBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openTestimonialShareModal();
-                    };
-
-                } else if (tabId === 'courses') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Courses';
-                } else if (tabId === 'jobs') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Jobs';
-                } else if (tabId === 'internships') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Internships';
-                } else if (tabId === 'blogs') {
-                    browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Articles';
-                }
-
-                // Hide subtitle
-                const subtitle = tabContent.querySelector('.tab-subtitle');
-                if (subtitle) {
-                    subtitle.style.display = 'none';
-                }
+            let loadingOverlay = tabContent.querySelector('.tab-loading-overlay');
+            if (!loadingOverlay) {
+                loadingOverlay = document.createElement('div');
+                loadingOverlay.className = 'tab-loading-overlay';
+                loadingOverlay.innerHTML = `
+                    <div class="tab-loading-content">
+                        <div class="tab-spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                `;
+                tabContent.appendChild(loadingOverlay);
             }
-
-            console.log(`Button update for ${tabId}: contentExists=${contentExists}, empty-state=${!contentExists}`);
+            loadingOverlay.style.display = 'flex';
         }
 
-        // Initialize for all tabs
-        const tabIds = ['courses', 'jobs', 'internships', 'blogs', 'testimonials'];
-        tabIds.forEach(tabId => {
-            updateButtonPosition(tabId);
-        });
+        function hideTabLoading(tabId) {
+            const tabContent = document.getElementById(tabId);
+            if (!tabContent) return;
 
-        // Listen for ALL content change events
-        document.addEventListener('bookmarkRemoved', function(e) {
-            console.log('Bookmark removed event:', e.detail);
-            setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
-        });
-
-        document.addEventListener('contentChanged', function(e) {
-            console.log('Content changed event:', e.detail);
-            setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
-        });
-
-        document.addEventListener('tabChanged', function(e) {
-            console.log('Tab changed event:', e.detail);
-            setTimeout(() => updateButtonPosition(e.detail.tabId), 300);
-        });
-
-        document.addEventListener('testimonialUpdated', function(e) {
-            console.log('Testimonial updated event');
-            setTimeout(() => updateButtonPosition('testimonials'), 100);
-        });
-
-        // Also add a mutation observer for dynamic content changes
-        setupMutationObserver();
-
-        // Make function available globally
-        window.updateButtonPosition = updateButtonPosition;
-    }
-
-    // ======================
-    // Profile Picture Functions
-    // ======================
-
-    function initProfilePicture() {
-        if (!avatarInitials) return;
-
-        const usernameElement = document.querySelector('.user-info h2');
-        const username = usernameElement ? usernameElement.textContent.trim() : '';
-        const userInitial = username ? username[0].toUpperCase() : '?';
-        avatarInitials.textContent = userInitial;
-
-        // Always fetch fresh image, don't rely on cache
-        loadProfilePicture();
-    }
-
-     function loadProfilePicture() {
-        const timestamp = Date.now();
-        const cacheBusterUrl = `/get-profile-pic?t=${timestamp}`;
-
-        // Fetch with cache busting
-        fetch(cacheBusterUrl, {
-            credentials: 'include',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
+            const loadingOverlay = tabContent.querySelector('.tab-loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.image_url) {
-                // Force reload by setting src with cache busting
-                avatarImg.src = data.image_url + '&_=' + timestamp;
-                avatarImg.style.display = 'block';
-                avatarInitials.style.display = 'none';
-            } else {
-                showInitialAvatar();
-            }
-        })
-        .catch(error => {
-            console.error('Profile picture load error:', error);
-            showInitialAvatar();
-        });
-    }
+        }
 
-    function showInitialAvatar() {
-        avatarInitials.style.display = 'flex';
-        avatarImg.style.display = 'none';
-        localStorage.removeItem('profilePicTimestamp');
-        console.log('Showing initial avatar');
-    }
-
-    function setupAvatarUpload() {
-        if (!profilePicUpload) return;
-
-        profilePicUpload.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                showToast('Only JPEG, PNG, GIF or WebP images allowed', 'error');
-                return;
-            }
-
-            if (file.size > 2 * 1024 * 1024) {
-                showToast('Image must be smaller than 2MB', 'error');
-                return;
-            }
-
-            // Show preview immediately
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // Set the preview immediately
-                avatarImg.src = e.target.result;
-                avatarImg.style.display = 'block';
-                avatarInitials.style.display = 'none';
-
-                // Clear cache for this image
-                localStorage.removeItem('profilePicUrl');
-                localStorage.removeItem('profilePicTimestamp');
-                localStorage.removeItem('profilePicCacheBust');
-            };
-            reader.readAsDataURL(file);
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('timestamp', Date.now()); // Add timestamp to prevent caching
-
+        async function loadTabContent(tabId) {
+            showTabLoading(tabId);
             try {
-                showLoader('Uploading profile picture...');
-
-                const response = await fetch('/upload-profile-pic', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'include',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (tabId === 'testimonials') {
+                    await loadTestimonialsContent();
                 }
-
-                const data = await response.json();
-
-                if (!data.success) {
-                    throw new Error(data.error || 'Upload failed');
-                }
-
-                // Add cache-busting timestamp to the image URL
-                const timestamp = Date.now();
-                const imageUrl = data.image_url + '?t=' + timestamp;
-
-                // Force reload the image
-                const img = new Image();
-                img.onload = function() {
-                    // Set the new image with timestamp
-                    avatarImg.src = imageUrl;
-                    avatarImg.style.display = 'block';
-
-                    // Store with timestamp
-                    localStorage.setItem('profilePicUrl', data.image_url);
-                    localStorage.setItem('profilePicTimestamp', timestamp);
-                    localStorage.setItem('profilePicCacheBust', timestamp.toString());
-
-                    showToast('Profile picture updated successfully!', 'success');
-
-                    // TRIGGER PROFILE PICTURE REFRESH ON ALL PAGES
-                    triggerProfilePictureRefresh();
-                };
-
-                img.onerror = function() {
-                    // Fallback to the preview if server image fails to load
-                    console.log('Server image failed to load, using preview');
-                    showToast('Profile picture updated! (Using preview)', 'success');
-
-                    // Still trigger refresh even if preview is used
-                    triggerProfilePictureRefresh();
-                };
-
-                img.src = imageUrl;
-
             } catch (error) {
-                console.error('Upload error:', error);
-                // Show initials as fallback
-                avatarImg.style.display = 'none';
-                avatarInitials.style.display = 'flex';
-                showToast(error.message || 'Failed to upload image', 'error');
+                console.error(`Error loading ${tabId}:`, error);
             } finally {
-                hideLoader();
-                e.target.value = '';
+                hideTabLoading(tabId);
             }
-        });
-    }
-
-    // Add this function to trigger profile picture refresh across all pages
-    function triggerProfilePictureRefresh() {
-        console.log('🔄 Triggering profile picture refresh...');
-
-        // Method 1: Dispatch custom event (for single page app behavior)
-        const profileUpdatedEvent = new CustomEvent('profilePictureUpdated', {
-            detail: {
-                timestamp: Date.now(),
-                source: 'dashboard'
-            }
-        });
-        document.dispatchEvent(profileUpdatedEvent);
-
-        // Method 2: Broadcast to all tabs using BroadcastChannel
-        try {
-            const broadcastChannel = new BroadcastChannel('profile_picture_updates');
-            broadcastChannel.postMessage({
-                type: 'PROFILE_PICTURE_UPDATED',
-                timestamp: Date.now()
-            });
-            broadcastChannel.close();
-        } catch (e) {
-            console.log('BroadcastChannel not supported, using localStorage method');
         }
 
-        // Method 3: Use localStorage to signal refresh (works across tabs)
-        localStorage.setItem('profilePicLastUpdate', Date.now().toString());
-
-        // Method 4: Force reload navigation profile picture if function exists
-        if (typeof refreshNavigationProfilePicture === 'function') {
-            setTimeout(() => {
-                refreshNavigationProfilePicture();
-            }, 500);
-        }
-
-        // Method 5: If on dashboard page, force reload main page after a delay
-        if (window.location.pathname.includes('/dashboard')) {
-            console.log('On dashboard - scheduling main page profile refresh');
-            setTimeout(() => {
-                // Try to fetch main page profile picture
-                fetch('/get-profile-pic?force=' + Date.now(), {
-                    credentials: 'include',
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                }).catch(() => {
-                    // Ignore errors
+        async function loadTestimonialsContent() {
+            try {
+                const response = await fetch('/api/testimonials/user', {
+                    credentials: 'include'
                 });
-            }, 1000);
-        }
-    }
 
-    // Also add a listener for profile picture updates (for when user is on other tabs)
-    document.addEventListener('DOMContentLoaded', function() {
-        // Listen for the custom event
-        document.addEventListener('profilePictureUpdated', function(e) {
-            console.log('📢 Profile picture update event received:', e.detail);
-
-            // Reload the profile picture
-            if (typeof loadNavigationProfilePicture === 'function') {
-                setTimeout(() => {
-                    loadNavigationProfilePicture();
-                }, 300);
-            }
-
-            // If there's a welcome banner profile picture, reload it too
-            const welcomeProfilePic = document.querySelector('.welcome-profile-pic');
-            if (welcomeProfilePic) {
-                const newTimestamp = Date.now();
-                const currentSrc = welcomeProfilePic.src;
-                const baseSrc = currentSrc.split('?')[0];
-                welcomeProfilePic.src = baseSrc + '?t=' + newTimestamp;
-            }
-        });
-
-        // Listen for BroadcastChannel messages
-        try {
-            const broadcastChannel = new BroadcastChannel('profile_picture_updates');
-            broadcastChannel.onmessage = function(event) {
-                if (event.data.type === 'PROFILE_PICTURE_UPDATED') {
-                    console.log('📢 Profile picture updated via BroadcastChannel');
-                    if (typeof loadNavigationProfilePicture === 'function') {
-                        setTimeout(() => {
-                            loadNavigationProfilePicture();
-                        }, 300);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        renderTestimonials(data.testimonials);
                     }
                 }
-            };
-        } catch (e) {
-            console.log('BroadcastChannel not supported');
+            } catch (error) {
+                console.error('Failed to load testimonials:', error);
+            }
         }
 
-        // Check localStorage for recent updates
-        const lastUpdate = localStorage.getItem('profilePicLastUpdate');
-        if (lastUpdate) {
-            const now = Date.now();
-            const updateTime = parseInt(lastUpdate);
+        // ======================
+        // DYNAMIC BUTTON POSITIONING
+        // ======================
 
-            // If update was within the last 10 seconds, refresh
-            if (now - updateTime < 10000) {
-                console.log('Recent profile picture update detected, refreshing...');
-                if (typeof loadNavigationProfilePicture === 'function') {
-                    setTimeout(() => {
-                        loadNavigationProfilePicture();
-                    }, 1000);
+        function setupDynamicButtonLayout() {
+            // Function to update button position based on content
+            function updateButtonPosition(tabId) {
+                const tabContent = document.getElementById(tabId);
+                if (!tabContent) return;
+
+                const dashboardCard = tabContent.querySelector('.dashboard-card');
+                const contentArea = tabContent.querySelector('.content-area');
+                const browseBtn = tabContent.querySelector('.browse-action-btn');
+
+                if (!dashboardCard || !contentArea || !browseBtn) return;
+
+                // Check if content area has content
+                const hasContent = () => {
+                    // Get all items (including those with empty containers)
+                    const bookmarkList = contentArea.querySelector('.bookmarks-list');
+                    const testimonialsList = contentArea.querySelector('.testimonials-list');
+
+                    // If there's a list container, check its children
+                    if (bookmarkList) {
+                        const items = bookmarkList.querySelectorAll(
+                            '.bookmark-item:not(.bookmark-removing), ' +
+                            '.testimonial-item:not(.bookmark-removing)'
+                        );
+                        return items.length > 0;
+                    }
+
+                    if (testimonialsList) {
+                        const items = testimonialsList.querySelectorAll('.testimonial-item:not(.bookmark-removing)');
+                        return items.length > 0;
+                    }
+
+                    // Direct children check
+                    const directItems = contentArea.querySelectorAll(
+                        '.bookmark-item:not(.bookmark-removing), ' +
+                        '.testimonial-item:not(.bookmark-removing), ' +
+                        '.bookmarks-list, ' +
+                        '.testimonials-list'
+                    );
+
+                    for (let item of directItems) {
+                        if (item.childNodes.length > 0 &&
+                            item.style.display !== 'none' &&
+                            item.style.visibility !== 'hidden') {
+                            return true;
+                        }
+                    }
+
+                    // Final fallback - check innerHTML
+                    const html = contentArea.innerHTML.trim();
+                    const isEmpty = html === '' ||
+                                   html === '<div class="bookmarks-list"></div>' ||
+                                   html === '<div class="testimonials-list"></div>';
+
+                    return !isEmpty;
+                };
+
+                const contentExists = hasContent();
+
+                // Update dashboard card class
+                dashboardCard.classList.toggle('empty-state', !contentExists);
+
+                // Update button text based on content
+                if (!contentExists) {
+                    if (tabId === 'testimonials') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add Your Testimonial';
+
+                        // Direct click handler - Open modal
+                        browseBtn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openTestimonialShareModal();
+                        };
+
+                    } else if (tabId === 'courses') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Courses';
+                    } else if (tabId === 'jobs') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Jobs';
+                    } else if (tabId === 'internships') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Internships';
+                    } else if (tabId === 'blogs') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse Articles';
+                    }
+
+                    // Ensure subtitle is visible
+                    const subtitle = tabContent.querySelector('.tab-subtitle');
+                    if (subtitle) {
+                        subtitle.style.display = 'block';
+                        subtitle.style.opacity = '1';
+                    }
+                } else {
+                    // Restore original button text
+                    if (tabId === 'testimonials') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Add New Testimonial';
+                        browseBtn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openTestimonialShareModal();
+                        };
+
+                    } else if (tabId === 'courses') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Courses';
+                    } else if (tabId === 'jobs') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Jobs';
+                    } else if (tabId === 'internships') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Internships';
+                    } else if (tabId === 'blogs') {
+                        browseBtn.innerHTML = '<i class="fas fa-plus"></i> Browse More Articles';
+                    }
+
+                    // Hide subtitle
+                    const subtitle = tabContent.querySelector('.tab-subtitle');
+                    if (subtitle) {
+                        subtitle.style.display = 'none';
+                    }
                 }
+
+                console.log(`Button update for ${tabId}: contentExists=${contentExists}, empty-state=${!contentExists}`);
             }
-        }
-    });
 
-    // Also add a periodic check for profile picture updates (every 30 seconds)
-    setInterval(() => {
-        const lastUpdate = localStorage.getItem('profilePicLastUpdate');
-        if (lastUpdate) {
-            const now = Date.now();
-            const updateTime = parseInt(lastUpdate);
+            // Initialize for all tabs
+            const tabIds = ['courses', 'jobs', 'internships', 'blogs', 'testimonials'];
+            tabIds.forEach(tabId => {
+                updateButtonPosition(tabId);
+            });
 
-            // If update was within the last minute, refresh
-            if (now - updateTime < 60000) {
-                if (typeof loadNavigationProfilePicture === 'function') {
-                    loadNavigationProfilePicture();
-                }
-            }
-        }
-    }, 30000);
+            // Listen for ALL content change events
+            document.addEventListener('bookmarkRemoved', function(e) {
+                console.log('Bookmark removed event:', e.detail);
+                setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
+            });
 
-    function clearImageCache(imageElement) {
-        if (!imageElement) return;
+            document.addEventListener('contentChanged', function(e) {
+                console.log('Content changed event:', e.detail);
+                setTimeout(() => updateButtonPosition(e.detail.tabId), 100);
+            });
 
-        // Replace the src with a data URL to clear the current image
-        imageElement.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            document.addEventListener('tabChanged', function(e) {
+                console.log('Tab changed event:', e.detail);
+                setTimeout(() => updateButtonPosition(e.detail.tabId), 300);
+            });
 
-        // Force browser to release memory
-        setTimeout(() => {
-            imageElement.removeAttribute('src');
-        }, 100);
-    }
+            document.addEventListener('testimonialUpdated', function(e) {
+                console.log('Testimonial updated event');
+                setTimeout(() => updateButtonPosition('testimonials'), 100);
+            });
 
-    // ======================
-    // Bookmark Management
-    // ======================
+            // Also add a mutation observer for dynamic content changes
+            setupMutationObserver();
 
-    function setupBookmarkRemoval() {
-        document.addEventListener('click', async function(e) {
-            if (e.target.closest('.remove-bookmark')) {
-                const btn = e.target.closest('.remove-bookmark');
-                const itemId = btn.dataset.id;
-                const itemType = btn.dataset.type;
-                const bookmarkItem = btn.closest('.bookmark-item');
-
-                showRemoveConfirmationModal(itemId, itemType, bookmarkItem);
-            }
-        });
-    }
-
-    function showRemoveConfirmationModal(itemId, itemType, bookmarkItem) {
-        const modal = document.getElementById('removeBookmarkModal');
-        if (!modal) {
-            console.error('Remove bookmark modal not found');
-            return;
+            // Make function available globally
+            window.updateButtonPosition = updateButtonPosition;
         }
 
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        // ======================
+        // Profile Picture Functions
+        // ======================
 
-        // Store data on modal
-        modal.dataset.itemId = itemId;
-        modal.dataset.itemType = itemType;
-        modal.dataset.bookmarkItemId = bookmarkItem?.id || '';
+        function initProfilePicture() {
+            if (!avatarInitials) return;
 
-        // Get buttons - use the correct IDs from the modal in user-dashboard.html
-        const cancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
-        const closeBtn = document.getElementById('closeRemoveBookmarkModal');
-        const confirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
+            const usernameElement = document.querySelector('.user-info h2');
+            const username = usernameElement ? usernameElement.textContent.trim() : '';
+            const userInitial = username ? username[0].toUpperCase() : '?';
+            avatarInitials.textContent = userInitial;
 
-        if (!cancelBtn || !closeBtn || !confirmBtn) {
-            console.error('Modal buttons not found');
-            return;
+            // Always fetch fresh image, don't rely on cache
+            loadProfilePicture();
         }
 
-        // Remove existing listeners by cloning
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        const newCloseBtn = closeBtn.cloneNode(true);
-        const newConfirmBtn = confirmBtn.cloneNode(true);
+         function loadProfilePicture() {
+            const timestamp = Date.now();
+            const cacheBusterUrl = `/get-profile-pic?t=${timestamp}`;
 
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-        // Get fresh references
-        const freshCancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
-        const freshCloseBtn = document.getElementById('closeRemoveBookmarkModal');
-        const freshConfirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
-
-        const cleanup = () => {
-            modal.style.display = 'none';
-            document.body.style.overflow = '';
-            delete modal.dataset.itemId;
-            delete modal.dataset.itemType;
-            delete modal.dataset.bookmarkItemId;
-        };
-
-        const cancelHandler = () => {
-            cleanup();
-        };
-
-        const confirmHandler = async () => {
-            const id = modal.dataset.itemId;
-            const type = modal.dataset.itemType;
-            const itemElement = bookmarkItem || document.getElementById(modal.dataset.bookmarkItemId);
-            cleanup();
-            await removeBookmark(id, type, itemElement);
-        };
-
-        freshCancelBtn.addEventListener('click', cancelHandler);
-        freshCloseBtn.addEventListener('click', cancelHandler);
-        freshConfirmBtn.addEventListener('click', confirmHandler);
-
-        // Close when clicking outside
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                cleanup();
-            }
-        });
-    }
-
-    async function removeBookmark(itemId, itemType, bookmarkItem) {
-        try {
-            showLoader('Removing bookmark...');
-
-            const btn = bookmarkItem?.querySelector('.remove-bookmark');
-            if (btn) btn.disabled = true;
-
-            // Add removal animation class
-            if (bookmarkItem) bookmarkItem.classList.add('bookmark-removing');
-
-            // Get current tab ID BEFORE removal
-            const currentTabId = getCurrentTabId();
-
-            // Send request to remove bookmark
-            const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
-                method: 'POST',
+            // Fetch with cache busting
+            fetch(cacheBusterUrl, {
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
                 }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.image_url) {
+                    // Force reload by setting src with cache busting
+                    avatarImg.src = data.image_url + '&_=' + timestamp;
+                    avatarImg.style.display = 'block';
+                    avatarInitials.style.display = 'none';
+                } else {
+                    showInitialAvatar();
+                }
+            })
+            .catch(error => {
+                console.error('Profile picture load error:', error);
+                showInitialAvatar();
             });
+        }
 
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Server returned non-JSON response');
-            }
+        function showInitialAvatar() {
+            avatarInitials.style.display = 'flex';
+            avatarImg.style.display = 'none';
+            localStorage.removeItem('profilePicTimestamp');
+            console.log('Showing initial avatar');
+        }
 
-            const data = await response.json();
+        function setupAvatarUpload() {
+            if (!profilePicUpload) return;
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to remove bookmark');
-            }
+            profilePicUpload.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
 
-            // Wait for animation to complete
-            setTimeout(() => {
-                // Remove the item from DOM
-                if (bookmarkItem) bookmarkItem.remove();
-
-                // Force a DOM update
-                refreshCurrentTab();
-
-                // Get all remaining items in this tab
-                const tabContent = document.getElementById(currentTabId);
-                const contentArea = tabContent?.querySelector('.content-area');
-                const remainingItems = contentArea?.querySelectorAll(
-                    '.bookmark-item:not(.bookmark-removing), ' +
-                    '.testimonial-item:not(.bookmark-removing)'
-                ) || [];
-
-                // Check if tab is now empty
-                const isNowEmpty = remainingItems.length === 0;
-
-                // Dispatch bookmark removed event with more details
-                const event = new CustomEvent('bookmarkRemoved', {
-                    detail: {
-                        type: itemType,
-                        tabId: currentTabId,
-                        itemId: itemId,
-                        isTabNowEmpty: isNowEmpty,
-                        remainingCount: remainingItems.length
-                    }
-                });
-                document.dispatchEvent(event);
-
-                // Also dispatch a generic content change event
-                const contentEvent = new CustomEvent('contentChanged', {
-                    detail: {
-                        tabId: currentTabId,
-                        action: 'removed',
-                        contentType: itemType
-                    }
-                });
-                document.dispatchEvent(contentEvent);
-
-                // Update button position immediately
-                if (typeof updateButtonPosition === 'function') {
-                    // Small delay to ensure DOM is updated
-                    setTimeout(() => {
-                        updateButtonPosition(currentTabId);
-                        console.log(`Updated button position for ${currentTabId}, empty: ${isNowEmpty}`);
-                    }, 50);
+                const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                    showToast('Only JPEG, PNG, GIF or WebP images allowed', 'error');
+                    return;
                 }
 
-                updateDashboardUI('remove', 'bookmark', { id: itemId, itemType: itemType });
+                if (file.size > 2 * 1024 * 1024) {
+                    showToast('Image must be smaller than 2MB', 'error');
+                    return;
+                }
 
-            }, 700);
+                // Show preview immediately
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Set the preview immediately
+                    avatarImg.src = e.target.result;
+                    avatarImg.style.display = 'block';
+                    avatarInitials.style.display = 'none';
 
-        } catch (error) {
-            console.error('Remove bookmark error:', error);
-            if (bookmarkItem) bookmarkItem.classList.remove('bookmark-removing');
-            const btn = bookmarkItem?.querySelector('.remove-bookmark');
-            if (btn) btn.disabled = false;
-            showToast(error.message || 'Failed to remove bookmark', 'error');
-        } finally {
-            hideLoader();
-        }
-    }
+                    // Clear cache for this image
+                    localStorage.removeItem('profilePicUrl');
+                    localStorage.removeItem('profilePicTimestamp');
+                    localStorage.removeItem('profilePicCacheBust');
+                };
+                reader.readAsDataURL(file);
 
-    // Simple helper to get current tab ID
-    function getCurrentTabId() {
-        const activeTab = document.querySelector('.tab-btn.active');
-        return activeTab ? activeTab.dataset.tab : 'courses';
-    }
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('timestamp', Date.now()); // Add timestamp to prevent caching
 
-    function checkEmptyTabState() {
-        const activeTab = document.querySelector('.tab-content.active');
-        if (!activeTab) return;
-
-        const dashboardCard = activeTab.querySelector('.dashboard-card');
-        if (!dashboardCard) return;
-
-        const tabId = activeTab.id;
-
-        if (tabId === 'testimonials') {
-            checkTestimonialsEmptyState();
-            return;
-        }
-
-        const items = Array.from(activeTab.querySelectorAll('.bookmark-item')).filter(item => {
-            return item.style.opacity !== '0' && !item.style.height.includes('0');
-        });
-
-        const emptyState = activeTab.querySelector('.empty-state');
-        const hasItems = items.length > 0;
-
-        if (!hasItems && !emptyState) {
-            let browseText = '', browseUrl = '', description = '';
-
-            switch(tabId) {
-                case 'courses':
-                    browseText = 'Browse Courses'; browseUrl = '/courses';
-                    description = 'Save courses from the courses page to view them here'; break;
-                case 'jobs':
-                    browseText = 'Browse Jobs'; browseUrl = '/jobs';
-                    description = 'Save jobs from the jobs page to view them here'; break;
-                case 'internships':
-                    browseText = 'Browse Internships'; browseUrl = '/internships';
-                    description = 'Save internships from the internships page to view them here'; break;
-                case 'blogs':
-                    browseText = 'Browse Articles'; browseUrl = '/blogs.html';
-                    description = 'Save articles from the blog page to view them here'; break;
-                case 'testimonials':
-                    browseText = 'Add Testimonial'; browseUrl = '/#testimonials-section';
-                    description = 'Share your experience and help others in their career journey'; break;
-            }
-
-            const emptyHTML = `
-                <div class="empty-state">
-                    <i class="far fa-bookmark"></i>
-                    <h4>No ${tabId} saved yet</h4>
-                    <p>${description}</p>
-                    <a href="${browseUrl}" class="btn btn-primary">${browseText}</a>
-                </div>
-            `;
-            dashboardCard.innerHTML = emptyHTML;
-        } else if (hasItems && emptyState) {
-            emptyState.remove();
-        }
-    }
-
-    // ======================
-    // COURSE MODAL FUNCTIONS
-    // ======================
-
-    function setupCourseView() {
-        document.addEventListener('click', function(e) {
-            const viewBtn = e.target.closest('.view-content-btn');
-            if (viewBtn && viewBtn.dataset.type === 'course') {
-                e.preventDefault();
-                e.stopPropagation();
-                const courseId = viewBtn.dataset.id;
-                openCourseModal(courseId);
-            }
-        });
-    }
-
-    async function openCourseModal(courseId) {
-        return withLoader(
-            (async () => {
-                const response = await fetch(`/api/course/${courseId}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Course not found');
-
-                showCourseModal(data.course);
-                trackCourseView(courseId);
-                return data.course;
-            })(),
-            'Loading course details...',
-            null,
-            'Failed to load course details'
-        );
-    }
-
-    function showCourseModal(course) {
-        const modal = document.getElementById('horizontalCourseModal');
-        if (!modal) return;
-
-        // Update modal content
-        document.getElementById('horizontalModalCourseTitle').textContent = course.title || 'Course Title';
-        document.getElementById('horizontalModalCourseProvider').textContent = course.company || course.provider || 'Unknown Provider';
-        document.getElementById('horizontalModalCourseCategory').textContent = course.category || 'Course';
-        document.getElementById('horizontalModalCourseDescription').innerHTML = course.description || 'No description available.';
-
-        // Price
-        const priceElement = document.getElementById('horizontalModalCoursePrice');
-        if (priceElement) {
-            priceElement.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
-        }
-
-        // Level
-        const levelElement = document.getElementById('horizontalModalCourseLevel');
-        if (levelElement) {
-            levelElement.textContent = course.level || 'All Levels';
-        }
-
-        // Duration
-        const durationElement = document.getElementById('horizontalModalCourseDuration');
-        if (durationElement) {
-            durationElement.textContent = course.duration || 'Self-paced';
-        }
-
-        // Language
-        const languageElement = document.getElementById('horizontalModalCourseLanguage');
-        if (languageElement) {
-            languageElement.textContent = course.language || 'English';
-        }
-
-        // Views
-        const viewsElement = document.getElementById('horizontalModalViews');
-        if (viewsElement) {
-            viewsElement.textContent = course.views || 0;
-        }
-
-        // Instructor
-        const instructorElement = document.getElementById('horizontalModalInstructor');
-        if (instructorElement && course.instructor) {
-            document.getElementById('horizontalInstructorSection').style.display = 'block';
-            instructorElement.textContent = course.instructor;
-        } else if (document.getElementById('horizontalInstructorSection')) {
-            document.getElementById('horizontalInstructorSection').style.display = 'none';
-        }
-
-        // Curriculum
-        if (course.curriculum && course.curriculum.length > 0) {
-            const curriculumList = document.getElementById('horizontalModalCurriculum');
-            if (curriculumList) {
-                curriculumList.innerHTML = course.curriculum.map(item => `<li><i class="fas fa-check"></i> ${item}</li>`).join('');
-                document.getElementById('horizontalCurriculumSection').style.display = 'block';
-            }
-        } else if (document.getElementById('horizontalCurriculumSection')) {
-            document.getElementById('horizontalCurriculumSection').style.display = 'none';
-        }
-
-        // Image
-        const imageElement = document.getElementById('horizontalModalCourseImage');
-        const placeholderElement = document.querySelector('.horizontal-image-placeholder');
-        if (course.image && course.image !== 'None') {
-            imageElement.src = course.image;
-            imageElement.style.display = 'block';
-            if (placeholderElement) placeholderElement.style.display = 'none';
-        } else if (course.company_logo && course.company_logo !== 'None') {
-            imageElement.src = course.company_logo;
-            imageElement.style.display = 'block';
-            if (placeholderElement) placeholderElement.style.display = 'none';
-        } else if (course.thumbnail && course.thumbnail !== 'None') {
-            imageElement.src = course.thumbnail;
-            imageElement.style.display = 'block';
-            if (placeholderElement) placeholderElement.style.display = 'none';
-        } else {
-            imageElement.style.display = 'none';
-            if (placeholderElement) placeholderElement.style.display = 'flex';
-        }
-
-        // Mobile info updates
-        const mobilePrice = document.getElementById('mobileCoursePrice');
-        if (mobilePrice) mobilePrice.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
-
-        const mobileLevel = document.getElementById('mobileCourseLevel');
-        if (mobileLevel) mobileLevel.textContent = course.level || 'All Levels';
-
-        const mobileDuration = document.getElementById('mobileCourseDuration');
-        if (mobileDuration) mobileDuration.textContent = course.duration || 'Self-paced';
-
-        const mobileLanguage = document.getElementById('mobileCourseLanguage');
-        if (mobileLanguage) mobileLanguage.textContent = course.language || 'English';
-
-        const mobileViews = document.getElementById('mobileViews');
-        if (mobileViews) mobileViews.textContent = course.views || 0;
-
-        // Setup bookmark button
-        const bookmarkBtn = document.getElementById('horizontalModalBookmarkBtn');
-        if (bookmarkBtn) {
-            bookmarkBtn.dataset.id = course.id;
-            bookmarkBtn.dataset.type = 'course';
-            const isBookmarked = course.is_bookmarked || false;
-            const bookmarkIcon = bookmarkBtn.querySelector('i');
-            const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
-            if (isBookmarked) {
-                bookmarkIcon.className = 'fas fa-bookmark';
-                bookmarkText.textContent = 'Bookmarked';
-            } else {
-                bookmarkIcon.className = 'far fa-bookmark';
-                bookmarkText.textContent = 'Bookmark';
-            }
-
-            // Remove old event listener and add new one
-            const newBookmarkBtn = bookmarkBtn.cloneNode(true);
-            bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
-            newBookmarkBtn.addEventListener('click', () => handleCourseBookmark(course.id, newBookmarkBtn));
-        }
-
-        // Setup apply/enroll button
-        const applyBtn = document.getElementById('horizontalModalApplyBtn');
-        if (applyBtn) {
-            const newApplyBtn = applyBtn.cloneNode(true);
-            applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
-            newApplyBtn.addEventListener('click', async () => {
                 try {
-                    showLoader('Getting enrollment link...');
+                    showLoader('Uploading profile picture...');
 
-                    const response = await fetch(`/get-application-link/course/${course.id}`, {
-                        method: 'GET',
-                        credentials: 'include'
+                    const response = await fetch('/upload-profile-pic', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include',
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache'
+                        }
                     });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+                    }
 
                     const data = await response.json();
 
-                    // Check for application_link from database
-                    let link = null;
-                    if (data.application_link) {
-                        link = data.application_link;
-                    } else if (data.link) {
-                        link = data.link;
-                    } else if (course.link) {
-                        link = course.link;
+                    if (!data.success) {
+                        throw new Error(data.error || 'Upload failed');
                     }
 
-                    if (link) {
-                        window.open(link, '_blank');
-                        showToast('Opening enrollment page...', 'success');
-                    } else {
-                        showToast('Enrollment link not available', 'error');
-                    }
+                    // Add cache-busting timestamp to the image URL
+                    const timestamp = Date.now();
+                    const imageUrl = data.image_url + '?t=' + timestamp;
+
+                    // Force reload the image
+                    const img = new Image();
+                    img.onload = function() {
+                        // Set the new image with timestamp
+                        avatarImg.src = imageUrl;
+                        avatarImg.style.display = 'block';
+
+                        // Store with timestamp
+                        localStorage.setItem('profilePicUrl', data.image_url);
+                        localStorage.setItem('profilePicTimestamp', timestamp);
+                        localStorage.setItem('profilePicCacheBust', timestamp.toString());
+
+                        showToast('Profile picture updated successfully!', 'success');
+
+                        // TRIGGER PROFILE PICTURE REFRESH ON ALL PAGES
+                        triggerProfilePictureRefresh();
+                    };
+
+                    img.onerror = function() {
+                        // Fallback to the preview if server image fails to load
+                        console.log('Server image failed to load, using preview');
+                        showToast('Profile picture updated! (Using preview)', 'success');
+
+                        // Still trigger refresh even if preview is used
+                        triggerProfilePictureRefresh();
+                    };
+
+                    img.src = imageUrl;
+
                 } catch (error) {
-                    console.error('Error:', error);
-                    showToast('Failed to get enrollment link', 'error');
+                    console.error('Upload error:', error);
+                    // Show initials as fallback
+                    avatarImg.style.display = 'none';
+                    avatarInitials.style.display = 'flex';
+                    showToast(error.message || 'Failed to upload image', 'error');
                 } finally {
                     hideLoader();
+                    e.target.value = '';
                 }
             });
         }
 
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
+        // Add this function to trigger profile picture refresh across all pages
+        function triggerProfilePictureRefresh() {
+            console.log('🔄 Triggering profile picture refresh...');
 
-    async function handleCourseBookmark(courseId, button) {
-        try {
-            const response = await fetch(`/api/bookmark/course/${courseId}`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
+            // Method 1: Dispatch custom event (for single page app behavior)
+            const profileUpdatedEvent = new CustomEvent('profilePictureUpdated', {
+                detail: {
+                    timestamp: Date.now(),
+                    source: 'dashboard'
+                }
             });
+            document.dispatchEvent(profileUpdatedEvent);
 
-            const data = await response.json();
-
-            if (data.success) {
-                const isBookmarked = data.status === 'added';
-                const icon = button.querySelector('i');
-                const text = button.querySelector('.bookmark-text');
-                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
-                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
-                await refreshCurrentTab();
-                showToast(`Course ${data.status} bookmarks`, 'success');
-            } else {
-                throw new Error(data.error);
+            // Method 2: Broadcast to all tabs using BroadcastChannel
+            try {
+                const broadcastChannel = new BroadcastChannel('profile_picture_updates');
+                broadcastChannel.postMessage({
+                    type: 'PROFILE_PICTURE_UPDATED',
+                    timestamp: Date.now()
+                });
+                broadcastChannel.close();
+            } catch (e) {
+                console.log('BroadcastChannel not supported, using localStorage method');
             }
-        } catch (error) {
-            console.error('Bookmark error:', error);
-            showToast(error.message || 'Failed to update bookmark', 'error');
-        }
-    }
 
-    async function trackCourseView(courseId) {
-        try {
-            await fetch(`/api/course/${courseId}/view`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+            // Method 3: Use localStorage to signal refresh (works across tabs)
+            localStorage.setItem('profilePicLastUpdate', Date.now().toString());
+
+            // Method 4: Force reload navigation profile picture if function exists
+            if (typeof refreshNavigationProfilePicture === 'function') {
+                setTimeout(() => {
+                    refreshNavigationProfilePicture();
+                }, 500);
+            }
+
+            // Method 5: If on dashboard page, force reload main page after a delay
+            if (window.location.pathname.includes('/dashboard')) {
+                console.log('On dashboard - scheduling main page profile refresh');
+                setTimeout(() => {
+                    // Try to fetch main page profile picture
+                    fetch('/get-profile-pic?force=' + Date.now(), {
+                        credentials: 'include',
+                        headers: {
+                            'Cache-Control': 'no-cache'
+                        }
+                    }).catch(() => {
+                        // Ignore errors
+                    });
+                }, 1000);
+            }
+        }
+
+        // Also add a listener for profile picture updates (for when user is on other tabs)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listen for the custom event
+            document.addEventListener('profilePictureUpdated', function(e) {
+                console.log('📢 Profile picture update event received:', e.detail);
+
+                // Reload the profile picture
+                if (typeof loadNavigationProfilePicture === 'function') {
+                    setTimeout(() => {
+                        loadNavigationProfilePicture();
+                    }, 300);
+                }
+
+                // If there's a welcome banner profile picture, reload it too
+                const welcomeProfilePic = document.querySelector('.welcome-profile-pic');
+                if (welcomeProfilePic) {
+                    const newTimestamp = Date.now();
+                    const currentSrc = welcomeProfilePic.src;
+                    const baseSrc = currentSrc.split('?')[0];
+                    welcomeProfilePic.src = baseSrc + '?t=' + newTimestamp;
+                }
             });
-        } catch (error) {
-            console.error('View tracking error:', error);
-        }
-    }
 
-    function closeHorizontalCourseModal() {
-        const modal = document.getElementById('horizontalCourseModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
+            // Listen for BroadcastChannel messages
+            try {
+                const broadcastChannel = new BroadcastChannel('profile_picture_updates');
+                broadcastChannel.onmessage = function(event) {
+                    if (event.data.type === 'PROFILE_PICTURE_UPDATED') {
+                        console.log('📢 Profile picture updated via BroadcastChannel');
+                        if (typeof loadNavigationProfilePicture === 'function') {
+                            setTimeout(() => {
+                                loadNavigationProfilePicture();
+                            }, 300);
+                        }
+                    }
+                };
+            } catch (e) {
+                console.log('BroadcastChannel not supported');
+            }
 
-    // ======================
-    // Blog Reading Functionality (UPDATED to use lightweight modal)
-    // ======================
+            // Check localStorage for recent updates
+            const lastUpdate = localStorage.getItem('profilePicLastUpdate');
+            if (lastUpdate) {
+                const now = Date.now();
+                const updateTime = parseInt(lastUpdate);
 
-    function setupBlogReading() {
-        document.addEventListener('click', function(e) {
-            const readBlogBtn = e.target.closest('.read-blog-btn');
-            if (readBlogBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                const blogId = readBlogBtn.dataset.id;
-                openLightweightBlogModal(blogId);
+                // If update was within the last 10 seconds, refresh
+                if (now - updateTime < 10000) {
+                    console.log('Recent profile picture update detected, refreshing...');
+                    if (typeof loadNavigationProfilePicture === 'function') {
+                        setTimeout(() => {
+                            loadNavigationProfilePicture();
+                        }, 1000);
+                    }
+                }
             }
         });
-    }
 
-    async function openLightweightBlogModal(blogId) {
-        return withLoader(
-            (async () => {
-                const response = await fetch(`/api/blog/${blogId}`);
+        // Also add a periodic check for profile picture updates (every 30 seconds)
+        setInterval(() => {
+            const lastUpdate = localStorage.getItem('profilePicLastUpdate');
+            if (lastUpdate) {
+                const now = Date.now();
+                const updateTime = parseInt(lastUpdate);
+
+                // If update was within the last minute, refresh
+                if (now - updateTime < 60000) {
+                    if (typeof loadNavigationProfilePicture === 'function') {
+                        loadNavigationProfilePicture();
+                    }
+                }
+            }
+        }, 30000);
+
+        function clearImageCache(imageElement) {
+            if (!imageElement) return;
+
+            // Replace the src with a data URL to clear the current image
+            imageElement.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+            // Force browser to release memory
+            setTimeout(() => {
+                imageElement.removeAttribute('src');
+            }, 100);
+        }
+
+        // ======================
+        // Bookmark Management
+        // ======================
+
+        function setupBookmarkRemoval() {
+            document.addEventListener('click', async function(e) {
+                if (e.target.closest('.remove-bookmark')) {
+                    const btn = e.target.closest('.remove-bookmark');
+                    const itemId = btn.dataset.id;
+                    const itemType = btn.dataset.type;
+                    const bookmarkItem = btn.closest('.bookmark-item');
+
+                    showRemoveConfirmationModal(itemId, itemType, bookmarkItem);
+                }
+            });
+        }
+
+        function showRemoveConfirmationModal(itemId, itemType, bookmarkItem) {
+            const modal = document.getElementById('removeBookmarkModal');
+            if (!modal) {
+                console.error('Remove bookmark modal not found');
+                return;
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Store data on modal
+            modal.dataset.itemId = itemId;
+            modal.dataset.itemType = itemType;
+            modal.dataset.bookmarkItemId = bookmarkItem?.id || '';
+
+            // Get buttons - use the correct IDs from the modal in user-dashboard.html
+            const cancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
+            const closeBtn = document.getElementById('closeRemoveBookmarkModal');
+            const confirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
+
+            if (!cancelBtn || !closeBtn || !confirmBtn) {
+                console.error('Modal buttons not found');
+                return;
+            }
+
+            // Remove existing listeners by cloning
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            const newCloseBtn = closeBtn.cloneNode(true);
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            // Get fresh references
+            const freshCancelBtn = document.getElementById('cancelRemoveBookmarkBtn');
+            const freshCloseBtn = document.getElementById('closeRemoveBookmarkModal');
+            const freshConfirmBtn = document.getElementById('confirmRemoveBookmarkBtn');
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                delete modal.dataset.itemId;
+                delete modal.dataset.itemType;
+                delete modal.dataset.bookmarkItemId;
+            };
+
+            const cancelHandler = () => {
+                cleanup();
+            };
+
+            const confirmHandler = async () => {
+                const id = modal.dataset.itemId;
+                const type = modal.dataset.itemType;
+                const itemElement = bookmarkItem || document.getElementById(modal.dataset.bookmarkItemId);
+                cleanup();
+                await removeBookmark(id, type, itemElement);
+            };
+
+            freshCancelBtn.addEventListener('click', cancelHandler);
+            freshCloseBtn.addEventListener('click', cancelHandler);
+            freshConfirmBtn.addEventListener('click', confirmHandler);
+
+            // Close when clicking outside
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    cleanup();
+                }
+            });
+        }
+
+        async function removeBookmark(itemId, itemType, bookmarkItem) {
+            try {
+                showLoader('Removing bookmark...');
+
+                const btn = bookmarkItem?.querySelector('.remove-bookmark');
+                if (btn) btn.disabled = true;
+
+                // Add removal animation class
+                if (bookmarkItem) bookmarkItem.classList.add('bookmark-removing');
+
+                // Get current tab ID BEFORE removal
+                const currentTabId = getCurrentTabId();
+
+                // Send request to remove bookmark
+                const response = await fetch(`/api/bookmark/${itemType}/${itemId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response');
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to remove bookmark');
+                }
+
+                // Wait for animation to complete
+                setTimeout(() => {
+                    // Remove the item from DOM
+                    if (bookmarkItem) bookmarkItem.remove();
+
+                    // Force a DOM update
+                    refreshCurrentTab();
+
+                    // Get all remaining items in this tab
+                    const tabContent = document.getElementById(currentTabId);
+                    const contentArea = tabContent?.querySelector('.content-area');
+                    const remainingItems = contentArea?.querySelectorAll(
+                        '.bookmark-item:not(.bookmark-removing), ' +
+                        '.testimonial-item:not(.bookmark-removing)'
+                    ) || [];
+
+                    // Check if tab is now empty
+                    const isNowEmpty = remainingItems.length === 0;
+
+                    // Dispatch bookmark removed event with more details
+                    const event = new CustomEvent('bookmarkRemoved', {
+                        detail: {
+                            type: itemType,
+                            tabId: currentTabId,
+                            itemId: itemId,
+                            isTabNowEmpty: isNowEmpty,
+                            remainingCount: remainingItems.length
+                        }
+                    });
+                    document.dispatchEvent(event);
+
+                    // Also dispatch a generic content change event
+                    const contentEvent = new CustomEvent('contentChanged', {
+                        detail: {
+                            tabId: currentTabId,
+                            action: 'removed',
+                            contentType: itemType
+                        }
+                    });
+                    document.dispatchEvent(contentEvent);
+
+                    // Update button position immediately
+                    if (typeof updateButtonPosition === 'function') {
+                        // Small delay to ensure DOM is updated
+                        setTimeout(() => {
+                            updateButtonPosition(currentTabId);
+                            console.log(`Updated button position for ${currentTabId}, empty: ${isNowEmpty}`);
+                        }, 50);
+                    }
+
+                    updateDashboardUI('remove', 'bookmark', { id: itemId, itemType: itemType });
+
+                }, 700);
+
+            } catch (error) {
+                console.error('Remove bookmark error:', error);
+                if (bookmarkItem) bookmarkItem.classList.remove('bookmark-removing');
+                const btn = bookmarkItem?.querySelector('.remove-bookmark');
+                if (btn) btn.disabled = false;
+                showToast(error.message || 'Failed to remove bookmark', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Simple helper to get current tab ID
+        function getCurrentTabId() {
+            const activeTab = document.querySelector('.tab-btn.active');
+            return activeTab ? activeTab.dataset.tab : 'courses';
+        }
+
+        function checkEmptyTabState() {
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
+
+            const dashboardCard = activeTab.querySelector('.dashboard-card');
+            if (!dashboardCard) return;
+
+            const tabId = activeTab.id;
+
+            if (tabId === 'testimonials') {
+                checkTestimonialsEmptyState();
+                return;
+            }
+
+            const items = Array.from(activeTab.querySelectorAll('.bookmark-item')).filter(item => {
+                return item.style.opacity !== '0' && !item.style.height.includes('0');
+            });
+
+            const emptyState = activeTab.querySelector('.empty-state');
+            const hasItems = items.length > 0;
+
+            if (!hasItems && !emptyState) {
+                let browseText = '', browseUrl = '', description = '';
+
+                switch(tabId) {
+                    case 'courses':
+                        browseText = 'Browse Courses'; browseUrl = '/courses';
+                        description = 'Save courses from the courses page to view them here'; break;
+                    case 'jobs':
+                        browseText = 'Browse Jobs'; browseUrl = '/jobs';
+                        description = 'Save jobs from the jobs page to view them here'; break;
+                    case 'internships':
+                        browseText = 'Browse Internships'; browseUrl = '/internships';
+                        description = 'Save internships from the internships page to view them here'; break;
+                    case 'blogs':
+                        browseText = 'Browse Articles'; browseUrl = '/blogs.html';
+                        description = 'Save articles from the blog page to view them here'; break;
+                    case 'testimonials':
+                        browseText = 'Add Testimonial'; browseUrl = '/#testimonials-section';
+                        description = 'Share your experience and help others in their career journey'; break;
+                }
+
+                const emptyHTML = `
+                    <div class="empty-state">
+                        <i class="far fa-bookmark"></i>
+                        <h4>No ${tabId} saved yet</h4>
+                        <p>${description}</p>
+                        <a href="${browseUrl}" class="btn btn-primary">${browseText}</a>
+                    </div>
+                `;
+                dashboardCard.innerHTML = emptyHTML;
+            } else if (hasItems && emptyState) {
+                emptyState.remove();
+            }
+        }
+
+        // ======================
+        // COURSE MODAL FUNCTIONS
+        // ======================
+
+        function setupCourseView() {
+            document.addEventListener('click', function(e) {
+                const viewBtn = e.target.closest('.view-content-btn');
+                if (viewBtn && viewBtn.dataset.type === 'course') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const courseId = viewBtn.dataset.id;
+                    openCourseModal(courseId);
+                }
+            });
+        }
+
+        async function openCourseModal(courseId) {
+            return withLoader(
+                (async () => {
+                    const response = await fetch(`/api/course/${courseId}`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    const data = await response.json();
+                    if (!data.success) throw new Error(data.error || 'Course not found');
+
+                    showCourseModal(data.course);
+                    trackCourseView(courseId);
+                    return data.course;
+                })(),
+                'Loading course details...',
+                null,
+                'Failed to load course details'
+            );
+        }
+
+        function showCourseModal(course) {
+            const modal = document.getElementById('horizontalCourseModal');
+            if (!modal) return;
+
+            // Update modal content
+            document.getElementById('horizontalModalCourseTitle').textContent = course.title || 'Course Title';
+            document.getElementById('horizontalModalCourseProvider').textContent = course.company || course.provider || 'Unknown Provider';
+            document.getElementById('horizontalModalCourseCategory').textContent = course.category || 'Course';
+            document.getElementById('horizontalModalCourseDescription').innerHTML = course.description || 'No description available.';
+
+            // Price
+            const priceElement = document.getElementById('horizontalModalCoursePrice');
+            if (priceElement) {
+                priceElement.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
+            }
+
+            // Level
+            const levelElement = document.getElementById('horizontalModalCourseLevel');
+            if (levelElement) {
+                levelElement.textContent = course.level || 'All Levels';
+            }
+
+            // Duration
+            const durationElement = document.getElementById('horizontalModalCourseDuration');
+            if (durationElement) {
+                durationElement.textContent = course.duration || 'Self-paced';
+            }
+
+            // Language
+            const languageElement = document.getElementById('horizontalModalCourseLanguage');
+            if (languageElement) {
+                languageElement.textContent = course.language || 'English';
+            }
+
+            // Views
+            const viewsElement = document.getElementById('horizontalModalViews');
+            if (viewsElement) {
+                viewsElement.textContent = course.views || 0;
+            }
+
+            // Instructor
+            const instructorElement = document.getElementById('horizontalModalInstructor');
+            if (instructorElement && course.instructor) {
+                document.getElementById('horizontalInstructorSection').style.display = 'block';
+                instructorElement.textContent = course.instructor;
+            } else if (document.getElementById('horizontalInstructorSection')) {
+                document.getElementById('horizontalInstructorSection').style.display = 'none';
+            }
+
+            // Curriculum
+            if (course.curriculum && course.curriculum.length > 0) {
+                const curriculumList = document.getElementById('horizontalModalCurriculum');
+                if (curriculumList) {
+                    curriculumList.innerHTML = course.curriculum.map(item => `<li><i class="fas fa-check"></i> ${item}</li>`).join('');
+                    document.getElementById('horizontalCurriculumSection').style.display = 'block';
+                }
+            } else if (document.getElementById('horizontalCurriculumSection')) {
+                document.getElementById('horizontalCurriculumSection').style.display = 'none';
+            }
+
+            // Image
+            const imageElement = document.getElementById('horizontalModalCourseImage');
+            const placeholderElement = document.querySelector('.horizontal-image-placeholder');
+            if (course.image && course.image !== 'None') {
+                imageElement.src = course.image;
+                imageElement.style.display = 'block';
+                if (placeholderElement) placeholderElement.style.display = 'none';
+            } else if (course.company_logo && course.company_logo !== 'None') {
+                imageElement.src = course.company_logo;
+                imageElement.style.display = 'block';
+                if (placeholderElement) placeholderElement.style.display = 'none';
+            } else if (course.thumbnail && course.thumbnail !== 'None') {
+                imageElement.src = course.thumbnail;
+                imageElement.style.display = 'block';
+                if (placeholderElement) placeholderElement.style.display = 'none';
+            } else {
+                imageElement.style.display = 'none';
+                if (placeholderElement) placeholderElement.style.display = 'flex';
+            }
+
+            // Mobile info updates
+            const mobilePrice = document.getElementById('mobileCoursePrice');
+            if (mobilePrice) mobilePrice.textContent = course.price && course.price !== 'Free' ? `$${course.price}` : 'Free';
+
+            const mobileLevel = document.getElementById('mobileCourseLevel');
+            if (mobileLevel) mobileLevel.textContent = course.level || 'All Levels';
+
+            const mobileDuration = document.getElementById('mobileCourseDuration');
+            if (mobileDuration) mobileDuration.textContent = course.duration || 'Self-paced';
+
+            const mobileLanguage = document.getElementById('mobileCourseLanguage');
+            if (mobileLanguage) mobileLanguage.textContent = course.language || 'English';
+
+            const mobileViews = document.getElementById('mobileViews');
+            if (mobileViews) mobileViews.textContent = course.views || 0;
+
+            // Setup bookmark button
+            const bookmarkBtn = document.getElementById('horizontalModalBookmarkBtn');
+            if (bookmarkBtn) {
+                bookmarkBtn.dataset.id = course.id;
+                bookmarkBtn.dataset.type = 'course';
+                const isBookmarked = course.is_bookmarked || false;
+                const bookmarkIcon = bookmarkBtn.querySelector('i');
+                const bookmarkText = bookmarkBtn.querySelector('.bookmark-text');
+                if (isBookmarked) {
+                    bookmarkIcon.className = 'fas fa-bookmark';
+                    bookmarkText.textContent = 'Bookmarked';
+                } else {
+                    bookmarkIcon.className = 'far fa-bookmark';
+                    bookmarkText.textContent = 'Bookmark';
+                }
+
+                // Remove old event listener and add new one
+                const newBookmarkBtn = bookmarkBtn.cloneNode(true);
+                bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
+                newBookmarkBtn.addEventListener('click', () => handleCourseBookmark(course.id, newBookmarkBtn));
+            }
+
+            // Setup apply/enroll button
+            const applyBtn = document.getElementById('horizontalModalApplyBtn');
+            if (applyBtn) {
+                const newApplyBtn = applyBtn.cloneNode(true);
+                applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+                newApplyBtn.addEventListener('click', async () => {
+                    try {
+                        showLoader('Getting enrollment link...');
+
+                        const response = await fetch(`/get-application-link/course/${course.id}`, {
+                            method: 'GET',
+                            credentials: 'include'
+                        });
+
+                        const data = await response.json();
+
+                        // Check for application_link from database
+                        let link = null;
+                        if (data.application_link) {
+                            link = data.application_link;
+                        } else if (data.link) {
+                            link = data.link;
+                        } else if (course.link) {
+                            link = course.link;
+                        }
+
+                        if (link) {
+                            window.open(link, '_blank');
+                            showToast('Opening enrollment page...', 'success');
+                        } else {
+                            showToast('Enrollment link not available', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showToast('Failed to get enrollment link', 'error');
+                    } finally {
+                        hideLoader();
+                    }
+                });
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        async function handleCourseBookmark(courseId, button) {
+            try {
+                const response = await fetch(`/api/bookmark/course/${courseId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const isBookmarked = data.status === 'added';
+                    const icon = button.querySelector('i');
+                    const text = button.querySelector('.bookmark-text');
+                    if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+                    await refreshCurrentTab();
+                    showToast(`Course ${data.status} bookmarks`, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Bookmark error:', error);
+                showToast(error.message || 'Failed to update bookmark', 'error');
+            }
+        }
+
+        async function trackCourseView(courseId) {
+            try {
+                await fetch(`/api/course/${courseId}/view`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('View tracking error:', error);
+            }
+        }
+
+        function closeHorizontalCourseModal() {
+            const modal = document.getElementById('horizontalCourseModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // ======================
+        // Blog Reading Functionality (UPDATED to use lightweight modal)
+        // ======================
+
+        function setupBlogReading() {
+            document.addEventListener('click', function(e) {
+                const readBlogBtn = e.target.closest('.read-blog-btn');
+                if (readBlogBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const blogId = readBlogBtn.dataset.id;
+                    openLightweightBlogModal(blogId);
+                }
+            });
+        }
+
+        async function openLightweightBlogModal(blogId) {
+            return withLoader(
+                (async () => {
+                    const response = await fetch(`/api/blog/${blogId}`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    const data = await response.json();
+                    if (!data.success) throw new Error(data.error || 'Blog post not found');
+
+                    const blog = data.blog;
+                    showLightweightBlogModal(blog);
+                    trackBlogView(blogId);
+                    return blog;
+                })(),
+                'Loading article...',
+                null,
+                'Failed to load blog post'
+            );
+        }
+
+        function showLightweightBlogModal(blog) {
+            const modal = document.getElementById('lightweightBlogModal');
+            if (!modal) return;
+
+            // Update modal content
+            document.getElementById('lightweightModalTitle').textContent = blog.title || 'Blog Title';
+            document.getElementById('lightweightModalCategory').textContent = blog.categories?.[0] || 'Career';
+            document.getElementById('lightweightModalAuthor').textContent = blog.author || 'CareerMaker Team';
+            document.getElementById('lightweightModalAuthorName').textContent = blog.author || 'CareerMaker Team';
+
+            const date = blog.published_at || blog.created_at;
+            document.getElementById('lightweightModalDate').textContent = formatDate(date);
+            document.getElementById('lightweightModalReadTime').textContent = blog.read_time || '5 min read';
+            document.getElementById('lightweightModalViews').textContent = blog.views || 0;
+            document.getElementById('lightweightModalLikes').textContent = blog.like_count || 0;
+
+            // Image
+            const modalImage = document.getElementById('lightweightModalImage');
+            if (modalImage) {
+                modalImage.src = blog.image || '/static/images/default-blog.jpg';
+                modalImage.alt = blog.title;
+            }
+
+            // Author Avatar
+            const authorAvatar = document.getElementById('lightweightModalAvatar');
+            if (authorAvatar) {
+                authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
+                authorAvatar.alt = blog.author || 'CareerMaker Team';
+            }
+
+            // Content
+            const contentElement = document.getElementById('lightweightModalContent');
+            if (contentElement) {
+                contentElement.innerHTML = formatBlogContent(blog.content || blog.description || 'No content available.');
+            }
+
+            // Like button
+            const likeBtn = document.getElementById('lightweightModalLikeBtn');
+            if (likeBtn) {
+                likeBtn.dataset.id = blog.id;
+                const likeCount = blog.like_count || 0;
+                const isLiked = blog.is_liked || false;
+                updateLightweightLikeUI(likeBtn, likeCount, isLiked);
+
+                const newLikeBtn = likeBtn.cloneNode(true);
+                likeBtn.parentNode.replaceChild(newLikeBtn, likeBtn);
+                newLikeBtn.addEventListener('click', () => handleLightweightBlogLike(blog.id, newLikeBtn));
+            }
+
+            // Bookmark button
+            const bookmarkBtn = document.getElementById('lightweightModalBookmarkBtn');
+            if (bookmarkBtn) {
+                bookmarkBtn.dataset.id = blog.id;
+                const isBookmarked = blog.is_bookmarked || false;
+                const bookmarkIcon = bookmarkBtn.querySelector('i');
+                const bookmarkText = bookmarkBtn.querySelector('span');
+                if (isBookmarked) {
+                    bookmarkIcon.className = 'fas fa-bookmark';
+                    bookmarkText.textContent = 'Bookmarked';
+                } else {
+                    bookmarkIcon.className = 'far fa-bookmark';
+                    bookmarkText.textContent = 'Bookmark';
+                }
+
+                const newBookmarkBtn = bookmarkBtn.cloneNode(true);
+                bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
+                newBookmarkBtn.addEventListener('click', () => handleLightweightBlogBookmark(blog.id, newBookmarkBtn));
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function updateLightweightLikeUI(button, count, isLiked) {
+            const icon = button.querySelector('i');
+            const countElement = document.getElementById('lightweightModalLikeCount');
+
+            if (icon) icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+            if (countElement) countElement.textContent = count;
+        }
+
+        async function handleLightweightBlogLike(blogId, button) {
+            try {
+                const response = await fetch(`/api/blog/${blogId}/like`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    updateLightweightLikeUI(button, data.like_count, data.action === 'liked');
+                    showToast(`Article ${data.action}`, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Like error:', error);
+                showToast(error.message || 'Failed to update like', 'error');
+            }
+        }
+
+        async function handleLightweightBlogBookmark(blogId, button) {
+            try {
+                const response = await fetch(`/api/bookmark/blog/${blogId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const isBookmarked = data.status === 'added';
+                    const icon = button.querySelector('i');
+                    const text = button.querySelector('span');
+                    if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
+                    if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+                    await refreshCurrentTab();
+                    showToast(`Article ${data.status} bookmarks`, 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Bookmark error:', error);
+                showToast(error.message || 'Failed to update bookmark', 'error');
+            }
+        }
+
+        function closeLightweightBlogModal() {
+            const modal = document.getElementById('lightweightBlogModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Close lightweight modal when clicking close button or overlay
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeBtn = document.getElementById('lightweightModalClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeLightweightBlogModal);
+            }
+
+            const modal = document.getElementById('lightweightBlogModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeLightweightBlogModal();
+                    }
+                });
+            }
+        });
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown date';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (error) {
+                return dateString;
+            }
+        }
+
+        function formatBlogContent(content) {
+            if (!content.includes('<')) {
+                return content.split('\n').filter(para => para.trim()).map(para =>
+                    `<p>${para.trim()}</p>`
+                ).join('');
+            }
+            return content;
+        }
+
+        async function trackBlogView(blogId) {
+            try {
+                await fetch(`/api/blog/${blogId}/view`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('View tracking error:', error);
+            }
+        }
+
+        // ======================
+        // TESTIMONIALS MANAGEMENT (UPDATED to use base modals)
+        // ======================
+
+        function setupTestimonials() {
+            setupTestimonialActions();
+            setupTestimonialReadModalClose();
+            setupEditTestimonialModalClose();
+            setupDeleteConfirmationModalClose();
+
+            setTimeout(() => {
+                checkTestimonialsEmptyState();
+            }, 100);
+        }
+
+        function setupTestimonialActions() {
+            document.addEventListener('click', function(e) {
+                // View button - Open read full experience modal
+                if (e.target.closest('.view-testimonial')) {
+                    const viewBtn = e.target.closest('.view-testimonial');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const testimonialId = viewBtn.dataset.id;
+                    openTestimonialReadModal(testimonialId);
+                    return;
+                }
+
+                // Edit button - Open testimonial share modal (for editing)
+                if (e.target.closest('.edit-testimonial')) {
+                    const editBtn = e.target.closest('.edit-testimonial');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const testimonialId = editBtn.dataset.id;
+                    openTestimonialShareModalForEdit(testimonialId);
+                    return;
+                }
+
+                // Delete button - Open delete confirmation modal
+                if (e.target.closest('.delete-testimonial')) {
+                    const deleteBtn = e.target.closest('.delete-testimonial');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const testimonialId = deleteBtn.dataset.id;
+                    openDeleteConfirmationModal(testimonialId);
+                    return;
+                }
+            });
+        }
+
+        // testimonial add button to open modal
+        function handleTestimonialAddButton() {
+            const addBtn = document.querySelector('#testimonials .browse-action-btn');
+            if (addBtn) {
+                // Remove any existing click listeners
+                const newBtn = addBtn.cloneNode(true);
+                addBtn.parentNode.replaceChild(newBtn, addBtn);
+
+                // Add click event to open modal
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openTestimonialShareModal();
+                });
+            }
+        }
+
+        // Setup read modal close
+        function setupTestimonialReadModalClose() {
+            const modal = document.getElementById('testimonialDetailModal');
+            if (!modal) return;
+
+            const closeBtn = document.getElementById('detailModalClose');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeTestimonialReadModal);
+            }
+
+            const overlay = modal.querySelector('.modal-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', closeTestimonialReadModal);
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeTestimonialReadModal();
+                    closeEditTestimonialModal();
+                }
+            });
+        }
+
+        function closeTestimonialReadModal() {
+            const modal = document.getElementById('testimonialDetailModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Setup edit modal close and styling
+        function setupEditTestimonialModalClose() {
+            const modal = document.getElementById('testimonialModal');
+            if (!modal) return;
+
+            const closeBtn = modal.querySelector('.close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeEditTestimonialModal);
+            }
+
+            const overlay = modal.querySelector('.modal-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', closeEditTestimonialModal);
+            }
+        }
+
+        function closeEditTestimonialModal() {
+            const modal = document.getElementById('testimonialModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                // Reset form
+                const form = document.getElementById('testimonialForm');
+                if (form) {
+                    form.reset();
+                    delete form.dataset.mode;
+                    delete form.dataset.testimonialId;
+                }
+                document.getElementById('ratingValue').value = '5';
+                const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+                starBtns.forEach(btn => btn.classList.add('active'));
+
+                // Reset button text back to "Share Experience"
+                const submitBtn = modal.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    const btnText = submitBtn.querySelector('.btn-text');
+                    if (btnText) {
+                        btnText.textContent = 'Share Experience';
+                    }
+                }
+
+                // Reset modal title
+                const modalTitle = modal.querySelector('.modal-header h3');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Share Your Experience';
+                }
+            }
+        }
+
+        // Setup delete confirmation modal close
+        function setupDeleteConfirmationModalClose() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (!modal) return;
+
+            const closeBtn = document.getElementById('closeDeleteConfirmModal');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeDeleteConfirmationModal);
+            }
+
+            const cancelBtn = document.getElementById('cancelDeleteModalBtn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', closeDeleteConfirmationModal);
+            }
+
+            const overlay = modal.querySelector('.modal-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', closeDeleteConfirmationModal);
+            }
+        }
+
+        function closeDeleteConfirmationModal() {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                delete modal.dataset.testimonialId;
+            }
+        }
+
+        // Open read full experience modal
+        async function openTestimonialReadModal(testimonialId) {
+            try {
+                showLoader('Loading testimonial...');
+                const response = await fetch(`/api/testimonials/${testimonialId}`, {
+                    credentials: 'include'
+                });
+
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Blog post not found');
-
-                const blog = data.blog;
-                showLightweightBlogModal(blog);
-                trackBlogView(blogId);
-                return blog;
-            })(),
-            'Loading article...',
-            null,
-            'Failed to load blog post'
-        );
-    }
-
-    function showLightweightBlogModal(blog) {
-        const modal = document.getElementById('lightweightBlogModal');
-        if (!modal) return;
-
-        // Update modal content
-        document.getElementById('lightweightModalTitle').textContent = blog.title || 'Blog Title';
-        document.getElementById('lightweightModalCategory').textContent = blog.categories?.[0] || 'Career';
-        document.getElementById('lightweightModalAuthor').textContent = blog.author || 'CareerMaker Team';
-        document.getElementById('lightweightModalAuthorName').textContent = blog.author || 'CareerMaker Team';
-
-        const date = blog.published_at || blog.created_at;
-        document.getElementById('lightweightModalDate').textContent = formatDate(date);
-        document.getElementById('lightweightModalReadTime').textContent = blog.read_time || '5 min read';
-        document.getElementById('lightweightModalViews').textContent = blog.views || 0;
-        document.getElementById('lightweightModalLikes').textContent = blog.like_count || 0;
-
-        // Image
-        const modalImage = document.getElementById('lightweightModalImage');
-        if (modalImage) {
-            modalImage.src = blog.image || '/static/images/default-blog.jpg';
-            modalImage.alt = blog.title;
-        }
-
-        // Author Avatar
-        const authorAvatar = document.getElementById('lightweightModalAvatar');
-        if (authorAvatar) {
-            authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
-            authorAvatar.alt = blog.author || 'CareerMaker Team';
-        }
-
-        // Content
-        const contentElement = document.getElementById('lightweightModalContent');
-        if (contentElement) {
-            contentElement.innerHTML = formatBlogContent(blog.content || blog.description || 'No content available.');
-        }
-
-        // Like button
-        const likeBtn = document.getElementById('lightweightModalLikeBtn');
-        if (likeBtn) {
-            likeBtn.dataset.id = blog.id;
-            const likeCount = blog.like_count || 0;
-            const isLiked = blog.is_liked || false;
-            updateLightweightLikeUI(likeBtn, likeCount, isLiked);
-
-            const newLikeBtn = likeBtn.cloneNode(true);
-            likeBtn.parentNode.replaceChild(newLikeBtn, likeBtn);
-            newLikeBtn.addEventListener('click', () => handleLightweightBlogLike(blog.id, newLikeBtn));
-        }
-
-        // Bookmark button
-        const bookmarkBtn = document.getElementById('lightweightModalBookmarkBtn');
-        if (bookmarkBtn) {
-            bookmarkBtn.dataset.id = blog.id;
-            const isBookmarked = blog.is_bookmarked || false;
-            const bookmarkIcon = bookmarkBtn.querySelector('i');
-            const bookmarkText = bookmarkBtn.querySelector('span');
-            if (isBookmarked) {
-                bookmarkIcon.className = 'fas fa-bookmark';
-                bookmarkText.textContent = 'Bookmarked';
-            } else {
-                bookmarkIcon.className = 'far fa-bookmark';
-                bookmarkText.textContent = 'Bookmark';
-            }
-
-            const newBookmarkBtn = bookmarkBtn.cloneNode(true);
-            bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
-            newBookmarkBtn.addEventListener('click', () => handleLightweightBlogBookmark(blog.id, newBookmarkBtn));
-        }
-
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function updateLightweightLikeUI(button, count, isLiked) {
-        const icon = button.querySelector('i');
-        const countElement = document.getElementById('lightweightModalLikeCount');
-
-        if (icon) icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
-        if (countElement) countElement.textContent = count;
-    }
-
-    async function handleLightweightBlogLike(blogId, button) {
-        try {
-            const response = await fetch(`/api/blog/${blogId}/like`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                updateLightweightLikeUI(button, data.like_count, data.action === 'liked');
-                showToast(`Article ${data.action}`, 'success');
-            } else {
-                throw new Error(data.error);
-            }
-        } catch (error) {
-            console.error('Like error:', error);
-            showToast(error.message || 'Failed to update like', 'error');
-        }
-    }
-
-    async function handleLightweightBlogBookmark(blogId, button) {
-        try {
-            const response = await fetch(`/api/bookmark/blog/${blogId}`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                const isBookmarked = data.status === 'added';
-                const icon = button.querySelector('i');
-                const text = button.querySelector('span');
-                if (icon) icon.className = isBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
-                if (text) text.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
-                await refreshCurrentTab();
-                showToast(`Article ${data.status} bookmarks`, 'success');
-            } else {
-                throw new Error(data.error);
-            }
-        } catch (error) {
-            console.error('Bookmark error:', error);
-            showToast(error.message || 'Failed to update bookmark', 'error');
-        }
-    }
-
-    function closeLightweightBlogModal() {
-        const modal = document.getElementById('lightweightBlogModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    // Close lightweight modal when clicking close button or overlay
-    document.addEventListener('DOMContentLoaded', function() {
-        const closeBtn = document.getElementById('lightweightModalClose');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeLightweightBlogModal);
-        }
-
-        const modal = document.getElementById('lightweightBlogModal');
-        if (modal) {
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    closeLightweightBlogModal();
+                if (data.success) {
+                    showTestimonialReadModal(data.testimonial);
+                } else {
+                    throw new Error(data.error || 'Failed to load testimonial');
                 }
-            });
+            } catch (error) {
+                console.error('View testimonial error:', error);
+                showToast(error.message || 'Failed to load testimonial', 'error');
+            } finally {
+                hideLoader();
+            }
         }
-    });
 
-    function formatDate(dateString) {
-        if (!dateString) return 'Unknown date';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        } catch (error) {
-            return dateString;
+        function showTestimonialReadModal(testimonial) {
+            const modal = document.getElementById('testimonialDetailModal');
+            if (!modal) return;
+
+            // Set content
+            document.getElementById('detailFullText').textContent = testimonial.content || 'No content available';
+            document.getElementById('detailAuthorName').textContent = testimonial.username || 'User';
+            document.getElementById('detailAuthorRole').textContent = testimonial.role || 'CareerMaker User';
+
+            // Set rating
+            const ratingContainer = document.getElementById('detailRating');
+            if (ratingContainer && testimonial.rating) {
+                ratingContainer.innerHTML = generateStarRating(testimonial.rating);
+            } else if (ratingContainer) {
+                ratingContainer.innerHTML = generateStarRating(5);
+            }
+
+            // Set date
+            const dateElement = document.getElementById('detailDate');
+            if (testimonial.created_at) {
+                const date = new Date(testimonial.created_at);
+                dateElement.innerHTML = `<i class="far fa-calendar"></i> ${date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })}`;
+            } else {
+                dateElement.innerHTML = `<i class="far fa-calendar"></i> Recently`;
+            }
+
+            // Set avatar
+            const avatarElement = document.getElementById('detailAvatar');
+            if (testimonial.profile_pic_url) {
+                avatarElement.src = testimonial.profile_pic_url;
+            } else {
+                const userName = testimonial.username || 'User';
+                avatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4361ee&color=fff&bold=true`;
+            }
+            avatarElement.alt = testimonial.username || 'User';
+
+            // Store testimonial id for any actions
+            modal.dataset.currentTestimonialId = testimonial.id;
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
-    }
 
-    function formatBlogContent(content) {
-        if (!content.includes('<')) {
-            return content.split('\n').filter(para => para.trim()).map(para =>
-                `<p>${para.trim()}</p>`
-            ).join('');
+        function generateStarRating(rating) {
+            const stars = [];
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    stars.push('<i class="fas fa-star" style="color: #ffc107;"></i>');
+                } else {
+                    stars.push('<i class="far fa-star" style="color: #ddd;"></i>');
+                }
+            }
+            return stars.join(' ');
         }
-        return content;
-    }
 
-    async function trackBlogView(blogId) {
-        try {
-            await fetch(`/api/blog/${blogId}/view`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-        } catch (error) {
-            console.error('View tracking error:', error);
-        }
-    }
-
-    // ======================
-    // TESTIMONIALS MANAGEMENT (UPDATED to use base modals)
-    // ======================
-
-    function setupTestimonials() {
-        setupTestimonialActions();
-        setupTestimonialReadModalClose();
-        setupEditTestimonialModalClose();
-        setupDeleteConfirmationModalClose();
-
-        setTimeout(() => {
-            checkTestimonialsEmptyState();
-        }, 100);
-    }
-
-    function setupTestimonialActions() {
-        document.addEventListener('click', function(e) {
-            // View button - Open read full experience modal
-            if (e.target.closest('.view-testimonial')) {
-                const viewBtn = e.target.closest('.view-testimonial');
-                e.preventDefault();
-                e.stopPropagation();
-                const testimonialId = viewBtn.dataset.id;
-                openTestimonialReadModal(testimonialId);
+        // Open testimonial share modal for adding new testimonial
+        function openTestimonialShareModal() {
+            const modal = document.getElementById('testimonialModal');
+            if (!modal) {
+                console.error('Testimonial modal not found');
                 return;
             }
 
-            // Edit button - Open testimonial share modal (for editing)
-            if (e.target.closest('.edit-testimonial')) {
-                const editBtn = e.target.closest('.edit-testimonial');
-                e.preventDefault();
-                e.stopPropagation();
-                const testimonialId = editBtn.dataset.id;
-                openTestimonialShareModalForEdit(testimonialId);
-                return;
-            }
-
-            // Delete button - Open delete confirmation modal
-            if (e.target.closest('.delete-testimonial')) {
-                const deleteBtn = e.target.closest('.delete-testimonial');
-                e.preventDefault();
-                e.stopPropagation();
-                const testimonialId = deleteBtn.dataset.id;
-                openDeleteConfirmationModal(testimonialId);
-                return;
-            }
-        });
-    }
-
-    // testimonial add button to open modal
-    function handleTestimonialAddButton() {
-        const addBtn = document.querySelector('#testimonials .browse-action-btn');
-        if (addBtn) {
-            // Remove any existing click listeners
-            const newBtn = addBtn.cloneNode(true);
-            addBtn.parentNode.replaceChild(newBtn, addBtn);
-
-            // Add click event to open modal
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                openTestimonialShareModal();
-            });
-        }
-    }
-
-    // Setup read modal close
-    function setupTestimonialReadModalClose() {
-        const modal = document.getElementById('testimonialDetailModal');
-        if (!modal) return;
-
-        const closeBtn = document.getElementById('detailModalClose');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeTestimonialReadModal);
-        }
-
-        const overlay = modal.querySelector('.modal-overlay');
-        if (overlay) {
-            overlay.addEventListener('click', closeTestimonialReadModal);
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeTestimonialReadModal();
-                closeEditTestimonialModal();
-            }
-        });
-    }
-
-    function closeTestimonialReadModal() {
-        const modal = document.getElementById('testimonialDetailModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    // Setup edit modal close and styling
-    function setupEditTestimonialModalClose() {
-        const modal = document.getElementById('testimonialModal');
-        if (!modal) return;
-
-        const closeBtn = modal.querySelector('.close-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeEditTestimonialModal);
-        }
-
-        const overlay = modal.querySelector('.modal-overlay');
-        if (overlay) {
-            overlay.addEventListener('click', closeEditTestimonialModal);
-        }
-    }
-
-    function closeEditTestimonialModal() {
-        const modal = document.getElementById('testimonialModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            // Reset form
+            // Reset form for new testimonial (add mode)
             const form = document.getElementById('testimonialForm');
             if (form) {
                 form.reset();
-                delete form.dataset.mode;
+                form.dataset.mode = 'add';
                 delete form.dataset.testimonialId;
+
+                // Trigger floating labels to reset
+                const inputs = form.querySelectorAll('input, textarea');
+                inputs.forEach(input => {
+                    input.dispatchEvent(new Event('input'));
+                });
             }
+
+            // Reset rating
             document.getElementById('ratingValue').value = '5';
             const starBtns = document.querySelectorAll('#ratingStars .star-btn');
             starBtns.forEach(btn => btn.classList.add('active'));
 
-            // Reset button text back to "Share Experience"
+            // Get username from page
+            const usernameElement = document.querySelector('.user-info h2');
+            const userName = usernameElement ? usernameElement.textContent.trim() : '';
+            const userNameInput = document.getElementById('userName');
+            if (userNameInput) {
+                userNameInput.value = userName;
+                userNameInput.dispatchEvent(new Event('input'));
+            }
+
+            // Clear content textarea
+            const contentTextarea = document.getElementById('testimonialText');
+            if (contentTextarea) {
+                contentTextarea.value = '';
+            }
+
+            // Clear role input if exists
+            const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+            if (roleInput) {
+                roleInput.value = '';
+            }
+
+            // Reset button text to "Share Experience"
             const submitBtn = modal.querySelector('button[type="submit"]');
             if (submitBtn) {
                 const btnText = submitBtn.querySelector('.btn-text');
@@ -1750,1160 +1929,993 @@
                 }
             }
 
-            // Reset modal title
+            // Set modal title
             const modalTitle = modal.querySelector('.modal-header h3');
             if (modalTitle) {
                 modalTitle.textContent = 'Share Your Experience';
             }
-        }
-    }
 
-    // Setup delete confirmation modal close
-    function setupDeleteConfirmationModalClose() {
-        const modal = document.getElementById('deleteConfirmModal');
-        if (!modal) return;
+            // Setup form submission for add (using the new route)
+            setupTestimonialFormSubmit('add');
 
-        const closeBtn = document.getElementById('closeDeleteConfirmModal');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeDeleteConfirmationModal);
-        }
+            // Setup floating labels for the modal
+            setupFloatingLabelsInModal();
 
-        const cancelBtn = document.getElementById('cancelDeleteModalBtn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', closeDeleteConfirmationModal);
-        }
-
-        const overlay = modal.querySelector('.modal-overlay');
-        if (overlay) {
-            overlay.addEventListener('click', closeDeleteConfirmationModal);
-        }
-    }
-
-    function closeDeleteConfirmationModal() {
-        const modal = document.getElementById('deleteConfirmModal');
-        if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            delete modal.dataset.testimonialId;
-        }
-    }
-
-    // Open read full experience modal
-    async function openTestimonialReadModal(testimonialId) {
-        try {
-            showLoader('Loading testimonial...');
-            const response = await fetch(`/api/testimonials/${testimonialId}`, {
-                credentials: 'include'
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const data = await response.json();
-            if (data.success) {
-                showTestimonialReadModal(data.testimonial);
-            } else {
-                throw new Error(data.error || 'Failed to load testimonial');
+            // Fix cancel button for add mode
+            const cancelButton = modal.querySelector('.btn-secondary');
+            if (cancelButton) {
+                const newCancelBtn = cancelButton.cloneNode(true);
+                cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
+                newCancelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeEditTestimonialModal();
+                });
             }
-        } catch (error) {
-            console.error('View testimonial error:', error);
-            showToast(error.message || 'Failed to load testimonial', 'error');
-        } finally {
-            hideLoader();
-        }
-    }
 
-    function showTestimonialReadModal(testimonial) {
-        const modal = document.getElementById('testimonialDetailModal');
-        if (!modal) return;
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
 
-        // Set content
-        document.getElementById('detailFullText').textContent = testimonial.content || 'No content available';
-        document.getElementById('detailAuthorName').textContent = testimonial.username || 'User';
-        document.getElementById('detailAuthorRole').textContent = testimonial.role || 'CareerMaker User';
-
-        // Set rating
-        const ratingContainer = document.getElementById('detailRating');
-        if (ratingContainer && testimonial.rating) {
-            ratingContainer.innerHTML = generateStarRating(testimonial.rating);
-        } else if (ratingContainer) {
-            ratingContainer.innerHTML = generateStarRating(5);
+            // Setup star rating
+            setupStarRating();
         }
 
-        // Set date
-        const dateElement = document.getElementById('detailDate');
-        if (testimonial.created_at) {
-            const date = new Date(testimonial.created_at);
-            dateElement.innerHTML = `<i class="far fa-calendar"></i> ${date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            })}`;
-        } else {
-            dateElement.innerHTML = `<i class="far fa-calendar"></i> Recently`;
-        }
+        // Setup floating labels for testimonial modal
+        function setupFloatingLabelsInModal() {
+            const modal = document.getElementById('testimonialModal');
+            if (!modal) return;
 
-        // Set avatar
-        const avatarElement = document.getElementById('detailAvatar');
-        if (testimonial.profile_pic_url) {
-            avatarElement.src = testimonial.profile_pic_url;
-        } else {
-            const userName = testimonial.username || 'User';
-            avatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4361ee&color=fff&bold=true`;
-        }
-        avatarElement.alt = testimonial.username || 'User';
+            // Handle floating labels for input fields
+            const floatingGroups = modal.querySelectorAll('.floating-label-group');
+            floatingGroups.forEach(group => {
+                const input = group.querySelector('input, textarea');
+                const label = group.querySelector('label');
 
-        // Store testimonial id for any actions
-        modal.dataset.currentTestimonialId = testimonial.id;
+                if (input && label) {
+                    // Check if input has value
+                    const updateLabelPosition = () => {
+                        if (input.value.trim() !== '') {
+                            label.style.top = '0px';
+                            label.style.fontSize = '11px';
+                            label.style.opacity = '0.8';
+                        } else {
+                            label.style.top = '';
+                            label.style.fontSize = '';
+                            label.style.opacity = '';
+                        }
+                    };
 
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function generateStarRating(rating) {
-        const stars = [];
-        for (let i = 1; i <= 5; i++) {
-            if (i <= rating) {
-                stars.push('<i class="fas fa-star" style="color: #ffc107;"></i>');
-            } else {
-                stars.push('<i class="far fa-star" style="color: #ddd;"></i>');
-            }
-        }
-        return stars.join(' ');
-    }
-
-    // Open testimonial share modal for adding new testimonial
-    function openTestimonialShareModal() {
-        const modal = document.getElementById('testimonialModal');
-        if (!modal) {
-            console.error('Testimonial modal not found');
-            return;
-        }
-
-        // Reset form for new testimonial (add mode)
-        const form = document.getElementById('testimonialForm');
-        if (form) {
-            form.reset();
-            form.dataset.mode = 'add';
-            delete form.dataset.testimonialId;
-
-            // Trigger floating labels to reset
-            const inputs = form.querySelectorAll('input, textarea');
-            inputs.forEach(input => {
-                input.dispatchEvent(new Event('input'));
+                    input.addEventListener('input', updateLabelPosition);
+                    input.addEventListener('blur', updateLabelPosition);
+                    updateLabelPosition();
+                }
             });
         }
 
-        // Reset rating
-        document.getElementById('ratingValue').value = '5';
-        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
-        starBtns.forEach(btn => btn.classList.add('active'));
+        // Open testimonial share modal for editing existing testimonial
+        async function openTestimonialShareModalForEdit(testimonialId) {
+            try {
+                showLoader('Loading testimonial...');
+                const response = await fetch(`/api/testimonials/${testimonialId}`, {
+                    credentials: 'include'
+                });
 
-        // Get username from page
-        const usernameElement = document.querySelector('.user-info h2');
-        const userName = usernameElement ? usernameElement.textContent.trim() : '';
-        const userNameInput = document.getElementById('userName');
-        if (userNameInput) {
-            userNameInput.value = userName;
-            userNameInput.dispatchEvent(new Event('input'));
-        }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-        // Clear content textarea
-        const contentTextarea = document.getElementById('testimonialText');
-        if (contentTextarea) {
-            contentTextarea.value = '';
-        }
-
-        // Clear role input if exists
-        const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
-        if (roleInput) {
-            roleInput.value = '';
-        }
-
-        // Reset button text to "Share Experience"
-        const submitBtn = modal.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            const btnText = submitBtn.querySelector('.btn-text');
-            if (btnText) {
-                btnText.textContent = 'Share Experience';
+                const data = await response.json();
+                if (data.success) {
+                    showTestimonialShareModalForEdit(data.testimonial);
+                } else {
+                    throw new Error(data.error || 'Failed to load testimonial');
+                }
+            } catch (error) {
+                console.error('Edit testimonial error:', error);
+                showToast(error.message || 'Failed to load testimonial for editing', 'error');
+            } finally {
+                hideLoader();
             }
         }
 
-        // Set modal title
-        const modalTitle = modal.querySelector('.modal-header h3');
-        if (modalTitle) {
-            modalTitle.textContent = 'Share Your Experience';
+        function showTestimonialShareModalForEdit(testimonial) {
+            const modal = document.getElementById('testimonialModal');
+            if (!modal) return;
+
+            // Fill form with existing data
+            const form = document.getElementById('testimonialForm');
+            if (form) {
+                form.dataset.mode = 'edit';
+                form.dataset.testimonialId = testimonial.id;
+            }
+
+            // Set content
+            const contentTextarea = document.getElementById('testimonialText');
+            if (contentTextarea) {
+                contentTextarea.value = testimonial.content || '';
+                // Trigger floating label
+                contentTextarea.dispatchEvent(new Event('input'));
+            }
+
+            // Set role if exists
+            let roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+            if (!roleInput && testimonial.role) {
+                const formContainer = document.getElementById('testimonialForm');
+                const ratingGroup = document.querySelector('#testimonialForm .simple-rating')?.closest('.form-group');
+                if (ratingGroup && formContainer) {
+                    const roleDiv = document.createElement('div');
+                    roleDiv.className = 'form-group floating-label-group';
+                    roleDiv.innerHTML = `
+                        <input type="text" id="userRole" name="userRole" placeholder=" ">
+                        <label for="userRole">Your Role/Position (Optional)</label>
+                    `;
+                    ratingGroup.insertAdjacentElement('afterend', roleDiv);
+                    roleInput = roleDiv.querySelector('input');
+                }
+            }
+            if (roleInput && testimonial.role) {
+                roleInput.value = testimonial.role;
+                roleInput.dispatchEvent(new Event('input'));
+            }
+
+            // Set rating
+            const rating = testimonial.rating || 5;
+            document.getElementById('ratingValue').value = rating;
+            updateStarRatingUI(rating);
+
+            // Set username (readonly)
+            const userNameInput = document.getElementById('userName');
+            if (userNameInput) {
+                userNameInput.value = testimonial.username || '';
+            }
+
+            // Change button text
+            const submitBtn = modal.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const btnText = submitBtn.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = 'Update Experience';
+                }
+            }
+
+            // Change modal title
+            const modalTitle = modal.querySelector('.modal-header h3');
+            if (modalTitle) {
+                modalTitle.textContent = 'Edit Your Experience';
+            }
+
+            // Setup form submission for edit
+            setupTestimonialFormSubmit('edit');
+
+            // Setup floating labels
+            setupFloatingLabelsInModal();
+
+            // Fix cancel button
+            const cancelButton = modal.querySelector('.btn-secondary');
+            if (cancelButton) {
+                const newCancelBtn = cancelButton.cloneNode(true);
+                cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
+                newCancelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeEditTestimonialModal();
+                });
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Setup star rating
+            setupStarRating();
         }
 
-        // Setup form submission for add (using the new route)
-        setupTestimonialFormSubmit('add');
+        function setupStarRating() {
+            const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+            starBtns.forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    document.getElementById('ratingValue').value = rating;
+                    updateStarRatingUI(rating);
+                });
+            });
+        }
 
-        // Setup floating labels for the modal
-        setupFloatingLabelsInModal();
+        function updateStarRatingUI(rating) {
+            const starBtns = document.querySelectorAll('#ratingStars .star-btn');
+            starBtns.forEach((btn, index) => {
+                if (index < rating) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
 
-        // Fix cancel button for add mode
-        const cancelButton = modal.querySelector('.btn-secondary');
-        if (cancelButton) {
-            const newCancelBtn = cancelButton.cloneNode(true);
-            cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
-            newCancelBtn.addEventListener('click', function(e) {
+        function setupTestimonialFormSubmit(mode) {
+            const form = document.getElementById('testimonialForm');
+            if (!form) return;
+
+            // Remove existing listener
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+
+            newForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                closeEditTestimonialModal();
-            });
-        }
 
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+                const content = document.getElementById('testimonialText').value;
+                const rating = parseInt(document.getElementById('ratingValue').value);
+                const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
+                const role = roleInput ? roleInput.value : '';
 
-        // Setup star rating
-        setupStarRating();
-    }
+                if (!content.trim()) {
+                    showToast('Please enter your testimonial content', 'error');
+                    return;
+                }
 
-    // Setup floating labels for testimonial modal
-    function setupFloatingLabelsInModal() {
-        const modal = document.getElementById('testimonialModal');
-        if (!modal) return;
-
-        // Handle floating labels for input fields
-        const floatingGroups = modal.querySelectorAll('.floating-label-group');
-        floatingGroups.forEach(group => {
-            const input = group.querySelector('input, textarea');
-            const label = group.querySelector('label');
-
-            if (input && label) {
-                // Check if input has value
-                const updateLabelPosition = () => {
-                    if (input.value.trim() !== '') {
-                        label.style.top = '0px';
-                        label.style.fontSize = '11px';
-                        label.style.opacity = '0.8';
-                    } else {
-                        label.style.top = '';
-                        label.style.fontSize = '';
-                        label.style.opacity = '';
-                    }
+                // Prepare data as JSON for both add and edit
+                const testimonialData = {
+                    content: content.trim(),
+                    rating: rating
                 };
 
-                input.addEventListener('input', updateLabelPosition);
-                input.addEventListener('blur', updateLabelPosition);
-                updateLabelPosition();
-            }
-        });
-    }
+                if (role && role.trim()) {
+                    testimonialData.role = role.trim();
+                }
 
-    // Open testimonial share modal for editing existing testimonial
-    async function openTestimonialShareModalForEdit(testimonialId) {
-        try {
-            showLoader('Loading testimonial...');
-            const response = await fetch(`/api/testimonials/${testimonialId}`, {
-                credentials: 'include'
-            });
+                const isEditMode = newForm.dataset.mode === 'edit';
+                const testimonialId = newForm.dataset.testimonialId;
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                // Use JSON for both routes
+                const url = isEditMode ? `/api/testimonial/update/${testimonialId}` : '/api/testimonial/submit';
+                const method = isEditMode ? 'PUT' : 'POST';
 
-            const data = await response.json();
-            if (data.success) {
-                showTestimonialShareModalForEdit(data.testimonial);
-            } else {
-                throw new Error(data.error || 'Failed to load testimonial');
-            }
-        } catch (error) {
-            console.error('Edit testimonial error:', error);
-            showToast(error.message || 'Failed to load testimonial for editing', 'error');
-        } finally {
-            hideLoader();
-        }
-    }
+                try {
+                    showLoader(isEditMode ? 'Updating testimonial...' : 'Adding testimonial...');
 
-    function showTestimonialShareModalForEdit(testimonial) {
-        const modal = document.getElementById('testimonialModal');
-        if (!modal) return;
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify(testimonialData)
+                    });
 
-        // Fill form with existing data
-        const form = document.getElementById('testimonialForm');
-        if (form) {
-            form.dataset.mode = 'edit';
-            form.dataset.testimonialId = testimonial.id;
-        }
+                    const data = await response.json();
 
-        // Set content
-        const contentTextarea = document.getElementById('testimonialText');
-        if (contentTextarea) {
-            contentTextarea.value = testimonial.content || '';
-            // Trigger floating label
-            contentTextarea.dispatchEvent(new Event('input'));
-        }
+                    if (!response.ok) {
+                        throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+                    }
 
-        // Set role if exists
-        let roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
-        if (!roleInput && testimonial.role) {
-            const formContainer = document.getElementById('testimonialForm');
-            const ratingGroup = document.querySelector('#testimonialForm .simple-rating')?.closest('.form-group');
-            if (ratingGroup && formContainer) {
-                const roleDiv = document.createElement('div');
-                roleDiv.className = 'form-group floating-label-group';
-                roleDiv.innerHTML = `
-                    <input type="text" id="userRole" name="userRole" placeholder=" ">
-                    <label for="userRole">Your Role/Position (Optional)</label>
-                `;
-                ratingGroup.insertAdjacentElement('afterend', roleDiv);
-                roleInput = roleDiv.querySelector('input');
-            }
-        }
-        if (roleInput && testimonial.role) {
-            roleInput.value = testimonial.role;
-            roleInput.dispatchEvent(new Event('input'));
-        }
+                    if (data.success) {
+                        closeEditTestimonialModal();
 
-        // Set rating
-        const rating = testimonial.rating || 5;
-        document.getElementById('ratingValue').value = rating;
-        updateStarRatingUI(rating);
+                        // Refresh testimonials to show the new/updated one
+                        await refreshCurrentTab();
 
-        // Set username (readonly)
-        const userNameInput = document.getElementById('userName');
-        if (userNameInput) {
-            userNameInput.value = testimonial.username || '';
-        }
+                        // Update button position
+                        if (typeof updateButtonPosition === 'function') {
+                            updateButtonPosition('testimonials');
+                        }
 
-        // Change button text
-        const submitBtn = modal.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            const btnText = submitBtn.querySelector('.btn-text');
-            if (btnText) {
-                btnText.textContent = 'Update Experience';
-            }
-        }
+                        // Dispatch event to update button state
+                        const event = new CustomEvent('testimonialUpdated', {
+                            detail: { action: isEditMode ? 'updated' : 'added' }
+                        });
+                        document.dispatchEvent(event);
 
-        // Change modal title
-        const modalTitle = modal.querySelector('.modal-header h3');
-        if (modalTitle) {
-            modalTitle.textContent = 'Edit Your Experience';
-        }
+                        showToast(data.message || (isEditMode ? 'Testimonial updated successfully!' : 'Testimonial added successfully!'), 'success');
+                    } else {
+                        throw new Error(data.message || data.error || 'Operation failed');
+                    }
 
-        // Setup form submission for edit
-        setupTestimonialFormSubmit('edit');
-
-        // Setup floating labels
-        setupFloatingLabelsInModal();
-
-        // Fix cancel button
-        const cancelButton = modal.querySelector('.btn-secondary');
-        if (cancelButton) {
-            const newCancelBtn = cancelButton.cloneNode(true);
-            cancelButton.parentNode.replaceChild(newCancelBtn, cancelButton);
-            newCancelBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                closeEditTestimonialModal();
+                } catch (error) {
+                    console.error('Testimonial operation error:', error);
+                    showToast(error.message || 'Operation failed', 'error');
+                } finally {
+                    hideLoader();
+                }
             });
         }
 
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        // Open delete confirmation modal
+        function openDeleteConfirmationModal(testimonialId) {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (!modal) return;
 
-        // Setup star rating
-        setupStarRating();
-    }
+            // Store testimonial id for deletion
+            modal.dataset.testimonialId = testimonialId;
 
-    function setupStarRating() {
-        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
-        starBtns.forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', function() {
-                const rating = parseInt(this.dataset.rating);
-                document.getElementById('ratingValue').value = rating;
-                updateStarRatingUI(rating);
-            });
-        });
-    }
-
-    function updateStarRatingUI(rating) {
-        const starBtns = document.querySelectorAll('#ratingStars .star-btn');
-        starBtns.forEach((btn, index) => {
-            if (index < rating) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-    }
-
-    function setupTestimonialFormSubmit(mode) {
-        const form = document.getElementById('testimonialForm');
-        if (!form) return;
-
-        // Remove existing listener
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-
-        newForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const content = document.getElementById('testimonialText').value;
-            const rating = parseInt(document.getElementById('ratingValue').value);
-            const roleInput = document.querySelector('#testimonialForm input[name="userRole"]');
-            const role = roleInput ? roleInput.value : '';
-
-            if (!content.trim()) {
-                showToast('Please enter your testimonial content', 'error');
-                return;
+            // Setup confirm button
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            if (confirmBtn) {
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                newConfirmBtn.addEventListener('click', () => performTestimonialDelete(modal.dataset.testimonialId));
             }
 
-            // Prepare data as JSON for both add and edit
-            const testimonialData = {
-                content: content.trim(),
-                rating: rating
-            };
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
 
-            if (role && role.trim()) {
-                testimonialData.role = role.trim();
-            }
-
-            const isEditMode = newForm.dataset.mode === 'edit';
-            const testimonialId = newForm.dataset.testimonialId;
-
-            // Use JSON for both routes
-            const url = isEditMode ? `/api/testimonial/update/${testimonialId}` : '/api/testimonial/submit';
-            const method = isEditMode ? 'PUT' : 'POST';
-
+        async function performTestimonialDelete(testimonialId) {
             try {
-                showLoader(isEditMode ? 'Updating testimonial...' : 'Adding testimonial...');
+                showLoader('Deleting testimonial...');
 
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(testimonialData)
+                const response = await fetch(`/api/testimonial/delete/${testimonialId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
                 }
 
                 if (data.success) {
-                    closeEditTestimonialModal();
+                    // Close modal first
+                    closeDeleteConfirmationModal();
 
-                    // Refresh testimonials to show the new/updated one
-                    await refreshCurrentTab();
-
-                    // Update button position
-                    if (typeof updateButtonPosition === 'function') {
-                        updateButtonPosition('testimonials');
+                    // Remove testimonial from DOM immediately
+                    const testimonialItem = document.querySelector(`.testimonial-item[data-id="${testimonialId}"]`);
+                    if (testimonialItem) {
+                        // Add animation class
+                        testimonialItem.classList.add('bookmark-removing');
+                        setTimeout(() => {
+                            testimonialItem.remove();
+                            checkTestimonialsEmptyState();
+                            if (typeof updateButtonPosition === 'function') {
+                                updateButtonPosition('testimonials');
+                            }
+                            showToast(data.message || 'Testimonial deleted successfully', 'success');
+                        }, 300);
+                    } else {
+                        // If element not found, just refresh the tab
+                        await refreshCurrentTab();
+                        showToast(data.message || 'Testimonial deleted successfully', 'success');
                     }
-
-                    // Dispatch event to update button state
-                    const event = new CustomEvent('testimonialUpdated', {
-                        detail: { action: isEditMode ? 'updated' : 'added' }
-                    });
-                    document.dispatchEvent(event);
-
-                    showToast(data.message || (isEditMode ? 'Testimonial updated successfully!' : 'Testimonial added successfully!'), 'success');
                 } else {
-                    throw new Error(data.message || data.error || 'Operation failed');
+                    throw new Error(data.message || 'Failed to delete testimonial');
                 }
 
             } catch (error) {
-                console.error('Testimonial operation error:', error);
-                showToast(error.message || 'Operation failed', 'error');
+                console.error('Testimonial deletion error:', error);
+                showToast(error.message || 'Failed to delete testimonial', 'error');
             } finally {
                 hideLoader();
             }
-        });
-    }
-
-    // Open delete confirmation modal
-    function openDeleteConfirmationModal(testimonialId) {
-        const modal = document.getElementById('deleteConfirmModal');
-        if (!modal) return;
-
-        // Store testimonial id for deletion
-        modal.dataset.testimonialId = testimonialId;
-
-        // Setup confirm button
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmBtn) {
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            newConfirmBtn.addEventListener('click', () => performTestimonialDelete(modal.dataset.testimonialId));
         }
 
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    async function performTestimonialDelete(testimonialId) {
-        try {
-            showLoader('Deleting testimonial...');
-
-            const response = await fetch(`/api/testimonial/delete/${testimonialId}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP error! status: ${response.status}`);
-            }
-
-            if (data.success) {
-                closeDeleteConfirmationModal();
-                // Update UI directly without refresh
-                await refreshCurrentTab();
-
-                // Dispatch event to update button state
-                const event = new CustomEvent('testimonialUpdated', {
-                    detail: { action: 'deleted' }
-                });
-                document.dispatchEvent(event);
-            } else {
-                throw new Error(data.message || 'Failed to delete testimonial');
-            }
-
-        } catch (error) {
-            console.error('Testimonial deletion error:', error);
-            showToast(error.message || 'Failed to delete testimonial', 'error');
-        } finally {
-            hideLoader();
-        }
-    }
-
-    function renderTestimonials(testimonials) {
-        const testimonialsContainer = document.querySelector('#testimonials .testimonials-list');
-        if (!testimonialsContainer) return;
-
-        if (testimonials.length === 0) {
-            checkTestimonialsEmptyState();
-            return;
-        }
-
-        testimonialsContainer.innerHTML = testimonials.map(testimonial => `
-            <div class="testimonial-item" data-id="${testimonial.id}">
-                <div class="testimonial-content-wrapper">
-                    <div class="testimonial-content">${escapeHtml(testimonial.content)}</div>
-                    ${testimonial.role ? `<div class="testimonial-role">${escapeHtml(testimonial.role)}</div>` : ''}
-                </div>
-                <div class="testimonial-actions">
-                    <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-icon edit-testimonial" data-id="${testimonial.id}" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon delete-testimonial" data-id="${testimonial.id}" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
-
-        setupTestimonialActions();
-    }
-
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function checkTestimonialsEmptyState() {
-        const testimonialsTab = document.getElementById('testimonials');
-        if (!testimonialsTab) return;
-
-        const dashboardCard = testimonialsTab.querySelector('.dashboard-card');
-        if (!dashboardCard) return;
-
-        const testimonialItems = Array.from(testimonialsTab.querySelectorAll('.testimonial-item')).filter(item => {
-            return !item.classList.contains('bookmark-removing') &&
-                   item.style.opacity !== '0' &&
-                   !item.style.height.includes('0');
-        });
-
-        const emptyState = testimonialsTab.querySelector('.empty-state');
-        const hasTestimonials = testimonialItems.length > 0;
-
-        if (!hasTestimonials && !emptyState) {
-            const emptyHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-comment-dots"></i>
-                    <h4>No testimonials yet</h4>
-                    <p>Share your experience and help others in their career journey</p>
-                    <button class="btn btn-primary add-testimonial-empty-btn">
-                        <i class="fas fa-plus"></i> Add Your Testimonial
-                    </button>
-                </div>
-            `;
-            dashboardCard.innerHTML = emptyHTML;
-
-            // Add event listener to the empty state button
-            const addBtn = dashboardCard.querySelector('.add-testimonial-empty-btn');
-            if (addBtn) {
-                addBtn.addEventListener('click', openTestimonialShareModal);
-            }
-        } else if (hasTestimonials && emptyState) {
-            emptyState.remove();
-        }
-    }
-
-    function shareTestimonial() {
-        const modal = document.getElementById('testimonialDetailModal');
-        if (!modal) return;
-
-        const content = document.getElementById('detailFullText').textContent;
-        const author = document.getElementById('detailAuthorName').textContent;
-        const shareText = `"${content}" - ${author}`;
-
-        if (navigator.share) {
-            navigator.share({
-                title: 'CareerMaker Testimonial',
-                text: shareText,
-                url: window.location.href
-            }).catch(err => {
-                copyToClipboard(shareText);
-            });
-        } else {
-            copyToClipboard(shareText);
-        }
-    }
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Testimonial copied to clipboard!', 'success');
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            showToast('Failed to copy testimonial', 'error');
-        });
-    }
-
-    // ======================
-    // SIMPLE TESTIMONIAL BUTTON - Opens Share Modal
-    // ======================
-
-    function setupTestimonialScrolling() {
-        console.log('🎯 Setting up testimonial button...');
-
-        document.addEventListener('click', function(e) {
-            const browseBtn = e.target.closest('.browse-action-btn');
-            if (browseBtn) {
-                const activeTab = document.querySelector('.tab-content.active');
-                if (activeTab && activeTab.id === 'testimonials') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log('🎯 Testimonial button clicked from dashboard');
-
-                    // Open testimonial share modal directly
-                    openTestimonialShareModal();
-
-                    return;
-                }
-            }
-        });
-    }
-
-    // ======================
-    // Flash Messages
-    // ======================
-
-    function setupFlashMessages() {
-        if (flashMessages) {
-            const messages = flashMessages.querySelectorAll('.flash-message');
-            messages.forEach((msg, index) => {
-                setTimeout(() => {
-                    msg.style.opacity = '0';
-                    setTimeout(() => msg.remove(), 300);
-                }, 5000 + (index * 300));
-            });
-        }
-    }
-
-    // ======================
-    // UI Helper Functions
-    // ======================
-
-    function showLoading() {
-        let overlay = document.getElementById('loadingOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'loadingOverlay';
-            overlay.className = 'loading-overlay';
-            overlay.innerHTML = `
-                <div class="loading-spinner">
-                    <div class="spinner"></div>
-                    <p>Loading...</p>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-        }
-        overlay.style.display = 'flex';
-    }
-
-    function hideLoading() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) overlay.style.display = 'none';
-    }
-
-    function showToast(message, type = 'success') {
-        let toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            document.body.appendChild(toastContainer);
-        }
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            <span>${message}</span>
-        `;
-
-        toastContainer.appendChild(toast);
-
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.remove();
-                if (toastContainer.children.length === 0) {
-                    toastContainer.remove();
-                }
-            }, 300);
-        }, 3000);
-    }
-
-    // ======================
-    // LOGOUT FUNCTIONALITY - FIXED
-    // ======================
-
-    function setupLogout() {
-        const logoutBtn = document.getElementById('dashboardDirectLogoutBtn');
-        if (!logoutBtn) {
-            console.error('Logout button not found!');
-            return;
-        }
-
-        // Remove any existing event listeners
-        const newLogoutBtn = logoutBtn.cloneNode(true);
-        logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-
-        // Get fresh reference
-        const freshLogoutBtn = document.getElementById('dashboardDirectLogoutBtn');
-
-        // Add click event listener
-        freshLogoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            showLogoutConfirmationModal();
-        });
-
-        console.log('Logout setup complete');
-    }
-
-    function showLogoutConfirmationModal() {
-        const modal = document.getElementById('logoutModal');
-        if (!modal) {
-            console.error('Logout modal not found!');
-            // Fallback to direct logout
-            performLogout();
-            return;
-        }
-
-        // Show modal
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-
-        // Setup modal buttons
-        setupLogoutModalButtons();
-    }
-
-    function setupLogoutModalButtons() {
-        const modal = document.getElementById('logoutModal');
-        if (!modal) return;
-
-        // Get buttons using correct IDs from user-dashboard.html
-        const cancelBtn = document.getElementById('cancelLogoutBtn');
-        const closeBtn = document.getElementById('closeLogoutModal');
-        const confirmBtn = document.getElementById('confirmLogoutBtn');
-
-        if (!cancelBtn || !closeBtn || !confirmBtn) {
-            console.error('Logout modal buttons not found');
-            return;
-        }
-
-        // Remove existing listeners by cloning
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        const newCloseBtn = closeBtn.cloneNode(true);
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-        // Get fresh references
-        const freshCancelBtn = document.getElementById('cancelLogoutBtn');
-        const freshCloseBtn = document.getElementById('closeLogoutModal');
-        const freshConfirmBtn = document.getElementById('confirmLogoutBtn');
-
-        // Close modal function
-        const closeModal = () => {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        };
-
-        // Event handlers
-        freshCancelBtn.addEventListener('click', closeModal);
-        freshCloseBtn.addEventListener('click', closeModal);
-        freshConfirmBtn.addEventListener('click', () => {
-            closeModal();
-            performLogout();
-        });
-
-        // Close when clicking outside modal
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Close with Escape key
-        document.addEventListener('keydown', function handleEscape(e) {
-            if (e.key === 'Escape' && modal.style.display === 'flex') {
-                closeModal();
-                document.removeEventListener('keydown', handleEscape);
-            }
-        });
-    }
-
-    async function performLogout() {
-        try {
-            // Show loading state
-            showLoader('Logging out...');
-
-            // Clear all local storage
-            const itemsToRemove = [
-                'profilePicUrl',
-                'profilePicTimestamp',
-                'profilePicCacheBust',
-                'profilePicLastUpdate',
-                'dashboardActiveTab',
-                'userPreferences',
-                'lastVisit'
-            ];
-
-            itemsToRemove.forEach(item => localStorage.removeItem(item));
-
-            // Clear session storage
-            sessionStorage.clear();
-
-            // Clear cookies (by setting past expiration date)
-            document.cookie.split(";").forEach(function(c) {
-                document.cookie = c.replace(/^ +/, "")
-                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-
-            // Send logout request to server
-            const response = await fetch('/logout', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache'
-                }
-            });
-
-            // Close modal if open
-            const modal = document.getElementById('logoutModal');
-            if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-
-            // Show success message
-            if (typeof showToast === 'function') {
-                showToast('Logged out successfully! Redirecting...', 'success');
-            }
-
-            // Force redirect with cache busting
-            setTimeout(() => {
-                // Force hard redirect to clear any cached states
-                window.location.href = '/?logout=' + Date.now();
-            }, 500);
-
-        } catch (error) {
-            console.error('Logout failed:', error);
-
-            // Show error message
-            if (typeof showToast === 'function') {
-                showToast('Logout failed. Please try again.', 'error');
-            }
-
-            // Fallback redirect on error
-            setTimeout(() => {
-                window.location.href = '/logout';
-            }, 1000);
-        } finally {
-            hideLoader();
-        }
-    }
-
-    // ======================
-    // Mutation Observer for dynamic content
-    // ======================
-
-    function setupMutationObserver() {
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList' && mutation.target.classList &&
-                    (mutation.target.classList.contains('content-area') ||
-                     mutation.target.classList.contains('bookmarks-list') ||
-                     mutation.target.classList.contains('testimonials-list'))) {
-                    const activeTab = document.querySelector('.tab-content.active');
-                    if (activeTab && typeof updateButtonPosition === 'function') {
-                        setTimeout(() => updateButtonPosition(activeTab.id), 100);
-                    }
-                }
-            });
-        });
-
-        const contentAreas = document.querySelectorAll('.content-area');
-        contentAreas.forEach(area => {
-            observer.observe(area, { childList: true, subtree: true });
-        });
-    }
-
-    // Universal function to refresh current tab content from API
-    async function refreshCurrentTab() {
-        const activeTab = document.querySelector('.tab-content.active');
-        if (!activeTab) return;
-
-        const tabId = activeTab.id;
-        console.log(`Refreshing ${tabId}...`);
-
-        // Show loading indicator
-        showTabLoading(tabId);
-
-        try {
-            // Map tabId to API endpoint
-            const apiMap = {
-                'courses': '/api/bookmarks/courses',
-                'jobs': '/api/bookmarks/jobs',
-                'internships': '/api/bookmarks/internships',
-                'blogs': '/api/bookmarks/blogs',
-                'testimonials': '/api/testimonials/user'
-            };
-
-            const endpoint = apiMap[tabId];
-            if (!endpoint) {
-                console.error(`No API endpoint for tab: ${tabId}`);
+        function renderTestimonials(testimonials) {
+            const testimonialsContainer = document.querySelector('#testimonials .testimonials-list');
+            if (!testimonialsContainer) return;
+
+            if (testimonials.length === 0) {
+                checkTestimonialsEmptyState();
                 return;
             }
 
-            const response = await fetch(endpoint, {
-                credentials: 'include',
-                headers: {
-                    'Cache-Control': 'no-cache'
+            testimonialsContainer.innerHTML = testimonials.map(testimonial => `
+                <div class="testimonial-item" data-id="${testimonial.id}">
+                    <div class="testimonial-content-wrapper">
+                        <div class="testimonial-content">${escapeHtml(testimonial.content)}</div>
+                        ${testimonial.role ? `<div class="testimonial-role">${escapeHtml(testimonial.role)}</div>` : ''}
+                    </div>
+                    <div class="testimonial-actions">
+                        <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-icon edit-testimonial" data-id="${testimonial.id}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon delete-testimonial" data-id="${testimonial.id}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            setupTestimonialActions();
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function checkTestimonialsEmptyState() {
+            const testimonialsTab = document.getElementById('testimonials');
+            if (!testimonialsTab) return;
+
+            const dashboardCard = testimonialsTab.querySelector('.dashboard-card');
+            if (!dashboardCard) return;
+
+            const testimonialItems = Array.from(testimonialsTab.querySelectorAll('.testimonial-item')).filter(item => {
+                return !item.classList.contains('bookmark-removing') &&
+                       item.style.opacity !== '0' &&
+                       !item.style.height.includes('0');
+            });
+
+            const emptyState = testimonialsTab.querySelector('.empty-state');
+            const hasTestimonials = testimonialItems.length > 0;
+
+            if (!hasTestimonials && !emptyState) {
+                const emptyHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comment-dots"></i>
+                        <h4>No testimonials yet</h4>
+                        <p>Share your experience and help others in their career journey</p>
+                        <button class="btn btn-primary add-testimonial-empty-btn">
+                            <i class="fas fa-plus"></i> Add Your Testimonial
+                        </button>
+                    </div>
+                `;
+                dashboardCard.innerHTML = emptyHTML;
+
+                // Add event listener to the empty state button
+                const addBtn = dashboardCard.querySelector('.add-testimonial-empty-btn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', openTestimonialShareModal);
+                }
+            } else if (hasTestimonials && emptyState) {
+                emptyState.remove();
+            }
+        }
+
+        function shareTestimonial() {
+            const modal = document.getElementById('testimonialDetailModal');
+            if (!modal) return;
+
+            const content = document.getElementById('detailFullText').textContent;
+            const author = document.getElementById('detailAuthorName').textContent;
+            const shareText = `"${content}" - ${author}`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'CareerMaker Testimonial',
+                    text: shareText,
+                    url: window.location.href
+                }).catch(err => {
+                    copyToClipboard(shareText);
+                });
+            } else {
+                copyToClipboard(shareText);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Testimonial copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showToast('Failed to copy testimonial', 'error');
+            });
+        }
+
+        // ======================
+        // SIMPLE TESTIMONIAL BUTTON - Opens Share Modal
+        // ======================
+
+        function setupTestimonialScrolling() {
+            console.log('🎯 Setting up testimonial button...');
+
+            document.addEventListener('click', function(e) {
+                const browseBtn = e.target.closest('.browse-action-btn');
+                if (browseBtn) {
+                    const activeTab = document.querySelector('.tab-content.active');
+                    if (activeTab && activeTab.id === 'testimonials') {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        console.log('🎯 Testimonial button clicked from dashboard');
+
+                        // Open testimonial share modal directly
+                        openTestimonialShareModal();
+
+                        return;
+                    }
+                }
+            });
+        }
+
+        // ======================
+        // Flash Messages
+        // ======================
+
+        function setupFlashMessages() {
+            if (flashMessages) {
+                const messages = flashMessages.querySelectorAll('.flash-message');
+                messages.forEach((msg, index) => {
+                    setTimeout(() => {
+                        msg.style.opacity = '0';
+                        setTimeout(() => msg.remove(), 300);
+                    }, 5000 + (index * 300));
+                });
+            }
+        }
+
+        // ======================
+        // UI Helper Functions
+        // ======================
+
+        function showLoading() {
+            let overlay = document.getElementById('loadingOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'loadingOverlay';
+                overlay.className = 'loading-overlay';
+                overlay.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading...</p>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+            overlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function showToast(message, type = 'success') {
+            let toastContainer = document.querySelector('.toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.className = 'toast-container';
+                document.body.appendChild(toastContainer);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                    if (toastContainer.children.length === 0) {
+                        toastContainer.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // ======================
+        // LOGOUT FUNCTIONALITY - FIXED
+        // ======================
+
+        function setupLogout() {
+            const logoutBtn = document.getElementById('dashboardDirectLogoutBtn');
+            if (!logoutBtn) {
+                console.error('Logout button not found!');
+                return;
+            }
+
+            // Remove any existing event listeners
+            const newLogoutBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+
+            // Get fresh reference
+            const freshLogoutBtn = document.getElementById('dashboardDirectLogoutBtn');
+
+            // Add click event listener
+            freshLogoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showLogoutConfirmationModal();
+            });
+
+            console.log('Logout setup complete');
+        }
+
+        function showLogoutConfirmationModal() {
+            const modal = document.getElementById('logoutModal');
+            if (!modal) {
+                console.error('Logout modal not found!');
+                // Fallback to direct logout
+                performLogout();
+                return;
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            // Setup modal buttons
+            setupLogoutModalButtons();
+        }
+
+        function setupLogoutModalButtons() {
+            const modal = document.getElementById('logoutModal');
+            if (!modal) return;
+
+            // Get buttons using correct IDs from user-dashboard.html
+            const cancelBtn = document.getElementById('cancelLogoutBtn');
+            const closeBtn = document.getElementById('closeLogoutModal');
+            const confirmBtn = document.getElementById('confirmLogoutBtn');
+
+            if (!cancelBtn || !closeBtn || !confirmBtn) {
+                console.error('Logout modal buttons not found');
+                return;
+            }
+
+            // Remove existing listeners by cloning
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            const newCloseBtn = closeBtn.cloneNode(true);
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            // Get fresh references
+            const freshCancelBtn = document.getElementById('cancelLogoutBtn');
+            const freshCloseBtn = document.getElementById('closeLogoutModal');
+            const freshConfirmBtn = document.getElementById('confirmLogoutBtn');
+
+            // Close modal function
+            const closeModal = () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            };
+
+            // Event handlers
+            freshCancelBtn.addEventListener('click', closeModal);
+            freshCloseBtn.addEventListener('click', closeModal);
+            freshConfirmBtn.addEventListener('click', () => {
+                closeModal();
+                performLogout();
+            });
+
+            // Close when clicking outside modal
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeModal();
                 }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-
-                if (tabId === 'testimonials') {
-                    if (data.success) {
-                        renderTestimonials(data.testimonials);
-                    }
-                } else {
-                    if (data.success && data.items) {
-                        renderBookmarks(tabId, data.items);
-                    }
+            // Close with Escape key
+            document.addEventListener('keydown', function handleEscape(e) {
+                if (e.key === 'Escape' && modal.style.display === 'flex') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEscape);
                 }
-
-                // Update UI states
-                if (tabId === 'testimonials') {
-                    checkTestimonialsEmptyState();
-                } else {
-                    checkEmptyTabState();
-                }
-
-                if (typeof updateButtonPosition === 'function') {
-                    updateButtonPosition(tabId);
-                }
-
-                console.log(`${tabId} refreshed successfully`);
-            }
-        } catch (error) {
-            console.error(`Error refreshing ${tabId}:`, error);
-        } finally {
-            hideTabLoading(tabId);
-        }
-    }
-
-    // Universal render function for bookmarks
-    function renderBookmarks(tabId, items) {
-        const tabContent = document.getElementById(tabId);
-        if (!tabContent) return;
-
-        const contentArea = tabContent.querySelector('.content-area');
-        if (!contentArea) return;
-
-        if (!items || items.length === 0) {
-            contentArea.innerHTML = '';
-            return;
+            });
         }
 
-        // Get the appropriate template
-        let html = '<div class="bookmarks-list">';
+        async function performLogout() {
+            try {
+                // Show loading state
+                showLoader('Logging out...');
 
-        items.forEach(item => {
-            switch(tabId) {
-                case 'courses':
-                    html += `
-                        <div class="bookmark-item" data-id="${item.id}" data-type="course">
-                            <img src="${item.image || item.company_logo || item.thumbnail || '/static/images/default-course.jpg'}"
-                                 alt="${escapeHtml(item.title)}"
-                                 class="bookmark-img"
-                                 onerror="this.src='/static/images/default-course.jpg'">
-                            <div class="bookmark-info">
-                                <h4>${escapeHtml(item.title)}</h4>
-                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
-                                <div class="bookmark-meta">
-                                    <span><i class="fas fa-dollar-sign"></i> ${item.price || 'Free'}</span>
-                                    <span><i class="fas fa-tag"></i> ${item.level || 'All Levels'}</span>
-                                    ${item.company ? `<span><i class="fas fa-building"></i> ${escapeHtml(item.company)}</span>` : ''}
-                                </div>
-                            </div>
-                            <div class="bookmark-actions">
-                                <button class="btn btn-outline view-content-btn" data-type="course" data-id="${item.id}">
-                                    <i class="fas fa-external-link-alt"></i> View
-                                </button>
-                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="course">
-                                    <i class="fas fa-trash-alt"></i> Remove
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                // Clear all local storage
+                const itemsToRemove = [
+                    'profilePicUrl',
+                    'profilePicTimestamp',
+                    'profilePicCacheBust',
+                    'profilePicLastUpdate',
+                    'dashboardActiveTab',
+                    'userPreferences',
+                    'lastVisit'
+                ];
 
-                case 'jobs':
-                    html += `
-                        <div class="bookmark-item" data-id="${item.id}" data-type="job">
-                            <img src="${item.company_logo || item.image || '/static/images/default-job.jpg'}"
-                                 alt="${escapeHtml(item.title)}"
-                                 class="bookmark-img"
-                                 onerror="this.src='/static/images/default-job.jpg'">
-                            <div class="bookmark-info">
-                                <h4>${escapeHtml(item.title)}</h4>
-                                <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
-                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
-                                <div class="bookmark-meta">
-                                    <span><i class="fas fa-dollar-sign"></i> ${item.salary || 'Not Specified'}</span>
-                                    <span><i class="fas fa-tag"></i> ${item.type || 'Full-time'}</span>
-                                </div>
-                            </div>
-                            <div class="bookmark-actions">
-                                <button class="btn btn-outline view-content-btn" data-type="job" data-id="${item.id}">
-                                    <i class="fas fa-external-link-alt"></i> View
-                                </button>
-                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="job">
-                                    <i class="fas fa-trash-alt"></i> Remove
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                itemsToRemove.forEach(item => localStorage.removeItem(item));
 
-                case 'internships':
-                    html += `
-                        <div class="bookmark-item" data-id="${item.id}" data-type="internship">
-                            <img src="${item.company_logo || item.image || '/static/images/default-internship.jpg'}"
-                                 alt="${escapeHtml(item.title)}"
-                                 class="bookmark-img"
-                                 onerror="this.src='/static/images/default-internship.jpg'">
-                            <div class="bookmark-info">
-                                <h4>${escapeHtml(item.title)}</h4>
-                                <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
-                                <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
-                                <div class="bookmark-meta">
-                                    <span><i class="fas fa-dollar-sign"></i> ${item.stipend || 'Unpaid'}</span>
-                                    <span><i class="fas fa-tag"></i> ${item.duration || 'Flexible'}</span>
-                                </div>
-                            </div>
-                            <div class="bookmark-actions">
-                                <button class="btn btn-outline view-content-btn" data-type="internship" data-id="${item.id}">
-                                    <i class="fas fa-external-link-alt"></i> View
-                                </button>
-                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="internship">
-                                    <i class="fas fa-trash-alt"></i> Remove
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                // Clear session storage
+                sessionStorage.clear();
 
-                case 'blogs':
-                    html += `
-                        <div class="bookmark-item" data-id="${item.id}" data-type="blog">
-                            <img src="${item.image || '/static/images/default-blog.jpg'}"
-                                 alt="${escapeHtml(item.title)}"
-                                 class="bookmark-img"
-                                 onerror="this.src='/static/images/default-blog.jpg'">
-                            <div class="bookmark-info">
-                                <h4>${escapeHtml(item.title)}</h4>
-                                <p>${escapeHtml((item.description || item.content || 'No description').substring(0, 100))}...</p>
-                                <div class="bookmark-meta">
-                                    <span><i class="fas fa-user"></i> ${escapeHtml(item.author || 'CareerMaker Team')}</span>
-                                    <span><i class="far fa-clock"></i> ${item.read_time || '5 min read'}</span>
-                                    <span><i class="fas fa-eye"></i> ${item.views || 0} views</span>
-                                </div>
-                            </div>
-                            <div class="bookmark-actions">
-                                <button class="btn btn-outline read-blog-btn" data-id="${item.id}">
-                                    <i class="fas fa-book-open"></i> Read
-                                </button>
-                                <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="blog">
-                                    <i class="fas fa-trash-alt"></i> Remove
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                // Clear cookies (by setting past expiration date)
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+
+                // Send logout request to server
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    }
+                });
+
+                // Close modal if open
+                const modal = document.getElementById('logoutModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
+
+                // Show success message
+                if (typeof showToast === 'function') {
+                    showToast('Logged out successfully! Redirecting...', 'success');
+                }
+
+                // Force redirect with cache busting
+                setTimeout(() => {
+                    // Force hard redirect to clear any cached states
+                    window.location.href = '/?logout=' + Date.now();
+                }, 500);
+
+            } catch (error) {
+                console.error('Logout failed:', error);
+
+                // Show error message
+                if (typeof showToast === 'function') {
+                    showToast('Logout failed. Please try again.', 'error');
+                }
+
+                // Fallback redirect on error
+                setTimeout(() => {
+                    window.location.href = '/logout';
+                }, 1000);
+            } finally {
+                hideLoader();
             }
-        });
+        }
 
-        html += '</div>';
-        contentArea.innerHTML = html;
+        // ======================
+        // Mutation Observer for dynamic content
+        // ======================
 
-        // Re-attach event listeners
-        setupBookmarkRemoval();
-        if (tabId === 'blogs') setupBlogReading();
-        if (tabId === 'courses') setupCourseView();
-    }
+        function setupMutationObserver() {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' && mutation.target.classList &&
+                        (mutation.target.classList.contains('content-area') ||
+                         mutation.target.classList.contains('bookmarks-list') ||
+                         mutation.target.classList.contains('testimonials-list'))) {
+                        const activeTab = document.querySelector('.tab-content.active');
+                        if (activeTab && typeof updateButtonPosition === 'function') {
+                            setTimeout(() => updateButtonPosition(activeTab.id), 100);
+                        }
+                    }
+                });
+            });
 
-    // ======================
-    // Initialize course view and other event listeners
-    // ======================
+            const contentAreas = document.querySelectorAll('.content-area');
+            contentAreas.forEach(area => {
+                observer.observe(area, { childList: true, subtree: true });
+            });
+        }
 
-    // Add course view event listener
-    setupCourseView();
+        // Universal function to refresh current tab content from API
+        async function refreshCurrentTab() {
+            const activeTab = document.querySelector('.tab-content.active');
+            if (!activeTab) return;
 
-    // Make functions globally available
-    window.closeHorizontalCourseModal = closeHorizontalCourseModal;
-    window.closeLightweightBlogModal = closeLightweightBlogModal;
-    window.closeTestimonialReadModal = closeTestimonialReadModal;
-    window.closeEditTestimonialModal = closeEditTestimonialModal;
-    window.shareTestimonial = shareTestimonial;
-    window.openTestimonialShareModal = openTestimonialShareModal;
+            const tabId = activeTab.id;
+            console.log(`Refreshing ${tabId}...`);
+
+            // Show loading indicator
+            showTabLoading(tabId);
+
+            try {
+                // Map tabId to API endpoint
+                const apiMap = {
+                    'courses': '/api/bookmarks/courses',
+                    'jobs': '/api/bookmarks/jobs',
+                    'internships': '/api/bookmarks/internships',
+                    'blogs': '/api/bookmarks/blogs',
+                    'testimonials': '/api/testimonials/user'
+                };
+
+                const endpoint = apiMap[tabId];
+                if (!endpoint) {
+                    console.error(`No API endpoint for tab: ${tabId}`);
+                    return;
+                }
+
+                const response = await fetch(endpoint, {
+                    credentials: 'include',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (tabId === 'testimonials') {
+                        if (data.success) {
+                            renderTestimonials(data.testimonials);
+                        }
+                    } else {
+                        if (data.success && data.items) {
+                            renderBookmarks(tabId, data.items);
+                        }
+                    }
+
+                    // Update UI states
+                    if (tabId === 'testimonials') {
+                        checkTestimonialsEmptyState();
+                    } else {
+                        checkEmptyTabState();
+                    }
+
+                    if (typeof updateButtonPosition === 'function') {
+                        updateButtonPosition(tabId);
+                    }
+
+                    console.log(`${tabId} refreshed successfully`);
+                }
+            } catch (error) {
+                console.error(`Error refreshing ${tabId}:`, error);
+            } finally {
+                hideTabLoading(tabId);
+            }
+        }
+
+        // Universal render function for bookmarks
+        function renderBookmarks(tabId, items) {
+            const tabContent = document.getElementById(tabId);
+            if (!tabContent) return;
+
+            const contentArea = tabContent.querySelector('.content-area');
+            if (!contentArea) return;
+
+            if (!items || items.length === 0) {
+                contentArea.innerHTML = '';
+                return;
+            }
+
+            // Get the appropriate template
+            let html = '<div class="bookmarks-list">';
+
+            items.forEach(item => {
+                switch(tabId) {
+                    case 'courses':
+                        html += `
+                            <div class="bookmark-item" data-id="${item.id}" data-type="course">
+                                <img src="${item.image || item.company_logo || item.thumbnail || '/static/images/default-course.jpg'}"
+                                     alt="${escapeHtml(item.title)}"
+                                     class="bookmark-img"
+                                     onerror="this.src='/static/images/default-course.jpg'">
+                                <div class="bookmark-info">
+                                    <h4>${escapeHtml(item.title)}</h4>
+                                    <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                    <div class="bookmark-meta">
+                                        <span><i class="fas fa-dollar-sign"></i> ${item.price || 'Free'}</span>
+                                        <span><i class="fas fa-tag"></i> ${item.level || 'All Levels'}</span>
+                                        ${item.company ? `<span><i class="fas fa-building"></i> ${escapeHtml(item.company)}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="bookmark-actions">
+                                    <button class="btn btn-outline view-content-btn" data-type="course" data-id="${item.id}">
+                                        <i class="fas fa-external-link-alt"></i> View
+                                    </button>
+                                    <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="course">
+                                        <i class="fas fa-trash-alt"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+
+                    case 'jobs':
+                        html += `
+                            <div class="bookmark-item" data-id="${item.id}" data-type="job">
+                                <img src="${item.company_logo || item.image || '/static/images/default-job.jpg'}"
+                                     alt="${escapeHtml(item.title)}"
+                                     class="bookmark-img"
+                                     onerror="this.src='/static/images/default-job.jpg'">
+                                <div class="bookmark-info">
+                                    <h4>${escapeHtml(item.title)}</h4>
+                                    <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
+                                    <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                    <div class="bookmark-meta">
+                                        <span><i class="fas fa-dollar-sign"></i> ${item.salary || 'Not Specified'}</span>
+                                        <span><i class="fas fa-tag"></i> ${item.type || 'Full-time'}</span>
+                                    </div>
+                                </div>
+                                <div class="bookmark-actions">
+                                    <button class="btn btn-outline view-content-btn" data-type="job" data-id="${item.id}">
+                                        <i class="fas fa-external-link-alt"></i> View
+                                    </button>
+                                    <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="job">
+                                        <i class="fas fa-trash-alt"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+
+                    case 'internships':
+                        html += `
+                            <div class="bookmark-item" data-id="${item.id}" data-type="internship">
+                                <img src="${item.company_logo || item.image || '/static/images/default-internship.jpg'}"
+                                     alt="${escapeHtml(item.title)}"
+                                     class="bookmark-img"
+                                     onerror="this.src='/static/images/default-internship.jpg'">
+                                <div class="bookmark-info">
+                                    <h4>${escapeHtml(item.title)}</h4>
+                                    <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
+                                    <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
+                                    <div class="bookmark-meta">
+                                        <span><i class="fas fa-dollar-sign"></i> ${item.stipend || 'Unpaid'}</span>
+                                        <span><i class="fas fa-tag"></i> ${item.duration || 'Flexible'}</span>
+                                    </div>
+                                </div>
+                                <div class="bookmark-actions">
+                                    <button class="btn btn-outline view-content-btn" data-type="internship" data-id="${item.id}">
+                                        <i class="fas fa-external-link-alt"></i> View
+                                    </button>
+                                    <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="internship">
+                                        <i class="fas fa-trash-alt"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+
+                    case 'blogs':
+                        html += `
+                            <div class="bookmark-item" data-id="${item.id}" data-type="blog">
+                                <img src="${item.image || '/static/images/default-blog.jpg'}"
+                                     alt="${escapeHtml(item.title)}"
+                                     class="bookmark-img"
+                                     onerror="this.src='/static/images/default-blog.jpg'">
+                                <div class="bookmark-info">
+                                    <h4>${escapeHtml(item.title)}</h4>
+                                    <p>${escapeHtml((item.description || item.content || 'No description').substring(0, 100))}...</p>
+                                    <div class="bookmark-meta">
+                                        <span><i class="fas fa-user"></i> ${escapeHtml(item.author || 'CareerMaker Team')}</span>
+                                        <span><i class="far fa-clock"></i> ${item.read_time || '5 min read'}</span>
+                                        <span><i class="fas fa-eye"></i> ${item.views || 0} views</span>
+                                    </div>
+                                </div>
+                                <div class="bookmark-actions">
+                                    <button class="btn btn-outline read-blog-btn" data-id="${item.id}">
+                                        <i class="fas fa-book-open"></i> Read
+                                    </button>
+                                    <button class="btn btn-outline remove-bookmark" data-id="${item.id}" data-type="blog">
+                                        <i class="fas fa-trash-alt"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                }
+            });
+
+            html += '</div>';
+            contentArea.innerHTML = html;
+
+            // Re-attach event listeners
+            setupBookmarkRemoval();
+            if (tabId === 'blogs') setupBlogReading();
+            if (tabId === 'courses') setupCourseView();
+        }
+
+        // ======================
+        // Initialize course view and other event listeners
+        // ======================
+
+        // Add course view event listener
+        setupCourseView();
+
+        // Make functions globally available
+        window.closeHorizontalCourseModal = closeHorizontalCourseModal;
+        window.closeLightweightBlogModal = closeLightweightBlogModal;
+        window.closeTestimonialReadModal = closeTestimonialReadModal;
+        window.closeEditTestimonialModal = closeEditTestimonialModal;
+        window.shareTestimonial = shareTestimonial;
+        window.openTestimonialShareModal = openTestimonialShareModal;
     });
