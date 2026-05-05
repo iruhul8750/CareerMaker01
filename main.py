@@ -31,6 +31,7 @@ import base64
 import re
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
+from flask import after_this_request
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -3924,7 +3925,7 @@ def blog():
 
 
 # =============================================
-# FIXED TESTIMONIAL ROUTES - PROPER PROFILE PICTURES
+# TESTIMONIAL ROUTES - PROPER PROFILE PICTURES
 # =============================================
 
 @app.route('/api/testimonial/auth-check')
@@ -9296,6 +9297,10 @@ def get_visitor_fingerprint():
         if ip:
             ip = ip.split(',')[0].strip()
 
+        # If still no IP, use a fallback
+        if not ip:
+            ip = 'unknown'
+
         # Get user agent
         user_agent = request.headers.get('User-Agent', '')
 
@@ -9306,7 +9311,9 @@ def get_visitor_fingerprint():
         return visitor_id
     except Exception as e:
         logger.error(f"Error creating visitor fingerprint: {str(e)}")
-        return None
+        # Fallback: generate ID based on timestamp + random
+        import uuid
+        return str(uuid.uuid4())[:32]
 
 
 def parse_user_agent_details(user_agent_string):
@@ -9367,50 +9374,67 @@ def get_geo_location(ip):
 
 
 def is_bot(user_agent):
-    """Check if visitor is a bot"""
-    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'headless',
-                    'selenium', 'puppeteer', 'googlebot', 'bingbot',
-                    'yandex', 'baidu', 'facebookexternalhit']
+    """Check if visitor is a bot - more comprehensive"""
+    if not user_agent:
+        return True
+
+    bot_keywords = [
+        'bot', 'crawler', 'spider', 'scraper', 'headless',
+        'selenium', 'puppeteer', 'googlebot', 'bingbot',
+        'yandex', 'baidu', 'facebookexternalhit', 'twitterbot',
+        'linkedinbot', 'slackbot', 'discordbot', 'telegrambot',
+        'whatsapp', 'curl', 'wget', 'python-requests', 'java',
+        'php', 'perl', 'ruby', 'go-http-client', 'okhttp',
+        'axios', 'node-fetch', 'scrapy', 'apache-httpclient'
+    ]
     user_agent_lower = user_agent.lower()
-    return any(keyword in user_agent_lower for keyword in bot_keywords)
+
+    # Check for bot keywords
+    if any(keyword in user_agent_lower for keyword in bot_keywords):
+        return True
+
+    # Check for common bot patterns
+    if user_agent_lower.startswith('mozilla') and len(user_agent) < 50:
+        # Too short, likely a bot
+        return True
+
+    return False
 
 
 def track_visitor(page_url, page_title):
-    """Main tracking function - called on every page view"""
+    """Simple tracking function"""
     try:
-        # Skip tracking for static files and API
-        skip_extensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp']
-        if any(page_url.endswith(ext) for ext in skip_extensions):
+        # Get basic info
+        user_agent_string = request.headers.get('User-Agent', '')
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        referrer = request.headers.get('Referer', '')
+
+        # Basic bot check (only most obvious bots)
+        bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'headless',
+                        'selenium', 'puppeteer', 'curl', 'wget']
+
+        user_agent_lower = user_agent_string.lower()
+
+        # Skip only if clearly a bot
+        if any(keyword in user_agent_lower for keyword in bot_keywords):
+            logger.info(f"Skipping bot: {user_agent_string[:100]}")
             return
+
+        # Parse user agent
+        ua_info = parse_user_agent_details(user_agent_string)
 
         # Get visitor ID
         visitor_id = get_visitor_fingerprint()
         if not visitor_id:
             return
 
-        # Get request details
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
-
-        user_agent_string = request.headers.get('User-Agent', '')
-        referrer = request.headers.get('Referer', '')
         session_id = request.cookies.get('session_id') or visitor_id
-
-        # Parse user agent
-        ua_info = parse_user_agent_details(user_agent_string)
-
-        # Skip bots
-        if ua_info['is_bot'] or is_bot(user_agent_string):
-            return
-
-        # Get location
         location = get_geo_location(ip)
-
         current_time = get_current_utc_time()
         today_date = current_time.date()
 
-        # Use admin client to bypass RLS
         supabase_track = supabase_admin
 
         # Check if visitor exists
@@ -9422,7 +9446,6 @@ def track_visitor(page_url, page_title):
         is_new_visitor_today = True
 
         if existing_visitor.data:
-            # Update existing visitor
             visitor = existing_visitor.data[0]
             supabase_track.table('visitors') \
                 .update({
@@ -9434,7 +9457,6 @@ def track_visitor(page_url, page_title):
                 .eq('visitor_id', visitor_id) \
                 .execute()
 
-            # Check if visitor has visited today
             last_visit_date = visitor['last_visit']
             if isinstance(last_visit_date, str):
                 last_visit_date = datetime.fromisoformat(last_visit_date.replace('Z', '+00:00')).date()
@@ -9443,7 +9465,6 @@ def track_visitor(page_url, page_title):
 
             is_new_visitor_today = last_visit_date != today_date
         else:
-            # Create new visitor
             supabase_track.table('visitors').insert({
                 'visitor_id': visitor_id,
                 'ip_address': ip,
@@ -9462,7 +9483,7 @@ def track_visitor(page_url, page_title):
         # Track page view
         supabase_track.table('page_views').insert({
             'visitor_id': visitor_id,
-            'page_url': page_url[:500],  # Limit URL length
+            'page_url': page_url[:500],
             'page_title': page_title[:200] if page_title else None,
             'referrer': referrer[:500] if referrer else None,
             'session_id': session_id[:100]
@@ -9470,6 +9491,8 @@ def track_visitor(page_url, page_title):
 
         # Update daily analytics
         update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor_today, ua_info['device_type'])
+
+        logger.info(f"Tracked: {page_url} from {ip}")
 
     except Exception as e:
         logger.error(f"Error tracking visitor: {str(e)}", exc_info=True)
@@ -9481,11 +9504,19 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
         date_str = today_date.isoformat()
         supabase_track = supabase_admin
 
+        # CRITICAL: Don't skip real users - remove bot check or make it lenient
+        # Only skip if explicitly 'bot'
+        if device_type == 'bot':
+            logger.info(f"Skipping daily analytics for bot")
+            return
+
         # Get existing daily stats
         existing = supabase_track.table('daily_analytics') \
             .select('*') \
             .eq('date', date_str) \
             .execute()
+
+        logger.info(f"Updating daily analytics for {date_str}, existing: {bool(existing.data)}")
 
         if existing.data:
             stats = existing.data[0]
@@ -9495,55 +9526,85 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
             # Update page views
             page_views[page_url] = page_views.get(page_url, 0) + 1
 
-            # Update device stats
-            devices[device_type] = devices.get(device_type, 0) + 1
+            # Update device stats (only for valid device types)
+            if device_type in ['desktop', 'mobile', 'tablet']:
+                devices[device_type] = devices.get(device_type, 0) + 1
+                logger.info(f"Updated device {device_type}: {devices[device_type]}")
 
             # Prepare update data
             update_data = {
                 'total_views': stats['total_views'] + 1,
                 'page_views': page_views,
-                'devices': devices
+                'devices': devices,
+                'updated_at': get_current_utc_time().isoformat()  # Add this
             }
 
             # Update unique visitors if this is a new visitor today
             if is_new_visitor:
                 update_data['unique_visitors'] = stats['unique_visitors'] + 1
+                logger.info(f"New unique visitor! Total: {update_data['unique_visitors']}")
 
-            supabase_track.table('daily_analytics') \
+            # Perform the update
+            result = supabase_track.table('daily_analytics') \
                 .update(update_data) \
                 .eq('date', date_str) \
                 .execute()
+
+            logger.info(f"Daily analytics updated successfully for {date_str}")
+
         else:
             # Create new daily stats
-            supabase_track.table('daily_analytics').insert({
+            logger.info(f"Creating new daily analytics for {date_str}")
+            insert_data = {
                 'date': date_str,
                 'unique_visitors': 1,
                 'total_views': 1,
                 'page_views': {page_url: 1},
-                'devices': {device_type: 1}
-            }).execute()
+                'devices': {device_type: 1} if device_type in ['desktop', 'mobile', 'tablet'] else {'desktop': 1}
+            }
+
+            result = supabase_track.table('daily_analytics').insert(insert_data).execute()
+            logger.info(f"New daily analytics created")
+
+        # Verify the update
+        verify = supabase_track.table('daily_analytics') \
+            .select('*') \
+            .eq('date', date_str) \
+            .execute()
+
+        if verify.data:
+            logger.info(
+                f"Verified daily stats: total_views={verify.data[0].get('total_views')}, devices={verify.data[0].get('devices')}")
 
     except Exception as e:
-        logger.error(f"Error updating daily analytics: {str(e)}")
+        logger.error(f"Error updating daily analytics: {str(e)}", exc_info=True)
 
 
 # ===== TRACKING MIDDLEWARE =====
 
 @app.before_request
-def track_page_views_simple():
-    """Simple tracking middleware that won't break the site"""
-    # Skip tracking for admin routes, static files, and API
-    skip_paths = ['/static/', '/favicon.ico', '/api/admin/']
-    if any(request.path.startswith(path) for path in skip_paths):
-        return
+def track_page_views():
+    """Simple tracking - just track everything except static/admin"""
+    try:
+        # Only skip these
+        if request.path.startswith('/admin') or request.path.startswith('/api/admin'):
+            return
+        if request.path.startswith('/static/'):
+            return
+        if request.path == '/favicon.ico':
+            return
 
-    # Skip if it's an API request
-    if request.path.startswith('/api/'):
-        return
+        # Don't check Accept headers or anything else
+        # Just track all remaining requests
+        page_url = request.path if request.path != '/' else '/'
+        page_title = request.endpoint or page_url
 
-    # Only track main pages (optional - can be disabled if causing issues)
-    # For now, just log that tracking would happen
-    pass
+        # Track it
+        track_visitor(page_url, page_title)
+
+    except Exception as e:
+        logger.error(f"Tracking error: {str(e)}")
+
 
 
 # ===== ANALYTICS API ENDPOINTS =====

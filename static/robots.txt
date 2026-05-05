@@ -1,0 +1,23 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /static/
+Crawl-delay: 10
+Request-rate: 1/5
+
+# Block specific bots
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Anthropic-AI
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
