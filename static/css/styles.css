@@ -758,7 +758,6 @@
     .hero-image {
       z-index: 1;
       position: relative;
-      animation: float 6s ease-in-out infinite;
       margin-top: 50px;
     }
 
@@ -767,12 +766,6 @@
       height: auto;
       border-radius: 12px;
       box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-    }
-
-    /* Smooth floating animation */
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
     }
 
     .hero h1 {
@@ -1055,32 +1048,6 @@
     /* Remove the gradient overlay */
     .preview-section .preview-grid::after {
         display: none;
-    }
-
-    /* Ensure cards maintain consistent height */
-    .preview-card {
-      background-color: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      height: auto; /* Changed from 380px to auto */
-      min-height: 380px; /* Add minimum height */
-      border: 1px solid #e9ecef;
-      position: relative;
-    }
-
-    .dark-mode .preview-card {
-      background-color: var(--dark-mode-card);
-      border-color: #2d3748;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .preview-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
     }
 
     /* Ensure grid shows at least 2 rows (8 cards) */
@@ -5082,32 +5049,6 @@
       display: none !important;
     }
 
-    /* Adjust card width for 4 columns */
-    .preview-card {
-      background-color: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      height: 380px; /* Fixed height */
-      border: 1px solid #e9ecef;
-      position: relative;
-      min-width: 0; /* Allow cards to shrink properly */
-    }
-
-    .dark-mode .preview-card {
-      background-color: var(--dark-mode-card);
-      border-color: #2d3748;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .preview-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    }
-
     /* Ensure content fits properly in 4-column layout */
     .preview-content {
       padding: 1.25rem;
@@ -5628,21 +5569,37 @@
         transform: scale(1.05);
     }
 
-    /* Category Badge */
-    .lightweight-blog-category {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        background: linear-gradient(135deg, #8b5fbf, #6b46c1);
-        color: white;
-        padding: 5px 12px;
-        border-radius: 25px;
+    /* Category inline in content area */
+    .lightweight-blog-category-wrapper {
+        margin: 8px 0 10px 0;
+    }
+
+    .lightweight-blog-category-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         font-size: 0.7rem;
         font-weight: 600;
+        color: #8b5fbf;
+        background: rgba(139, 95, 191, 0.1);
+        padding: 4px 12px;
+        border-radius: 20px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        z-index: 2;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        letter-spacing: 0.3px;
+    }
+
+    .lightweight-blog-category-inline i {
+        font-size: 0.7rem;
+        color: #8b5fbf;
+    }
+
+    .dark-mode .lightweight-blog-category-inline {
+        background: rgba(139, 95, 191, 0.2);
+        color: #a78bfa;
+    }
+
+    .dark-mode .lightweight-blog-category-inline i {
+        color: #a78bfa;
     }
 
     /* Views Badge */
@@ -8306,6 +8263,7 @@
       min-height: 0; /* Allow content to shrink properly */
     }
 
+    /* Ensure cards maintain consistent height */
     .preview-card {
       background-color: white;
       border-radius: 12px;
@@ -8314,11 +8272,46 @@
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
-      height: auto; /* Auto height based on content */
-      min-height: 420px; /* Minimum height */
-      max-height: none; /* No maximum height */
+
+      /* Flexible height */
+      height: auto;
+      min-height: 420px;
+      max-height: none;
+
+      min-width: 0; /* Prevent overflow in flex/grid */
+
       border: 1px solid #e9ecef;
       position: relative;
+    }
+
+    /* Dark mode */
+    .dark-mode .preview-card {
+      background-color: var(--dark-mode-card);
+      border-color: #2d3748;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Shine hover effect */
+    .preview-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        transition: left 0.5s ease;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .preview-card:hover::before {
+        left: 100%;
+    }
+
+    .preview-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(139, 95, 191, 0.15);
+        border-color: rgba(139, 95, 191, 0.3);
     }
 
     /* Ensure content areas don't cut text */
@@ -10726,12 +10719,6 @@
         padding: 0 15px !important;
       }
 
-      /* Remove any conflicting animations on mobile */
-      @media (prefers-reduced-motion: reduce) {
-        .hero-image img {
-          animation: none !important;
-        }
-      }
     }
 
     /* For very small screens */
@@ -11992,19 +11979,7 @@
       animation: fadeInUp 1s ease 0.9s forwards;
     }
 
-    /* Hero Image Animation */
-    .hero-image {
-      opacity: 0;
-      transform: translateY(50px) scale(0.9);
 
-      /* Very slow + smooth */
-      animation: fadeInUp 2.5s ease 0.5s forwards,
-                 float 20s ease-in-out infinite 2s;
-    }
-
-    .hero-image img {
-      animation: pulse 10s ease-in-out infinite 2s;
-    }
 
     /* Typewriter effect for hero text */
     .typewriter-container {

@@ -483,20 +483,22 @@
                     <img class="lightweight-blog-image" src="/static/images/default-blog.jpg" alt="{{ post.title }}"
                          loading="lazy">
                     {% endif %}
-                    <span class="lightweight-blog-category">{{ post.categories[0] if post.categories else 'Career' }}</span>
-                    <div class="lightweight-blog-views">
-                        <i class="fas fa-eye"></i>
-                        <span class="views-count">{{ post.views or 0 }}</span>
-                    </div>
                 </div>
                 <div class="lightweight-blog-content">
                     <div class="lightweight-blog-meta">
                         <span class="lightweight-blog-date">{{ (post.published_at or post.created_at) | format_date }}</span>
                         <span class="lightweight-blog-read-time">
-                            <i class="far fa-clock"></i> {{ post.read_time or '4 min read' }}
+                            <i class="far fa-clock"></i> {{ post.read_time or '5 min read' }}
                         </span>
                     </div>
                     <h3 class="lightweight-blog-title">{{ post.title }}</h3>
+
+                    <div class="lightweight-blog-category-wrapper">
+                        <span class="lightweight-blog-category-inline">
+                            <i class="fas fa-tag"></i>
+                            {{ post.categories[0] if post.categories else 'Career' }}
+                        </span>
+                    </div>
                     <p class="lightweight-blog-excerpt">
                         {{ (post.description or post.content or 'No content available')|truncate(100) }}
                     </p>
