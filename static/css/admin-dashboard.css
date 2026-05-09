@@ -7886,7 +7886,6 @@
     .btn-icon i {
         transition: transform 0.4s ease;
     }
-
     /* ============================================
        DARK MODE
        ============================================ */
@@ -8428,6 +8427,238 @@
         #deviceStats {
             max-height: 180px;
         }
+    }
+
+    /* ============================================
+       TIMESTAMP STYLES - HOVER + CLICK
+       ============================================ */
+
+    /* Timestamp Wrapper */
+    .timestamp-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* Timestamp Trigger Button */
+    .timestamp-trigger {
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: #64748b;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s, color 0.2s;
+        background: none;
+        border: none;
+    }
+
+    .timestamp-trigger:hover {
+        background: rgba(74, 108, 247, 0.1);
+        color: #4a6cf7;
+    }
+
+    /* ============================================
+       HOVER TOOLTIP (Desktop)
+       ============================================ */
+
+    .timestamp-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a2e;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        margin-bottom: 8px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Arrow pointing down to trigger */
+    .timestamp-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #1a1a2e transparent transparent transparent;
+    }
+
+    .timestamp-wrapper:hover .timestamp-tooltip {
+        opacity: 1;
+    }
+
+    /* ============================================
+       CLICK TOOLTIP (Mobile/Desktop Click)
+       ============================================ */
+
+    .click-timestamp-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a2e;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        z-index: 10001;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: clickTooltipFadeIn 0.2s ease;
+        pointer-events: none;
+    }
+
+    /* Arrow pointing down to trigger */
+    .click-timestamp-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #1a1a2e transparent transparent transparent;
+    }
+
+    .click-timestamp-tooltip i {
+        font-size: 10px;
+        color: #4a6cf7;
+    }
+
+    /* ============================================
+       BOTTOM STRIP POPUP (Alternative for Mobile)
+       ============================================ */
+
+    .timestamp-strip {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a2e;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 40px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 10000;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        white-space: nowrap;
+        max-width: 90%;
+        animation: slideUp 0.2s ease;
+    }
+
+    .timestamp-strip i {
+        font-size: 12px;
+    }
+
+    .strip-close {
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 4px;
+        margin-left: 5px;
+        transition: opacity 0.2s;
+    }
+
+    .strip-close:hover {
+        opacity: 0.7;
+    }
+
+    /* ============================================
+       ANIMATIONS
+       ============================================ */
+
+    @keyframes clickTooltipFadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    /* ============================================
+       MOBILE TOUCH OPTIMIZATION
+       ============================================ */
+
+    @media (max-width: 768px) {
+        .timestamp-trigger {
+            padding: 6px 10px;
+            background: rgba(74, 108, 247, 0.08);
+        }
+
+        .timestamp-trigger:active {
+            background: rgba(74, 108, 247, 0.2);
+            transform: scale(0.96);
+        }
+
+        .timestamp-strip {
+            font-size: 12px;
+            padding: 8px 16px;
+            bottom: 15px;
+        }
+    }
+
+    /* ============================================
+       DARK MODE SUPPORT
+       ============================================ */
+
+    .dark-mode .timestamp-tooltip,
+    .dark-mode .click-timestamp-tooltip,
+    .dark-mode .timestamp-strip {
+        background: #2d2d2d;
+        color: #e0e0e0;
+    }
+
+    .dark-mode .timestamp-tooltip::after,
+    .dark-mode .click-timestamp-tooltip::after {
+        border-color: #2d2d2d transparent transparent transparent;
+    }
+
+    .dark-mode .timestamp-trigger {
+        color: #94a3b8;
+    }
+
+    .dark-mode .timestamp-trigger:hover {
+        background: rgba(74, 108, 247, 0.2);
+        color: #818cf8;
+    }
+
+    .dark-mode .click-timestamp-tooltip i {
+        color: #818cf8;
     }
 
     /* End Analytical Styles */

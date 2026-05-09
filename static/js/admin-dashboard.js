@@ -10121,7 +10121,7 @@
         });
     }
 
-    // Render popular pages WITH timestamps integrated
+    // Render popular pages with hover + click timestamp
     function renderAnalyticsPopularPages(pages) {
         const container = document.getElementById('popularPagesList');
         if (!container) return;
@@ -10132,30 +10132,90 @@
         }
 
         container.innerHTML = pages.map((page, index) => `
-            <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #e2e8f0">
-                <span style="width:35px;font-weight:600;color:#4a6cf7">${index + 1}</span>
-                <div style="flex:1">
-                    <div style="font-weight:500;margin-bottom:4px">${escapeHTML(page.title)}</div>
-                    <div style="font-size:12px;color:#94a3b8;margin-bottom:4px">${escapeHTML(page.url)}</div>
-                    <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
-                        <div style="font-size:11px;color:#64748b">
-                            <i class="fas fa-eye"></i> ${page.views.toLocaleString()} views
-                        </div>
+            <div class="popular-page-item">
+                <div class="rank">${index + 1}</div>
+                <div class="page-info">
+                    <div class="page-title">${escapeHTML(page.title)}</div>
+                    <div class="page-url">${escapeHTML(page.url)}</div>
+                    <div class="page-meta">
+                        <span class="page-views"><i class="fas fa-eye"></i> ${page.views} views</span>
                         ${page.last_visited ? `
-                        <div style="font-size:11px;color:#64748b">
-                            <i class="far fa-clock"></i> Last visit: ${getTimeAgo(page.last_visited)}
-                            <span title="${formatDateTime(page.last_visited)}" style="cursor:help; border-bottom:1px dotted #64748b;">ⓘ</span>
-                        </div>
+                        <span class="timestamp-wrapper">
+                            <span class="timestamp-trigger"
+                                  data-timestamp="${page.last_visited}"
+                                  data-formatted="${formatDateTime(page.last_visited)}">
+                                <i class="far fa-clock"></i> ${getTimeAgo(page.last_visited)}
+                            </span>
+                            <span class="timestamp-tooltip">${formatDateTime(page.last_visited)}</span>
+                        </span>
                         ` : ''}
                     </div>
                 </div>
-                <div style="text-align:right">
-                    <span class="visit-badge" style="background:#4a6cf7;color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500">
-                        ${page.views} view${page.views !== 1 ? 's' : ''}
-                    </span>
-                </div>
+                <div class="page-views-badge">${page.views}</div>
             </div>
         `).join('');
+
+        // Add click event for mobile (shows small horizontal strip)
+        document.querySelectorAll('.timestamp-trigger').forEach(trigger => {
+            // Remove any existing listener by cloning
+            const newTrigger = trigger.cloneNode(true);
+            trigger.parentNode.replaceChild(newTrigger, trigger);
+
+            // Add click event
+            newTrigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const formattedTime = this.getAttribute('data-formatted');
+                if (formattedTime) {
+                    showClickTimestampTooltip(formattedTime, this);
+                }
+            });
+        });
+    }
+
+    // Show small horizontal strip popup (simple and minimal)
+    function showClickTimestampTooltip(formattedTime, targetElement) {
+        // Remove any existing click tooltip
+        const existingTooltip = document.querySelector('.click-timestamp-tooltip');
+        if (existingTooltip) existingTooltip.remove();
+
+        // Get the timestamp-wrapper element (parent)
+        const wrapper = targetElement.closest('.timestamp-wrapper');
+        if (!wrapper) return;
+
+        // Remove any existing tooltip inside wrapper
+        const existingInnerTooltip = wrapper.querySelector('.click-timestamp-tooltip');
+        if (existingInnerTooltip) existingInnerTooltip.remove();
+
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'click-timestamp-tooltip';
+        tooltip.innerHTML = `
+            <i class="fas fa-calendar-alt"></i>
+            <span>${formattedTime}</span>
+        `;
+
+        // Append to wrapper (not to the trigger)
+        wrapper.appendChild(tooltip);
+
+        // Auto remove after 3 seconds
+        const timeout = setTimeout(() => {
+            if (tooltip && tooltip.remove) tooltip.remove();
+        }, 3000);
+
+        // Remove on click outside
+        const removeOnClickOutside = function(e) {
+            if (!wrapper.contains(e.target)) {
+                if (tooltip && tooltip.remove) tooltip.remove();
+                document.removeEventListener('click', removeOnClickOutside);
+            }
+        };
+
+        // Delay to avoid immediate removal
+        setTimeout(() => {
+            document.addEventListener('click', removeOnClickOutside);
+        }, 100);
     }
 
     // Get time ago string
