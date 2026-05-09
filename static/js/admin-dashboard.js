@@ -477,6 +477,20 @@
     function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
         console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
 
+        // CLOSE MOBILE MENU - This is what closes the sidebar on mobile
+        if (window.innerWidth <= 768) {
+            const sidebar = document.querySelector('.sidebar');
+            const mobileToggle = document.querySelector('.mobile-menu-toggle');
+            const overlay = document.querySelector('.mobile-overlay');
+
+            if (sidebar && sidebar.classList.contains('mobile-active')) {
+                sidebar.classList.remove('mobile-active');
+                if (mobileToggle) mobileToggle.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+
         // Update menu active state
         document.querySelectorAll('.sidebar-menu a').forEach(item => {
             item.classList.remove('active');
@@ -499,7 +513,6 @@
         const sectionElement = document.getElementById(targetSection);
         if (!sectionElement) {
             console.error(`❌ Section element not found: ${targetSection}`);
-            // Fallback to dashboard
             const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
             if (dashboardItem) dashboardItem.click();
             return;
@@ -508,7 +521,7 @@
         // Show target section
         sectionElement.classList.add('active');
 
-        // Helper function to get proper section name
+        // Helper function to get proper section name - ADD analytics here
         function getSectionDisplayName(section) {
             const names = {
                 'dashboard': 'Dashboard',
@@ -523,8 +536,7 @@
                 'messages': 'Messages',
                 'trash': 'Trash',
                 'admins': 'Admin Management',
-                'analytics': 'Website Analytics'
-
+                'analytics': 'Website Analytics'  // ADD THIS LINE
             };
             return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
         }
@@ -546,12 +558,9 @@
         // Update browser history if not from popstate
         if (!fromPopState) {
             let pageToSave = currentPage[targetSection];
-
-            // For trash, use the currentTrashPage
             if (targetSection === 'trash') {
                 pageToSave = currentTrashPage || 1;
             }
-
             const state = {
                 section: targetSection,
                 page: pageToSave,
@@ -570,45 +579,20 @@
                 loadExpiredContentStats();
                 loadTrashStats(true);
                 break;
-
             case 'trash':
-                console.log('🗑️ Loading trash section, page:', currentTrashPage || 1);
+                console.log('🗑️ Loading trash section...');
                 if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
                     currentTrashPage = currentPage.trash || 1;
-                }
-                const trashTableBody = document.getElementById('trashTableBody');
-                if (trashTableBody) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px;">
-                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
-                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading trash items...</p>
-                            </td>
-                        </tr>
-                    `;
                 }
                 loadTrashItems(currentTrashPage);
                 loadTrashStats(false);
                 break;
-
             case 'expired-content':
-                console.log('⏰ Loading expired content section, page:', currentPage['expired-content']);
-                const expiredTableBody = document.getElementById('expiredContentTableBody');
-                if (expiredTableBody) {
-                    expiredTableBody.innerHTML = `
-                        <tr>
-                            <td colspan="9" style="text-align: center; padding: 40px;">
-                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
-                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading expired content...</p>
-                            </td>
-                        </tr>
-                    `;
-                }
+                console.log('⏰ Loading expired content section...');
                 if (typeof loadExpiredContentData === 'function') {
                     loadExpiredContentData(currentPage['expired-content']);
                 }
                 break;
-
             case 'testimonials':
                 console.log('💬 Loading testimonials section...');
                 if (window.testimonialManager) {
@@ -619,17 +603,14 @@
                     }
                 }
                 break;
-
-            case 'admins':  // Added admins section handler
+            case 'admins':
                 console.log('👥 Loading admins section...');
                 if (window.adminManager) {
                     window.adminManager.loadAdmins();
                 }
                 break;
-
             case 'analytics':  // ADD THIS CASE
                 console.log('📈 Loading analytics section...');
-                // Small delay to ensure DOM is ready
                 setTimeout(() => {
                     if (typeof loadAnalyticsData === 'function') {
                         loadAnalyticsData();
@@ -637,38 +618,23 @@
                     if (typeof setupAnalyticsEvents === 'function') {
                         setupAnalyticsEvents();
                     }
+                    if (typeof loadRecentPageVisits === 'function') {
+                        loadRecentPageVisits();
+                    }
                 }, 100);
                 break;
-
             default:
-                // Handle all other sections (courses, jobs, internships, blog, users, messages, newsletter)
-                console.log(`📋 Loading ${targetSection} section, page:`, currentPage[targetSection]);
-
-                // Show loading in table
+                console.log(`📋 Loading ${targetSection} section...`);
                 const tableBody = document.getElementById(`${targetSection}TableBody`);
                 if (tableBody) {
                     const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="${colSpan}" style="text-align: center; padding: 40px;">
-                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: var(--primary);"></i>
-                                <p style="margin-top: 15px; color: var(--text-secondary);">Loading ${sectionName.toLowerCase()}...</p>
-                            </td>
-                        </tr>
-                    `;
+                    tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading...</p></td></tr>`;
                 }
-
-                // Load section data
                 if (typeof loadSectionData === 'function') {
-                    loadSectionData(targetSection, currentPage[targetSection])
-                        .catch(error => {
-                            console.error(`Error loading ${targetSection}:`, error);
-                        });
+                    loadSectionData(targetSection, currentPage[targetSection]);
                 }
                 break;
         }
-
-        console.log(`✅ Navigated to ${targetSection}`);
     }
 
     //  single category dropdown for blog posts
