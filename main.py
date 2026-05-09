@@ -9579,6 +9579,15 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
     except Exception as e:
         logger.error(f"Error updating daily analytics: {str(e)}", exc_info=True)
 
+def format_datetime_display(datetime_str):
+    """Format datetime for display"""
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+        return dt.strftime("%B %d, %Y at %I:%M %p")
+    except:
+        return datetime_str
+
 
 # ===== TRACKING MIDDLEWARE =====
 
@@ -9788,59 +9797,67 @@ def generate_sample_daily_data(start_date, end_date):
 @app.route('/api/admin/analytics/popular-pages')
 @admin_required
 def get_popular_pages():
-    """Get most viewed pages"""
+    """Get most viewed pages with timestamps"""
     try:
         days = request.args.get('days', 30, type=int)
         limit = request.args.get('limit', 20, type=int)
-        limit = min(limit, 50)  # Limit to 50 max
+        limit = min(limit, 50)
 
-        # Calculate date range
         start_date = (get_current_utc_time() - timedelta(days=days)).isoformat()
 
-        # Get page views from last X days
         page_stats = {}
+
         try:
             views_response = supabase_admin.table('page_views') \
-                .select('page_url, page_title') \
+                .select('page_url, page_title, created_at') \
                 .gte('created_at', start_date) \
+                .order('created_at', desc=True) \
                 .execute()
 
-            # Aggregate by page
             for view in (views_response.data or []):
                 url = view.get('page_url', '/')
                 title = view.get('page_title') or url
+                created_at = view.get('created_at')
 
-                # Clean up URL (remove query parameters for grouping)
                 clean_url = url.split('?')[0]
+
+                # Skip static files and API
+                if any(x in clean_url for x in
+                       ['/static/', '/api/', '/admin/', '.css', '.js', '.png', '.jpg', '.ico', '/debug/']):
+                    continue
 
                 if clean_url not in page_stats:
                     page_stats[clean_url] = {
                         'url': clean_url,
                         'title': title,
-                        'views': 0
+                        'views': 0,
+                        'last_visited': created_at,
+                        'recent_visits': []
                     }
+
                 page_stats[clean_url]['views'] += 1
+
+                # Update last visited if this is more recent
+                if created_at > page_stats[clean_url]['last_visited']:
+                    page_stats[clean_url]['last_visited'] = created_at
+
+                # Store recent timestamps (limit to 5)
+                if len(page_stats[clean_url]['recent_visits']) < 5:
+                    page_stats[clean_url]['recent_visits'].append({
+                        'timestamp': created_at,
+                        'formatted_time': format_datetime_display(created_at)
+                    })
 
         except Exception as e:
             logger.warning(f"Could not get page views: {str(e)}")
 
-        # Convert to list and sort
         pages_list = list(page_stats.values())
         pages_list.sort(key=lambda x: x['views'], reverse=True)
 
-        # If no data, return sample data
-        if not pages_list:
-            pages_list = [
-                {'url': '/', 'title': 'Homepage', 'views': 1250},
-                {'url': '/courses', 'title': 'Courses', 'views': 890},
-                {'url': '/jobs', 'title': 'Jobs', 'views': 756},
-                {'url': '/internships', 'title': 'Internships', 'views': 543},
-                {'url': '/blog', 'title': 'Blog', 'views': 432},
-            ]
-
         return jsonify({
             'success': True,
-            'pages': pages_list[:limit]
+            'pages': pages_list[:limit],
+            'last_updated': get_current_utc_time().isoformat()
         })
 
     except Exception as e:

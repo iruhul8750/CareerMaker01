@@ -912,7 +912,29 @@
 
     // Enhanced navigation with back button handling - No logout on back button
     function setupNavigation() {
-        const menuItems = document.querySelectorAll('.sidebar-menu a');
+        // Select ALL logout links - both in sidebar-menu AND sidebar-footer
+        const logoutLinks = document.querySelectorAll('.sidebar-menu a[href="/admin/logout"], .sidebar-logout a');
+
+        // Handle logout links separately (outside the menuItems loop)
+        logoutLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                showConfirmation('logout', 'Are you sure you want to logout?', () => {
+                    // Clear all session data
+                    sessionStorage.removeItem('adminSessionStarted');
+                    sessionStorage.removeItem('currentSection');
+
+                    // Set a flag to indicate we're logging out programmatically
+                    sessionStorage.setItem('logoutInitiated', 'true');
+
+                    window.location.href = '/admin/logout';
+                });
+            });
+        });
+
+        const menuItems = document.querySelectorAll('.sidebar-menu a:not([href="/admin/logout"])');
 
         // Initialize history state to prevent back button logout
         if (history.state === null) {
@@ -936,21 +958,6 @@
             item.addEventListener('click', function(e) {
                 // Skip dark mode toggle (it's now handled separately)
                 if (this.id === 'darkModeToggle' || this.closest('#darkModeToggle')) {
-                    return;
-                }
-
-                if (this.getAttribute('href') === '/admin/logout') {
-                    e.preventDefault();
-                    showConfirmation('logout', 'Are you sure you want to logout?', () => {
-                        // Clear all session data
-                        sessionStorage.removeItem('adminSessionStarted');
-                        sessionStorage.removeItem('currentSection');
-
-                        // Set a flag to indicate we're logging out programmatically
-                        sessionStorage.setItem('logoutInitiated', 'true');
-
-                        window.location.href = '/admin/logout';
-                    });
                     return;
                 }
 
@@ -1003,6 +1010,7 @@
                 navigateToSection('dashboard', null, true);
             }
         });
+
         // Remove beforeunload warning for internal navigation
         window.addEventListener('beforeunload', function(e) {
             // Only show warning if not logging out intentionally
@@ -10147,21 +10155,83 @@
         });
     }
 
-    // Render popular pages
+    // Render popular pages WITH timestamps integrated
     function renderAnalyticsPopularPages(pages) {
         const container = document.getElementById('popularPagesList');
         if (!container) return;
+
+        if (!pages || pages.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No page data available</div>';
+            return;
+        }
 
         container.innerHTML = pages.map((page, index) => `
             <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #e2e8f0">
                 <span style="width:35px;font-weight:600;color:#4a6cf7">${index + 1}</span>
                 <div style="flex:1">
                     <div style="font-weight:500;margin-bottom:4px">${escapeHTML(page.title)}</div>
-                    <div style="font-size:12px;color:#94a3b8">${escapeHTML(page.url)}</div>
+                    <div style="font-size:12px;color:#94a3b8;margin-bottom:4px">${escapeHTML(page.url)}</div>
+                    <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+                        <div style="font-size:11px;color:#64748b">
+                            <i class="fas fa-eye"></i> ${page.views.toLocaleString()} views
+                        </div>
+                        ${page.last_visited ? `
+                        <div style="font-size:11px;color:#64748b">
+                            <i class="far fa-clock"></i> Last visit: ${getTimeAgo(page.last_visited)}
+                            <span title="${formatDateTime(page.last_visited)}" style="cursor:help; border-bottom:1px dotted #64748b;">ⓘ</span>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
-                <span style="font-weight:600;color:#4a6cf7">${page.views.toLocaleString()} views</span>
+                <div style="text-align:right">
+                    <span class="visit-badge" style="background:#4a6cf7;color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500">
+                        ${page.views} view${page.views !== 1 ? 's' : ''}
+                    </span>
+                </div>
             </div>
         `).join('');
+    }
+
+    // Get time ago string
+    function getTimeAgo(timestamp) {
+        if (!timestamp) return 'Unknown';
+
+        try {
+            const now = new Date();
+            const past = new Date(timestamp);
+            const diffMs = now - past;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+
+            return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch (e) {
+            return formatDateTime(timestamp);
+        }
+    }
+
+    // Format date time (if needed)
+    function formatDateTime(timestamp) {
+        if (!timestamp) return 'N/A';
+        try {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return timestamp;
+        }
     }
 
     // Load device stats
@@ -10322,7 +10392,7 @@
     function setupAnalyticsEvents() {
         console.log('🔧 Setting up analytics events...');
 
-        // Analytics refresh button
+        // Existing refresh button for analytics
         const refreshBtn = document.getElementById('refreshAnalyticsBtn');
         if (refreshBtn) {
             const newBtn = refreshBtn.cloneNode(true);
@@ -10337,7 +10407,11 @@
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
                 this.disabled = true;
 
-                loadAnalyticsData();
+                // Refresh all analytics data
+                loadAnalyticsSummary();
+                loadAnalyticsDailyChart(currentAnalyticsDays);
+                loadAnalyticsPopularPages();  // This will now show timestamps
+                loadAnalyticsDeviceStats();
 
                 setTimeout(() => {
                     this.innerHTML = originalHTML;
@@ -10346,20 +10420,38 @@
             });
         }
 
-        // Chart period buttons - FIXED: Only one active at a time
-        // Get buttons directly without cloning first
+        // NEW: Refresh button specifically for popular pages
+        const refreshPopularBtn = document.getElementById('refreshPopularPagesBtn');
+        if (refreshPopularBtn) {
+            const newBtn = refreshPopularBtn.cloneNode(true);
+            refreshPopularBtn.parentNode.replaceChild(newBtn, refreshPopularBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
+                loadAnalyticsPopularPages();
+
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }, 1000);
+            });
+        }
+
+        // Chart period buttons (existing code)
         const chartButtonsContainer = document.querySelector('#analytics .chart-controls');
         if (!chartButtonsContainer) return;
 
         const chartButtons = chartButtonsContainer.querySelectorAll('.btn-sm');
-        console.log(`Found ${chartButtons.length} chart period buttons`);
-
-        // Remove all existing active classes first
         chartButtons.forEach(btn => {
             btn.classList.remove('active');
         });
 
-        // Set the 30 days button as active by default (matching currentAnalyticsDays)
         chartButtons.forEach(btn => {
             const days = parseInt(btn.getAttribute('data-days'));
             if (days === currentAnalyticsDays) {
@@ -10367,9 +10459,7 @@
             }
         });
 
-        // Add click event listeners
         chartButtons.forEach(btn => {
-            // Remove any existing listeners by replacing with clone
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
 
@@ -10381,16 +10471,12 @@
                 console.log(`Chart button clicked: ${days} days`);
 
                 if (days) {
-                    // Remove active class from ALL buttons in the container
                     const allBtns = chartButtonsContainer.querySelectorAll('.btn-sm');
                     allBtns.forEach(b => {
                         b.classList.remove('active');
                     });
 
-                    // Add active class to clicked button
                     this.classList.add('active');
-
-                    // Update current days and load chart
                     currentAnalyticsDays = days;
                     loadAnalyticsDailyChart(days);
                 }
