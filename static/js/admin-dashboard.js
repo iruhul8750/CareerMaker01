@@ -667,6 +667,178 @@
         }
     }
 
+    // Helper function to update pagination UI for any section
+    function updatePaginationUI(section, currentPageNum, totalItems, itemsPerPageNum = 10) {
+        const totalPages = Math.ceil(totalItems / itemsPerPageNum);
+        const paginationContainer = document.querySelector(`#${section} .pagination`);
+        if (!paginationContainer) return;
+
+        // If no items or only one page, show simple info
+        if (totalItems === 0) {
+            paginationContainer.innerHTML = '';
+            const infoSpan = document.createElement('span');
+            infoSpan.style.fontSize = '14px';
+            infoSpan.style.color = '#666';
+            infoSpan.textContent = '0 items';
+            paginationContainer.appendChild(infoSpan);
+            return;
+        }
+
+        paginationContainer.innerHTML = '';
+
+        const paginationWrapper = document.createElement('div');
+        paginationWrapper.style.display = 'flex';
+        paginationWrapper.style.alignItems = 'center';
+        paginationWrapper.style.justifyContent = 'center';
+        paginationWrapper.style.gap = '8px';
+        paginationWrapper.style.flexWrap = 'wrap';
+
+        // Items info (e.g., "10 of 50 items")
+        const startItem = (currentPageNum - 1) * itemsPerPageNum + 1;
+        const endItem = Math.min(currentPageNum * itemsPerPageNum, totalItems);
+        const itemsInfo = document.createElement('span');
+        itemsInfo.className = 'items-info';
+        itemsInfo.style.fontSize = '14px';
+        itemsInfo.style.color = '#666';
+        itemsInfo.style.marginRight = '15px';
+        itemsInfo.textContent = `${endItem - startItem + 1} of ${totalItems} items`;
+        paginationWrapper.appendChild(itemsInfo);
+
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn btn-outline';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
+        prevBtn.disabled = currentPageNum === 1;
+        prevBtn.style.opacity = currentPageNum === 1 ? '0.5' : '1';
+        prevBtn.style.cursor = currentPageNum === 1 ? 'not-allowed' : 'pointer';
+        prevBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentPageNum > 1) {
+                loadPageForSection(section, currentPageNum - 1);
+            }
+        });
+        paginationWrapper.appendChild(prevBtn);
+
+        // Page number buttons - show dynamic pages
+        let startPage = 1;
+        let endPage = Math.min(5, totalPages);
+
+        // If current page is beyond page 3, adjust to show current page in middle
+        if (currentPageNum > 3) {
+            startPage = Math.max(1, currentPageNum - 2);
+            endPage = Math.min(totalPages, currentPageNum + 2);
+
+            // Add first page button with ellipsis if needed
+            if (startPage > 1) {
+                const firstBtn = createPageButtonForSection(section, 1, 1 === currentPageNum);
+                paginationWrapper.appendChild(firstBtn);
+
+                if (startPage > 2) {
+                    const dots = document.createElement('span');
+                    dots.textContent = '...';
+                    dots.style.padding = '0 5px';
+                    dots.style.color = '#666';
+                    paginationWrapper.appendChild(dots);
+                }
+            }
+        }
+
+        // Add page buttons
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = createPageButtonForSection(section, i, i === currentPageNum);
+            paginationWrapper.appendChild(pageBtn);
+        }
+
+        // Add next ellipsis and last page if needed
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const dots = document.createElement('span');
+                dots.textContent = '...';
+                dots.style.padding = '0 5px';
+                dots.style.color = '#666';
+                paginationWrapper.appendChild(dots);
+            }
+            const lastBtn = createPageButtonForSection(section, totalPages, totalPages === currentPageNum);
+            paginationWrapper.appendChild(lastBtn);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn btn-outline';
+        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
+        nextBtn.style.opacity = (currentPageNum === totalPages || totalPages === 0) ? '0.5' : '1';
+        nextBtn.style.cursor = (currentPageNum === totalPages || totalPages === 0) ? 'not-allowed' : 'pointer';
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentPageNum < totalPages) {
+                loadPageForSection(section, currentPageNum + 1);
+            }
+        });
+        paginationWrapper.appendChild(nextBtn);
+
+        paginationContainer.appendChild(paginationWrapper);
+    }
+
+    // Helper to create page button
+    function createPageButtonForSection(section, pageNum, isActive = false) {
+        const btn = document.createElement('button');
+        btn.className = isActive ? 'btn btn-primary' : 'btn btn-outline';
+        btn.textContent = pageNum;
+        btn.style.minWidth = '36px';
+        btn.style.padding = '6px 12px';
+        if (isActive) {
+            btn.style.backgroundColor = '#4a6cf7';
+            btn.style.borderColor = '#4a6cf7';
+            btn.style.color = 'white';
+        }
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadPageForSection(section, pageNum);
+        });
+        return btn;
+    }
+
+    // Helper to load page for different sections
+    function loadPageForSection(section, pageNum) {
+        console.log(`Loading ${section} page ${pageNum}`);
+
+        if (section === 'testimonials') {
+            if (window.testimonialManager) {
+                window.testimonialManager.currentPage = pageNum;
+                window.testimonialManager.loadTestimonialsData(pageNum);
+            }
+            return;
+        }
+
+        if (section === 'admins') {
+            if (window.adminManager) {
+                window.adminManager.currentPage = pageNum;
+                window.adminManager.loadAdmins();
+            }
+            return;
+        }
+
+        if (section === 'expired-content') {
+            currentExpiredPage = pageNum;
+            loadExpiredContentData(pageNum);
+            return;
+        }
+
+        if (section === 'trash') {
+            currentTrashPage = pageNum;
+            loadTrashItems(pageNum);
+            return;
+        }
+
+        // Regular sections
+        currentPage[section] = pageNum;
+        const searchInput = document.querySelector(`#${section} .search-input`);
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+        const filters = getCurrentFilters(section);
+        loadSectionData(section, pageNum, searchTerm, filters);
+    }
+
     //  single category dropdown for blog posts
     function setupBlogCategories() {
         console.log('Setting up blog category dropdown');
@@ -1381,7 +1553,9 @@
         .then(data => {
             console.log(`✅ Successfully loaded ${section} data:`, data);
             renderTableData(section, data);
-            updatePaginationInfo(section, data.count, page);
+            if (typeof updatePaginationInfo === 'function') {
+                updatePaginationInfo(section, data.count, page);
+            }
 
             // Show success notification
             const itemCount = data.data ? data.data.length : 0;
@@ -3352,7 +3526,6 @@
         }
 
         async loadTestimonialsData(page = 1) {
-            // Prevent multiple simultaneous loads
             if (this.isLoading) {
                 console.log('⏳ Testimonials load already in progress, skipping...');
                 return;
@@ -3391,10 +3564,10 @@
                 if (data.success) {
                     console.log('✅ Testimonials data received:', data);
                     this.renderTestimonialsTable(data.testimonials || []);
-                    this.updatePaginationInfo(data.total_count || 0, page, data.per_page || this.perPage);
+                    this.totalCount = data.total_count || 0; // Store total count
+                    this.updatePaginationInfo(this.totalCount, page, data.per_page || this.perPage);
                     this.currentPage = page;
 
-                    // Update bulk action states
                     this.selectedIds = [];
                     this.updateBulkActionButton();
 
@@ -3405,19 +3578,7 @@
 
             } catch (error) {
                 console.error('❌ Error loading testimonials:', error);
-
-                let errorMessage = 'Failed to load testimonials';
-                if (error.message.includes('500')) {
-                    errorMessage = 'Server error while loading testimonials. Please try again.';
-                } else if (error.message.includes('401')) {
-                    errorMessage = 'Authentication required. Please log in again.';
-                } else if (error.message.includes('403')) {
-                    errorMessage = 'You do not have permission to access testimonials.';
-                } else {
-                    errorMessage = `Failed to load testimonials: ${error.message}`;
-                }
-
-                showNotification(errorMessage, 'error');
+                showNotification('Failed to load testimonials', 'error');
                 this.renderTestimonialsTable([]);
             } finally {
                 this.isLoading = false;
@@ -3884,24 +4045,9 @@
         }
 
         updatePaginationInfo(totalItems, currentPage, perPage) {
-            const pageInfo = document.getElementById('testimonialPageInfo');
-            const prevBtn = document.getElementById('prevTestimonialPage');
-            const nextBtn = document.getElementById('nextTestimonialPage');
-
-            if (pageInfo) {
-                const totalPages = Math.ceil(totalItems / perPage);
-                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-            }
-
-            if (prevBtn) {
-                prevBtn.disabled = currentPage === 1;
-                prevBtn.style.opacity = currentPage === 1 ? '0.5' : '1';
-            }
-
-            if (nextBtn) {
-                const totalPages = Math.ceil(totalItems / perPage);
-                nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-                nextBtn.style.opacity = (currentPage === totalPages || totalPages === 0) ? '0.5' : '1';
+            // Call the global pagination UI update
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI('testimonials', currentPage, totalItems, perPage);
             }
         }
 
@@ -4426,7 +4572,7 @@
         if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
         if (filterValue) url += `&type=${encodeURIComponent(filterValue)}`;
 
-        return fetch(url, {  // Added return here
+        return fetch(url, {
             credentials: 'include'
         })
         .then(response => {
@@ -4440,11 +4586,36 @@
 
             if (data.success) {
                 renderExpiredContentTable(data.data || data.expired_content || []);
-                updateExpiredPaginationInfo(data.count || data.total_count || 0, page, data.per_page || expiredItemsPerPage);
+
+                // Store total count for pagination
+                const totalCount = data.count || data.total_count || 0;
+                expiredContentTotalCount = totalCount;
+
+                // Update pagination UI using the global function
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('expired-content', page, totalCount, expiredItemsPerPage);
+                } else {
+                    // Fallback to original pagination
+                    updateExpiredPaginationInfo(totalCount, page, expiredItemsPerPage);
+                }
+
+                // Update current page
+                currentExpiredPage = page;
+
+                // Update URL hash
+                const currentHash = window.location.hash.substring(1);
+                if (currentHash === 'expired-content') {
+                    const state = {
+                        section: 'expired-content',
+                        page: page,
+                        timestamp: Date.now()
+                    };
+                    history.replaceState(state, '', '#expired-content');
+                }
             } else {
                 throw new Error(data.error || 'Failed to load expired content');
             }
-            return data; // Return data for promise chain
+            return data;
         })
         .catch(error => {
             console.error('❌ Error loading expired content:', error);
@@ -4637,17 +4808,101 @@
 
     // Update pagination info
     function updateExpiredPaginationInfo(totalItems, currentPage, perPage = expiredItemsPerPage) {
-        const pageInfo = document.getElementById('expiredContentPageInfo');
-        const prevBtn = document.getElementById('prevExpiredContentPage');
-        const nextBtn = document.getElementById('nextExpiredContentPage');
+        // This is now handled by the global updatePaginationUI function
+        // Keep this for backward compatibility
+        if (typeof updatePaginationUI === 'function') {
+            updatePaginationUI('expired-content', currentPage, totalItems, perPage);
+        } else {
+            // Fallback original implementation
+            const pageInfo = document.getElementById('expiredContentPageInfo');
+            const prevBtn = document.getElementById('prevExpiredContentPage');
+            const nextBtn = document.getElementById('nextExpiredContentPage');
 
-        if (!pageInfo) return;
+            if (!pageInfo) return;
 
+            const totalPages = Math.ceil(totalItems / perPage);
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+
+            if (prevBtn) prevBtn.disabled = currentPage === 1;
+            if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+    }
+
+    function updatePaginationUIForSection(section, currentPageNum, totalItems, perPage) {
         const totalPages = Math.ceil(totalItems / perPage);
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        const paginationContainer = document.querySelector(`#${section} .pagination`);
+        if (!paginationContainer) return;
 
-        if (prevBtn) prevBtn.disabled = currentPage === 1;
-        if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        // Similar pagination HTML generation as above
+        paginationContainer.innerHTML = '';
+
+        const paginationWrapper = document.createElement('div');
+        paginationWrapper.style.display = 'flex';
+        paginationWrapper.style.alignItems = 'center';
+        paginationWrapper.style.justifyContent = 'center';
+        paginationWrapper.style.gap = '8px';
+        paginationWrapper.style.flexWrap = 'wrap';
+
+        // Items info
+        const startItem = (currentPageNum - 1) * perPage + 1;
+        const endItem = Math.min(currentPageNum * perPage, totalItems);
+        const itemsInfo = document.createElement('span');
+        itemsInfo.style.fontSize = '14px';
+        itemsInfo.style.color = '#666';
+        itemsInfo.style.marginRight = '15px';
+        itemsInfo.textContent = `${endItem - startItem + 1} of ${totalItems} items`;
+        paginationWrapper.appendChild(itemsInfo);
+
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn btn-outline';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
+        prevBtn.disabled = currentPageNum === 1;
+        prevBtn.addEventListener('click', () => {
+            if (currentPageNum > 1) {
+                if (section === 'expired-content') {
+                    loadExpiredContentData(currentPageNum - 1);
+                } else if (section === 'trash') {
+                    loadTrashItems(currentPageNum - 1);
+                }
+            }
+        });
+        paginationWrapper.appendChild(prevBtn);
+
+        // Page numbers (simplified for these sections)
+        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = i === currentPageNum ? 'btn btn-primary' : 'btn btn-outline';
+            pageBtn.textContent = i;
+            pageBtn.style.minWidth = '36px';
+            pageBtn.style.padding = '6px 12px';
+            pageBtn.addEventListener('click', () => {
+                if (section === 'expired-content') {
+                    loadExpiredContentData(i);
+                } else if (section === 'trash') {
+                    loadTrashItems(i);
+                }
+            });
+            paginationWrapper.appendChild(pageBtn);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn btn-outline';
+        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
+        nextBtn.addEventListener('click', () => {
+            if (currentPageNum < totalPages) {
+                if (section === 'expired-content') {
+                    loadExpiredContentData(currentPageNum + 1);
+                } else if (section === 'trash') {
+                    loadTrashItems(currentPageNum + 1);
+                }
+            }
+        });
+        paginationWrapper.appendChild(nextBtn);
+
+        paginationContainer.appendChild(paginationWrapper);
     }
 
     // Update expired content stats in the UI
@@ -6263,24 +6518,56 @@
     }
 
     function setupPagination() {
-        document.querySelectorAll('.pagination button').forEach(button => {
-            button.addEventListener('click', function() {
-                const section = this.closest('.admin-section').id;
-                const action = this.getAttribute('data-action');
+        console.log('🔄 Setting up pagination...');
 
-                if (action === 'prev' && currentPage[section] > 1) {
-                    currentPage[section]--;
-                    loadSectionData(section, currentPage[section]);
-                } else if (action === 'next') {
-                    currentPage[section]++;
-                    loadSectionData(section, currentPage[section]);
-                } else if (action === 'page') {
-                    const page = parseInt(this.getAttribute('data-page'));
-                    currentPage[section] = page;
-                    loadSectionData(section, currentPage[section]);
+        // For regular sections, ensure updatePaginationInfo calls the global UI
+        window.updatePaginationInfo = function(section, totalItems, currentPageNum) {
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI(section, currentPageNum, totalItems, itemsPerPage);
+            }
+        };
+
+        // For testimonial manager - override its pagination method
+        if (window.testimonialManager) {
+            window.testimonialManager.updatePaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('testimonials', currentPage, totalItems, perPage);
                 }
-            });
-        });
+            };
+        }
+
+        // For admin manager - override its pagination method
+        if (window.adminManager) {
+            const originalUpdatePagination = window.adminManager.updatePagination;
+            window.adminManager.updatePagination = function(totalCount) {
+                if (originalUpdatePagination) {
+                    originalUpdatePagination.call(this, totalCount);
+                }
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('admins', this.currentPage, totalCount, this.perPage);
+                }
+            };
+        }
+
+        // For expired content - override its pagination function
+        if (typeof updateExpiredPaginationInfo === 'function') {
+            window.updateExpiredPaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('expired-content', currentPage, totalItems, perPage || expiredItemsPerPage);
+                }
+            };
+        }
+
+        // For trash - override its pagination function
+        if (typeof updateTrashPaginationInfo === 'function') {
+            window.updateTrashPaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('trash', currentPage, totalItems, perPage || trashItemsPerPage);
+                }
+            };
+        }
+
+        console.log('✅ Pagination setup complete');
     }
 
     function updatePaginationInfo(section, totalItems, currentPageNum) {
@@ -6974,7 +7261,6 @@
 
     // Load trash items
     function loadTrashItems(page = 1, search = '', typeFilter = '') {
-        // Prevent multiple simultaneous loads
         if (isLoadingTrash) {
             console.log('⏳ Trash load already in progress, skipping...');
             return Promise.reject('Already loading');
@@ -7010,13 +7296,12 @@
 
             if (data.success) {
                 renderTrashTable(data.data || []);
+                // Update pagination - this will call the global updatePaginationUI
                 updateTrashPaginationInfo(data.count || 0, page, data.per_page || trashItemsPerPage);
 
-                // Update current page in global state
                 currentPage.trash = page;
                 currentTrashPage = page;
 
-                // Update URL hash with page info if needed
                 const currentHash = window.location.hash.substring(1);
                 if (currentHash === 'trash') {
                     const state = {
@@ -7027,10 +7312,8 @@
                     history.replaceState(state, '', '#trash');
                 }
 
-                // Update trash menu badge
                 updateTrashMenuBadge(data.count || 0);
 
-                // Show notification
                 if (data.data && data.data.length > 0) {
                     showNotification(`Loaded ${data.data.length} trash items`, 'info', 2000);
                 }
@@ -7040,23 +7323,10 @@
         })
         .catch(error => {
             console.error('Error loading trash items:', error);
-
             const tableBody = document.getElementById('trashTableBody');
             if (tableBody) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-exclamation-triangle" style="color: var(--danger); font-size: 48px; margin-bottom: 15px;"></i>
-                            <h3 style="color: var(--text-primary); margin: 0;">Failed to Load Trash</h3>
-                            <p style="color: var(--text-secondary); margin: 10px 0 0 0;">${error.message}</p>
-                            <button onclick="retryLoadTrash()" class="btn btn-primary" style="margin-top: 20px;">
-                                <i class="fas fa-redo"></i> Try Again
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px;">Failed to load trash items: ${error.message}</td></tr>`;
             }
-
             showNotification('Failed to load trash items', 'error');
             return Promise.reject(error);
         })
@@ -7072,21 +7342,9 @@
 
     // Update trash pagination info
     function updateTrashPaginationInfo(totalItems, currentPage, perPage) {
-        const pageInfo = document.getElementById('trashPageInfo');
-        const prevBtn = document.getElementById('prevTrashPage');
-        const nextBtn = document.getElementById('nextTrashPage');
-
-        if (!pageInfo) return;
-
-        const totalPages = Math.ceil(totalItems / perPage) || 1;
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-
-        if (prevBtn) {
-            prevBtn.disabled = currentPage === 1;
-        }
-
-        if (nextBtn) {
-            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        // Call the global pagination UI update
+        if (typeof updatePaginationUI === 'function') {
+            updatePaginationUI('trash', currentPage, totalItems, perPage || trashItemsPerPage);
         }
     }
 
@@ -9161,7 +9419,7 @@
         loadAdmins() {
             const tableBody = document.getElementById('adminsTableBody');
             if (tableBody) {
-                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p></td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p>右侧</td></tr>';
             }
 
             let url = `/api/admin/admins/list?page=${this.currentPage}&per_page=${this.perPage}`;
@@ -9173,8 +9431,9 @@
                 .then(data => {
                     if (data.success) {
                         this.admins = data.data || [];
-                        this.renderTable(this.admins, data.count);
-                        this.updatePagination(data.count);
+                        this.adminsCount = data.count || 0; // Store total count
+                        this.renderTable(this.admins, this.adminsCount);
+                        this.updatePagination(this.adminsCount);
                     } else {
                         throw new Error(data.message || 'Failed to load admins');
                     }
@@ -9182,7 +9441,7 @@
                 .catch(error => {
                     console.error('Error:', error);
                     if (tableBody) {
-                        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}右侧</td></tr>`;
                     }
                 });
         }
@@ -9722,6 +9981,11 @@
             if (pageInfo) pageInfo.textContent = `Page ${this.currentPage} of ${totalPages || 1}`;
             if (prevBtn) prevBtn.disabled = this.currentPage === 1;
             if (nextBtn) nextBtn.disabled = this.currentPage === totalPages || totalPages === 0;
+
+            // Call the global pagination UI update
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI('admins', this.currentPage, totalCount, this.perPage);
+            }
         }
 
         updateBulkActionButton() {
