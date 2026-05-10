@@ -803,6 +803,9 @@
     function loadPageForSection(section, pageNum) {
         console.log(`Loading ${section} page ${pageNum}`);
 
+        // Show loading indicator for all sections
+        showLoading();
+
         if (section === 'testimonials') {
             if (window.testimonialManager) {
                 window.testimonialManager.currentPage = pageNum;
@@ -7261,6 +7264,7 @@
 
     // Load trash items
     function loadTrashItems(page = 1, search = '', typeFilter = '') {
+        // Prevent multiple simultaneous loads
         if (isLoadingTrash) {
             console.log('⏳ Trash load already in progress, skipping...');
             return Promise.reject('Already loading');
@@ -7277,6 +7281,9 @@
         if (filterValue && filterValue !== 'all') url += `&type=${encodeURIComponent(filterValue)}`;
 
         console.log(`📡 Fetching from: ${url}`);
+
+        // Show loading indicator
+        showLoading();
 
         return fetch(url, {
             credentials: 'include',
@@ -7296,8 +7303,12 @@
 
             if (data.success) {
                 renderTrashTable(data.data || []);
-                // Update pagination - this will call the global updatePaginationUI
-                updateTrashPaginationInfo(data.count || 0, page, data.per_page || trashItemsPerPage);
+                // Update pagination
+                if (typeof updateTrashPaginationInfo === 'function') {
+                    updateTrashPaginationInfo(data.count || 0, page, data.per_page || trashItemsPerPage);
+                } else if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('trash', page, data.count || 0, data.per_page || trashItemsPerPage);
+                }
 
                 currentPage.trash = page;
                 currentTrashPage = page;
@@ -7325,13 +7336,25 @@
             console.error('Error loading trash items:', error);
             const tableBody = document.getElementById('trashTableBody');
             if (tableBody) {
-                tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px;">Failed to load trash items: ${error.message}</td></tr>`;
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--danger); font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3 style="color: var(--text-primary); margin: 0;">Failed to Load Trash</h3>
+                            <p style="color: var(--text-secondary); margin: 10px 0 0 0;">${error.message}</p>
+                            <button onclick="retryLoadTrash()" class="btn btn-primary" style="margin-top: 20px;">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </td>
+                    </tr>
+                `;
             }
             showNotification('Failed to load trash items', 'error');
             return Promise.reject(error);
         })
         .finally(() => {
             isLoadingTrash = false;
+            hideLoading(); // Hide loading indicator
         });
     }
 
@@ -7346,6 +7369,9 @@
         if (typeof updatePaginationUI === 'function') {
             updatePaginationUI('trash', currentPage, totalItems, perPage || trashItemsPerPage);
         }
+
+        // Ensure loader is hidden after pagination update
+        hideLoading();
     }
 
     // Render trash table
@@ -7384,6 +7410,12 @@
                 bulkActionBtn.disabled = true;
             }
 
+            // Also update header button
+            const headerBulkBtn = document.getElementById('applyTrashBulkActionHeader');
+            if (headerBulkBtn) {
+                headerBulkBtn.disabled = true;
+            }
+
             return;
         }
 
@@ -7395,7 +7427,6 @@
         tableBody.innerHTML = items.map((item, index) => {
             const serialNo = ((currentTrashPage - 1) * trashItemsPerPage) + index + 1;
 
-            // Map content type to icon and display name
             const iconMap = {
                 'course': 'fa-book',
                 'job': 'fa-briefcase',
@@ -7410,7 +7441,6 @@
 
             const icon = iconMap[item.content_type] || 'fa-file';
 
-            // Get display name
             const displayName = {
                 'course': 'Course',
                 'job': 'Job',
@@ -7423,11 +7453,9 @@
                 'admin': 'Admin'
             }[item.content_type] || item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1);
 
-            // Format dates with safe fallbacks
             const deletedDate = item.deleted_at ? formatDate(item.deleted_at, true) : 'Unknown';
             const createdDate = item.created_at ? formatDate(item.created_at) : 'Unknown';
 
-            // Safely get days ago text
             let daysAgoText = '';
             if (item.deleted_at) {
                 try {
@@ -7447,13 +7475,11 @@
                             <i class="fas ${icon}"></i>
                             ${displayName}
                         </span>
-                    </td>
+                     </td>
                     <td><strong>${escapeHTML(item.title || 'Untitled')}</strong></td>
                     <td>${escapeHTML(item.subtitle || 'N/A')}</td>
-                    <td>
-                        <span class="text-danger" title="${deletedDate}">
-                            <i class="fas fa-clock"></i> ${daysAgoText || deletedDate}
-                        </span>
+                    <td class="text-danger" title="${deletedDate}">
+                        <i class="fas fa-clock"></i> ${daysAgoText || deletedDate}
                     </td>
                     <td>${createdDate}</td>
                     <td>
