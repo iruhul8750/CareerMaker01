@@ -1,102 +1,6 @@
-    // ===== DARK MODE FUNCTIONALITY =====
-    class DarkMode {
-        constructor() {
-            this.isDarkMode = localStorage.getItem('adminDarkMode') === 'true';
-            this.toggleButton = document.getElementById('darkModeToggle');
-            this.checkbox = document.getElementById('darkModeCheckbox');
-            this.init();
-        }
-
-        init() {
-            this.applyDarkMode();
-            this.bindEvents();
-            this.updateCheckbox();
-        }
-
-        applyDarkMode() {
-            const adminDashboard = document.querySelector('.admin-dashboard');
-            if (!adminDashboard) return;
-
-            if (this.isDarkMode) {
-                adminDashboard.classList.add('dark-mode');
-            } else {
-                adminDashboard.classList.remove('dark-mode');
-            }
-        }
-
-        bindEvents() {
-            // Handle toggle button click
-            if (this.toggleButton) {
-                this.toggleButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.toggle();
-                });
-            }
-
-            // Handle checkbox change
-            if (this.checkbox) {
-                this.checkbox.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent triggering the parent click
-                });
-
-                this.checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    this.toggle();
-                });
-            }
-
-            // Keyboard shortcut (Ctrl+Shift+D)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                    e.preventDefault();
-                    this.toggle();
-                }
-            });
-        }
-
-        updateCheckbox() {
-            if (this.checkbox) {
-                this.checkbox.checked = this.isDarkMode;
-            }
-        }
-
-        toggle() {
-            this.isDarkMode = !this.isDarkMode;
-            localStorage.setItem('adminDarkMode', this.isDarkMode);
-            this.applyDarkMode();
-            this.updateCheckbox();
-            this.showToggleNotification();
-        }
-
-        showToggleNotification() {
-            const message = this.isDarkMode ?
-                'Dark mode enabled' : 'Light mode enabled';
-            const type = this.isDarkMode ? 'info' : 'success';
-
-            // Use your existing notification system
-            if (typeof showNotification === 'function') {
-                showNotification(message, type);
-            } else {
-                // Fallback notification
-                console.log(message);
-            }
-        }
-
-        getCurrentMode() {
-            return this.isDarkMode ? 'dark' : 'light';
-        }
-
-        setMode(mode) {
-            this.isDarkMode = mode === 'dark';
-            localStorage.setItem('adminDarkMode', this.isDarkMode);
-            this.applyDarkMode();
-            this.updateCheckbox();
-        }
-    }
-
-    // Initialize dark mode
-    window.adminDarkMode = new DarkMode();
+    // ============================================
+    // ========== 1. UTILITY & HELPER FUNCTIONS ==========
+    // ============================================
 
     // Global variables
     let currentPage = {
@@ -123,549 +27,550 @@
         newsletter: []
     };
 
+    // Helper function for escaping HTML
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str.toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(dateString, includeTime = false) {
+        if (!dateString) return 'N/A';
+
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        };
+
+        if (includeTime) {
+            options.hour = '2-digit';
+            options.minute = '2-digit';
+        }
+
+        return date.toLocaleDateString('en-US', options);
+    }
+
+    // Helper function to get days ago text
+    function getDaysAgo(dateString) {
+        if (!dateString) return '';
+
+        try {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+
+            if (diffMinutes < 1) return 'Just now';
+            if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+            if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+            return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`;
+        } catch (error) {
+            console.warn('Error calculating days ago:', error);
+            return '';
+        }
+    }
+
+    // Format date time (if needed)
+    function formatDateTime(timestamp) {
+        if (!timestamp) return 'N/A';
+        try {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return timestamp;
+        }
+    }
+
+    // Get time ago string
+    function getTimeAgo(timestamp) {
+        if (!timestamp) return 'Unknown';
+
+        try {
+            const now = new Date();
+            const past = new Date(timestamp);
+            const diffMs = now - past;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+
+            return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch (e) {
+            return formatDateTime(timestamp);
+        }
+    }
+
+    // Helper function: Get icon for activity type
+    function getActivityIcon(type) {
+        const icons = {
+            'user': 'user-plus',
+            'job': 'briefcase',
+            'course': 'book',
+            'internship': 'user-graduate',
+            'message': 'envelope',
+            'blog': 'blog',
+            'newsletter': 'newspaper',
+            'testimonial': 'comment',
+            'default': 'info-circle'
+        };
+        return icons[type] || icons.default;
+    }
+
+    // Helper function: Format activity time
+    function formatActivityTime(timestamp) {
+        if (!timestamp) return 'Recently';
+
+        try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) {
+                return 'Recently';
+            }
+
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} min ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+            // For older dates, show formatted date
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: diffDays > 365 ? 'numeric' : undefined
+            });
+        } catch (error) {
+            console.warn('Error formatting activity time:', error);
+            return 'Recently';
+        }
+    }
+
+    // Helper function to get content type icon
+    function getContentTypeIcon(contentType) {
+        const icons = {
+            'courses': 'fa-book',
+            'jobs': 'fa-briefcase',
+            'internships': 'fa-user-graduate'
+        };
+        return icons[contentType] || 'fa-file';
+    }
+
+    // Helper function to get display name
+    function getDisplayName(contentType) {
+        const names = {
+            'course': 'Course',
+            'job': 'Job',
+            'internship': 'Internship',
+            'blog': 'Blog Post',
+            'testimonial': 'Testimonial',
+            'user': 'User',
+            'message': 'Message',
+            'newsletter': 'Newsletter Subscriber',
+            'admin': 'Admin'
+        };
+        return names[contentType] || contentType;
+    }
+
+    // Helper function to get state description
+    function getStateDescription(contentType) {
+        const hasFeatured = ['course', 'job', 'internship', 'blog'].includes(contentType);
+        if (hasFeatured) {
+            return 'inactive state (featured status will be removed)';
+        }
+        return 'inactive state';
+    }
+
+    function getNotificationIcon(type) {
+        const icons = {
+            'message': 'envelope',
+            'user': 'user-plus',
+            'course': 'book',
+            'job': 'briefcase',
+            'internship': 'user-graduate',
+            'blog': 'blog',
+            'default': 'bell'
+        };
+        return icons[type] || icons.default;
+    }
+
+    // ============================================
+    // ========== 2. LOADING & NOTIFICATION FUNCTIONS ==========
+    // ============================================
+
+    function showLoading() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+    }
+
+    function hideLoading() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+    }
+
     // Store notification timeouts for proper management
     let notificationTimeouts = new Map();
     let allNotifications = [];
     let showAllNotifications = false;
 
-    // Add this function to handle logo previews
-    function setupLogoPreview() {
-        // Listen for input on company fields in all modals
-        document.addEventListener('input', function(e) {
-            if (e.target.name === 'company' || e.target.id.includes('Company')) {
-                const companyName = e.target.value.trim();
-                if (companyName.length > 2) {
-                    // Add delay to avoid too many API calls
-                    clearTimeout(e.target.logoPreviewTimeout);
-                    e.target.logoPreviewTimeout = setTimeout(() => {
-                        previewCompanyLogo(companyName, e.target);
-                    }, 500);
-                } else {
-                    // Clear preview if company name is too short
-                    clearLogoPreview(e.target);
-                }
-            }
-        });
+    function showNotification(message, type = 'info', duration = 5000) {
+        const notificationContainer = document.getElementById('notificationContainer');
+        if (!notificationContainer) return;
 
-        // Also handle blur event for immediate response
-        document.addEventListener('blur', function(e) {
-            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
-                previewCompanyLogo(e.target.value.trim(), e.target);
-            }
-        }, true);
-    }
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
 
-    function clearLogoPreview(inputField) {
-        const formGroup = inputField.closest('.form-group');
-        if (!formGroup) return;
+        const icons = {
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-circle',
+            'warning': 'fa-exclamation-triangle',
+            'info': 'fa-info-circle'
+        };
 
-        const existingPreview = formGroup.querySelector('.logo-preview');
-        if (existingPreview) {
-            existingPreview.remove();
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fas ${icons[type] || icons.info}"></i>
+                <span>${message}</span>
+            </div>
+            <button class="notification-close">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        notificationContainer.appendChild(notification);
+
+        // Auto-hide after duration (except for warnings which stay longer)
+        if (type !== 'warning' || duration > 0) {
+            const timeout = setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            }, duration);
+
+            // Add click to dismiss
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                clearTimeout(timeout);
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            });
+        } else {
+            // For warnings with duration 0 (persistent), only add click dismiss
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            });
         }
     }
 
-    function previewCompanyLogo(companyName, inputField) {
-        // Clear any existing preview first
-        clearLogoPreview(inputField);
+    // Micro loading functions
+    function showCardLoading(cardId) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.classList.add('loading');
 
-        const formGroup = inputField.closest('.form-group');
-        if (!formGroup) return;
+            // Add micro loader to the stat number
+            const statNumber = card.querySelector('.stat-number');
+            if (statNumber) {
+                // Store original value
+                if (!statNumber.dataset.originalValue) {
+                    statNumber.dataset.originalValue = statNumber.textContent;
+                }
 
-        // Create preview container
-        const previewContainer = document.createElement('div');
-        previewContainer.className = 'logo-preview';
-        previewContainer.innerHTML = `
-            <div class="logo-preview-content">
-                <div class="logo-loading">
+                // Create micro loader
+                const loader = document.createElement('div');
+                loader.className = 'micro-loader';
+                loader.innerHTML = `
+                    <div class="micro-loader-dots">
+                        <div class="micro-loader-dot"></div>
+                        <div class="micro-loader-dot"></div>
+                        <div class="micro-loader-dot"></div>
+                    </div>
+                `;
+
+                // Replace content with loader
+                statNumber.innerHTML = '';
+                statNumber.appendChild(loader);
+            }
+        }
+    }
+
+    function hideCardLoading(cardId, newValue = null) {
+        const card = document.getElementById(cardId);
+        if (card) {
+            card.classList.remove('loading');
+
+            // Restore or update value
+            const statNumber = card.querySelector('.stat-number');
+            if (statNumber) {
+                const value = newValue !== null ? newValue : (statNumber.dataset.originalValue || '0');
+                statNumber.textContent = value;
+
+                // Clear stored value
+                if (statNumber.dataset.originalValue) {
+                    delete statNumber.dataset.originalValue;
+                }
+            }
+        }
+    }
+
+    // Show loading on all dashboard cards
+    function showDashboardCardsLoading() {
+        const cardIds = [
+            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
+            'blogPostsCard', 'messagesCard', 'subscribersCard',
+            'testimonialsCard', 'expiredContentCard'
+        ];
+
+        cardIds.forEach(cardId => {
+            showCardLoading(cardId);
+        });
+    }
+
+    // Hide loading from all dashboard cards
+    function hideDashboardCardsLoading() {
+        const cardIds = [
+            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
+            'blogPostsCard', 'messagesCard', 'subscribersCard',
+            'testimonialsCard', 'expiredContentCard'
+        ];
+
+        cardIds.forEach(cardId => {
+            hideCardLoading(cardId);
+        });
+    }
+
+    // Helper function: Show loading on stats
+    function showStatsLoading() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                // Store original value before showing loader
+                if (!element.dataset.originalValue) {
+                    element.dataset.originalValue = element.textContent;
+                }
+                element.textContent = '...';
+                element.classList.add('loading');
+            }
+        });
+    }
+
+    // Helper function: Hide loading on stats
+    function hideStatsLoading() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.classList.remove('loading');
+            }
+        });
+    }
+
+    // Helper function: Set stats to 0 on error
+    function setStatsToZero() {
+        const statIds = [
+            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
+            'blogPostsCount', 'messagesCount', 'subscribersCount',
+            'testimonialsCount', 'expiredContentCount'
+        ];
+
+        statIds.forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.textContent = '0';
+                if (element.dataset.originalValue) {
+                    delete element.dataset.originalValue;
+                }
+            }
+        });
+    }
+
+    // Helper function: Show loading in activities area
+     function showActivitiesLoadingState() {
+        const activityList = document.querySelector('.activity-list');
+        if (!activityList) return;
+
+        activityList.innerHTML = `
+            <div class="activity-item loading">
+                <div class="activity-icon">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <span>Searching logo for "${companyName}"...</span>
                 </div>
-                <div class="logo-result" style="display: none;">
-                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
-                    <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+                <div class="activity-content">
+                    <p>Loading activities...</p>
+                    <small>Fetching recent updates</small>
                 </div>
-                <div class="logo-error" style="display: none;">
-                    <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
-                    <span style="font-size: 12px; color: #666;">No logo found</span>
+            </div>
+            <div class="activity-item loading">
+                <div class="activity-icon">
+                    <div class="pulse-dot"></div>
+                </div>
+                <div class="activity-content">
+                    <p class="placeholder-text"></p>
+                    <small class="placeholder-text"></small>
+                </div>
+            </div>
+            <div class="activity-item loading">
+                <div class="activity-icon">
+                    <div class="pulse-dot"></div>
+                </div>
+                <div class="activity-content">
+                    <p class="placeholder-text"></p>
+                    <small class="placeholder-text"></small>
                 </div>
             </div>
         `;
+     }
 
-        // Add some basic styles
-        previewContainer.style.cssText = `
-            margin-top: 8px;
-            padding: 8px;
-            border-radius: 4px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
+    // Helper function: Show no activities message
+    function showNoActivitiesMessage() {
+        const activityList = document.querySelector('.activity-list');
+        const activityCount = document.getElementById('activityCount');
+
+        if (activityList) {
+            activityList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>No recent activities</p>
+                        <small>Activities will appear here automatically</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Check Messages</p>
+                        <small>View and reply to user messages</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Manage Users</p>
+                        <small>View recent user registrations</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (activityCount) {
+            activityCount.textContent = '0';
+        }
+    }
+
+    // Helper function: Show error in activities
+    function showActivitiesErrorState() {
+        const activityList = document.querySelector('.activity-list');
+        if (!activityList) return;
+
+        activityList.innerHTML = `
+            <div class="activity-item error">
+                <div class="activity-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="activity-content">
+                    <p>Failed to load activities</p>
+                    <small>Please try refreshing</small>
+                </div>
+            </div>
         `;
-
-        // Insert after the input field's parent container
-        inputField.parentNode.appendChild(previewContainer);
-
-        // Fetch logo preview
-        fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                const loading = previewContainer.querySelector('.logo-loading');
-                const result = previewContainer.querySelector('.logo-result');
-                const error = previewContainer.querySelector('.logo-error');
-                const logoImage = previewContainer.querySelector('.logo-image');
-
-                if (loading) loading.style.display = 'none';
-
-                if (data.success && data.logo_url) {
-                    if (result) {
-                        logoImage.src = data.logo_url;
-                        logoImage.alt = `${companyName} logo`;
-                        result.style.display = 'flex';
-                        result.style.alignItems = 'center';
-                    }
-                } else {
-                    if (error) {
-                        error.style.display = 'flex';
-                        error.style.alignItems = 'center';
-                        error.style.gap = '8px';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching logo preview:', error);
-                const loading = previewContainer.querySelector('.logo-loading');
-                const errorDiv = previewContainer.querySelector('.logo-error');
-                if (loading) loading.style.display = 'none';
-                if (errorDiv) {
-                    errorDiv.style.display = 'flex';
-                    errorDiv.style.alignItems = 'center';
-                    errorDiv.style.gap = '8px';
-                }
-            });
     }
 
-     function initializeHistory() {
-        // Set initial history state if none exists
-        if (!history.state) {
-            const initialSection = currentSection || 'dashboard';
-            const state = { section: initialSection };
-            const title = document.title;
-            const url = `#${initialSection}`;
-
-            history.replaceState(state, title, url);
-        }
-    }
-
-    // Silent dashboard refresh function (no blur, only micro loaders)
-    function refreshDashboard() {
-        const button = document.getElementById('refreshDashboardBtn');
-        if (!button) {
-            console.error('❌ Refresh button not found');
-            return;
-        }
-
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-        button.disabled = true;
-
-        console.log('🔄 Refreshing dashboard data...');
-
-        loadDashboardStats()
-            .then(() => {
-                showNotification('Dashboard refreshed successfully', 'success');
-            })
-            .catch(error => {
-                console.error('Dashboard refresh error:', error);
-                showNotification('Failed to refresh dashboard', 'error');
-            })
-            .finally(() => {
-                button.innerHTML = originalHTML;
-                button.disabled = false;
-            });
-    }
-
-    // Section restoration
-    function restoreCurrentSection() {
-        console.log('🔄 restoreCurrentSection() called');
-
-        // Check if this is a fresh login (no previous session)
-        const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
-        console.log('Fresh login detected:', isFreshLogin);
-
-        // Define valid sections including ALL sections
-        const validSections = [
-            'dashboard', 'courses', 'jobs', 'internships',
-            'blog', 'newsletter', 'testimonials',
-            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics'
-        ];
-
-        console.log('Valid sections:', validSections);
-
-        // If fresh login, always start with dashboard and set session flag
-        if (isFreshLogin) {
-            sessionStorage.setItem('adminSessionStarted', 'true');
-            sessionStorage.setItem('currentSection', 'dashboard');
-            currentSection = 'dashboard';
-
-            // Initialize history for fresh login
-            const initialState = {
-                section: 'dashboard',
-                timestamp: Date.now(),
-                isInitial: true
-            };
-            history.replaceState(initialState, '', '#dashboard');
-
-            // Show greeting message immediately
-            displayWelcomeMessage();
-
-            // Force dashboard
-            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
-            const dashboardSection = document.getElementById('dashboard');
-
-            if (dashboardItem && dashboardSection) {
-                // Remove active class from all menu items and sections first
-                document.querySelectorAll('.sidebar-menu a').forEach(item => {
-                    item.classList.remove('active');
-                });
-                document.querySelectorAll('.admin-section').forEach(section => {
-                    section.classList.remove('active');
-                });
-
-                // Activate dashboard
-                dashboardItem.classList.add('active');
-                dashboardSection.classList.add('active');
-
-                // Update page title
-                document.getElementById('pageTitle').textContent = 'Dashboard Management';
-
-                // Show micro loaders on dashboard stats immediately
-                console.log('📊 Showing micro loaders on dashboard stats...');
-                loadDashboardStats();
-                loadNotifications();
-                loadExpiredContentStats();
-                loadTrashStats(true);
-
-                console.log('✅ Fresh login: Dashboard loaded with micro loaders');
-                return;
-            }
-        }
-
-        // Priority 1: Check URL hash FIRST (most reliable on refresh)
-        const hash = window.location.hash.substring(1);
-        console.log('Current URL hash:', hash);
-
-        if (hash && validSections.includes(hash)) {
-            console.log(`🔗 Restoring from URL hash: ${hash}`);
-
-            // Check if the section exists in DOM
-            const sectionExists = document.getElementById(hash) !== null;
-            console.log(`Section "${hash}" exists in DOM:`, sectionExists);
-
-            if (sectionExists) {
-                const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
-
-                // Special handling for admins section (since it's in submenu)
-                if (hash === 'admins') {
-                    // Open the parent submenu first
-                    const parentSubmenu = document.querySelector('.has-submenu');
-                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
-                        parentSubmenu.classList.add('open');
-                    }
+    // Show analytics loading state
+    function showAnalyticsLoading() {
+        const statIds = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
+        statIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (!element.dataset.originalValue) {
+                    element.dataset.originalValue = element.textContent;
                 }
-
-                if (menuItem) {
-                    navigateToSection(hash, menuItem, true);
-                    return;
-                } else {
-                    console.warn(`Menu item for "${hash}" not found`);
-                }
-            } else {
-                console.warn(`Section element for "${hash}" not found in DOM`);
+                element.classList.add('loading');
+                element.textContent = '...';
             }
-        }
-
-        // Priority 2: Check browser history state
-        if (history.state && history.state.section) {
-            const section = history.state.section;
-            console.log('History state section:', section);
-
-            if (validSections.includes(section)) {
-                const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
-                const targetSection = document.getElementById(section);
-
-                // Special handling for admins section
-                if (section === 'admins') {
-                    const parentSubmenu = document.querySelector('.has-submenu');
-                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
-                        parentSubmenu.classList.add('open');
-                    }
-                }
-
-                if (menuItem && targetSection) {
-                    navigateToSection(section, menuItem, true);
-                    return;
-                }
-            }
-        }
-
-        // Priority 3: Check session storage
-        const savedSection = sessionStorage.getItem('currentSection');
-        console.log('Saved section from sessionStorage:', savedSection);
-
-        if (savedSection && validSections.includes(savedSection)) {
-            const menuItem = document.querySelector(`.sidebar-menu a[href="#${savedSection}"]`);
-            const targetSection = document.getElementById(savedSection);
-
-            // Special handling for admins section
-            if (savedSection === 'admins') {
-                const parentSubmenu = document.querySelector('.has-submenu');
-                if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
-                    parentSubmenu.classList.add('open');
-                }
-            }
-
-            if (menuItem && targetSection) {
-                navigateToSection(savedSection, menuItem, true);
-                return;
-            }
-        }
-
-        // Default: Dashboard
-        console.log('🏠 No saved section found, defaulting to dashboard');
-        const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
-        const dashboardSection = document.getElementById('dashboard');
-
-        if (dashboardItem && dashboardSection) {
-            // Remove active class from all menu items and sections first
-            document.querySelectorAll('.sidebar-menu a').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelectorAll('.admin-section').forEach(section => {
-                section.classList.remove('active');
-            });
-
-            // Activate dashboard
-            dashboardItem.classList.add('active');
-            dashboardSection.classList.add('active');
-
-            // Update page title
-            document.getElementById('pageTitle').textContent = 'Dashboard Management';
-
-            // Update current section
-            currentSection = 'dashboard';
-            sessionStorage.setItem('currentSection', 'dashboard');
-
-            // Show greeting message for returning users too
-            displayWelcomeMessage();
-
-            // Show micro loaders on dashboard stats
-            console.log('📊 Loading dashboard with micro loaders...');
-            loadDashboardStats();
-            loadNotifications();
-            loadExpiredContentStats();
-            loadTrashStats(true);
-
-            console.log('✅ Default dashboard loaded with micro loaders');
-        }
-    }
-
-    // Navigate to specific section with history management
-    function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
-        console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
-
-        // CLOSE MOBILE MENU - This is what closes the sidebar on mobile
-        if (window.innerWidth <= 768) {
-            const sidebar = document.querySelector('.sidebar');
-            const mobileToggle = document.querySelector('.mobile-menu-toggle');
-            const overlay = document.querySelector('.mobile-overlay');
-
-            if (sidebar && sidebar.classList.contains('mobile-active')) {
-                sidebar.classList.remove('mobile-active');
-                if (mobileToggle) mobileToggle.classList.remove('active');
-                if (overlay) overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-
-        // Update menu active state
-        document.querySelectorAll('.sidebar-menu a').forEach(item => {
-            item.classList.remove('active');
         });
+    }
 
-        if (menuItem) {
-            menuItem.classList.add('active');
-        } else {
-            const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
-            if (correspondingMenuItem) {
-                correspondingMenuItem.classList.add('active');
+    // Hide analytics loading state
+    function hideAnalyticsLoading() {
+        const statIds = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
+        statIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element && element.classList.contains('loading')) {
+                element.classList.remove('loading');
+                if (element.dataset.originalValue && element.dataset.originalValue !== '...') {
+                    element.textContent = element.dataset.originalValue;
+                } else {
+                    element.textContent = '0';
+                }
+                delete element.dataset.originalValue;
             }
-        }
-
-        // Hide all sections
-        document.querySelectorAll('.admin-section').forEach(section => {
-            section.classList.remove('active');
         });
-
-        const sectionElement = document.getElementById(targetSection);
-        if (!sectionElement) {
-            console.error(`❌ Section element not found: ${targetSection}`);
-            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
-            if (dashboardItem) dashboardItem.click();
-            return;
-        }
-
-        // Show target section
-        sectionElement.classList.add('active');
-
-        // Helper function to get proper section name - ADD analytics here
-        function getSectionDisplayName(section) {
-            const names = {
-                'dashboard': 'Dashboard',
-                'courses': 'Courses',
-                'jobs': 'Jobs',
-                'internships': 'Internships',
-                'blog': 'Blog',
-                'newsletter': 'Newsletter',
-                'testimonials': 'Testimonials',
-                'expired-content': 'Expired Content',
-                'users': 'Users',
-                'messages': 'Messages',
-                'trash': 'Trash',
-                'admins': 'Admin Management',
-                'analytics': 'Website Analytics'  // ADD THIS LINE
-            };
-            return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
-        }
-
-        // Update page title
-        const sectionName = getSectionDisplayName(targetSection);
-        document.getElementById('pageTitle').textContent = sectionName + ' Management';
-
-        // Update current section and session storage
-        currentSection = targetSection;
-        sessionStorage.setItem('currentSection', targetSection);
-        console.log(`💾 Saved to sessionStorage: ${targetSection}`);
-
-        // Initialize page number if not set
-        if (currentPage[targetSection] === undefined) {
-            currentPage[targetSection] = 1;
-        }
-
-        // Update browser history if not from popstate
-        if (!fromPopState) {
-            let pageToSave = currentPage[targetSection];
-            if (targetSection === 'trash') {
-                pageToSave = currentTrashPage || 1;
-            }
-            const state = {
-                section: targetSection,
-                page: pageToSave,
-                timestamp: Date.now()
-            };
-            history.pushState(state, '', `#${targetSection}`);
-            console.log(`📝 Updated URL hash to: #${targetSection}`);
-        }
-
-        // Load section data based on type
-        switch(targetSection) {
-            case 'dashboard':
-                console.log('📊 Loading dashboard...');
-                loadDashboardStats();
-                loadNotifications();
-                loadExpiredContentStats();
-                loadTrashStats(true);
-                break;
-            case 'trash':
-                console.log('🗑️ Loading trash section...');
-                if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
-                    currentTrashPage = currentPage.trash || 1;
-                }
-                loadTrashItems(currentTrashPage);
-                loadTrashStats(false);
-                break;
-            case 'expired-content':
-                console.log('⏰ Loading expired content section...');
-                if (typeof loadExpiredContentData === 'function') {
-                    loadExpiredContentData(currentPage['expired-content']);
-                }
-                break;
-            case 'testimonials':
-                console.log('💬 Loading testimonials section...');
-                if (window.testimonialManager) {
-                    if (!window.testimonialManager.isInitialized) {
-                        window.testimonialManager.init();
-                    } else {
-                        window.testimonialManager.loadTestimonialsData(currentPage.testimonials);
-                    }
-                }
-                break;
-            case 'admins':
-                console.log('👥 Loading admins section...');
-                if (window.adminManager) {
-                    window.adminManager.loadAdmins();
-                }
-                break;
-            case 'analytics':  // ADD THIS CASE
-                console.log('📈 Loading analytics section...');
-                setTimeout(() => {
-                    if (typeof loadAnalyticsData === 'function') {
-                        loadAnalyticsData();
-                    }
-                    if (typeof setupAnalyticsEvents === 'function') {
-                        setupAnalyticsEvents();
-                    }
-                    if (typeof loadRecentPageVisits === 'function') {
-                        loadRecentPageVisits();
-                    }
-                }, 100);
-                break;
-            default:
-                console.log(`📋 Loading ${targetSection} section...`);
-                const tableBody = document.getElementById(`${targetSection}TableBody`);
-                if (tableBody) {
-                    const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
-                    tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading...</p></td></tr>`;
-                }
-                if (typeof loadSectionData === 'function') {
-                    loadSectionData(targetSection, currentPage[targetSection]);
-                }
-                break;
-        }
     }
 
-    // Helper function to update header selected count display
-    function updateHeaderSelectedCount(section, count) {
-        const selectedCountId = {
-            'courses': 'courseSelectedCountHeader',
-            'jobs': 'jobSelectedCountHeader',
-            'internships': 'internshipSelectedCountHeader',
-            'blog': 'blogSelectedCountHeader',
-            'testimonials': 'testimonialSelectedCountHeader',
-            'newsletter': 'newsletterSelectedCountHeader',
-            'expired-content': 'expiredSelectedCountHeader',
-            'users': 'userSelectedCountHeader',
-            'messages': 'messageSelectedCountHeader',
-            'admins': 'adminSelectedCountHeader',
-            'trash': 'trashSelectedCountHeader'
-        }[section];
-
-        const countElement = document.getElementById(selectedCountId);
-        if (countElement) {
-            if (count === 0) {
-                countElement.textContent = '0 selected';
-                countElement.style.color = '#666';
-                countElement.style.fontWeight = 'normal';
-            } else {
-                countElement.textContent = `${count} selected`;
-                countElement.style.color = '#4a6cf7';
-                countElement.style.fontWeight = '600';
-            }
-        }
-    }
+    // ============================================
+    // ========== 3. PAGINATION FUNCTIONS ==========
+    // ============================================
 
     // Helper function to update pagination UI for any section
     function updatePaginationUI(section, currentPageNum, totalItems, itemsPerPageNum = 10) {
@@ -842,578 +747,833 @@
         loadSectionData(section, pageNum, searchTerm, filters);
     }
 
-    //  single category dropdown for blog posts
-    function setupBlogCategories() {
-        console.log('Setting up blog category dropdown');
+    function setupPagination() {
+        console.log('🔄 Setting up pagination...');
 
-        const categorySelect = document.getElementById('blogCategory');
-        const hiddenInput = document.getElementById('blogCategoriesHidden');
-
-        if (!categorySelect) {
-            console.log('Blog category select not found');
-            return null;
-        }
-
-        // Function to set the selected category
-        function setCategory(category) {
-            if (category) {
-                categorySelect.value = category;
-                if (hiddenInput) {
-                    // ALWAYS store as JSON array string - this is what old file expects
-                    hiddenInput.value = JSON.stringify([category]);
-                }
+        // For regular sections, ensure updatePaginationInfo calls the global UI
+        window.updatePaginationInfo = function(section, totalItems, currentPageNum) {
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI(section, currentPageNum, totalItems, itemsPerPage);
             }
-        }
-
-        // Initialize with any existing values (for edit mode)
-        function initializeWithValues(categories) {
-            console.log('Setting category with:', categories);
-            if (categories) {
-                let categoryValue = '';
-
-                // Handle different possible formats
-                if (Array.isArray(categories) && categories.length > 0) {
-                    categoryValue = categories[0];
-                } else if (typeof categories === 'string') {
-                    // Try to parse if it's a JSON string
-                    try {
-                        const parsed = JSON.parse(categories);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            categoryValue = parsed[0];
-                        } else {
-                            categoryValue = categories;
-                        }
-                    } catch (e) {
-                        // Not JSON, use as is
-                        categoryValue = categories;
-                    }
-                }
-
-                if (categoryValue) {
-                    setCategory(categoryValue);
-                }
-            }
-        }
-
-        // Clear selection
-        function clearSelections() {
-            console.log('Clearing category selection');
-            categorySelect.value = '';
-            if (hiddenInput) {
-                hiddenInput.value = '';
-            }
-        }
-
-        // Get selected category as array (for compatibility with old code)
-        function getSelectedCategories() {
-            return categorySelect.value ? [categorySelect.value] : [];
-        }
-
-        // Handle category change - update hidden input with JSON array
-        categorySelect.addEventListener('change', function(e) {
-            const selectedCategory = e.target.value;
-            if (hiddenInput) {
-                if (selectedCategory) {
-                    // Store as JSON array string - exactly what old file expects
-                    hiddenInput.value = JSON.stringify([selectedCategory]);
-                } else {
-                    hiddenInput.value = '';
-                }
-            }
-        });
-
-        console.log('✅ Blog category dropdown setup complete');
-
-        return {
-            initializeWithValues: initializeWithValues,
-            clearSelections: clearSelections,
-            getSelectedCategories: getSelectedCategories
         };
+
+        // For testimonial manager - override its pagination method
+        if (window.testimonialManager) {
+            window.testimonialManager.updatePaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('testimonials', currentPage, totalItems, perPage);
+                }
+            };
+        }
+
+        // For admin manager - override its pagination method
+        if (window.adminManager) {
+            const originalUpdatePagination = window.adminManager.updatePagination;
+            window.adminManager.updatePagination = function(totalCount) {
+                if (originalUpdatePagination) {
+                    originalUpdatePagination.call(this, totalCount);
+                }
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('admins', this.currentPage, totalCount, this.perPage);
+                }
+            };
+        }
+
+        // For expired content - override its pagination function
+        if (typeof updateExpiredPaginationInfo === 'function') {
+            window.updateExpiredPaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('expired-content', currentPage, totalItems, perPage || expiredItemsPerPage);
+                }
+            };
+        }
+
+        // For trash - override its pagination function
+        if (typeof updateTrashPaginationInfo === 'function') {
+            window.updateTrashPaginationInfo = function(totalItems, currentPage, perPage) {
+                if (typeof updatePaginationUI === 'function') {
+                    updatePaginationUI('trash', currentPage, totalItems, perPage || trashItemsPerPage);
+                }
+            };
+        }
+
+        console.log('✅ Pagination setup complete');
     }
 
-    // Global variable to store the categories manager
-    let blogCategoriesManager = null;
+    function updatePaginationInfo(section, totalItems, currentPageNum) {
+        const paginationInfo = document.getElementById(`${section}PageInfo`);
+        if (!paginationInfo) return;
 
-    // Enhanced session check with automatic redirect
-    function checkAdminSession() {
-        fetch('/api/admin/check-session', {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (response.status === 401) {
-                throw new Error('Session expired');
-            }
-            if (!response.ok) {
-                throw new Error('Failed to check session');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.logged_in) {
-                showSessionExpiredMessage();
-            }
-        })
-        .catch(error => {
-            console.error('Session check failed:', error);
-            showSessionExpiredMessage();
-        });
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startItem = (currentPageNum - 1) * itemsPerPage + 1;
+        const endItem = Math.min(currentPageNum * itemsPerPage, totalItems);
+
+        paginationInfo.textContent = `Page ${currentPageNum} of ${totalPages}`;
+
+        const prevBtn = document.getElementById(`prev${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
+        const nextBtn = document.getElementById(`next${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
+
+        if (prevBtn) prevBtn.disabled = currentPageNum === 1;
+        if (nextBtn) nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
     }
 
-    // Show session expired message and redirect to login
-    function showSessionExpiredMessage() {
-        // Create overlay for session expired message
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        `;
+    // ============================================
+    // ========== 4. BULK ACTIONS FUNCTIONS ==========
+    // ============================================
 
-        // Create message card
-        const card = document.createElement('div');
-        card.style.cssText = `
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            max-width: 400px;
-            width: 90%;
-        `;
+    // Helper function to update header selected count display
+    function updateHeaderSelectedCount(section, count) {
+        const selectedCountId = {
+            'courses': 'courseSelectedCountHeader',
+            'jobs': 'jobSelectedCountHeader',
+            'internships': 'internshipSelectedCountHeader',
+            'blog': 'blogSelectedCountHeader',
+            'testimonials': 'testimonialSelectedCountHeader',
+            'newsletter': 'newsletterSelectedCountHeader',
+            'expired-content': 'expiredSelectedCountHeader',
+            'users': 'userSelectedCountHeader',
+            'messages': 'messageSelectedCountHeader',
+            'admins': 'adminSelectedCountHeader',
+            'trash': 'trashSelectedCountHeader'
+        }[section];
 
-        // Add icon and message
-        card.innerHTML = `
-            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f39c12; margin-bottom: 20px;"></i>
-            <h2 style="margin: 0 0 15px 0; color: #333; font-weight: 600;">Session Expired</h2>
-            <p style="margin: 0 0 25px 0; color: #666; line-height: 1.5;">Your admin session has expired. Please log in again to continue.</p>
-            <button id="loginRedirectBtn" style="background: #4a6cf7; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Login Again</button>
-            <div id="countdown" style="margin-top: 15px; font-size: 14px; color: #888;">Redirecting in 10 seconds...</div>
-        `;
-
-        overlay.appendChild(card);
-        document.body.appendChild(overlay);
-
-        // Add button event listener
-        document.getElementById('loginRedirectBtn').addEventListener('click', function() {
-            window.location.href = '/admin/login?message=session_expired';
-        });
-
-        // Auto-redirect after 10 seconds
-        let seconds = 10;
-        const countdownInterval = setInterval(() => {
-            seconds--;
-            document.getElementById('countdown').textContent = `Redirecting in ${seconds} seconds...`;
-
-            if (seconds <= 0) {
-                clearInterval(countdownInterval);
-                window.location.href = '/admin/login?message=session_expired';
+        const countElement = document.getElementById(selectedCountId);
+        if (countElement) {
+            if (count === 0) {
+                countElement.textContent = '0 selected';
+                countElement.style.color = '#666';
+                countElement.style.fontWeight = 'normal';
+            } else {
+                countElement.textContent = `${count} selected`;
+                countElement.style.color = '#4a6cf7';
+                countElement.style.fontWeight = '600';
             }
-        }, 1000);
+        }
     }
 
-    // Content expiration function
-    // Handle expiration date in forms
-    function setupExpirationDateFields() {
-        // Set minimum date to today for expiration date fields
-        const today = new Date().toISOString().slice(0, 16);
-        document.querySelectorAll('input[type="datetime-local"][name="expiration_date"]').forEach(input => {
-            input.min = today;
-        });
+    // Helper function to enable/disable bulk action button
+    function setBulkActionButtonState(section, selectedCount) {
+        const buttonMap = {
+            'courses': 'applyCourseBulkActionHeader',
+            'jobs': 'applyJobBulkActionHeader',
+            'internships': 'applyInternshipBulkActionHeader',
+            'blog': 'applyBlogBulkActionHeader',
+            'users': 'applyUserBulkActionHeader',
+            'messages': 'applyMessageBulkActionHeader',
+            'newsletter': 'applyNewsletterBulkActionHeader',
+            'testimonials': 'applyTestimonialBulkActionHeader',
+            'admins': 'applyAdminBulkActionHeader',
+            'expired-content': 'applyExpiredContentBulkActionHeader',
+            'trash': 'applyTrashBulkActionHeader'
+        };
+
+        const buttonId = buttonMap[section];
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = selectedCount === 0;
+            if (selectedCount > 0) {
+                button.style.opacity = '1';
+            } else {
+                button.style.opacity = '0.6';
+            }
+        }
     }
 
-    // Add this to check for expired content every minute
-    function startExpirationChecker() {
-        setInterval(() => {
-            // This would call your backend API to check expired content
-            fetch('/api/admin/check-expired-content', {
-                method: 'POST',
-                credentials: 'include'
-            }).catch(error => {
-                console.error('Error checking expired content:', error);
+    // ===== HEADER BULK ACTIONS HANDLER =====
+    function setupBulkActions() {
+        console.log('🔄 Setting up header bulk actions...');
+
+        // Helper function to get selected IDs for any section
+        function getSelectedIds(section) {
+            if (section === 'testimonials') {
+                return window.testimonialManager ? window.testimonialManager.selectedIds : [];
+            }
+            if (section === 'admins') {
+                return window.adminManager ? window.adminManager.selectedAdmins : [];
+            }
+            if (section === 'expired-content') {
+                const selected = [];
+                document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(cb => {
+                    selected.push({
+                        content_type: cb.getAttribute('data-type'),
+                        content_id: cb.getAttribute('data-id')
+                    });
+                });
+                return selected;
+            }
+            if (section === 'trash') {
+                const selected = [];
+                document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(cb => {
+                    selected.push({
+                        content_type: cb.getAttribute('data-type'),
+                        content_id: cb.getAttribute('data-id'),
+                        table_name: cb.getAttribute('data-table')
+                    });
+                });
+                return selected;
+            }
+            return selectedItems[section] || [];
+        }
+
+        // Helper function to update header selected count display
+        function updateHeaderSelectedCount(section, count) {
+            const selectedCountId = {
+                'courses': 'courseSelectedCountHeader',
+                'jobs': 'jobSelectedCountHeader',
+                'internships': 'internshipSelectedCountHeader',
+                'blog': 'blogSelectedCountHeader',
+                'testimonials': 'testimonialSelectedCountHeader',
+                'newsletter': 'newsletterSelectedCountHeader',
+                'expired-content': 'expiredSelectedCountHeader',
+                'users': 'userSelectedCountHeader',
+                'messages': 'messageSelectedCountHeader',
+                'admins': 'adminSelectedCountHeader',
+                'trash': 'trashSelectedCountHeader'
+            }[section];
+
+            const countElement = document.getElementById(selectedCountId);
+            if (countElement) {
+                if (count === 0) {
+                    countElement.textContent = '0 selected';
+                    countElement.style.color = '#666';
+                    countElement.style.fontWeight = 'normal';
+                } else {
+                    countElement.textContent = `${count} selected`;
+                    countElement.style.color = '#4a6cf7';
+                    countElement.style.fontWeight = '600';
+                }
+            }
+        }
+
+        // ===== FUNCTION TO ATTACH ROW CHECKBOX LISTENERS =====
+        function attachRowCheckboxListeners(section) {
+            const tableBody = document.getElementById(`${section}TableBody`);
+            if (!tableBody) return;
+
+            const checkboxes = tableBody.querySelectorAll('.row-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                // Remove existing listener by cloning
+                const newCheckbox = checkbox.cloneNode(true);
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+                newCheckbox.addEventListener('change', function(e) {
+                    e.stopPropagation();
+                    const id = this.getAttribute('data-id');
+
+                    if (!selectedItems[section]) selectedItems[section] = [];
+
+                    if (this.checked) {
+                        if (!selectedItems[section].includes(id)) {
+                            selectedItems[section].push(id);
+                        }
+                    } else {
+                        selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                    }
+
+                    const selectedCount = selectedItems[section].length;
+                    setBulkActionButtonState(section, selectedCount);
+                    updateHeaderSelectedCount(section, selectedCount);
+                    updateSelectAllState(section);
+                });
             });
-        }, 60000); // Check every minute
-    }
-
-    // Enhanced greeting function
-    function displayWelcomeMessage() {
-        const hour = new Date().getHours();
-        let greeting;
-
-        if (hour < 12) {
-            greeting = "Good morning";
-        } else if (hour < 17) {
-            greeting = "Good afternoon";
-        } else {
-            greeting = "Good evening";
         }
 
-        // Get the greeting element
-        const greetingElement = document.getElementById('adminGreeting');
-        const greetingText = document.getElementById('greetingText');
+        // ===== FUNCTION TO UPDATE SELECT ALL CHECKBOX STATE =====
+        function updateSelectAllState(section) {
+            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
+            const selectAllCheckbox = document.getElementById(selectAllId);
+            if (!selectAllCheckbox) return;
 
-        if (greetingElement && greetingText) {
-            // Update the greeting text
-            greetingText.textContent = greeting + ',';
+            const tableBody = document.getElementById(`${section}TableBody`);
+            if (!tableBody) return;
 
-            // Show the greeting
-            greetingElement.style.display = 'flex';
-            greetingElement.classList.add('show');
-            greetingElement.classList.remove('fade-out');
+            const totalCheckboxes = tableBody.querySelectorAll('.row-checkbox').length;
+            const selectedCount = selectedItems[section] ? selectedItems[section].length : 0;
 
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                greetingElement.classList.add('fade-out');
+            selectAllCheckbox.checked = totalCheckboxes > 0 && selectedCount === totalCheckboxes;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCheckboxes;
+        }
 
-                // Remove from DOM after fade out animation completes
+        // ===== OVERRIDE THE EXISTING renderTableData TO ATTACH LISTENERS AFTER DATA LOAD =====
+        // Save original renderTableData function
+        const originalRenderTableData = window.renderTableData;
+
+        // Override renderTableData
+        window.renderTableData = function(section, data) {
+            // Call original function first
+            if (originalRenderTableData) {
+                originalRenderTableData(section, data);
+            }
+
+            // After data is rendered, attach checkbox listeners for this section
+            const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
+            if (regularSections.includes(section)) {
                 setTimeout(() => {
-                    greetingElement.style.display = 'none';
-                    greetingElement.classList.remove('show');
-                }, 500); // Match this with CSS transition time
-            }, 5000);
-        }
-    }
+                    attachRowCheckboxListeners(section);
+                    // Reset selected items for this section when new data loads
+                    if (selectedItems[section]) {
+                        selectedItems[section] = [];
+                        updateHeaderSelectedCount(section, 0);
+                        setBulkActionButtonState(section, 0);
+                        updateSelectAllState(section);
+                    }
+                }, 100);
+            }
+        };
 
-    // Enhanced navigation with back button handling - No logout on back button
-    function setupNavigation() {
-        // Select ALL logout links - both in sidebar-menu AND sidebar-footer
-        const logoutLinks = document.querySelectorAll('.sidebar-menu a[href="/admin/logout"], .sidebar-logout a');
+        // ===== SELECT ALL CHECKBOX HANDLERS FOR REGULAR SECTIONS =====
+        const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
 
-        // Handle logout links separately (outside the menuItems loop)
-        logoutLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
+        regularSections.forEach(section => {
+            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
+            const selectAllCheckbox = document.getElementById(selectAllId);
+            if (!selectAllCheckbox) return;
+
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+
+            newSelectAll.addEventListener('change', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                showConfirmation('logout', 'Are you sure you want to logout?', () => {
-                    // Clear all session data
-                    sessionStorage.removeItem('adminSessionStarted');
-                    sessionStorage.removeItem('currentSection');
+                const isChecked = this.checked;
+                const tableBody = document.getElementById(`${section}TableBody`);
+                if (!tableBody) return;
 
-                    // Set a flag to indicate we're logging out programmatically
-                    sessionStorage.setItem('logoutInitiated', 'true');
+                const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
 
-                    window.location.href = '/admin/logout';
-                });
+                if (!selectedItems[section]) selectedItems[section] = [];
+
+                if (isChecked) {
+                    selectedItems[section] = [];
+                    rowCheckboxes.forEach(checkbox => {
+                        checkbox.checked = true;
+                        const id = checkbox.getAttribute('data-id');
+                        if (id && !selectedItems[section].includes(id)) {
+                            selectedItems[section].push(id);
+                        }
+                    });
+                } else {
+                    rowCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    selectedItems[section] = [];
+                }
+
+                const selectedCount = selectedItems[section].length;
+                setBulkActionButtonState(section, selectedCount);
+                updateHeaderSelectedCount(section, selectedCount);
+                updateSelectAllState(section);
             });
         });
 
-        const menuItems = document.querySelectorAll('.sidebar-menu a:not([href="/admin/logout"])');
-
-        // Initialize history state to prevent back button logout
-        if (history.state === null) {
-            const initialState = {
-                section: 'dashboard',
-                timestamp: Date.now(),
-                isInitial: true
+        // ===== TESTIMONIALS SECTION HANDLING =====
+        if (window.testimonialManager) {
+            const originalUpdateBulkActionButton = window.testimonialManager.updateBulkActionButton;
+            window.testimonialManager.updateBulkActionButton = function() {
+                originalUpdateBulkActionButton.call(this);
+                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
+                setBulkActionButtonState('testimonials', this.selectedIds.length);
             };
-            history.replaceState(initialState, '', '#dashboard');
-
-            // Push another state to create a buffer
-            const secondState = {
-                section: 'dashboard',
-                timestamp: Date.now(),
-                isBuffer: true
-            };
-            history.pushState(secondState, '', '#dashboard');
         }
 
-        menuItems.forEach(item => {
-            item.addEventListener('click', function(e) {
-                // Skip dark mode toggle (it's now handled separately)
-                if (this.id === 'darkModeToggle' || this.closest('#darkModeToggle')) {
+        // ===== ADMINS SECTION HANDLING =====
+        if (window.adminManager) {
+            const originalUpdateBulkActionButton = window.adminManager.updateBulkActionButton;
+            window.adminManager.updateBulkActionButton = function() {
+                originalUpdateBulkActionButton.call(this);
+                updateHeaderSelectedCount('admins', this.selectedAdmins.length);
+                setBulkActionButtonState('admins', this.selectedAdmins.length);
+            };
+        }
+
+        // ===== EXPIRED CONTENT SECTION HANDLING =====
+        if (typeof updateSelectedExpiredItems === 'function') {
+            const originalUpdateSelectedExpiredItems = updateSelectedExpiredItems;
+            window.updateSelectedExpiredItems = function() {
+                originalUpdateSelectedExpiredItems();
+                updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
+                setBulkActionButtonState('expired-content', selectedExpiredItems.length);
+            };
+        }
+
+        // ===== TRASH SECTION HANDLING =====
+        if (typeof updateSelectedTrashItems === 'function') {
+            const originalUpdateSelectedTrashItems = updateSelectedTrashItems;
+            window.updateSelectedTrashItems = function() {
+                originalUpdateSelectedTrashItems();
+                updateHeaderSelectedCount('trash', selectedTrashItems.length);
+                setBulkActionButtonState('trash', selectedTrashItems.length);
+            };
+        }
+
+        // ===== HEADER BULK ACTION BUTTON HANDLERS =====
+        const headerBulkActions = [
+            { btnId: 'applyCourseBulkActionHeader', section: 'courses', actionSelectId: 'courseBulkActionHeader' },
+            { btnId: 'applyJobBulkActionHeader', section: 'jobs', actionSelectId: 'jobBulkActionHeader' },
+            { btnId: 'applyInternshipBulkActionHeader', section: 'internships', actionSelectId: 'internshipBulkActionHeader' },
+            { btnId: 'applyBlogBulkActionHeader', section: 'blog', actionSelectId: 'blogBulkActionHeader' },
+            { btnId: 'applyTestimonialBulkActionHeader', section: 'testimonials', actionSelectId: 'testimonialBulkActionHeader' },
+            { btnId: 'applyNewsletterBulkActionHeader', section: 'newsletter', actionSelectId: 'newsletterBulkActionHeader' },
+            { btnId: 'applyExpiredContentBulkActionHeader', section: 'expired-content', actionSelectId: 'expiredContentBulkActionHeader' },
+            { btnId: 'applyUserBulkActionHeader', section: 'users', actionSelectId: 'userBulkActionHeader' },
+            { btnId: 'applyMessageBulkActionHeader', section: 'messages', actionSelectId: 'messageBulkActionHeader' },
+            { btnId: 'applyAdminBulkActionHeader', section: 'admins', actionSelectId: 'adminBulkActionHeader' },
+            { btnId: 'applyTrashBulkActionHeader', section: 'trash', actionSelectId: 'trashBulkActionHeader' }
+        ];
+
+        headerBulkActions.forEach(({ btnId, section, actionSelectId }) => {
+            const button = document.getElementById(btnId);
+            if (!button) return;
+
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+
+            newButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const actionSelect = document.getElementById(actionSelectId);
+                const action = actionSelect ? actionSelect.value : '';
+
+                if (!action) {
+                    showNotification('Please select a bulk action first', 'warning');
                     return;
                 }
 
-                if (this.getAttribute('href').startsWith('#')) {
-                    e.preventDefault();
+                let selectedIds = getSelectedIds(section);
 
-                    // Use history API to update URL without page reload
-                    const targetSection = this.getAttribute('href').substring(1);
-                    navigateToSection(targetSection, this);
-                }
-            });
-        });
-
-        // Enhanced browser back/forward button handling - No logout allowed
-        window.addEventListener('popstate', function(event) {
-            console.log('🔙 Popstate event:', event.state);
-
-            // If we're at the initial state and user tries to go back further
-            if (event.state && event.state.isInitial) {
-                // We're at the beginning - prevent going back to login
-                const currentState = {
-                    section: currentSection || 'dashboard',
-                    timestamp: Date.now(),
-                    isInitial: true
-                };
-                history.pushState(currentState, '', `#${currentSection || 'dashboard'}`);
-
-                showNotification('You are already at the beginning of the dashboard navigation', 'info', 3000);
-                return;
-            }
-
-            // If no state, go to dashboard
-            if (!event.state || !event.state.section) {
-                navigateToSection('dashboard', null, true);
-                return;
-            }
-
-            // Navigate to the section from history
-            const section = event.state.section;
-            const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
-
-            if (menuItem) {
-                navigateToSection(section, menuItem, true);
-
-                // If page info exists in state, update current page
-                if (event.state.page && currentPage[section] !== undefined) {
-                    currentPage[section] = event.state.page;
-                }
-            } else {
-                navigateToSection('dashboard', null, true);
-            }
-        });
-
-        // Remove beforeunload warning for internal navigation
-        window.addEventListener('beforeunload', function(e) {
-            // Only show warning if not logging out intentionally
-            if (!sessionStorage.getItem('logoutInitiated')) {
-                // Don't show warning for internal navigation
-                return;
-            }
-        });
-
-        // Handle stat card links - ENHANCED to refresh dashboard when returning
-        document.querySelectorAll('.stat-card a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetSection = this.getAttribute('href').substring(1);
-
-                const menuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
-                if (menuItem) {
-                    menuItem.click();
-                }
-            });
-        });
-    }
-    // Enhanced notification functionality
-    function setupNotificationEvents() {
-        const notificationBell = document.querySelector('.notification-bell');
-        const notificationList = document.getElementById('notificationList');
-        const viewToggleBtn = document.getElementById('viewToggleBtn');
-        const markAllReadBtn = document.querySelector('.mark-all-read');
-
-        if (notificationBell && notificationList) {
-            notificationBell.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const isShowing = notificationList.classList.contains('show');
-
-                if (!isShowing) {
-                    // Reset to limited view when opening
-                    showAllNotifications = false;
-                    renderNotifications();
+                if (selectedIds.length === 0) {
+                    showNotification(`Please select at least one ${section} item`, 'warning');
+                    return;
                 }
 
-                notificationList.classList.toggle('show');
-
-                // Update toggle button state
-                if (viewToggleBtn) {
-                    viewToggleBtn.classList.toggle('expanded', showAllNotifications);
-                }
-            });
-
-            // Close when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!notificationBell.contains(e.target) && !notificationList.contains(e.target)) {
-                    notificationList.classList.remove('show');
-                    showAllNotifications = false;
-                    renderNotifications();
-                }
-            });
-        }
-
-        if (viewToggleBtn) {
-            viewToggleBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                showAllNotifications = !showAllNotifications;
-                this.classList.toggle('expanded', showAllNotifications);
-                renderNotifications();
-
-                // Smooth scroll to show new items
-                if (showAllNotifications) {
-                    const notificationItems = document.querySelector('.notification-items');
-                    if (notificationItems) {
-                        notificationItems.scrollTop = notificationItems.scrollHeight;
+                // Handle actions based on section
+                if (section === 'testimonials') {
+                    if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} testimonial(s)?`, () => {
+                            window.testimonialManager.bulkDeleteTestimonials();
+                        });
+                    } else if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        showConfirmation('bulk_action', `${action} ${selectedIds.length} testimonial(s)?`, () => {
+                            window.testimonialManager.bulkUpdateTestimonialStatus(isActive);
+                        });
                     }
+                    return;
+                }
+
+                if (section === 'admins') {
+                    if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} admin(s)?`, () => {
+                            window.adminManager.bulkDelete(selectedIds);
+                        });
+                    } else if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        showConfirmation('bulk_action', `${action} ${selectedIds.length} admin(s)?`, () => {
+                            window.adminManager.bulkUpdateStatus(selectedIds, isActive);
+                        });
+                    }
+                    return;
+                }
+
+                if (section === 'expired-content') {
+                    if (action === 'reactivate') {
+                        showConfirmation('bulk_reactivate', `Reactivate ${selectedIds.length} item(s)?`, () => {
+                            bulkReactivateExpiredContent(selectedIds);
+                        });
+                    } else if (action === 'delete') {
+                        showConfirmation('delete', `Delete ${selectedIds.length} item(s)?`, () => {
+                            bulkDeleteExpiredContent(selectedIds);
+                        });
+                    }
+                    return;
+                }
+
+                if (section === 'trash') {
+                    if (action === 'restore') {
+                        showConfirmation('bulk_action', `Restore ${selectedIds.length} item(s) from trash?`, () => {
+                            bulkRestoreTrashItems(selectedIds);
+                        });
+                    } else if (action === 'delete') {
+                        showConfirmation('delete', `Permanently delete ${selectedIds.length} item(s)?`, () => {
+                            bulkPermanentlyDeleteTrashItems(selectedIds);
+                        });
+                    }
+                    return;
+                }
+
+                // Regular sections
+                if (action === 'delete') {
+                    showConfirmation('delete', `Delete ${selectedIds.length} ${section}?`, () => {
+                        performBulkDelete(section, selectedIds);
+                    });
+                } else if (action === 'activate' || action === 'deactivate') {
+                    const isActive = action === 'activate';
+                    showConfirmation('bulk_action', `${action} ${selectedIds.length} ${section}?`, () => {
+                        performBulkStatusUpdate(section, selectedIds, isActive);
+                    });
+                } else if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_replied') {
+                    const status = action.replace('mark_', '');
+                    showConfirmation('bulk_action', `Mark ${selectedIds.length} message(s) as ${status}?`, () => {
+                        performBulkMessageStatusUpdate(section, selectedIds, status);
+                    });
                 }
             });
-        }
-
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                markAllNotificationsAsRead();
-            });
-        }
-    }
-
-    function loadNotifications() {
-        return fetch('/api/admin/notifications', {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch notifications');
-            return response.json();
-        })
-        .then(notifications => {
-            allNotifications = notifications;
-            renderNotifications();
-        })
-        .catch(error => {
-            console.error('Error loading notifications:', error);
-            throw error; // Re-throw to handle in Promise.all
         });
+
+        console.log('✅ Header bulk actions setup complete');
     }
 
-    // Enhanced notification rendering
-    function renderNotifications() {
-        const notificationItems = document.querySelector('.notification-items');
-        const notificationCount = document.getElementById('notificationCount');
-        const viewToggleBtn = document.getElementById('viewToggleBtn');
+    // ===== HELPER FUNCTION FOR BUTTON STATE - SINGLE SOURCE OF TRUTH =====
+    function updateBulkButtonState(section, selectedCount) {
+        // Map section to button ID
+        const buttonMap = {
+            'courses': 'applyCourseBulkAction',
+            'jobs': 'applyJobBulkAction',
+            'internships': 'applyInternshipBulkAction',
+            'blog': 'applyBlogBulkAction',
+            'users': 'applyUserBulkAction',
+            'messages': 'applyMessageBulkAction',
+            'newsletter': 'applyNewsletterBulkAction',
+            'testimonials': 'applyTestimonialBulkAction',
+            'admins': 'applyAdminBulkAction',
+            'expired-content': 'applyExpiredContentBulkAction',
+            'trash': 'applyTrashBulkAction'
+        };
 
-        if (!notificationItems) return;
+        const buttonId = buttonMap[section];
+        if (!buttonId) return;
 
-        notificationItems.innerHTML = '';
-
-        // Determine which notifications to display
-        const displayedNotifications = showAllNotifications ?
-            allNotifications :
-            allNotifications.slice(0, 4);
-
-        // Update notification count
-        const unreadCount = allNotifications.filter(n => !n.is_read).length;
-        const displayCount = Math.min(unreadCount, 99);
-        notificationCount.textContent = displayCount > 0 ? displayCount : '';
-        notificationCount.style.display = displayCount > 0 ? 'flex' : 'none';
-
-        // Update view toggle button visibility and text
-        if (viewToggleBtn) {
-            if (allNotifications.length <= 4) {
-                viewToggleBtn.style.display = 'none';
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = selectedCount === 0;
+            // Optional: Add visual feedback
+            if (selectedCount > 0) {
+                button.style.opacity = '1';
             } else {
-                viewToggleBtn.style.display = 'flex';
-                viewToggleBtn.innerHTML = showAllNotifications ?
-                    '<i class="fas fa-chevron-up"></i> Show Less' :
-                    '<i class="fas fa-chevron-down"></i> View More (' + (allNotifications.length - 4) + ')';
+                button.style.opacity = '0.6';
             }
         }
+    }
 
-        if (allNotifications.length === 0) {
-            notificationItems.innerHTML = `
-                <div class="no-notifications">
-                    <i class="fas fa-bell-slash"></i>
-                    <div>No notifications</div>
-                    <small>You're all caught up!</small>
-                </div>
-            `;
+    // Update the select all checkbox state
+    function updateSelectAllCheckbox(section) {
+        // Handle testimonial section separately
+        if (section === 'testimonials') {
+            const selectAll = document.getElementById('selectAllTestimonials');
+            if (!selectAll) return;
+
+            if (window.testimonialManager) {
+                const totalCheckboxes = document.querySelectorAll('#testimonialsTableBody .testimonial-checkbox').length;
+                const checkedCount = window.testimonialManager.selectedIds.length;
+
+                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+            }
             return;
         }
 
-        displayedNotifications.forEach((notification, index) => {
-            const notificationItem = document.createElement('div');
-            notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'} ${index < 2 ? 'new' : ''}`;
-            notificationItem.setAttribute('data-type', notification.type);
-            notificationItem.setAttribute('data-id', notification.related_id);
+        // Handle admin section separately
+        if (section === 'admins') {
+            const selectAll = document.getElementById('selectAllAdmins');
+            if (!selectAll) return;
 
-            const formattedDate = formatDate(notification.created_at, true);
+            if (window.adminManager) {
+                const totalCheckboxes = document.querySelectorAll('#adminsTableBody .admin-checkbox:not([disabled])').length;
+                const checkedCount = window.adminManager.selectedAdmins.length;
 
-            notificationItem.innerHTML = `
-                <div class="notification-icon">
-                    <i class="fas fa-${getNotificationIcon(notification.type)}"></i>
-                </div>
-                <div class="notification-content">
-                    <p>${notification.message}</p>
-                    <small>${formattedDate}</small>
-                </div>
-                <span class="notification-type-badge">${notification.type}</span>
-            `;
+                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
+            }
+            return;
+        }
 
-            // Add click event to navigate to relevant section
-            notificationItem.addEventListener('click', function() {
-                const type = this.getAttribute('data-type');
-                const id = this.getAttribute('data-id');
+        // Handle expired content section
+        if (section === 'expired-content') {
+            const selectAll = document.getElementById('selectAllExpired');
+            if (!selectAll) return;
 
-                // Close notification dropdown
-                document.getElementById('notificationList').classList.remove('show');
+            const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
+            const checkedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
 
-                // Navigate to appropriate section
-                const sectionMap = {
-                    'message': 'messages',
-                    'user': 'users',
-                    'course': 'courses',
-                    'job': 'jobs',
-                    'internship': 'internships',
-                    'blog': 'blog'
-                };
+            if (checkboxes.length > 0) {
+                selectAll.checked = checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            return;
+        }
 
-                if (sectionMap[type]) {
-                    const menuItem = document.querySelector(`.sidebar-menu a[href="#${sectionMap[type]}"]`);
-                    if (menuItem) {
-                        menuItem.click();
-                    }
+        // Handle trash section
+        if (section === 'trash') {
+            const selectAll = document.getElementById('selectAllTrash');
+            if (!selectAll) return;
+
+            const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
+            const checkedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
+
+            if (checkboxes.length > 0) {
+                selectAll.checked = checkedCount === checkboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            return;
+        }
+
+        // Handle regular sections
+        const sectionId = section.charAt(0).toUpperCase() + section.slice(1);
+        const selectAll = document.getElementById(`selectAll${sectionId}`);
+        if (!selectAll) return;
+
+        const tableBody = document.getElementById(`${section}TableBody`);
+        if (!tableBody) return;
+
+        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+        const checkedCount = selectedItems[section] ? selectedItems[section].length : 0;
+
+        selectAll.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+    }
+
+    // Soft bulk delete function
+    function performBulkDelete(section, ids) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected for deletion', 'warning');
+            return;
+        }
+
+        showLoading();
+
+        // Map section to API endpoint - using correct backend endpoints
+        let apiSection = section;
+        let endpoint = `/api/admin/${apiSection}/bulk-delete`;
+
+        // Special handling for different resource types
+        if (section === 'blog') {
+            apiSection = 'blog';
+            endpoint = '/api/admin/blog/bulk-delete';
+        } else if (section === 'newsletter') {
+            apiSection = 'newsletter';
+            endpoint = '/api/admin/newsletter/bulk-delete';
+        } else if (section === 'users') {
+            apiSection = 'users';
+            endpoint = '/api/admin/users/bulk-delete';
+        } else if (section === 'messages') {
+            apiSection = 'messages';
+            endpoint = '/api/admin/messages/bulk-delete';
+        } else if (section === 'testimonials') {
+            apiSection = 'testimonials';
+            endpoint = '/api/admin/testimonials/bulk-delete';
+        }
+
+        console.log(`Bulk deleting ${section} with IDs: ${ids} using endpoint: ${endpoint}`);
+
+        fetch(endpoint, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ ids: ids })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || `Failed to delete ${section}`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                const message = result.moved_to_trash !== false ?
+                    `${ids.length} ${section} moved to trash` :
+                    `${ids.length} ${section} deleted successfully`;
+                showNotification(message, 'success');
+
+                // Clear selection
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
                 }
-            });
+                updateSelectAllCheckbox(section);
+                updateBulkButtonState(section, 0);
 
-            notificationItems.appendChild(notificationItem);
+                // Reload the current section to reflect changes
+                if (section === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (section === 'admins') {
+                    if (window.adminManager) {
+                        window.adminManager.loadAdmins();
+                    }
+                } else {
+                    loadSectionData(section, currentPage[section]);
+                }
+
+                // Update dashboard stats (including trash count)
+                loadDashboardStats();
+                loadTrashStats(true);
+
+                // If we're in the trash section, refresh it
+                if (currentSection === 'trash') {
+                    loadTrashItems(currentTrashPage);
+                }
+            } else {
+                showNotification(result.message || `Failed to delete ${section}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(`Error bulk deleting ${section}:`, error);
+            showNotification(error.message || `Failed to delete ${section}. Please try again.`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
         });
     }
 
-    function getNotificationIcon(type) {
-        const icons = {
-            'message': 'envelope',
-            'user': 'user-plus',
-            'course': 'book',
-            'job': 'briefcase',
-            'internship': 'user-graduate',
-            'blog': 'blog',
-            'default': 'bell'
-        };
-        return icons[type] || icons.default;
+    // bulk status update function
+    function performBulkStatusUpdate(section, ids, isActive) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
+        showLoading();
+
+        // Fix section names for API endpoints - matches backend
+        let apiSection = section;
+        let endpoint = `/api/admin/${apiSection}/bulk-status`;
+
+        // Special handling for blog posts (uses blog_posts table)
+        if (section === 'blog') {
+            apiSection = 'blog_posts';
+            endpoint = '/api/admin/blog_posts/bulk-status';
+        }
+        // Special handling for newsletter subscribers
+        else if (section === 'newsletter') {
+            apiSection = 'newsletter_subscribers';
+            endpoint = '/api/admin/newsletter_subscribers/bulk-status';
+        }
+        // Special handling for users
+        else if (section === 'users') {
+            apiSection = 'users';
+            endpoint = '/api/admin/users/bulk-status';
+        }
+
+        console.log(`Bulk status update: ${section} -> ${apiSection}, isActive: ${isActive}`);
+
+        fetch(endpoint, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ ids: ids, is_active: isActive })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                const statusText = isActive ? 'activated' : 'deactivated';
+                showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
+
+                // Clear selection
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
+                }
+                updateSelectAllCheckbox(section);
+                updateBulkButtonState(section, 0);
+
+                // Reload the section data
+                if (section === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (section === 'admins') {
+                    if (window.adminManager) {
+                        window.adminManager.loadAdmins();
+                    }
+                } else {
+                    loadSectionData(section, currentPage[section]);
+                }
+            } else {
+                showNotification(result.message || `Failed to update ${section} status`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(`Error bulk updating ${section} status:`, error);
+            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
     }
 
-    function markAllNotificationsAsRead() {
-        fetch('/api/admin/notifications/mark-all-read', {
+    // bulk message status update function
+    function performBulkMessageStatusUpdate(section, ids, status) {
+        if (!ids || ids.length === 0) {
+            showNotification('No items selected', 'warning');
+            return;
+        }
+
+        showLoading();
+
+        console.log(`Bulk updating ${section} status to ${status} for IDs:`, ids);
+
+        fetch(`/api/admin/${section}/bulk-status`, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({ ids: ids, status: status })
         })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to mark notifications as read');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
-        .then(data => {
-            if (data.success) {
-                loadNotifications();
-                showNotification('All notifications marked as read', 'success');
+        .then(result => {
+            if (result.success) {
+                showNotification(`${ids.length} ${section} status updated to ${status} successfully`, 'success');
+                // Clear selection and reload data
+                if (selectedItems[section]) {
+                    selectedItems[section] = [];
+                }
+                updateBulkButtonState(section, 0);
+                loadSectionData(section, currentPage[section]);
             } else {
-                showNotification(data.message || 'Failed to mark notifications as read', 'error');
+                showNotification(result.message || `Failed to update ${section} status`, 'error');
             }
         })
         .catch(error => {
-            console.error('Error marking notifications as read:', error);
-            showNotification('Failed to mark notifications as read', 'error');
+            console.error(`Error bulk updating ${section} status:`, error);
+            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
         });
     }
+
+    // ============================================
+    // ========== 5. DASHBOARD STATS & DATA LOADING ==========
+    // ============================================
 
     // loadDashboardStats
     function loadDashboardStats() {
@@ -1469,6 +1629,32 @@
 
             // Always load trash stats separately (with micro loader)
             loadTrashStats(true);
+        });
+    }
+
+    // Helper function: Update dashboard stats
+    function updateDashboardStats(data) {
+        const stats = {
+            'usersCount': data.users || 0,
+            'coursesCount': data.courses || 0,
+            'jobsCount': data.jobs || 0,
+            'internshipsCount': data.internships || 0,
+            'blogPostsCount': data.blog_posts || 0,
+            'messagesCount': data.unread_messages || 0,
+            'subscribersCount': data.subscribers || 0,
+            'testimonialsCount': data.testimonials || 0,
+            'expiredContentCount': data.total_expired || 0
+        };
+
+        Object.keys(stats).forEach(statId => {
+            const element = document.getElementById(statId);
+            if (element) {
+                element.textContent = stats[statId];
+                // Clear stored value
+                if (element.dataset.originalValue) {
+                    delete element.dataset.originalValue;
+                }
+            }
         });
     }
 
@@ -1571,6 +1757,12 @@
         .finally(() => {
             hideLoading();
         });
+    }
+
+    // Enhanced data loading with filters
+    function loadSectionDataWithFilters(section, page = 1, search = '') {
+        const filters = getCurrentFilters(section);
+        loadSectionData(section, page, search, filters);
     }
 
     function renderTableData(section, data) {
@@ -1780,376 +1972,1533 @@
         return html;
     }
 
-    // Micro loading functions
-    function showCardLoading(cardId) {
-        const card = document.getElementById(cardId);
-        if (card) {
-            card.classList.add('loading');
+    function addRowEventListeners(section, id, row) {
+        console.log(`Adding event listeners for ${section} row ${id}`);
 
-            // Add micro loader to the stat number
-            const statNumber = card.querySelector('.stat-number');
-            if (statNumber) {
-                // Store original value
-                if (!statNumber.dataset.originalValue) {
-                    statNumber.dataset.originalValue = statNumber.textContent;
-                }
-
-                // Create micro loader
-                const loader = document.createElement('div');
-                loader.className = 'micro-loader';
-                loader.innerHTML = `
-                    <div class="micro-loader-dots">
-                        <div class="micro-loader-dot"></div>
-                        <div class="micro-loader-dot"></div>
-                        <div class="micro-loader-dot"></div>
-                    </div>
-                `;
-
-                // Replace content with loader
-                statNumber.innerHTML = '';
-                statNumber.appendChild(loader);
-            }
-        }
-    }
-
-    function hideCardLoading(cardId, newValue = null) {
-        const card = document.getElementById(cardId);
-        if (card) {
-            card.classList.remove('loading');
-
-            // Restore or update value
-            const statNumber = card.querySelector('.stat-number');
-            if (statNumber) {
-                const value = newValue !== null ? newValue : (statNumber.dataset.originalValue || '0');
-                statNumber.textContent = value;
-
-                // Clear stored value
-                if (statNumber.dataset.originalValue) {
-                    delete statNumber.dataset.originalValue;
-                }
-            }
-        }
-    }
-
-    // Show loading on all dashboard cards
-    function showDashboardCardsLoading() {
-        const cardIds = [
-            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
-            'blogPostsCard', 'messagesCard', 'subscribersCard',
-            'testimonialsCard', 'expiredContentCard'
-        ];
-
-        cardIds.forEach(cardId => {
-            showCardLoading(cardId);
-        });
-    }
-
-    // Hide loading from all dashboard cards
-    function hideDashboardCardsLoading() {
-        const cardIds = [
-            'usersCard', 'coursesCard', 'jobsCard', 'internshipsCard',
-            'blogPostsCard', 'messagesCard', 'subscribersCard',
-            'testimonialsCard', 'expiredContentCard'
-        ];
-
-        cardIds.forEach(cardId => {
-            hideCardLoading(cardId);
-        });
-    }
-
-    // Helper function: Show loading on stats
-    function showStatsLoading() {
-        const statIds = [
-            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
-            'blogPostsCount', 'messagesCount', 'subscribersCount',
-            'testimonialsCount', 'expiredContentCount'
-        ];
-
-        statIds.forEach(statId => {
-            const element = document.getElementById(statId);
-            if (element) {
-                // Store original value before showing loader
-                if (!element.dataset.originalValue) {
-                    element.dataset.originalValue = element.textContent;
-                }
-                element.textContent = '...';
-                element.classList.add('loading');
-            }
-        });
-    }
-
-    // Helper function: Hide loading on stats
-    function hideStatsLoading() {
-        const statIds = [
-            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
-            'blogPostsCount', 'messagesCount', 'subscribersCount',
-            'testimonialsCount', 'expiredContentCount'
-        ];
-
-        statIds.forEach(statId => {
-            const element = document.getElementById(statId);
-            if (element) {
-                element.classList.remove('loading');
-            }
-        });
-    }
-
-    // Helper function: Update dashboard stats
-    function updateDashboardStats(data) {
-        const stats = {
-            'usersCount': data.users || 0,
-            'coursesCount': data.courses || 0,
-            'jobsCount': data.jobs || 0,
-            'internshipsCount': data.internships || 0,
-            'blogPostsCount': data.blog_posts || 0,
-            'messagesCount': data.unread_messages || 0,
-            'subscribersCount': data.subscribers || 0,
-            'testimonialsCount': data.testimonials || 0,
-            'expiredContentCount': data.total_expired || 0
-        };
-
-        Object.keys(stats).forEach(statId => {
-            const element = document.getElementById(statId);
-            if (element) {
-                element.textContent = stats[statId];
-                // Clear stored value
-                if (element.dataset.originalValue) {
-                    delete element.dataset.originalValue;
-                }
-            }
-        });
-    }
-
-    // Helper function: Set stats to 0 on error
-    function setStatsToZero() {
-        const statIds = [
-            'usersCount', 'coursesCount', 'jobsCount', 'internshipsCount',
-            'blogPostsCount', 'messagesCount', 'subscribersCount',
-            'testimonialsCount', 'expiredContentCount'
-        ];
-
-        statIds.forEach(statId => {
-            const element = document.getElementById(statId);
-            if (element) {
-                element.textContent = '0';
-                if (element.dataset.originalValue) {
-                    delete element.dataset.originalValue;
-                }
-            }
-        });
-    }
-
-    // Helper function: Show loading in activities area
-     function showActivitiesLoadingState() {
-        const activityList = document.querySelector('.activity-list');
-        if (!activityList) return;
-
-        activityList.innerHTML = `
-            <div class="activity-item loading">
-                <div class="activity-icon">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-                <div class="activity-content">
-                    <p>Loading activities...</p>
-                    <small>Fetching recent updates</small>
-                </div>
-            </div>
-            <div class="activity-item loading">
-                <div class="activity-icon">
-                    <div class="pulse-dot"></div>
-                </div>
-                <div class="activity-content">
-                    <p class="placeholder-text"></p>
-                    <small class="placeholder-text"></small>
-                </div>
-            </div>
-            <div class="activity-item loading">
-                <div class="activity-icon">
-                    <div class="pulse-dot"></div>
-                </div>
-                <div class="activity-content">
-                    <p class="placeholder-text"></p>
-                    <small class="placeholder-text"></small>
-                </div>
-            </div>
-        `;
-    }
-
-    // Initialize activity scrollbar
-    function initActivityScrollbar() {
-        const activityContainer = document.querySelector('.activity-container');
-        const activityList = document.querySelector('.activity-list');
-
-        if (!activityContainer || !activityList) return;
-
-        // Calculate if we need scrollbar
-        const containerHeight = activityContainer.clientHeight;
-        const contentHeight = activityList.scrollHeight;
-
-        // Show scrollbar only if content overflows
-        if (contentHeight > containerHeight) {
-            activityContainer.classList.add('scrollable');
-            console.log(`📜 Scrollbar enabled (Content: ${contentHeight}px, Container: ${containerHeight}px)`);
-        } else {
-            activityContainer.classList.remove('scrollable');
-        }
-
-        // Update on window resize
-        window.addEventListener('resize', initActivityScrollbar);
-    }
-
-    // Helper function: Update activities display
-    function updateActivitiesDisplay(activities) {
-        const activityList = document.querySelector('.activity-list');
-        const activityCount = document.getElementById('activityCount');
-
-        if (!activityList) {
-            console.error('❌ Cannot update activities: .activity-list element not found');
-            return;
-        }
-
-        // Update activity count
-        if (activityCount) {
-            activityCount.textContent = activities?.length || 0;
-        }
-
-        if (!activities || activities.length === 0) {
-            showNoActivitiesMessage();
-            return;
-        }
-
-        console.log(`🔄 Rendering ${activities.length} activities in scrollable container`);
-
-        activityList.innerHTML = activities.map(activity => {
-            const icon = activity.icon || getActivityIcon(activity.type);
-            const message = escapeHTML(activity.message || 'No message');
-            const timeAgo = formatActivityTime(activity.time || activity.timestamp || activity.created_at);
-
-            return `
-                <div class="activity-item">
-                    <div class="activity-icon">
-                        <i class="fas fa-${icon}"></i>
-                    </div>
-                    <div class="activity-content">
-                        <p class="activity-message">${message}</p>
-                        <small class="activity-time">${timeAgo}</small>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Initialize scrollbar after content is loaded
-        setTimeout(initActivityScrollbar, 100);
-    }
-
-    // Helper function: Show no activities message
-    function showNoActivitiesMessage() {
-        const activityList = document.querySelector('.activity-list');
-        const activityCount = document.getElementById('activityCount');
-
-        if (activityList) {
-            activityList.innerHTML = `
-                <div class="activity-item">
-                    <div class="activity-icon">
-                        <i class="fas fa-info-circle"></i>
-                    </div>
-                    <div class="activity-content">
-                        <p>No recent activities</p>
-                        <small>Activities will appear here automatically</small>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon">
-                        <i class="fas fa-envelope"></i>
-                    </div>
-                    <div class="activity-content">
-                        <p>Check Messages</p>
-                        <small>View and reply to user messages</small>
-                    </div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="activity-content">
-                        <p>Manage Users</p>
-                        <small>View recent user registrations</small>
-                    </div>
-                </div>
-            `;
-        }
-
-        if (activityCount) {
-            activityCount.textContent = '0';
-        }
-    }
-
-    // Helper function: Show error in activities
-    function showActivitiesErrorState() {
-        const activityList = document.querySelector('.activity-list');
-        if (!activityList) return;
-
-        activityList.innerHTML = `
-            <div class="activity-item error">
-                <div class="activity-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="activity-content">
-                    <p>Failed to load activities</p>
-                    <small>Please try refreshing</small>
-                </div>
-            </div>
-        `;
-    }
-
-    // Helper function: Get icon for activity type
-    function getActivityIcon(type) {
-        const icons = {
-            'user': 'user-plus',
-            'job': 'briefcase',
-            'course': 'book',
-            'internship': 'user-graduate',
-            'message': 'envelope',
-            'blog': 'blog',
-            'newsletter': 'newspaper',
-            'testimonial': 'comment',
-            'default': 'info-circle'
-        };
-        return icons[type] || icons.default;
-    }
-
-    // Helper function: Format activity time
-    function formatActivityTime(timestamp) {
-        if (!timestamp) return 'Recently';
-
-        try {
-            const date = new Date(timestamp);
-            if (isNaN(date.getTime())) {
-                return 'Recently';
-            }
-
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins} min ago`;
-            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-
-            // For older dates, show formatted date
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: diffDays > 365 ? 'numeric' : undefined
+        const editBtn = row.querySelector('.edit-item');
+        if (editBtn && section !== 'users') { // Skip edit button for users section
+            console.log(`Found edit button for ${section} ${id}`);
+            editBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`Edit button clicked for ${section} ${id}`);
+                openEditModal(section, id);
             });
-        } catch (error) {
-            console.warn('Error formatting activity time:', error);
-            return 'Recently';
+        } else {
+            console.log(`No edit button found for ${section} ${id} or section is users`);
+        }
+
+        const deleteBtn = row.querySelector('.delete-item');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showConfirmation('delete', `Are you sure you want to delete this ${section.slice(0, -1)}? This action cannot be undone.`, () => {
+                    performDelete(section, id);
+                });
+            });
+        }
+
+        const viewMessageBtn = row.querySelector('.view-message');
+        if (viewMessageBtn) {
+            viewMessageBtn.addEventListener('click', () => {
+                viewMessage(id);
+            });
+        }
+
+        const viewBtn = row.querySelector('.view-item');
+        if (viewBtn) {
+            viewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openViewModal(section, id);
+            });
+        }
+
+        const replyMessageBtn = row.querySelector('.reply-message');
+        if (replyMessageBtn) {
+            replyMessageBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = replyMessageBtn.getAttribute('data-id');
+                const email = replyMessageBtn.getAttribute('data-email');
+                const subject = replyMessageBtn.getAttribute('data-subject');
+                console.log('Reply from table:', { id, email, subject });
+                openReplyModal(id, email, subject);
+            });
+        }
+
+        const statusToggle = row.querySelector('.status-toggle-checkbox');
+        if (statusToggle) {
+            statusToggle.addEventListener('change', (e) => {
+                e.stopPropagation();
+                toggleStatus(section, id, statusToggle.checked);
+            });
+        }
+
+        const checkbox = row.querySelector('.row-checkbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                if (checkbox.checked) {
+                    if (!selectedItems[section].includes(id)) {
+                        selectedItems[section].push(id);
+                    }
+                } else {
+                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                }
+                updateSelectAllCheckbox(section);
+                updateBulkButtonState(section, selectedItems[section].length);
+            });
+        }
+
+        // Make message rows clickable but exclude checkboxes
+        if (section === 'messages') {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', (e) => {
+                if (!e.target.closest('input[type="checkbox"]') && !e.target.closest('button')) {
+                    viewMessage(id);
+                }
+            });
         }
     }
+
+    // Silent dashboard refresh function (no blur, only micro loaders)
+    function refreshDashboard() {
+        const button = document.getElementById('refreshDashboardBtn');
+        if (!button) {
+            console.error('❌ Refresh button not found');
+            return;
+        }
+
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        button.disabled = true;
+
+        console.log('🔄 Refreshing dashboard data...');
+
+        loadDashboardStats()
+            .then(() => {
+                showNotification('Dashboard refreshed successfully', 'success');
+            })
+            .catch(error => {
+                console.error('Dashboard refresh error:', error);
+                showNotification('Failed to refresh dashboard', 'error');
+            })
+            .finally(() => {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+            });
+    }
+
+    // ============================================
+    // ========== 6. SEARCH & FILTER FUNCTIONS ==========
+    // ============================================
+
+    // Filter setup
+    function setupSearchFilters() {
+        // Search functionality - ONLY on button click or Enter key
+        document.querySelectorAll('.search-box').forEach(searchBox => {
+            const searchInput = searchBox.querySelector('input');
+            const searchBtn = searchBox.querySelector('.search-btn');
+
+            if (!searchInput || !searchBtn) return;
+
+            // Remove any existing listeners by cloning
+            const newSearchBtn = searchBtn.cloneNode(true);
+            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+
+            // Search button click handler
+            newSearchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const section = searchBox.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
+                const searchTerm = searchInput.value.trim();
+
+                // Show loading state on button
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
+                // Get current filters
+                const filters = getCurrentFilters(sectionId);
+
+                // Reset to page 1 and load data with search and filters
+                if (sectionId === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.currentPage = 1;
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (sectionId === 'expired-content') {
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                } else if (sectionId === 'trash') {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, searchTerm);
+                } else {
+                    // For courses, jobs, internships, blog, users, messages, newsletter
+                    if (currentPage[sectionId] !== undefined) {
+                        currentPage[sectionId] = 1;
+                    }
+                    loadSectionData(sectionId, 1, searchTerm, filters);
+                }
+
+                // Restore button after delay
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }, 1000);
+            });
+
+            // Enter key also triggers search
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    newSearchBtn.click();
+                }
+            });
+        });
+
+        // DROP DOWN FILTER FUNCTIONALITY
+        document.querySelectorAll('.filter-select').forEach(select => {
+            const newSelect = select.cloneNode(true);
+            select.parentNode.replaceChild(newSelect, select);
+
+            newSelect.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const section = this.closest('.admin-section');
+                if (!section) return;
+
+                const sectionId = section.id;
+
+                // Get current search term
+                const searchInput = section.querySelector('.search-box input');
+                const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+                // Get all filters from this section
+                const filters = getCurrentFilters(sectionId);
+
+                console.log(`🎯 Filter changed in ${sectionId}:`, filters);
+
+                // Reset to page 1 and load data with filters
+                if (sectionId === 'testimonials') {
+                    if (window.testimonialManager) {
+                        window.testimonialManager.currentPage = 1;
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                } else if (sectionId === 'expired-content') {
+                    currentExpiredPage = 1;
+                    loadExpiredContentData(1, searchTerm);
+                } else if (sectionId === 'trash') {
+                    currentTrashPage = 1;
+                    loadTrashItems(1, searchTerm);
+                } else {
+                    if (currentPage[sectionId] !== undefined) {
+                        currentPage[sectionId] = 1;
+                    }
+                    loadSectionData(sectionId, 1, searchTerm, filters);
+                }
+            });
+        });
+    }
+
+    function getCurrentFilters(section) {
+        const filters = {};
+
+        switch(section) {
+            case 'courses':
+                const categoryFilter = document.getElementById('courseCategoryFilter');
+                if (categoryFilter && categoryFilter.value) {
+                    filters.category = categoryFilter.value;
+                }
+                break;
+
+            case 'jobs':
+                const jobTypeFilter = document.getElementById('jobTypeFilter');
+                if (jobTypeFilter && jobTypeFilter.value) {
+                    filters.type = jobTypeFilter.value;
+                }
+                break;
+
+            case 'internships':
+                const internshipTypeFilter = document.getElementById('internshipTypeFilter');
+                if (internshipTypeFilter && internshipTypeFilter.value) {
+                    filters.type = internshipTypeFilter.value;
+                }
+                break;
+
+            case 'blog':
+                const blogCategoryFilter = document.getElementById('blogCategoryFilter');
+                if (blogCategoryFilter && blogCategoryFilter.value) {
+                    filters.category = blogCategoryFilter.value;
+                }
+                break;
+
+            case 'users':
+                // Updated: Use status filter instead of role filter
+                const userStatusFilter = document.getElementById('userStatusFilter');
+                if (userStatusFilter && userStatusFilter.value) {
+                    filters.status = userStatusFilter.value;
+                }
+                break;
+
+            case 'messages':
+                const messageStatusFilter = document.getElementById('messageStatusFilter');
+                if (messageStatusFilter && messageStatusFilter.value) {
+                    filters.status = messageStatusFilter.value;
+                }
+                break;
+
+            case 'newsletter':
+                const newsletterStatusFilter = document.getElementById('newsletterStatusFilter');
+                if (newsletterStatusFilter && newsletterStatusFilter.value) {
+                    filters.status = newsletterStatusFilter.value;
+                }
+                break;
+
+            case 'testimonials':
+                const testimonialStatusFilter = document.getElementById('testimonialStatusFilter');
+                if (testimonialStatusFilter && testimonialStatusFilter.value) {
+                    filters.status = testimonialStatusFilter.value;
+                }
+                break;
+
+            case 'expired-content':
+                const expiredTypeFilter = document.getElementById('expiredContentTypeFilter');
+                if (expiredTypeFilter && expiredTypeFilter.value) {
+                    filters.type = expiredTypeFilter.value;
+                }
+                break;
+
+            case 'trash':
+                const trashTypeFilter = document.getElementById('trashTypeFilter');
+                if (trashTypeFilter && trashTypeFilter.value && trashTypeFilter.value !== 'all') {
+                    filters.type = trashTypeFilter.value;
+                }
+                break;
+        }
+
+        return filters;
+    }
+
+    // ============================================
+    // ========== 7. MODAL & FORM FUNCTIONS ==========
+    // ============================================
+
+    // Function to close modal
+    function closeModal() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+
+        // Reset any active forms
+        document.querySelectorAll('form').forEach(form => {
+            if (form.id !== 'messageReplyForm') { // Don't reset reply form completely
+                form.reset();
+            }
+        });
+    }
+
+    // Update the openAddModal function to handle course modal specifically
+    function openAddModal(type) {
+        const modalId = `${type}Modal`;
+        const modal = document.getElementById(modalId);
+
+        if (modal) {
+            // Reset form
+            const form = modal.querySelector('form');
+            if (form) {
+                form.reset();
+                form.querySelector('input[name="id"]').value = '';
+            }
+
+            // Set modal title
+            const titleElement = modal.querySelector('h2');
+            if (titleElement) {
+                titleElement.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            }
+
+            // Special handling for course modal
+            if (type === 'course') {
+                hideCourseImagePreview();
+                // Initialize course image upload after a short delay to ensure modal is visible
+                setTimeout(initCourseImageUpload, 100);
+            }
+
+            // Show modal
+            modal.style.display = 'block';
+        }
+    }
+
+    // Enhanced edit modal function
+    function openEditModal(section, id) {
+        console.log(`Opening edit modal for ${section} with ID: ${id}`);
+
+        // Determine modal and form IDs
+        const modalId = section === 'blog' ? 'blogModal' : `${section.slice(0, -1)}Modal`;
+        const modal = document.getElementById(modalId);
+
+        if (!modal) {
+            console.error(`Modal not found: ${modalId}`);
+            showNotification(`Could not find edit modal`, 'error');
+            return;
+        }
+
+        const formId = section === 'blog' ? 'blogForm' : `${section.slice(0, -1)}Form`;
+        const form = document.getElementById(formId);
+
+        if (!form) {
+            console.error(`Form not found: ${formId}`);
+            return;
+        }
+
+        // Show loading
+        showLoading();
+
+        // Fetch the item data
+        fetch(`/api/admin/${section}/${id}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${section} item`);
+            }
+            return response.json();
+        })
+        .then(item => {
+            console.log(`Received ${section} data:`, item);
+
+            // Set the ID field
+            const idField = form.querySelector('input[name="id"]');
+            if (idField) {
+                idField.value = item.id;
+            }
+
+            // Handle blog section separately
+            if (section === 'blog') {
+                // Set text fields directly
+                const titleField = document.getElementById('blogTitle');
+                if (titleField) titleField.value = item.title || '';
+
+                const authorField = document.getElementById('blogAuthor');
+                if (authorField) authorField.value = item.author || '';
+
+                const contentField = document.getElementById('blogContent');
+                if (contentField) contentField.value = item.content || '';
+
+                const imageField = document.getElementById('blogImage');
+                if (imageField) imageField.value = item.image || '';
+
+                // Set checkboxes
+                const isFeaturedCheckbox = form.querySelector('input[name="is_featured"]');
+                if (isFeaturedCheckbox) isFeaturedCheckbox.checked = item.is_featured === true;
+
+                const isPublishedCheckbox = form.querySelector('input[name="is_published"]');
+                if (isPublishedCheckbox) isPublishedCheckbox.checked = item.is_published === true;
+
+                const isActiveCheckbox = form.querySelector('input[name="is_active"]');
+                if (isActiveCheckbox) isActiveCheckbox.checked = item.is_active === true;
+
+                // Handle single category
+                if (item.categories) {
+                    let categoryValue = '';
+
+                    // Extract category from different possible formats
+                    if (Array.isArray(item.categories) && item.categories.length > 0) {
+                        categoryValue = item.categories[0];
+                    } else if (typeof item.categories === 'string') {
+                        try {
+                            const parsed = JSON.parse(item.categories);
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                categoryValue = parsed[0];
+                            } else {
+                                categoryValue = item.categories;
+                            }
+                        } catch (e) {
+                            categoryValue = item.categories;
+                        }
+                    }
+
+                    console.log('Setting category to:', categoryValue);
+
+                    const categorySelect = document.getElementById('blogCategory');
+                    if (categorySelect && categoryValue) {
+                        categorySelect.value = categoryValue;
+                    }
+
+                    const hiddenInput = document.getElementById('blogCategoriesHidden');
+                    if (hiddenInput) {
+                        hiddenInput.value = JSON.stringify([categoryValue]);
+                    }
+                }
+
+                // Set modal title
+                const titleElement = document.getElementById('blogModalTitle');
+                if (titleElement) {
+                    titleElement.textContent = 'Edit Blog Post';
+                }
+            } else {
+                // For all other sections, reset form first then populate
+                form.reset();
+
+                // Populate all form fields
+                Array.from(form.elements).forEach(element => {
+                    if (element.name && element.name !== 'id') {
+                        const value = item[element.name];
+
+                        if (element.type === 'checkbox') {
+                            element.checked = value === true || value === 'true' || value === 1;
+                        } else if (element.type === 'datetime-local' && value) {
+                            try {
+                                const date = new Date(value);
+                                if (!isNaN(date.getTime())) {
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    element.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                                } else {
+                                    element.value = '';
+                                }
+                            } catch (e) {
+                                element.value = '';
+                            }
+                        } else {
+                            element.value = value !== null && value !== undefined ? value : '';
+                        }
+                    }
+                });
+            }
+
+            // Show the modal
+            modal.style.display = 'block';
+            hideLoading();
+
+            console.log(`✅ Edit modal opened for ${section} ID: ${id}`);
+        })
+        .catch(error => {
+            console.error(`Error loading ${section} item:`, error);
+            showNotification(`Failed to load ${section} item`, 'error');
+            hideLoading();
+        });
+    }
+
+    // Update the edit item function to handle course image
+    function editItem(type, id) {
+        fetch(`/api/admin/${type}/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                const modalId = `${type}Modal`;
+                const modal = document.getElementById(modalId);
+
+                if (modal) {
+                    const form = modal.querySelector('form');
+                    if (form) {
+                        // Fill form with existing data
+                        Object.keys(data).forEach(key => {
+                            const input = form.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                if (input.type === 'checkbox') {
+                                    input.checked = Boolean(data[key]);
+                                } else {
+                                    input.value = data[key] || '';
+                                }
+                            }
+                        });
+
+                        // Special handling for course image
+                        if (type === 'courses' && data.image) {
+                            const imageUrlInput = document.getElementById('courseImageUrl');
+                            if (imageUrlInput) {
+                                imageUrlInput.value = data.image;
+                                updateCourseImagePreview(data.image);
+                            }
+                        }
+
+                        // Set modal title
+                        const titleElement = modal.querySelector('h2');
+                        if (titleElement) {
+                            titleElement.textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1).slice(0, -1)}`;
+                        }
+
+                        modal.style.display = 'block';
+
+                        // Initialize course image upload for edit mode
+                        if (type === 'courses') {
+                            setTimeout(initCourseImageUpload, 100);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching item:', error);
+                showNotification('Error loading item data', 'error');
+            });
+    }
+
+    function setupModals() {
+        // Add event listeners for modal buttons
+        document.getElementById('addCourseBtn')?.addEventListener('click', () => openAddModal('course'));
+        document.getElementById('addJobBtn')?.addEventListener('click', () => openAddModal('job'));
+        document.getElementById('addInternshipBtn')?.addEventListener('click', () => openAddModal('internship'));
+        document.getElementById('addBlogBtn')?.addEventListener('click', () => openAddModal('blog'));
+        document.getElementById('sendNewsletterBtn')?.addEventListener('click', () => openNewsletterModal());
+
+        // Close modal buttons - FIXED: Proper event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('close-modal')) {
+                closeModal();
+            }
+        });
+
+        // Form submissions
+        document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
+        document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
+        document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
+        document.getElementById('blogForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'blog'));
+        document.getElementById('userForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'users'));
+        document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
+        document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
+
+        // Fix reply button in view modal
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'replyFromView' || e.target.closest('#replyFromView')) {
+                const email = document.getElementById('viewMessageEmail').textContent;
+                const messageId = document.getElementById('messageViewModal').getAttribute('data-id');
+                const subject = document.getElementById('viewMessageSubject').textContent;
+
+                closeModal();
+                setTimeout(() => openReplyModal(messageId, email, subject), 300);
+            }
+        });
+
+        // Initialize course image upload when course modal is opened
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'addCourseBtn' || e.target.closest('#addCourseBtn')) {
+                // Initialize course image upload functionality after modal opens
+                setTimeout(initCourseImageUpload, 100);
+            }
+        });
+
+    }
+
+    // Search and filter functionality
+    function setupForms() {
+        // Handle form submissions only
+        document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
+        document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
+        document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
+        document.getElementById('blogForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'blog'));
+        document.getElementById('userForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'users'));
+        document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
+        document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
+    }
+
+    // Form submission
+    // Add a flag to prevent duplicate submissions
+    let isSubmitting = false;
+
+    function handleFormSubmit(e, type) {
+        e.preventDefault();
+
+        // Prevent duplicate submissions
+        if (isSubmitting) {
+            console.log('Form submission already in progress, ignoring...');
+            return;
+        }
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const id = data.id;
+
+        console.log('Form data before processing:', data);
+        console.log('Type:', type);
+        console.log('ID:', id);
+
+        // Convert checkbox values to boolean for ALL types first (like old file)
+        Object.keys(data).forEach(key => {
+            if (data[key] === 'on') {
+                data[key] = true;
+            } else if (data[key] === 'off') {
+                data[key] = false;
+            } else if (data[key] === '') {
+                // Remove empty fields except for text areas and certain fields
+                if (!['description', 'content', 'image', 'salary', 'expiration_date'].includes(key)) {
+                    delete data[key];
+                }
+            }
+
+            // Convert numeric fields
+            if (['rating', 'enrollments', 'duration_hours'].includes(key) && data[key]) {
+                data[key] = parseFloat(data[key]) || 0;
+            }
+        });
+
+        // Handle categories array for blog posts - THIS IS THE KEY PART from old file
+        if (type === 'blog' && data.categories) {
+            try {
+                // The hidden input stores JSON string, parse it to array
+                data.categories = JSON.parse(data.categories);
+                console.log('Parsed categories:', data.categories);
+            } catch (e) {
+                console.log('Error parsing categories, setting empty array:', e);
+                data.categories = [];
+            }
+        }
+
+        // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
+        // Keep is_active as false until manual reactivation
+        if (id && currentSection === 'expired-content') {
+            // If we're editing from expired section, preserve the inactive state
+            // unless explicitly changing it
+            if (typeof data.is_active === 'undefined') {
+                data.is_active = false;
+            }
+        } else {
+            // For normal edits, sync featured state with active state for new items
+            if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
+                data.is_featured = data.is_active;
+            }
+        }
+
+        // For new items, remove the ID field completely (CRITICAL FIX)
+        if (!id || id === '' || id === 'null') {
+            delete data.id;
+        }
+
+        // Validate required fields (exactly like old file)
+        const required_fields = {
+            'courses': ['title', 'category', 'instructor', 'application_link'],
+            'jobs': ['title', 'company', 'location', 'application_link'],
+            'internships': ['title', 'company', 'location', 'application_link'],
+            'blog': ['title', 'author', 'content', 'categories']
+        };
+
+        if (type in required_fields) {
+            for (const field of required_fields[type]) {
+                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
+                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
+                    return;
+                }
+            }
+        }
+
+        // Determine the correct endpoint and method
+        const url = id && id !== '' && id !== 'null' ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
+        const method = id && id !== '' && id !== 'null' ? 'PUT' : 'POST';
+
+        console.log(`Sending ${method} request to ${url} with data:`, data);
+
+        // Set submitting flag to prevent duplicates
+        isSubmitting = true;
+        showLoading();
+
+        fetch(url, {
+            method: method,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    console.error('Error response:', errorData);
+                    throw new Error(errorData.message || errorData.error || `Failed to ${id ? 'update' : 'create'} ${type}`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('Success response:', result);
+            if (result.success) {
+                showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
+
+                // Close modal and reset form
+                closeModal();
+                form.reset();
+
+                // Clear category if it's a blog form
+                if (type === 'blog' && blogCategoriesManager) {
+                    blogCategoriesManager.clearSelections();
+                }
+
+                // Clear expiration date field specifically for new items
+                if (!id) {
+                    const expirationDateInput = form.querySelector('input[name="expiration_date"]');
+                    if (expirationDateInput) {
+                        expirationDateInput.value = '';
+                    }
+                }
+
+                // Reload the appropriate section
+                if (currentSection === 'expired-content') {
+                    loadExpiredContentData(currentExpiredPage);
+                } else {
+                    loadSectionData(type, currentPage[type]);
+                }
+            } else {
+                showNotification(result.message || result.error || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(`Error ${id ? 'updating' : 'creating'} ${type}:`, error);
+            showNotification(error.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+        })
+        .finally(() => {
+            // Reset submitting flag after a short delay to prevent rapid successive submissions
+            setTimeout(() => {
+                isSubmitting = false;
+            }, 1000);
+            hideLoading();
+        });
+    }
+
+    // Newsletter form handling
+    function handleNewsletterSubmit(e) {
+        e.preventDefault();
+
+        // Show loading state
+        showLoading();
+
+        // Simulate API call - replace with actual implementation
+        setTimeout(() => {
+            showNotification('Newsletter sent successfully!', 'success');
+            closeModal();
+            hideLoading();
+        }, 1000);
+
+        // Actual implementation would look like:
+        fetch('/api/admin/newsletter/send', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showNotification('Newsletter sent successfully!', 'success');
+                closeModal();
+            } else {
+                showNotification(result.message || 'Failed to send newsletter', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending newsletter:', error);
+            showNotification('Failed to send newsletter', 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    function openNewsletterModal() {
+        const modal = document.getElementById('newsletterModal');
+        if (!modal) return;
+
+        const form = document.getElementById('newsletterForm');
+        if (form) form.reset();
+
+        modal.style.display = 'block';
+    }
+
+    function openReplyModal(id, email, subject = '') {
+        console.log('Opening reply modal for:', { id, email, subject });
+
+        const modal = document.getElementById('messageReplyModal');
+        if (!modal) {
+            console.error('Reply modal not found');
+            return;
+        }
+
+        // Reset and set basic form values
+        document.getElementById('messageId').value = id;
+        document.getElementById('recipientEmail').value = email;
+
+        const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+        document.getElementById('replySubject').value = replySubject;
+
+        // Update display fields
+        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+        document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
+
+        // Clear reply message area
+        document.getElementById('replyMessage').value = '';
+        updateCharCount();
+
+        // Set loading state
+        document.getElementById('originalSender').textContent = 'Loading...';
+        document.getElementById('originalSubject').textContent = 'Loading...';
+        document.getElementById('originalDate').textContent = 'Loading...';
+        document.getElementById('originalMessageContent').innerHTML = '<div class="message-content-loading">Loading message content...</div>';
+
+        // Always fetch fresh message data to ensure we have the complete message
+        fetch(`/api/admin/messages/${id}`, {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch message details');
+            return response.json();
+        })
+        .then(message => {
+            console.log('Message data loaded:', message);
+
+            // Update all fields with the message data
+            document.getElementById('originalSender').textContent = `${message.name} <${message.email}>`;
+            document.getElementById('originalSubject').textContent = message.subject || 'No subject';
+            document.getElementById('originalDate').textContent = formatDate(message.created_at, true);
+
+            // Update message content
+            const messageContent = document.getElementById('originalMessageContent');
+            if (message.message) {
+                // Preserve line breaks and basic formatting
+                const formattedMessage = message.message
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+                messageContent.innerHTML = formattedMessage;
+            } else {
+                messageContent.innerHTML = '<em>No message content available</em>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading message details:', error);
+            // Fallback values
+            document.getElementById('originalSender').textContent = 'Unknown sender';
+            document.getElementById('originalSubject').textContent = subject || 'No subject';
+            document.getElementById('originalDate').textContent = 'Unknown date';
+            document.getElementById('originalMessageContent').innerHTML = '<em>Failed to load message content</em>';
+        });
+
+        // Show modal
+        modal.style.display = 'block';
+
+        // Focus on message area
+        setTimeout(() => {
+            document.getElementById('replyMessage').focus();
+        }, 100);
+    }
+
+    function updateCharCount() {
+        const textarea = document.getElementById('replyMessage');
+        const charCount = document.querySelector('#messageReplyModal .char-count');
+
+        if (textarea && charCount) {
+            const count = textarea.value.length;
+            charCount.textContent = `${count} characters`;
+
+            // Remove all classes first
+            charCount.classList.remove('warning', 'error');
+
+            // Add appropriate class based on length
+            if (count > 2000) {
+                charCount.classList.add('error');
+            } else if (count > 1000) {
+                charCount.classList.add('warning');
+            }
+        }
+    }
+
+    function viewMessage(id) {
+        fetch(`/api/admin/messages/${id}`, {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch message');
+            return response.json();
+        })
+        .then(message => {
+            const modal = document.getElementById('messageViewModal');
+            if (!modal) return;
+
+            // Store the complete message data for reply functionality
+            modal._messageData = {
+                id: message.id,
+                name: message.name,
+                email: message.email,
+                subject: message.subject,
+                message: message.message,
+                created_at: message.created_at,
+                status: message.status
+            };
+
+            console.log('Message data stored for reply:', modal._messageData);
+
+            // Update message details in view modal
+            document.getElementById('viewMessageName').textContent = message.name || 'Unknown';
+            document.getElementById('viewMessageEmail').textContent = message.email || 'No email';
+            document.getElementById('viewMessageSubject').textContent = message.subject || 'No subject';
+            document.getElementById('viewMessageDate').textContent = formatDate(message.created_at, true);
+
+            // Status with proper styling
+            const statusElement = document.getElementById('viewMessageStatus');
+            statusElement.textContent = message.status ?
+                message.status.charAt(0).toUpperCase() + message.status.slice(1) : 'Unknown';
+            statusElement.className = 'message-value status-badge ' + (message.status || 'unknown');
+
+            // Message content
+            document.getElementById('viewMessageContent').textContent = message.message || 'No message content available';
+
+            // Show modal
+            modal.style.display = 'block';
+
+            // Mark as read if unread
+            if (message.status === 'unread') {
+                fetch(`/api/admin/messages/${id}/status`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'read' })
+                }).then(() => {
+                    if (currentSection === 'messages') {
+                        loadSectionData('messages', currentPage.messages);
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading message:', error);
+            showNotification('Failed to load message', 'error');
+        });
+    }
+
+    // Enhanced form submission
+    function handleMessageReplySubmit(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        // Validate required fields
+        if (!data.message || data.message.trim() === '') {
+            showNotification('Please enter a reply message before sending', 'error');
+            document.getElementById('replyMessage').focus();
+            return;
+        }
+
+        if (data.message.trim().length < 10) {
+            showNotification('Please write a more detailed reply (minimum 10 characters)', 'warning');
+            document.getElementById('replyMessage').focus();
+            return;
+        }
+
+        const submitButton = document.getElementById('sendReplyBtn');
+        const originalText = submitButton.innerHTML;
+
+        // Show loading state
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+        fetch('/api/admin/messages/reply', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || 'Failed to send reply');
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                showNotification('✅ Reply sent successfully!', 'success');
+
+                // Close modal and reset form
+                closeModal();
+                form.reset();
+
+                // Update message status to replied and reload messages
+                fetch(`/api/admin/messages/${data.message_id}/status`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'replied' })
+                }).then(() => {
+                    if (currentSection === 'messages') {
+                        loadSectionData('messages', currentPage.messages);
+                    }
+                });
+            } else {
+                showNotification(result.message || 'Failed to send reply', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending reply:', error);
+            showNotification('Failed to send reply. Please check your connection and try again.', 'error');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
+        });
+    }
+
+    // ============================================
+    // ========== 8. COURSE IMAGE UPLOAD FUNCTIONS ==========
+    // ============================================
+
+    // Initialize course image upload functionality
+    function initCourseImageUpload() {
+        const uploadBtn = document.getElementById('uploadCourseImageBtn');
+        const fileInput = document.getElementById('courseImageUpload');
+        const imageUrlInput = document.getElementById('courseImageUrl');
+        const imagePreview = document.getElementById('courseImagePreview');
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+        const removeImageBtn = document.getElementById('removeCourseImage');
+
+        if (!uploadBtn || !fileInput) return;
+
+        // Remove existing event listeners to prevent duplicates
+        uploadBtn.replaceWith(uploadBtn.cloneNode(true));
+        fileInput.replaceWith(fileInput.cloneNode(true));
+
+        // Get fresh references after cloning
+        const newUploadBtn = document.getElementById('uploadCourseImageBtn');
+        const newFileInput = document.getElementById('courseImageUpload');
+
+        // Handle upload button click
+        newUploadBtn.addEventListener('click', () => {
+            newFileInput.click();
+        });
+
+        // Handle file selection
+        newFileInput.addEventListener('change', handleCourseImageUpload);
+
+        // Handle URL input changes
+        if (imageUrlInput) {
+            imageUrlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url) {
+                    updateCourseImagePreview(url);
+                } else {
+                    hideCourseImagePreview();
+                }
+            });
+        }
+
+        // Handle remove image button
+        if (removeImageBtn) {
+            removeImageBtn.addEventListener('click', function() {
+                hideCourseImagePreview();
+                if (imageUrlInput) imageUrlInput.value = '';
+                if (newFileInput) newFileInput.value = '';
+            });
+        }
+
+        // Handle drag and drop
+        const uploadContainer = document.querySelector('.image-upload-container');
+        if (uploadContainer) {
+            uploadContainer.addEventListener('dragover', handleDragOver);
+            uploadContainer.addEventListener('drop', handleCourseImageDrop);
+        }
+
+        // Initialize image preview if URL already exists
+        if (imageUrlInput && imageUrlInput.value) {
+            updateCourseImagePreview(imageUrlInput.value);
+        }
+    }
+
+    function handleCourseImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            showNotification('Please select a valid image file (JPEG, PNG, GIF)', 'error');
+            return;
+        }
+
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showNotification('Image size should be less than 5MB', 'error');
+            return;
+        }
+
+        uploadCourseImage(file);
+    }
+
+    function handleCourseImageDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const file = event.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            uploadCourseImage(file);
+        }
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+    }
+
+    function uploadCourseImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showLoading();
+
+        fetch('/api/admin/courses/upload-image', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                const imageUrlInput = document.getElementById('courseImageUrl');
+                if (imageUrlInput) {
+                    imageUrlInput.value = data.image_url;
+                    updateCourseImagePreview(data.image_url);
+                }
+                showNotification('Image uploaded successfully!', 'success');
+            } else {
+                showNotification(data.error || 'Failed to upload image', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error uploading image:', error);
+            showNotification('Error uploading image', 'error');
+        });
+    }
+
+    function updateCourseImagePreview(imageUrl) {
+        const imagePreview = document.getElementById('courseImagePreview');
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+
+        if (imagePreview && previewContainer) {
+            imagePreview.src = imageUrl;
+            previewContainer.style.display = 'block';
+
+            // Add error handling for broken images
+            imagePreview.onerror = function() {
+                showNotification('Failed to load image from URL', 'error');
+                hideCourseImagePreview();
+            };
+        }
+    }
+
+    function hideCourseImagePreview() {
+        const previewContainer = document.getElementById('courseImagePreviewContainer');
+        if (previewContainer) {
+            previewContainer.style.display = 'none';
+        }
+    }
+
+    // ============================================
+    // ========== 9. STATUS & DELETE FUNCTIONS ==========
+    // ============================================
+
+    // Toggle status (active/inactive) - For all contents
+    function toggleStatus(section, id, isActive) {
+        showLoading();
+
+        // Fix section name for API endpoint - IMPORTANT: blog becomes blog_posts
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog_posts';
+        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
+
+        console.log(`Toggling ${section} (API: ${apiSection}) ID: ${id} to: ${isActive}`);
+
+        // Prepare the request data - ensure it's properly formatted
+        const updateData = {
+            is_active: Boolean(isActive)  // Ensure it's a boolean
+        };
+
+        // For courses, jobs, internships, and blog, active state also controls featured state
+        if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
+            updateData.is_featured = Boolean(isActive);
+        }
+
+        console.log('Sending update data:', updateData);
+
+        fetch(`/api/admin/${apiSection}/${id}/status`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                is_active: Boolean(isActive)
+            })
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || `Failed to update ${section} status`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('Response data:', result);
+            if (result.success) {
+                const statusText = isActive ? 'activated & featured' : 'deactivated';
+                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${statusText} successfully`, 'success');
+
+                // Update the status text in the UI
+                const statusTextElement = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`).closest('.status-toggle').querySelector('.status-text');
+                if (statusTextElement) {
+                    statusTextElement.textContent = isActive ? 'Active & Featured' : 'Inactive';
+                }
+
+                // Reload the section to reflect changes immediately
+                loadSectionData(section, currentPage[section]);
+            } else {
+                showNotification(result.message || `Failed to update ${section} status`, 'error');
+                // Revert the checkbox state
+                const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`);
+                if (checkbox) {
+                    checkbox.checked = !isActive;
+                }
+            }
+        })
+        .catch(error => {
+            console.error(`Error updating ${section} status:`, error);
+            showNotification(error.message || `Failed to update ${section} status`, 'error');
+            // Revert the checkbox state
+            const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`);
+            if (checkbox) {
+                checkbox.checked = !isActive;
+            }
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    // Perform soft delete operation
+    function performDelete(section, id) {
+        showLoading();
+
+        // Map section to API endpoint
+        let apiSection = section;
+        if (section === 'blog') apiSection = 'blog';
+        if (section === 'testimonials') apiSection = 'testimonials';
+        if (section === 'courses') apiSection = 'courses';
+        if (section === 'jobs') apiSection = 'jobs';
+        if (section === 'internships') apiSection = 'internships';
+        if (section === 'users') apiSection = 'users';
+        if (section === 'messages') apiSection = 'messages';
+        if (section === 'newsletter') apiSection = 'newsletter';
+
+        console.log(`Deleting ${section} with ID: ${id} using endpoint: ${apiSection}`);
+
+        fetch(`/api/admin/${apiSection}/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.error || `Failed to delete ${section}`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                const itemName = section.charAt(0).toUpperCase() + section.slice(1);
+                showNotification(`${itemName} moved to trash`, 'success');
+
+                // Remove the item from the UI immediately
+                const tableBody = document.getElementById(`${section}TableBody`);
+                if (tableBody) {
+                    const row = tableBody.querySelector(`tr .row-checkbox[data-id="${id}"]`)?.closest('tr');
+                    if (row) {
+                        row.remove();
+                    }
+
+                    // Check if table is empty and show message
+                    if (tableBody.children.length === 0) {
+                        const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
+                        tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data found</td></tr>`;
+                    }
+                }
+
+                // Update dashboard stats (including trash count)
+                loadDashboardStats();
+                loadTrashStats(true);
+
+                // If we're in the trash section, refresh it
+                if (currentSection === 'trash') {
+                    loadTrashItems(currentTrashPage);
+                }
+
+                // Clear from selected items
+                if (selectedItems[section]) {
+                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                    updateSelectAllCheckbox(section);
+                    updateBulkButtonState(section, selectedItems[section].length);
+                }
+            } else {
+                showNotification(result.message || `Failed to delete ${section}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error(`Error deleting ${section}:`, error);
+            showNotification(error.message || `Failed to delete ${section}`, 'error');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    // Update the showConfirmation function to handle back button logout
+    function showConfirmation(type, message, confirmCallback) {
+        const modal = document.getElementById('confirmationModal');
+        const confirmCard = document.getElementById('confirmCard');
+
+        if (!modal || !confirmCard) {
+            console.error('Confirmation modal elements not found');
+            return;
+        }
+
+        // Define defaults
+        let iconClass = 'fa-question-circle';
+        let title = 'Confirm Action';
+        let confirmText = 'Confirm';
+        let confirmClass = 'default';
+
+        // Customize by type
+        switch (type) {
+            case 'logout':
+                iconClass = 'fa-sign-out-alt';
+                title = 'Confirm Logout';
+                confirmText = 'Yes, Logout';
+                confirmClass = 'logout';
+                message = 'Are you sure you want to logout? You will need to log in again to access the admin dashboard.';
+                break;
+            case 'back_button_logout':
+                iconClass = 'fa-exclamation-triangle';
+                title = 'Leave Admin Dashboard?';
+                confirmText = 'Yes, Leave';
+                confirmClass = 'warning';
+                message = message || 'You are about to leave the admin dashboard. This will log you out. Do you want to continue?';
+                break;
+            case 'external_navigation':
+                iconClass = 'fa-external-link-alt';
+                title = 'Leave Admin Dashboard?';
+                confirmText = 'Continue';
+                confirmClass = 'warning';
+                break;
+            case 'delete':
+            case 'bulk_delete':
+                iconClass = 'fa-trash-alt';
+                title = 'Confirm Deletion';
+                confirmText = 'Delete';
+                confirmClass = 'delete';
+                break;
+            case 'reactivate':
+                iconClass = 'fa-undo';
+                title = 'Confirm Reactivation';
+                confirmText = 'Reactivate';
+                confirmClass = 'reactivate';
+                break;
+            case 'bulk_action':
+                iconClass = 'fa-tasks';
+                title = 'Confirm Bulk Action';
+                confirmText = 'Proceed';
+                confirmClass = 'bulk';
+                break;
+            default:
+                iconClass = 'fa-question-circle';
+                title = 'Confirm Action';
+                confirmText = 'Confirm';
+                confirmClass = 'default';
+        }
+
+        // Update modal content
+        confirmCard.className = `confirm-card ${confirmClass}`;
+        confirmCard.innerHTML = `
+            <i class="fas ${iconClass} confirm-icon"></i>
+            <h3 class="confirm-title">${title}</h3>
+            <p class="confirm-message">${message}</p>
+            <div class="confirm-actions">
+                <button class="confirm-btn cancel" id="cancelBtn">Cancel</button>
+                <button class="confirm-btn confirm" id="confirmBtn">${confirmText}</button>
+            </div>
+        `;
+
+        modal.style.display = 'block';
+
+        // Re-bind buttons with enhanced logout handling
+        setTimeout(() => {
+            const cancelBtn = document.getElementById('cancelBtn');
+            const confirmBtn = document.getElementById('confirmBtn');
+            if (!cancelBtn || !confirmBtn) return;
+
+            const newCancel = cancelBtn.cloneNode(true);
+            const newConfirm = confirmBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+
+            newCancel.addEventListener('click', () => {
+                closeModal();
+            });
+
+            newConfirm.addEventListener('click', () => {
+                // Enhanced logout handling
+                if (type === 'logout' || type === 'back_button_logout') {
+                    // Clear all session data
+                    sessionStorage.removeItem('adminSessionStarted');
+                    sessionStorage.removeItem('currentSection');
+                    sessionStorage.removeItem('logoutMessage');
+
+                    // Set logout flag to prevent back button issues
+                    sessionStorage.setItem('logoutInitiated', 'true');
+                }
+
+                if (confirmCallback) confirmCallback();
+                closeModal();
+            });
+
+            // Focus on cancel button for accessibility
+            newCancel.focus();
+        }, 10);
+    }
+
+    // ============================================
+    // ========== 10. VIEW MODAL FUNCTIONS ==========
+    // ============================================
 
     // View modal function
     function openViewModal(section, id) {
@@ -2509,1617 +3858,9 @@
         return html;
     }
 
-    function addRowEventListeners(section, id, row) {
-        console.log(`Adding event listeners for ${section} row ${id}`);
-
-        const editBtn = row.querySelector('.edit-item');
-        if (editBtn && section !== 'users') { // Skip edit button for users section
-            console.log(`Found edit button for ${section} ${id}`);
-            editBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`Edit button clicked for ${section} ${id}`);
-                openEditModal(section, id);
-            });
-        } else {
-            console.log(`No edit button found for ${section} ${id} or section is users`);
-        }
-
-        const deleteBtn = row.querySelector('.delete-item');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showConfirmation('delete', `Are you sure you want to delete this ${section.slice(0, -1)}? This action cannot be undone.`, () => {
-                    performDelete(section, id);
-                });
-            });
-        }
-
-        const viewMessageBtn = row.querySelector('.view-message');
-        if (viewMessageBtn) {
-            viewMessageBtn.addEventListener('click', () => {
-                viewMessage(id);
-            });
-        }
-
-        const viewBtn = row.querySelector('.view-item');
-        if (viewBtn) {
-            viewBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openViewModal(section, id);
-            });
-        }
-
-        const replyMessageBtn = row.querySelector('.reply-message');
-        if (replyMessageBtn) {
-            replyMessageBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const id = replyMessageBtn.getAttribute('data-id');
-                const email = replyMessageBtn.getAttribute('data-email');
-                const subject = replyMessageBtn.getAttribute('data-subject');
-                console.log('Reply from table:', { id, email, subject });
-                openReplyModal(id, email, subject);
-            });
-        }
-
-        const statusToggle = row.querySelector('.status-toggle-checkbox');
-        if (statusToggle) {
-            statusToggle.addEventListener('change', (e) => {
-                e.stopPropagation();
-                toggleStatus(section, id, statusToggle.checked);
-            });
-        }
-
-        const checkbox = row.querySelector('.row-checkbox');
-        if (checkbox) {
-            checkbox.addEventListener('change', (e) => {
-                e.stopPropagation();
-                if (checkbox.checked) {
-                    if (!selectedItems[section].includes(id)) {
-                        selectedItems[section].push(id);
-                    }
-                } else {
-                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
-                }
-                updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, selectedItems[section].length);
-            });
-        }
-
-        // Make message rows clickable but exclude checkboxes
-        if (section === 'messages') {
-            row.style.cursor = 'pointer';
-            row.addEventListener('click', (e) => {
-                if (!e.target.closest('input[type="checkbox"]') && !e.target.closest('button')) {
-                    viewMessage(id);
-                }
-            });
-        }
-    }
-
-    // Toggle status (active/inactive) - For all contents
-    function toggleStatus(section, id, isActive) {
-        showLoading();
-
-        // Fix section name for API endpoint - IMPORTANT: blog becomes blog_posts
-        let apiSection = section;
-        if (section === 'blog') apiSection = 'blog_posts';
-        if (section === 'newsletter') apiSection = 'newsletter_subscribers';
-
-        console.log(`Toggling ${section} (API: ${apiSection}) ID: ${id} to: ${isActive}`);
-
-        // Prepare the request data - ensure it's properly formatted
-        const updateData = {
-            is_active: Boolean(isActive)  // Ensure it's a boolean
-        };
-
-        // For courses, jobs, internships, and blog, active state also controls featured state
-        if (['courses', 'jobs', 'internships', 'blog'].includes(section)) {
-            updateData.is_featured = Boolean(isActive);
-        }
-
-        console.log('Sending update data:', updateData);
-
-        fetch(`/api/admin/${apiSection}/${id}/status`, {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                is_active: Boolean(isActive)
-            })
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    throw new Error(errorData.message || `Failed to update ${section} status`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            console.log('Response data:', result);
-            if (result.success) {
-                const statusText = isActive ? 'activated & featured' : 'deactivated';
-                showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} ${statusText} successfully`, 'success');
-
-                // Update the status text in the UI
-                const statusTextElement = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`).closest('.status-toggle').querySelector('.status-text');
-                if (statusTextElement) {
-                    statusTextElement.textContent = isActive ? 'Active & Featured' : 'Inactive';
-                }
-
-                // Reload the section to reflect changes immediately
-                loadSectionData(section, currentPage[section]);
-            } else {
-                showNotification(result.message || `Failed to update ${section} status`, 'error');
-                // Revert the checkbox state
-                const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`);
-                if (checkbox) {
-                    checkbox.checked = !isActive;
-                }
-            }
-        })
-        .catch(error => {
-            console.error(`Error updating ${section} status:`, error);
-            showNotification(error.message || `Failed to update ${section} status`, 'error');
-            // Revert the checkbox state
-            const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${id}"]`);
-            if (checkbox) {
-                checkbox.checked = !isActive;
-            }
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-    // Update the showConfirmation function to handle back button logout
-    function showConfirmation(type, message, confirmCallback) {
-        const modal = document.getElementById('confirmationModal');
-        const confirmCard = document.getElementById('confirmCard');
-
-        if (!modal || !confirmCard) {
-            console.error('Confirmation modal elements not found');
-            return;
-        }
-
-        // Define defaults
-        let iconClass = 'fa-question-circle';
-        let title = 'Confirm Action';
-        let confirmText = 'Confirm';
-        let confirmClass = 'default';
-
-        // Customize by type
-        switch (type) {
-            case 'logout':
-                iconClass = 'fa-sign-out-alt';
-                title = 'Confirm Logout';
-                confirmText = 'Yes, Logout';
-                confirmClass = 'logout';
-                message = 'Are you sure you want to logout? You will need to log in again to access the admin dashboard.';
-                break;
-            case 'back_button_logout':
-                iconClass = 'fa-exclamation-triangle';
-                title = 'Leave Admin Dashboard?';
-                confirmText = 'Yes, Leave';
-                confirmClass = 'warning';
-                message = message || 'You are about to leave the admin dashboard. This will log you out. Do you want to continue?';
-                break;
-            case 'external_navigation':
-                iconClass = 'fa-external-link-alt';
-                title = 'Leave Admin Dashboard?';
-                confirmText = 'Continue';
-                confirmClass = 'warning';
-                break;
-            case 'delete':
-            case 'bulk_delete':
-                iconClass = 'fa-trash-alt';
-                title = 'Confirm Deletion';
-                confirmText = 'Delete';
-                confirmClass = 'delete';
-                break;
-            case 'reactivate':
-                iconClass = 'fa-undo';
-                title = 'Confirm Reactivation';
-                confirmText = 'Reactivate';
-                confirmClass = 'reactivate';
-                break;
-            case 'bulk_action':
-                iconClass = 'fa-tasks';
-                title = 'Confirm Bulk Action';
-                confirmText = 'Proceed';
-                confirmClass = 'bulk';
-                break;
-            default:
-                iconClass = 'fa-question-circle';
-                title = 'Confirm Action';
-                confirmText = 'Confirm';
-                confirmClass = 'default';
-        }
-
-        // Update modal content
-        confirmCard.className = `confirm-card ${confirmClass}`;
-        confirmCard.innerHTML = `
-            <i class="fas ${iconClass} confirm-icon"></i>
-            <h3 class="confirm-title">${title}</h3>
-            <p class="confirm-message">${message}</p>
-            <div class="confirm-actions">
-                <button class="confirm-btn cancel" id="cancelBtn">Cancel</button>
-                <button class="confirm-btn confirm" id="confirmBtn">${confirmText}</button>
-            </div>
-        `;
-
-        modal.style.display = 'block';
-
-        // Re-bind buttons with enhanced logout handling
-        setTimeout(() => {
-            const cancelBtn = document.getElementById('cancelBtn');
-            const confirmBtn = document.getElementById('confirmBtn');
-            if (!cancelBtn || !confirmBtn) return;
-
-            const newCancel = cancelBtn.cloneNode(true);
-            const newConfirm = confirmBtn.cloneNode(true);
-            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
-
-            newCancel.addEventListener('click', () => {
-                closeModal();
-            });
-
-            newConfirm.addEventListener('click', () => {
-                // Enhanced logout handling
-                if (type === 'logout' || type === 'back_button_logout') {
-                    // Clear all session data
-                    sessionStorage.removeItem('adminSessionStarted');
-                    sessionStorage.removeItem('currentSection');
-                    sessionStorage.removeItem('logoutMessage');
-
-                    // Set logout flag to prevent back button issues
-                    sessionStorage.setItem('logoutInitiated', 'true');
-                }
-
-                if (confirmCallback) confirmCallback();
-                closeModal();
-            });
-
-            // Focus on cancel button for accessibility
-            newCancel.focus();
-        }, 10);
-    }
-
-    // Function to close modal
-    function closeModal() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = 'none';
-        });
-
-        // Reset any active forms
-        document.querySelectorAll('form').forEach(form => {
-            if (form.id !== 'messageReplyForm') { // Don't reset reply form completely
-                form.reset();
-            }
-        });
-    }
-
-    // Perform soft delete operation
-    function performDelete(section, id) {
-        showLoading();
-
-        // Map section to API endpoint
-        let apiSection = section;
-        if (section === 'blog') apiSection = 'blog';
-        if (section === 'testimonials') apiSection = 'testimonials';
-        if (section === 'courses') apiSection = 'courses';
-        if (section === 'jobs') apiSection = 'jobs';
-        if (section === 'internships') apiSection = 'internships';
-        if (section === 'users') apiSection = 'users';
-        if (section === 'messages') apiSection = 'messages';
-        if (section === 'newsletter') apiSection = 'newsletter';
-
-        console.log(`Deleting ${section} with ID: ${id} using endpoint: ${apiSection}`);
-
-        fetch(`/api/admin/${apiSection}/${id}`, {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || `Failed to delete ${section}`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                const itemName = section.charAt(0).toUpperCase() + section.slice(1);
-                showNotification(`${itemName} moved to trash`, 'success');
-
-                // Remove the item from the UI immediately
-                const tableBody = document.getElementById(`${section}TableBody`);
-                if (tableBody) {
-                    const row = tableBody.querySelector(`tr .row-checkbox[data-id="${id}"]`)?.closest('tr');
-                    if (row) {
-                        row.remove();
-                    }
-
-                    // Check if table is empty and show message
-                    if (tableBody.children.length === 0) {
-                        const colSpan = document.querySelector(`#${section} thead tr`)?.cells.length || 8;
-                        tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data found</td></tr>`;
-                    }
-                }
-
-                // Update dashboard stats (including trash count)
-                loadDashboardStats();
-                loadTrashStats(true);
-
-                // If we're in the trash section, refresh it
-                if (currentSection === 'trash') {
-                    loadTrashItems(currentTrashPage);
-                }
-
-                // Clear from selected items
-                if (selectedItems[section]) {
-                    selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
-                    updateSelectAllCheckbox(section);
-                    updateBulkButtonState(section, selectedItems[section].length);
-                }
-            } else {
-                showNotification(result.message || `Failed to delete ${section}`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error deleting ${section}:`, error);
-            showNotification(error.message || `Failed to delete ${section}`, 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-    function setupModals() {
-        // Add event listeners for modal buttons
-        document.getElementById('addCourseBtn')?.addEventListener('click', () => openAddModal('course'));
-        document.getElementById('addJobBtn')?.addEventListener('click', () => openAddModal('job'));
-        document.getElementById('addInternshipBtn')?.addEventListener('click', () => openAddModal('internship'));
-        document.getElementById('addBlogBtn')?.addEventListener('click', () => openAddModal('blog'));
-        document.getElementById('sendNewsletterBtn')?.addEventListener('click', () => openNewsletterModal());
-
-        // Close modal buttons - FIXED: Proper event delegation
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('close-modal')) {
-                closeModal();
-            }
-        });
-
-        // Form submissions
-        document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
-        document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
-        document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
-        document.getElementById('blogForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'blog'));
-        document.getElementById('userForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'users'));
-        document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
-        document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
-
-        // Fix reply button in view modal
-        document.addEventListener('click', function(e) {
-            if (e.target.id === 'replyFromView' || e.target.closest('#replyFromView')) {
-                const email = document.getElementById('viewMessageEmail').textContent;
-                const messageId = document.getElementById('messageViewModal').getAttribute('data-id');
-                const subject = document.getElementById('viewMessageSubject').textContent;
-
-                closeModal();
-                setTimeout(() => openReplyModal(messageId, email, subject), 300);
-            }
-        });
-
-        // Initialize course image upload when course modal is opened
-        document.addEventListener('click', function(e) {
-            if (e.target.id === 'addCourseBtn' || e.target.closest('#addCourseBtn')) {
-                // Initialize course image upload functionality after modal opens
-                setTimeout(initCourseImageUpload, 100);
-            }
-        });
-
-    }
-
-    // Initialize course image upload functionality
-    function initCourseImageUpload() {
-        const uploadBtn = document.getElementById('uploadCourseImageBtn');
-        const fileInput = document.getElementById('courseImageUpload');
-        const imageUrlInput = document.getElementById('courseImageUrl');
-        const imagePreview = document.getElementById('courseImagePreview');
-        const previewContainer = document.getElementById('courseImagePreviewContainer');
-        const removeImageBtn = document.getElementById('removeCourseImage');
-
-        if (!uploadBtn || !fileInput) return;
-
-        // Remove existing event listeners to prevent duplicates
-        uploadBtn.replaceWith(uploadBtn.cloneNode(true));
-        fileInput.replaceWith(fileInput.cloneNode(true));
-
-        // Get fresh references after cloning
-        const newUploadBtn = document.getElementById('uploadCourseImageBtn');
-        const newFileInput = document.getElementById('courseImageUpload');
-
-        // Handle upload button click
-        newUploadBtn.addEventListener('click', () => {
-            newFileInput.click();
-        });
-
-        // Handle file selection
-        newFileInput.addEventListener('change', handleCourseImageUpload);
-
-        // Handle URL input changes
-        if (imageUrlInput) {
-            imageUrlInput.addEventListener('input', function() {
-                const url = this.value.trim();
-                if (url) {
-                    updateCourseImagePreview(url);
-                } else {
-                    hideCourseImagePreview();
-                }
-            });
-        }
-
-        // Handle remove image button
-        if (removeImageBtn) {
-            removeImageBtn.addEventListener('click', function() {
-                hideCourseImagePreview();
-                if (imageUrlInput) imageUrlInput.value = '';
-                if (newFileInput) newFileInput.value = '';
-            });
-        }
-
-        // Handle drag and drop
-        const uploadContainer = document.querySelector('.image-upload-container');
-        if (uploadContainer) {
-            uploadContainer.addEventListener('dragover', handleDragOver);
-            uploadContainer.addEventListener('drop', handleCourseImageDrop);
-        }
-
-        // Initialize image preview if URL already exists
-        if (imageUrlInput && imageUrlInput.value) {
-            updateCourseImagePreview(imageUrlInput.value);
-        }
-    }
-
-    function handleCourseImageUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        if (!allowedTypes.includes(file.type)) {
-            showNotification('Please select a valid image file (JPEG, PNG, GIF)', 'error');
-            return;
-        }
-
-        // Validate file size (5MB max)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-            showNotification('Image size should be less than 5MB', 'error');
-            return;
-        }
-
-        uploadCourseImage(file);
-    }
-
-    function handleCourseImageDrop(event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const file = event.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            uploadCourseImage(file);
-        }
-    }
-
-    function handleDragOver(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.dataTransfer.dropEffect = 'copy';
-    }
-
-    function uploadCourseImage(file) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        showLoading();
-
-        fetch('/api/admin/courses/upload-image', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            if (data.success) {
-                const imageUrlInput = document.getElementById('courseImageUrl');
-                if (imageUrlInput) {
-                    imageUrlInput.value = data.image_url;
-                    updateCourseImagePreview(data.image_url);
-                }
-                showNotification('Image uploaded successfully!', 'success');
-            } else {
-                showNotification(data.error || 'Failed to upload image', 'error');
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            console.error('Error uploading image:', error);
-            showNotification('Error uploading image', 'error');
-        });
-    }
-
-    function updateCourseImagePreview(imageUrl) {
-        const imagePreview = document.getElementById('courseImagePreview');
-        const previewContainer = document.getElementById('courseImagePreviewContainer');
-
-        if (imagePreview && previewContainer) {
-            imagePreview.src = imageUrl;
-            previewContainer.style.display = 'block';
-
-            // Add error handling for broken images
-            imagePreview.onerror = function() {
-                showNotification('Failed to load image from URL', 'error');
-                hideCourseImagePreview();
-            };
-        }
-    }
-
-    function hideCourseImagePreview() {
-        const previewContainer = document.getElementById('courseImagePreviewContainer');
-        if (previewContainer) {
-            previewContainer.style.display = 'none';
-        }
-    }
-
-    // Update the openAddModal function to handle course modal specifically
-    function openAddModal(type) {
-        const modalId = `${type}Modal`;
-        const modal = document.getElementById(modalId);
-
-        if (modal) {
-            // Reset form
-            const form = modal.querySelector('form');
-            if (form) {
-                form.reset();
-                form.querySelector('input[name="id"]').value = '';
-            }
-
-            // Set modal title
-            const titleElement = modal.querySelector('h2');
-            if (titleElement) {
-                titleElement.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-            }
-
-            // Special handling for course modal
-            if (type === 'course') {
-                hideCourseImagePreview();
-                // Initialize course image upload after a short delay to ensure modal is visible
-                setTimeout(initCourseImageUpload, 100);
-            }
-
-            // Show modal
-            modal.style.display = 'block';
-        }
-    }
-
-    // Update the edit item function to handle course image
-    function editItem(type, id) {
-        fetch(`/api/admin/${type}/${id}`)
-            .then(response => response.json())
-            .then(data => {
-                const modalId = `${type}Modal`;
-                const modal = document.getElementById(modalId);
-
-                if (modal) {
-                    const form = modal.querySelector('form');
-                    if (form) {
-                        // Fill form with existing data
-                        Object.keys(data).forEach(key => {
-                            const input = form.querySelector(`[name="${key}"]`);
-                            if (input) {
-                                if (input.type === 'checkbox') {
-                                    input.checked = Boolean(data[key]);
-                                } else {
-                                    input.value = data[key] || '';
-                                }
-                            }
-                        });
-
-                        // Special handling for course image
-                        if (type === 'courses' && data.image) {
-                            const imageUrlInput = document.getElementById('courseImageUrl');
-                            if (imageUrlInput) {
-                                imageUrlInput.value = data.image;
-                                updateCourseImagePreview(data.image);
-                            }
-                        }
-
-                        // Set modal title
-                        const titleElement = modal.querySelector('h2');
-                        if (titleElement) {
-                            titleElement.textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1).slice(0, -1)}`;
-                        }
-
-                        modal.style.display = 'block';
-
-                        // Initialize course image upload for edit mode
-                        if (type === 'courses') {
-                            setTimeout(initCourseImageUpload, 100);
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching item:', error);
-                showNotification('Error loading item data', 'error');
-            });
-    }
-
-    // Enhanced blog modal opening function
-    function openAddModal(type) {
-        const modalId = `${type}Modal`;
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-
-        const form = document.getElementById(`${type}Form`);
-        if (form) {
-            form.reset();
-            const idField = form.querySelector('input[type="hidden"]');
-            if (idField) idField.value = '';
-
-            const titleElement = document.getElementById(`${type}ModalTitle`);
-            if (titleElement) {
-                titleElement.textContent = `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-            }
-
-            // Special handling for blog form
-            if (type === 'blog') {
-                // Clear categories selection
-                if (blogCategoriesManager) {
-                    blogCategoriesManager.clearSelections();
-                }
-            }
-        }
-
-        modal.style.display = 'block';
-    }
-
-    // Enhanced edit modal function
-    function openEditModal(section, id) {
-        console.log(`Opening edit modal for ${section} with ID: ${id}`);
-
-        // Determine modal and form IDs
-        const modalId = section === 'blog' ? 'blogModal' : `${section.slice(0, -1)}Modal`;
-        const modal = document.getElementById(modalId);
-
-        if (!modal) {
-            console.error(`Modal not found: ${modalId}`);
-            showNotification(`Could not find edit modal`, 'error');
-            return;
-        }
-
-        const formId = section === 'blog' ? 'blogForm' : `${section.slice(0, -1)}Form`;
-        const form = document.getElementById(formId);
-
-        if (!form) {
-            console.error(`Form not found: ${formId}`);
-            return;
-        }
-
-        // Show loading
-        showLoading();
-
-        // Fetch the item data
-        fetch(`/api/admin/${section}/${id}`, {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch ${section} item`);
-            }
-            return response.json();
-        })
-        .then(item => {
-            console.log(`Received ${section} data:`, item);
-
-            // Set the ID field
-            const idField = form.querySelector('input[name="id"]');
-            if (idField) {
-                idField.value = item.id;
-            }
-
-            // Handle blog section separately
-            if (section === 'blog') {
-                // Set text fields directly
-                const titleField = document.getElementById('blogTitle');
-                if (titleField) titleField.value = item.title || '';
-
-                const authorField = document.getElementById('blogAuthor');
-                if (authorField) authorField.value = item.author || '';
-
-                const contentField = document.getElementById('blogContent');
-                if (contentField) contentField.value = item.content || '';
-
-                const imageField = document.getElementById('blogImage');
-                if (imageField) imageField.value = item.image || '';
-
-                // Set checkboxes
-                const isFeaturedCheckbox = form.querySelector('input[name="is_featured"]');
-                if (isFeaturedCheckbox) isFeaturedCheckbox.checked = item.is_featured === true;
-
-                const isPublishedCheckbox = form.querySelector('input[name="is_published"]');
-                if (isPublishedCheckbox) isPublishedCheckbox.checked = item.is_published === true;
-
-                const isActiveCheckbox = form.querySelector('input[name="is_active"]');
-                if (isActiveCheckbox) isActiveCheckbox.checked = item.is_active === true;
-
-                // Handle single category
-                if (item.categories) {
-                    let categoryValue = '';
-
-                    // Extract category from different possible formats
-                    if (Array.isArray(item.categories) && item.categories.length > 0) {
-                        categoryValue = item.categories[0];
-                    } else if (typeof item.categories === 'string') {
-                        try {
-                            const parsed = JSON.parse(item.categories);
-                            if (Array.isArray(parsed) && parsed.length > 0) {
-                                categoryValue = parsed[0];
-                            } else {
-                                categoryValue = item.categories;
-                            }
-                        } catch (e) {
-                            categoryValue = item.categories;
-                        }
-                    }
-
-                    console.log('Setting category to:', categoryValue);
-
-                    const categorySelect = document.getElementById('blogCategory');
-                    if (categorySelect && categoryValue) {
-                        categorySelect.value = categoryValue;
-                    }
-
-                    const hiddenInput = document.getElementById('blogCategoriesHidden');
-                    if (hiddenInput) {
-                        hiddenInput.value = JSON.stringify([categoryValue]);
-                    }
-                }
-
-                // Set modal title
-                const titleElement = document.getElementById('blogModalTitle');
-                if (titleElement) {
-                    titleElement.textContent = 'Edit Blog Post';
-                }
-            } else {
-                // For all other sections, reset form first then populate
-                form.reset();
-
-                // Populate all form fields
-                Array.from(form.elements).forEach(element => {
-                    if (element.name && element.name !== 'id') {
-                        const value = item[element.name];
-
-                        if (element.type === 'checkbox') {
-                            element.checked = value === true || value === 'true' || value === 1;
-                        } else if (element.type === 'datetime-local' && value) {
-                            try {
-                                const date = new Date(value);
-                                if (!isNaN(date.getTime())) {
-                                    const year = date.getFullYear();
-                                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                                    const day = String(date.getDate()).padStart(2, '0');
-                                    const hours = String(date.getHours()).padStart(2, '0');
-                                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                                    element.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-                                } else {
-                                    element.value = '';
-                                }
-                            } catch (e) {
-                                element.value = '';
-                            }
-                        } else {
-                            element.value = value !== null && value !== undefined ? value : '';
-                        }
-                    }
-                });
-            }
-
-            // Show the modal
-            modal.style.display = 'block';
-            hideLoading();
-
-            console.log(`✅ Edit modal opened for ${section} ID: ${id}`);
-        })
-        .catch(error => {
-            console.error(`Error loading ${section} item:`, error);
-            showNotification(`Failed to load ${section} item`, 'error');
-            hideLoading();
-        });
-    }
-
-    // ===== TESTIMONIAL MANAGER
-    class TestimonialManager {
-        constructor() {
-            this.currentPage = 1;
-            this.perPage = 10;
-            this.selectedIds = [];
-            this.isInitialized = false;
-            this.sectionId = 'testimonials';
-            this.isLoading = false; // ADD THIS LINE
-            this.hasLoaded = false; // ADD THIS LINE to prevent duplicate loads
-        }
-
-        init() {
-            if (this.isInitialized) return;
-
-            console.log('🔄 Initializing testimonial management...');
-            this.setupEventListeners();
-            this.isInitialized = true;
-
-            // Load testimonials if section is active
-            if (this.isSectionActive()) {
-                console.log('✅ Testimonials section active, loading data...');
-                this.loadTestimonialsData(1);
-            }
-
-            // Set up section observer
-            this.setupSectionObserver();
-        }
-
-        setupSectionObserver() {
-            const testimonialsSection = document.getElementById(this.sectionId);
-            if (testimonialsSection) {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                            if (testimonialsSection.classList.contains('active')) {
-                                console.log('🎯 Testimonials section activated - loading data');
-                                this.loadTestimonialsData(1);
-                            }
-                        }
-                    });
-                });
-                observer.observe(testimonialsSection, { attributes: true });
-            }
-        }
-
-        isSectionActive() {
-            const section = document.getElementById(this.sectionId);
-            return section && section.classList.contains('active');
-        }
-
-        setupEventListeners() {
-            console.log('🔧 Setting up testimonial event listeners...');
-
-            // Refresh button
-            this.setupElementListener('refreshTestimonialsBtn', 'click', () => {
-                this.loadTestimonialsData(1);
-            });
-
-            // Search functionality
-            this.setupSearchListener('testimonialSearch', () => {
-                this.currentPage = 1;
-                this.loadTestimonialsData(1);
-            });
-
-            // Status filter
-            this.setupElementListener('testimonialStatusFilter', 'change', () => {
-                this.currentPage = 1;
-                this.loadTestimonialsData(1);
-            });
-
-            // Bulk actions
-            this.setupElementListener('applyTestimonialBulkAction', 'click', () => {
-                this.performBulkAction();
-            });
-
-            // Pagination
-            this.setupElementListener('prevTestimonialPage', 'click', () => {
-                if (this.currentPage > 1) {
-                    this.currentPage--;
-                    this.loadTestimonialsData(this.currentPage);
-                }
-            });
-
-            this.setupElementListener('nextTestimonialPage', 'click', () => {
-                this.currentPage++;
-                this.loadTestimonialsData(this.currentPage);
-            });
-
-            // Select all checkbox
-            this.setupElementListener('selectAllTestimonials', 'change', (e) => {
-                this.toggleSelectAll(e.target.checked);
-            });
-
-        }
-
-        setupElementListener(id, event, handler) {
-            const element = document.getElementById(id);
-            if (element) {
-                // Remove any existing listeners
-                const newElement = element.cloneNode(true);
-                element.parentNode.replaceChild(newElement, element);
-
-                newElement.addEventListener(event, handler);
-                console.log(`✅ Added ${event} listener to ${id}`);
-            } else {
-                console.warn(`❌ Element with id '${id}' not found`);
-            }
-        }
-
-        setupSearchListener(id, handler) {
-            const element = document.getElementById(id);
-            if (!element) return;
-
-            // Find the search box and button
-            const searchBox = element.closest('.search-box');
-            const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
-
-            if (searchBtn) {
-                // Remove existing listeners by cloning
-                const newBtn = searchBtn.cloneNode(true);
-                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
-
-                let isSearching = false;
-
-                // Search button click handler
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    if (isSearching) return;
-                    isSearching = true;
-
-                    // Show loading state on button
-                    const originalHTML = newBtn.innerHTML;
-                    newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    newBtn.disabled = true;
-
-                    // Call the search handler
-                    handler(e);
-
-                    setTimeout(() => {
-                        newBtn.innerHTML = originalHTML;
-                        newBtn.disabled = false;
-                        isSearching = false;
-                    }, 1000);
-                });
-
-                console.log(`✅ Search button listener setup for ${id}`);
-            } else {
-                console.warn(`⚠️ Search button not found for ${id}`);
-            }
-
-            // Enter key support
-            element.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const searchBox = element.closest('.search-box');
-                    const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
-                    if (searchBtn) {
-                        searchBtn.click();
-                    } else {
-                        // Fallback if no button found
-                        handler(e);
-                    }
-                }
-            });
-
-            console.log(`✅ Search listener setup complete for ${id} (no auto-search)`);
-        }
-
-        async loadTestimonialsData(page = 1) {
-            if (this.isLoading) {
-                console.log('⏳ Testimonials load already in progress, skipping...');
-                return;
-            }
-
-            this.isLoading = true;
-            console.log(`📥 Loading testimonials page ${page}...`);
-            showLoading();
-
-            try {
-                const search = document.getElementById('testimonialSearch')?.value || '';
-                const status = document.getElementById('testimonialStatusFilter')?.value || '';
-
-                const params = new URLSearchParams({
-                    page: page.toString(),
-                    ...(search && { search }),
-                    ...(status && { status })
-                });
-
-                const response = await fetch(`/api/admin/testimonials?${params}`, {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    console.log('✅ Testimonials data received:', data);
-                    this.renderTestimonialsTable(data.testimonials || []);
-                    this.totalCount = data.total_count || 0; // Store total count
-                    this.updatePaginationInfo(this.totalCount, page, data.per_page || this.perPage);
-                    this.currentPage = page;
-
-                    this.selectedIds = [];
-                    this.updateBulkActionButton();
-
-                    showNotification(`Loaded ${data.testimonials?.length || 0} testimonials`, 'success');
-                } else {
-                    throw new Error(data.error || 'Failed to load testimonials');
-                }
-
-            } catch (error) {
-                console.error('❌ Error loading testimonials:', error);
-                showNotification('Failed to load testimonials', 'error');
-                this.renderTestimonialsTable([]);
-            } finally {
-                this.isLoading = false;
-                hideLoading();
-            }
-        }
-
-        renderTestimonialsTable(testimonials) {
-            const tableBody = document.getElementById('testimonialsTableBody');
-            if (!tableBody) {
-                console.error('❌ Testimonials table body not found');
-                return;
-            }
-
-            if (!testimonials || testimonials.length === 0) {
-                tableBody.innerHTML = this.getEmptyStateHTML();
-                return;
-            }
-
-            tableBody.innerHTML = testimonials.map((testimonial, index) =>
-                this.getTestimonialRowHTML(testimonial, index)
-            ).join('');
-
-            this.addRowEventListeners();
-            this.updateBulkActionButton();
-
-            console.log(`✅ Rendered ${testimonials.length} testimonials`);
-        }
-
-        getEmptyStateHTML() {
-            return `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px;">
-                        <i class="fas fa-comment-slash" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
-                        <h3 style="color: #6c757d; margin: 0;">No Testimonials Found</h3>
-                        <p style="color: #6c757d; margin: 10px 0 0 0;">No testimonials match your search criteria.</p>
-                    </td>
-                </tr>
-            `;
-        }
-
-        getTestimonialRowHTML(testimonial, index) {
-            const serialNo = ((this.currentPage - 1) * this.perPage) + index + 1;
-            const postedDate = formatDate(testimonial.created_at, true);
-            const rating = testimonial.rating || 5;
-            const content = testimonial.content || '';
-            const truncatedContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
-
-            return `
-                <tr>
-                    <td style="vertical-align: middle;">
-                        <input type="checkbox" class="testimonial-checkbox" data-id="${testimonial.id}">
-                    </td>
-                    <td class="serial-no" style="vertical-align: middle;">${serialNo}</td>
-                    <td style="vertical-align: middle;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <img src="${testimonial.profile_pic_url || '/static/images/default-avatar.png'}"
-                                 alt="${testimonial.username}"
-                                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #e9ecef;">
-                            <div>
-                                <strong style="font-size: 14px;">${escapeHTML(testimonial.username)}</strong>
-                                ${testimonial.user_email ? `<br><small style="color: #6c757d; font-size: 12px;">${escapeHTML(testimonial.user_email)}</small>` : ''}
-                            </div>
-                        </div>
-                    </td>
-                    <td style="vertical-align: middle;">
-                        <div title="${escapeHTML(content)}" style="max-width: 300px; line-height: 1.4;">
-                            ${escapeHTML(truncatedContent)}
-                        </div>
-                    </td>
-                    <td style="vertical-align: middle;">
-                        <div style="text-align: center;">
-                            <span style="color: #ffc107; font-size: 14px;">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>
-                            <br><small style="color: #6c757d;">${rating}/5</small>
-                        </div>
-                    </td>
-                    <td style="vertical-align: middle;">
-                        <small>${postedDate}</small>
-                    </td>
-                    <td style="vertical-align: middle;">
-                        <div class="status-toggle">
-                            <label class="switch">
-                                <input type="checkbox" class="status-toggle-checkbox"
-                                       ${testimonial.is_active ? 'checked' : ''}
-                                       data-id="${testimonial.id}">
-                                <span class="slider round"></span>
-                            </label>
-                            <span class="status-text ${testimonial.is_active ? 'active' : 'inactive'}">
-                                ${testimonial.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                        </div>
-                    </td>
-                    <td style="vertical-align: middle;">
-                        <div class="action-buttons">
-                            <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="btn-icon delete-testimonial" data-id="${testimonial.id}" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-
-        addRowEventListeners() {
-            // Status toggle
-            document.querySelectorAll('.status-toggle-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    const testimonialId = e.target.getAttribute('data-id');
-                    const isActive = e.target.checked;
-                    this.toggleTestimonialStatus(testimonialId, isActive);
-                });
-            });
-
-            // Delete buttons
-            document.querySelectorAll('.delete-testimonial').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const testimonialId = e.target.closest('button').getAttribute('data-id');
-                    this.deleteTestimonial(testimonialId);
-                });
-            });
-
-            // View buttons
-            document.querySelectorAll('.view-testimonial').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const testimonialId = e.target.closest('button').getAttribute('data-id');
-                    this.viewTestimonial(testimonialId);
-                });
-            });
-
-            // Checkboxes
-            document.querySelectorAll('.testimonial-checkbox').forEach(checkbox => {
-                const newCheckbox = checkbox.cloneNode(true);
-                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
-
-                newCheckbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    const testimonialId = e.target.getAttribute('data-id');
-                    if (e.target.checked) {
-                        if (!this.selectedIds.includes(testimonialId)) {
-                            this.selectedIds.push(testimonialId);
-                        }
-                    } else {
-                        this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
-                    }
-                    this.updateBulkActionButton();
-                    // Update header count
-                    updateHeaderSelectedCount('testimonials', this.selectedIds.length);
-                });
-            });
-
-            console.log('✅ Added row event listeners');
-        }
-
-        toggleSelectAll(checked) {
-            this.selectedIds = [];
-            const checkboxes = document.querySelectorAll('.testimonial-checkbox');
-
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = checked;
-                if (checked) {
-                    this.selectedIds.push(checkbox.getAttribute('data-id'));
-                }
-            });
-
-            this.updateBulkActionButton();
-            // Update header count
-            updateHeaderSelectedCount('testimonials', this.selectedIds.length);
-            console.log(`✅ ${checked ? 'Selected' : 'Deselected'} all ${checkboxes.length} testimonials`);
-        }
-
-        async toggleTestimonialStatus(testimonialId, isActive) {
-            try {
-                showLoading();
-
-                const response = await fetch(`/api/admin/testimonials/${testimonialId}/status`, {
-                    method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ is_active: isActive })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification(`Testimonial ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
-                    // Reload data to reflect changes
-                    this.loadTestimonialsData(this.currentPage);
-                } else {
-                    throw new Error(result.error || 'Failed to update status');
-                }
-            } catch (error) {
-                console.error('❌ Error updating testimonial status:', error);
-                showNotification('Failed to update testimonial status', 'error');
-                // Revert checkbox
-                const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${testimonialId}"]`);
-                if (checkbox) {
-                    checkbox.checked = !isActive;
-                }
-            } finally {
-                hideLoading();
-            }
-        }
-
-        deleteTestimonial(testimonialId) {
-            showConfirmation('delete',
-                'Are you sure you want to delete this testimonial? It will be moved to trash.',
-                async () => {
-                    try {
-                        showLoading();
-
-                        const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
-                            method: 'DELETE',
-                            credentials: 'include',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json'
-                            }
-                        });
-
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || `HTTP ${response.status}`);
-                        }
-
-                        const result = await response.json();
-
-                        if (result.success) {
-                            showNotification('Testimonial moved to trash', 'success');
-
-                            // Remove from UI
-                            const row = document.querySelector(`#testimonialsTableBody tr .delete-testimonial[data-id="${testimonialId}"]`)?.closest('tr');
-                            if (row) {
-                                row.remove();
-                            }
-
-                            // Check if table is empty
-                            const tableBody = document.getElementById('testimonialsTableBody');
-                            if (tableBody && tableBody.children.length === 0) {
-                                tableBody.innerHTML = `
-                                    <tr>
-                                        <td colspan="8" style="text-align: center; padding: 40px;">
-                                            <i class="fas fa-comment-slash" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
-                                            <h3 style="color: #6c757d; margin: 0;">No Testimonials Found</h3>
-                                            <p style="color: #6c757d; margin: 10px 0 0 0;">No testimonials match your search criteria.</p>
-                                        </td>
-                                    </tr>
-                                `;
-                            }
-
-                            // Update counts
-                            this.loadTestimonialsData(this.currentPage);
-                            loadDashboardStats();
-                            loadTrashStats(true);
-
-                            // Clear from selected items
-                            this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
-                            this.updateBulkActionButton();
-                        } else {
-                            throw new Error(result.error || 'Failed to delete testimonial');
-                        }
-                    } catch (error) {
-                        console.error('❌ Error deleting testimonial:', error);
-                        showNotification('Failed to delete testimonial', 'error');
-                    } finally {
-                        hideLoading();
-                    }
-                }
-            );
-        }
-
-        async viewTestimonial(testimonialId) {
-            try {
-                showLoading();
-
-                const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
-                    credentials: 'include'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    this.showTestimonialModal(result.testimonial);
-                } else {
-                    throw new Error(result.error || 'Failed to load testimonial');
-                }
-            } catch (error) {
-                console.error('❌ Error loading testimonial:', error);
-                showNotification('Failed to load testimonial details', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        showTestimonialModal(testimonial) {
-            const modal = document.getElementById('contentViewModal');
-            if (modal) {
-                const title = modal.querySelector('.modal-title');
-                const body = modal.querySelector('#contentViewBody');
-
-                if (title) title.textContent = 'Testimonial Details';
-                if (body) {
-                    body.innerHTML = `
-                        <div class="view-field">
-                            <label>User:</label>
-                            <span>${escapeHTML(testimonial.username)}</span>
-                        </div>
-                        <div class="view-field">
-                            <label>Email:</label>
-                            <span>${escapeHTML(testimonial.user_email || testimonial.email || 'N/A')}</span>
-                        </div>
-                        <div class="view-field">
-                            <label>Rating:</label>
-                            <span>${testimonial.rating || 5}/5</span>
-                        </div>
-                        <div class="view-field">
-                            <label>Status:</label>
-                            <span class="status-badge ${testimonial.is_active ? 'active' : 'inactive'}">
-                                ${testimonial.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                        </div>
-                        <div class="view-field">
-                            <label>Posted:</label>
-                            <span>${formatDate(testimonial.created_at, true)}</span>
-                        </div>
-                        <div class="view-field full-width">
-                            <label>Content:</label>
-                            <div class="view-content" style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #4a6cf7;">
-                                ${escapeHTML(testimonial.content || 'No content')}
-                            </div>
-                        </div>
-                    `;
-                }
-                modal.style.display = 'block';
-                console.log('✅ Testimonial modal displayed');
-            }
-        }
-
-        performBulkAction() {
-            const actionSelect = document.getElementById('testimonialBulkAction');
-            const action = actionSelect ? actionSelect.value : '';
-
-            if (!action) {
-                this.showNotification('Please select a bulk action first', 'warning');
-                return;
-            }
-
-            if (this.selectedIds.length === 0) {
-                this.showNotification('Please select at least one testimonial', 'warning');
-                return;
-            }
-
-            if (action === 'delete') {
-                this.showConfirmation('delete',
-                    `Are you sure you want to delete ${this.selectedIds.length} testimonial(s)?`,
-                    () => this.bulkDeleteTestimonials()
-                );
-            } else if (action === 'activate' || action === 'deactivate') {
-                const isActive = action === 'activate';
-                const actionText = isActive ? 'activate' : 'deactivate';
-                this.showConfirmation('bulk_action',
-                    `Are you sure you want to ${actionText} ${this.selectedIds.length} testimonial(s)?`,
-                    () => this.bulkUpdateTestimonialStatus(isActive)
-                );
-            }
-        }
-
-        bulkDeleteTestimonials() {
-            if (!this.selectedIds || this.selectedIds.length === 0) {
-                showNotification('No testimonials selected', 'warning');
-                return;
-            }
-
-            showLoading();
-
-            fetch('/api/admin/testimonials/bulk-delete', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ ids: this.selectedIds })
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    showNotification(`${result.deleted_count || this.selectedIds.length} testimonial(s) moved to trash`, 'success');
-                    this.selectedIds = [];
-                    this.updateBulkActionButton();
-                    this.loadTestimonialsData(this.currentPage);
-                    loadDashboardStats();
-                    loadTrashStats(true);
-                } else {
-                    showNotification(result.error || 'Failed to delete testimonials', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error bulk deleting testimonials:', error);
-                showNotification('Failed to delete testimonials', 'error');
-            })
-            .finally(() => {
-                hideLoading();
-            });
-        }
-
-         async bulkUpdateTestimonialStatus(isActive) {
-            if (!this.selectedIds || this.selectedIds.length === 0) {
-                showNotification('No testimonials selected', 'warning');
-                return;
-            }
-
-            try {
-                showLoading();
-
-                const response = await fetch('/api/admin/testimonials/bulk-status', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ids: this.selectedIds,
-                        is_active: isActive
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    const action = isActive ? 'activated' : 'deactivated';
-                    showNotification(`${result.updated_count || this.selectedIds.length} testimonial(s) ${action} successfully`, 'success');
-                    this.selectedIds = [];
-                    this.loadTestimonialsData(this.currentPage);
-                    this.updateBulkActionButton();
-                } else {
-                    throw new Error(result.error || 'Failed to update testimonials');
-                }
-            } catch (error) {
-                console.error('❌ Error bulk updating testimonial status:', error);
-                showNotification('Failed to update testimonials', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        updatePaginationInfo(totalItems, currentPage, perPage) {
-            // Call the global pagination UI update
-            if (typeof updatePaginationUI === 'function') {
-                updatePaginationUI('testimonials', currentPage, totalItems, perPage);
-            }
-        }
-
-        updateBulkActionButton() {
-            const button = document.getElementById('applyTestimonialBulkAction');
-            const selectAll = document.getElementById('selectAllTestimonials');
-            const headerButton = document.getElementById('applyTestimonialBulkActionHeader');
-
-            if (button) {
-                button.disabled = this.selectedIds.length === 0;
-            }
-            if (headerButton) {
-                headerButton.disabled = this.selectedIds.length === 0;
-            }
-
-            // Update header count
-            if (typeof updateHeaderSelectedCount === 'function') {
-                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
-            }
-
-            if (selectAll) {
-                const totalCheckboxes = document.querySelectorAll('.testimonial-checkbox').length;
-                selectAll.checked = this.selectedIds.length > 0 && this.selectedIds.length === totalCheckboxes;
-                selectAll.indeterminate = this.selectedIds.length > 0 && this.selectedIds.length < totalCheckboxes;
-            }
-        }
-    }
-
-    // ===== TESTIMONIAL INTEGRATION WITH DASHBOARD =====
-    // Add testimonials to global section loading system
-    function setupTestimonialsGlobalIntegration() {
-        // Add to section navigation
-        const testimonialsLink = document.querySelector('a[href="#testimonials"]');
-        if (testimonialsLink) {
-            testimonialsLink.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                // Use global navigation function
-                if (typeof navigateToSection === 'function') {
-                    navigateToSection('testimonials', this);
-                }
-
-                // Ensure testimonial manager is initialized
-                setTimeout(() => {
-                    if (window.testimonialManager && !window.testimonialManager.isInitialized) {
-                        window.testimonialManager.init();
-                    } else if (window.testimonialManager) {
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                }, 200);
-            });
-        }
-
-        // Add to global section loaders
-        if (typeof window.sectionLoaders === 'undefined') {
-            window.sectionLoaders = {};
-        }
-        window.sectionLoaders.testimonials = function() {
-            if (window.testimonialManager) {
-                if (!window.testimonialManager.isInitialized) {
-                    window.testimonialManager.init();
-                } else {
-                    window.testimonialManager.loadTestimonialsData(1);
-                }
-            }
-        };
-
-        console.log('✅ Testimonials global integration complete');
-    }
+    // ============================================
+    // ========== 11. EXPIRED CONTENT FUNCTIONS ==========
+    // ============================================
 
     // Expired Content Management
     let currentExpiredPage = 1;
@@ -4786,16 +4527,6 @@
         });
     }
 
-    // Helper function to get content type icon
-    function getContentTypeIcon(contentType) {
-        const icons = {
-            'courses': 'fa-book',
-            'jobs': 'fa-briefcase',
-            'internships': 'fa-user-graduate'
-        };
-        return icons[contentType] || 'fa-file';
-    }
-
     // Update selected items array
     function updateSelectedExpiredItems() {
         selectedExpiredItems = [];
@@ -4829,83 +4560,6 @@
             if (prevBtn) prevBtn.disabled = currentPage === 1;
             if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
         }
-    }
-
-    function updatePaginationUIForSection(section, currentPageNum, totalItems, perPage) {
-        const totalPages = Math.ceil(totalItems / perPage);
-        const paginationContainer = document.querySelector(`#${section} .pagination`);
-        if (!paginationContainer) return;
-
-        // Similar pagination HTML generation as above
-        paginationContainer.innerHTML = '';
-
-        const paginationWrapper = document.createElement('div');
-        paginationWrapper.style.display = 'flex';
-        paginationWrapper.style.alignItems = 'center';
-        paginationWrapper.style.justifyContent = 'center';
-        paginationWrapper.style.gap = '8px';
-        paginationWrapper.style.flexWrap = 'wrap';
-
-        // Items info
-        const startItem = (currentPageNum - 1) * perPage + 1;
-        const endItem = Math.min(currentPageNum * perPage, totalItems);
-        const itemsInfo = document.createElement('span');
-        itemsInfo.style.fontSize = '14px';
-        itemsInfo.style.color = '#666';
-        itemsInfo.style.marginRight = '15px';
-        itemsInfo.textContent = `${endItem - startItem + 1} of ${totalItems} items`;
-        paginationWrapper.appendChild(itemsInfo);
-
-        // Previous button
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'btn btn-outline';
-        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
-        prevBtn.disabled = currentPageNum === 1;
-        prevBtn.addEventListener('click', () => {
-            if (currentPageNum > 1) {
-                if (section === 'expired-content') {
-                    loadExpiredContentData(currentPageNum - 1);
-                } else if (section === 'trash') {
-                    loadTrashItems(currentPageNum - 1);
-                }
-            }
-        });
-        paginationWrapper.appendChild(prevBtn);
-
-        // Page numbers (simplified for these sections)
-        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.className = i === currentPageNum ? 'btn btn-primary' : 'btn btn-outline';
-            pageBtn.textContent = i;
-            pageBtn.style.minWidth = '36px';
-            pageBtn.style.padding = '6px 12px';
-            pageBtn.addEventListener('click', () => {
-                if (section === 'expired-content') {
-                    loadExpiredContentData(i);
-                } else if (section === 'trash') {
-                    loadTrashItems(i);
-                }
-            });
-            paginationWrapper.appendChild(pageBtn);
-        }
-
-        // Next button
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'btn btn-outline';
-        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-        nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
-        nextBtn.addEventListener('click', () => {
-            if (currentPageNum < totalPages) {
-                if (section === 'expired-content') {
-                    loadExpiredContentData(currentPageNum + 1);
-                } else if (section === 'trash') {
-                    loadTrashItems(currentPageNum + 1);
-                }
-            }
-        });
-        paginationWrapper.appendChild(nextBtn);
-
-        paginationContainer.appendChild(paginationWrapper);
     }
 
     // Update expired content stats in the UI
@@ -5172,1939 +4826,9 @@
         );
     }
 
-    function openNewsletterModal() {
-        const modal = document.getElementById('newsletterModal');
-        if (!modal) return;
-
-        const form = document.getElementById('newsletterForm');
-        if (form) form.reset();
-
-        modal.style.display = 'block';
-    }
-
-    function openReplyModal(id, email, subject = '') {
-        console.log('Opening reply modal for:', { id, email, subject });
-
-        const modal = document.getElementById('messageReplyModal');
-        if (!modal) {
-            console.error('Reply modal not found');
-            return;
-        }
-
-        // Reset and set basic form values
-        document.getElementById('messageId').value = id;
-        document.getElementById('recipientEmail').value = email;
-
-        const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
-        document.getElementById('replySubject').value = replySubject;
-
-        // Update display fields
-        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
-        document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
-
-        // Clear reply message area
-        document.getElementById('replyMessage').value = '';
-        updateCharCount();
-
-        // Set loading state
-        document.getElementById('originalSender').textContent = 'Loading...';
-        document.getElementById('originalSubject').textContent = 'Loading...';
-        document.getElementById('originalDate').textContent = 'Loading...';
-        document.getElementById('originalMessageContent').innerHTML = '<div class="message-content-loading">Loading message content...</div>';
-
-        // Always fetch fresh message data to ensure we have the complete message
-        fetch(`/api/admin/messages/${id}`, {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch message details');
-            return response.json();
-        })
-        .then(message => {
-            console.log('Message data loaded:', message);
-
-            // Update all fields with the message data
-            document.getElementById('originalSender').textContent = `${message.name} <${message.email}>`;
-            document.getElementById('originalSubject').textContent = message.subject || 'No subject';
-            document.getElementById('originalDate').textContent = formatDate(message.created_at, true);
-
-            // Update message content
-            const messageContent = document.getElementById('originalMessageContent');
-            if (message.message) {
-                // Preserve line breaks and basic formatting
-                const formattedMessage = message.message
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br>')
-                    .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
-                messageContent.innerHTML = formattedMessage;
-            } else {
-                messageContent.innerHTML = '<em>No message content available</em>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading message details:', error);
-            // Fallback values
-            document.getElementById('originalSender').textContent = 'Unknown sender';
-            document.getElementById('originalSubject').textContent = subject || 'No subject';
-            document.getElementById('originalDate').textContent = 'Unknown date';
-            document.getElementById('originalMessageContent').innerHTML = '<em>Failed to load message content</em>';
-        });
-
-        // Show modal
-        modal.style.display = 'block';
-
-        // Focus on message area
-        setTimeout(() => {
-            document.getElementById('replyMessage').focus();
-        }, 100);
-    }
-
-    function updateCharCount() {
-        const textarea = document.getElementById('replyMessage');
-        const charCount = document.querySelector('#messageReplyModal .char-count');
-
-        if (textarea && charCount) {
-            const count = textarea.value.length;
-            charCount.textContent = `${count} characters`;
-
-            // Remove all classes first
-            charCount.classList.remove('warning', 'error');
-
-            // Add appropriate class based on length
-            if (count > 2000) {
-                charCount.classList.add('error');
-            } else if (count > 1000) {
-                charCount.classList.add('warning');
-            }
-        }
-    }
-
-    function viewMessage(id) {
-        fetch(`/api/admin/messages/${id}`, {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch message');
-            return response.json();
-        })
-        .then(message => {
-            const modal = document.getElementById('messageViewModal');
-            if (!modal) return;
-
-            // Store the complete message data for reply functionality
-            modal._messageData = {
-                id: message.id,
-                name: message.name,
-                email: message.email,
-                subject: message.subject,
-                message: message.message,
-                created_at: message.created_at,
-                status: message.status
-            };
-
-            console.log('Message data stored for reply:', modal._messageData);
-
-            // Update message details in view modal
-            document.getElementById('viewMessageName').textContent = message.name || 'Unknown';
-            document.getElementById('viewMessageEmail').textContent = message.email || 'No email';
-            document.getElementById('viewMessageSubject').textContent = message.subject || 'No subject';
-            document.getElementById('viewMessageDate').textContent = formatDate(message.created_at, true);
-
-            // Status with proper styling
-            const statusElement = document.getElementById('viewMessageStatus');
-            statusElement.textContent = message.status ?
-                message.status.charAt(0).toUpperCase() + message.status.slice(1) : 'Unknown';
-            statusElement.className = 'message-value status-badge ' + (message.status || 'unknown');
-
-            // Message content
-            document.getElementById('viewMessageContent').textContent = message.message || 'No message content available';
-
-            // Show modal
-            modal.style.display = 'block';
-
-            // Mark as read if unread
-            if (message.status === 'unread') {
-                fetch(`/api/admin/messages/${id}/status`, {
-                    method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: 'read' })
-                }).then(() => {
-                    if (currentSection === 'messages') {
-                        loadSectionData('messages', currentPage.messages);
-                    }
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading message:', error);
-            showNotification('Failed to load message', 'error');
-        });
-    }
-
-    // Search and filter functionality
-    function setupForms() {
-        // Handle form submissions only
-        document.getElementById('courseForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'courses'));
-        document.getElementById('jobForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'jobs'));
-        document.getElementById('internshipForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'internships'));
-        document.getElementById('blogForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'blog'));
-        document.getElementById('userForm')?.addEventListener('submit', (e) => handleFormSubmit(e, 'users'));
-        document.getElementById('newsletterForm')?.addEventListener('submit', (e) => handleNewsletterSubmit(e));
-        document.getElementById('messageReplyForm')?.addEventListener('submit', (e) => handleMessageReplySubmit(e));
-    }
-
-    // Form submission
-    // Add a flag to prevent duplicate submissions
-    let isSubmitting = false;
-
-    function handleFormSubmit(e, type) {
-        e.preventDefault();
-
-        // Prevent duplicate submissions
-        if (isSubmitting) {
-            console.log('Form submission already in progress, ignoring...');
-            return;
-        }
-
-        const form = e.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        const id = data.id;
-
-        console.log('Form data before processing:', data);
-        console.log('Type:', type);
-        console.log('ID:', id);
-
-        // Convert checkbox values to boolean for ALL types first (like old file)
-        Object.keys(data).forEach(key => {
-            if (data[key] === 'on') {
-                data[key] = true;
-            } else if (data[key] === 'off') {
-                data[key] = false;
-            } else if (data[key] === '') {
-                // Remove empty fields except for text areas and certain fields
-                if (!['description', 'content', 'image', 'salary', 'expiration_date'].includes(key)) {
-                    delete data[key];
-                }
-            }
-
-            // Convert numeric fields
-            if (['rating', 'enrollments', 'duration_hours'].includes(key) && data[key]) {
-                data[key] = parseFloat(data[key]) || 0;
-            }
-        });
-
-        // Handle categories array for blog posts - THIS IS THE KEY PART from old file
-        if (type === 'blog' && data.categories) {
-            try {
-                // The hidden input stores JSON string, parse it to array
-                data.categories = JSON.parse(data.categories);
-                console.log('Parsed categories:', data.categories);
-            } catch (e) {
-                console.log('Error parsing categories, setting empty array:', e);
-                data.categories = [];
-            }
-        }
-
-        // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
-        // Keep is_active as false until manual reactivation
-        if (id && currentSection === 'expired-content') {
-            // If we're editing from expired section, preserve the inactive state
-            // unless explicitly changing it
-            if (typeof data.is_active === 'undefined') {
-                data.is_active = false;
-            }
-        } else {
-            // For normal edits, sync featured state with active state for new items
-            if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
-                data.is_featured = data.is_active;
-            }
-        }
-
-        // For new items, remove the ID field completely (CRITICAL FIX)
-        if (!id || id === '' || id === 'null') {
-            delete data.id;
-        }
-
-        // Validate required fields (exactly like old file)
-        const required_fields = {
-            'courses': ['title', 'category', 'instructor', 'application_link'],
-            'jobs': ['title', 'company', 'location', 'application_link'],
-            'internships': ['title', 'company', 'location', 'application_link'],
-            'blog': ['title', 'author', 'content', 'categories']
-        };
-
-        if (type in required_fields) {
-            for (const field of required_fields[type]) {
-                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
-                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
-                    return;
-                }
-            }
-        }
-
-        // Determine the correct endpoint and method
-        const url = id && id !== '' && id !== 'null' ? `/api/admin/${type}/${id}` : `/api/admin/${type}`;
-        const method = id && id !== '' && id !== 'null' ? 'PUT' : 'POST';
-
-        console.log(`Sending ${method} request to ${url} with data:`, data);
-
-        // Set submitting flag to prevent duplicates
-        isSubmitting = true;
-        showLoading();
-
-        fetch(url, {
-            method: method,
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    console.error('Error response:', errorData);
-                    throw new Error(errorData.message || errorData.error || `Failed to ${id ? 'update' : 'create'} ${type}`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            console.log('Success response:', result);
-            if (result.success) {
-                showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
-
-                // Close modal and reset form
-                closeModal();
-                form.reset();
-
-                // Clear category if it's a blog form
-                if (type === 'blog' && blogCategoriesManager) {
-                    blogCategoriesManager.clearSelections();
-                }
-
-                // Clear expiration date field specifically for new items
-                if (!id) {
-                    const expirationDateInput = form.querySelector('input[name="expiration_date"]');
-                    if (expirationDateInput) {
-                        expirationDateInput.value = '';
-                    }
-                }
-
-                // Reload the appropriate section
-                if (currentSection === 'expired-content') {
-                    loadExpiredContentData(currentExpiredPage);
-                } else {
-                    loadSectionData(type, currentPage[type]);
-                }
-            } else {
-                showNotification(result.message || result.error || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error ${id ? 'updating' : 'creating'} ${type}:`, error);
-            showNotification(error.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
-        })
-        .finally(() => {
-            // Reset submitting flag after a short delay to prevent rapid successive submissions
-            setTimeout(() => {
-                isSubmitting = false;
-            }, 1000);
-            hideLoading();
-        });
-    }
-
-    // Enhanced form submission
-    function handleMessageReplySubmit(e) {
-        e.preventDefault();
-
-        const form = e.target;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
-        // Validate required fields
-        if (!data.message || data.message.trim() === '') {
-            showNotification('Please enter a reply message before sending', 'error');
-            document.getElementById('replyMessage').focus();
-            return;
-        }
-
-        if (data.message.trim().length < 10) {
-            showNotification('Please write a more detailed reply (minimum 10 characters)', 'warning');
-            document.getElementById('replyMessage').focus();
-            return;
-        }
-
-        const submitButton = document.getElementById('sendReplyBtn');
-        const originalText = submitButton.innerHTML;
-
-        // Show loading state
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-        fetch('/api/admin/messages/reply', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    throw new Error(errorData.message || 'Failed to send reply');
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                showNotification('✅ Reply sent successfully!', 'success');
-
-                // Close modal and reset form
-                closeModal();
-                form.reset();
-
-                // Update message status to replied and reload messages
-                fetch(`/api/admin/messages/${data.message_id}/status`, {
-                    method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: 'replied' })
-                }).then(() => {
-                    if (currentSection === 'messages') {
-                        loadSectionData('messages', currentPage.messages);
-                    }
-                });
-            } else {
-                showNotification(result.message || 'Failed to send reply', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error sending reply:', error);
-            showNotification('Failed to send reply. Please check your connection and try again.', 'error');
-        })
-        .finally(() => {
-            submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
-        });
-    }
-
-    // ===== HEADER BULK ACTIONS HANDLER =====
-    function setupBulkActions() {
-        console.log('🔄 Setting up header bulk actions...');
-
-        // Helper function to get selected IDs for any section
-        function getSelectedIds(section) {
-            if (section === 'testimonials') {
-                return window.testimonialManager ? window.testimonialManager.selectedIds : [];
-            }
-            if (section === 'admins') {
-                return window.adminManager ? window.adminManager.selectedAdmins : [];
-            }
-            if (section === 'expired-content') {
-                const selected = [];
-                document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(cb => {
-                    selected.push({
-                        content_type: cb.getAttribute('data-type'),
-                        content_id: cb.getAttribute('data-id')
-                    });
-                });
-                return selected;
-            }
-            if (section === 'trash') {
-                const selected = [];
-                document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(cb => {
-                    selected.push({
-                        content_type: cb.getAttribute('data-type'),
-                        content_id: cb.getAttribute('data-id'),
-                        table_name: cb.getAttribute('data-table')
-                    });
-                });
-                return selected;
-            }
-            return selectedItems[section] || [];
-        }
-
-        // Helper function to update header selected count display
-        function updateHeaderSelectedCount(section, count) {
-            const selectedCountId = {
-                'courses': 'courseSelectedCountHeader',
-                'jobs': 'jobSelectedCountHeader',
-                'internships': 'internshipSelectedCountHeader',
-                'blog': 'blogSelectedCountHeader',
-                'testimonials': 'testimonialSelectedCountHeader',
-                'newsletter': 'newsletterSelectedCountHeader',
-                'expired-content': 'expiredSelectedCountHeader',
-                'users': 'userSelectedCountHeader',
-                'messages': 'messageSelectedCountHeader',
-                'admins': 'adminSelectedCountHeader',
-                'trash': 'trashSelectedCountHeader'
-            }[section];
-
-            const countElement = document.getElementById(selectedCountId);
-            if (countElement) {
-                if (count === 0) {
-                    countElement.textContent = '0 selected';
-                    countElement.style.color = '#666';
-                    countElement.style.fontWeight = 'normal';
-                } else {
-                    countElement.textContent = `${count} selected`;
-                    countElement.style.color = '#4a6cf7';
-                    countElement.style.fontWeight = '600';
-                }
-            }
-        }
-
-        // Helper function to enable/disable bulk action button
-        function setBulkActionButtonState(section, selectedCount) {
-            const buttonMap = {
-                'courses': 'applyCourseBulkActionHeader',
-                'jobs': 'applyJobBulkActionHeader',
-                'internships': 'applyInternshipBulkActionHeader',
-                'blog': 'applyBlogBulkActionHeader',
-                'users': 'applyUserBulkActionHeader',
-                'messages': 'applyMessageBulkActionHeader',
-                'newsletter': 'applyNewsletterBulkActionHeader',
-                'testimonials': 'applyTestimonialBulkActionHeader',
-                'admins': 'applyAdminBulkActionHeader',
-                'expired-content': 'applyExpiredContentBulkActionHeader',
-                'trash': 'applyTrashBulkActionHeader'
-            };
-
-            const buttonId = buttonMap[section];
-            const button = document.getElementById(buttonId);
-            if (button) {
-                button.disabled = selectedCount === 0;
-                if (selectedCount > 0) {
-                    button.style.opacity = '1';
-                } else {
-                    button.style.opacity = '0.6';
-                }
-            }
-        }
-
-        // ===== FUNCTION TO ATTACH ROW CHECKBOX LISTENERS =====
-        function attachRowCheckboxListeners(section) {
-            const tableBody = document.getElementById(`${section}TableBody`);
-            if (!tableBody) return;
-
-            const checkboxes = tableBody.querySelectorAll('.row-checkbox');
-
-            checkboxes.forEach(checkbox => {
-                // Remove existing listener by cloning
-                const newCheckbox = checkbox.cloneNode(true);
-                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
-
-                newCheckbox.addEventListener('change', function(e) {
-                    e.stopPropagation();
-                    const id = this.getAttribute('data-id');
-
-                    if (!selectedItems[section]) selectedItems[section] = [];
-
-                    if (this.checked) {
-                        if (!selectedItems[section].includes(id)) {
-                            selectedItems[section].push(id);
-                        }
-                    } else {
-                        selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
-                    }
-
-                    const selectedCount = selectedItems[section].length;
-                    setBulkActionButtonState(section, selectedCount);
-                    updateHeaderSelectedCount(section, selectedCount);
-                    updateSelectAllState(section);
-                });
-            });
-        }
-
-        // ===== FUNCTION TO UPDATE SELECT ALL CHECKBOX STATE =====
-        function updateSelectAllState(section) {
-            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
-            const selectAllCheckbox = document.getElementById(selectAllId);
-            if (!selectAllCheckbox) return;
-
-            const tableBody = document.getElementById(`${section}TableBody`);
-            if (!tableBody) return;
-
-            const totalCheckboxes = tableBody.querySelectorAll('.row-checkbox').length;
-            const selectedCount = selectedItems[section] ? selectedItems[section].length : 0;
-
-            selectAllCheckbox.checked = totalCheckboxes > 0 && selectedCount === totalCheckboxes;
-            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCheckboxes;
-        }
-
-        // ===== OVERRIDE THE EXISTING renderTableData TO ATTACH LISTENERS AFTER DATA LOAD =====
-        // Save original renderTableData function
-        const originalRenderTableData = window.renderTableData;
-
-        // Override renderTableData
-        window.renderTableData = function(section, data) {
-            // Call original function first
-            if (originalRenderTableData) {
-                originalRenderTableData(section, data);
-            }
-
-            // After data is rendered, attach checkbox listeners for this section
-            const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
-            if (regularSections.includes(section)) {
-                setTimeout(() => {
-                    attachRowCheckboxListeners(section);
-                    // Reset selected items for this section when new data loads
-                    if (selectedItems[section]) {
-                        selectedItems[section] = [];
-                        updateHeaderSelectedCount(section, 0);
-                        setBulkActionButtonState(section, 0);
-                        updateSelectAllState(section);
-                    }
-                }, 100);
-            }
-        };
-
-        // ===== SELECT ALL CHECKBOX HANDLERS FOR REGULAR SECTIONS =====
-        const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
-
-        regularSections.forEach(section => {
-            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
-            const selectAllCheckbox = document.getElementById(selectAllId);
-            if (!selectAllCheckbox) return;
-
-            const newSelectAll = selectAllCheckbox.cloneNode(true);
-            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
-
-            newSelectAll.addEventListener('change', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const isChecked = this.checked;
-                const tableBody = document.getElementById(`${section}TableBody`);
-                if (!tableBody) return;
-
-                const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-
-                if (!selectedItems[section]) selectedItems[section] = [];
-
-                if (isChecked) {
-                    selectedItems[section] = [];
-                    rowCheckboxes.forEach(checkbox => {
-                        checkbox.checked = true;
-                        const id = checkbox.getAttribute('data-id');
-                        if (id && !selectedItems[section].includes(id)) {
-                            selectedItems[section].push(id);
-                        }
-                    });
-                } else {
-                    rowCheckboxes.forEach(checkbox => {
-                        checkbox.checked = false;
-                    });
-                    selectedItems[section] = [];
-                }
-
-                const selectedCount = selectedItems[section].length;
-                setBulkActionButtonState(section, selectedCount);
-                updateHeaderSelectedCount(section, selectedCount);
-                updateSelectAllState(section);
-            });
-        });
-
-        // ===== TESTIMONIALS SECTION HANDLING =====
-        if (window.testimonialManager) {
-            const originalUpdateBulkActionButton = window.testimonialManager.updateBulkActionButton;
-            window.testimonialManager.updateBulkActionButton = function() {
-                originalUpdateBulkActionButton.call(this);
-                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
-                setBulkActionButtonState('testimonials', this.selectedIds.length);
-            };
-        }
-
-        // ===== ADMINS SECTION HANDLING =====
-        if (window.adminManager) {
-            const originalUpdateBulkActionButton = window.adminManager.updateBulkActionButton;
-            window.adminManager.updateBulkActionButton = function() {
-                originalUpdateBulkActionButton.call(this);
-                updateHeaderSelectedCount('admins', this.selectedAdmins.length);
-                setBulkActionButtonState('admins', this.selectedAdmins.length);
-            };
-        }
-
-        // ===== EXPIRED CONTENT SECTION HANDLING =====
-        if (typeof updateSelectedExpiredItems === 'function') {
-            const originalUpdateSelectedExpiredItems = updateSelectedExpiredItems;
-            window.updateSelectedExpiredItems = function() {
-                originalUpdateSelectedExpiredItems();
-                updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
-                setBulkActionButtonState('expired-content', selectedExpiredItems.length);
-            };
-        }
-
-        // ===== TRASH SECTION HANDLING =====
-        if (typeof updateSelectedTrashItems === 'function') {
-            const originalUpdateSelectedTrashItems = updateSelectedTrashItems;
-            window.updateSelectedTrashItems = function() {
-                originalUpdateSelectedTrashItems();
-                updateHeaderSelectedCount('trash', selectedTrashItems.length);
-                setBulkActionButtonState('trash', selectedTrashItems.length);
-            };
-        }
-
-        // ===== HEADER BULK ACTION BUTTON HANDLERS =====
-        const headerBulkActions = [
-            { btnId: 'applyCourseBulkActionHeader', section: 'courses', actionSelectId: 'courseBulkActionHeader' },
-            { btnId: 'applyJobBulkActionHeader', section: 'jobs', actionSelectId: 'jobBulkActionHeader' },
-            { btnId: 'applyInternshipBulkActionHeader', section: 'internships', actionSelectId: 'internshipBulkActionHeader' },
-            { btnId: 'applyBlogBulkActionHeader', section: 'blog', actionSelectId: 'blogBulkActionHeader' },
-            { btnId: 'applyTestimonialBulkActionHeader', section: 'testimonials', actionSelectId: 'testimonialBulkActionHeader' },
-            { btnId: 'applyNewsletterBulkActionHeader', section: 'newsletter', actionSelectId: 'newsletterBulkActionHeader' },
-            { btnId: 'applyExpiredContentBulkActionHeader', section: 'expired-content', actionSelectId: 'expiredContentBulkActionHeader' },
-            { btnId: 'applyUserBulkActionHeader', section: 'users', actionSelectId: 'userBulkActionHeader' },
-            { btnId: 'applyMessageBulkActionHeader', section: 'messages', actionSelectId: 'messageBulkActionHeader' },
-            { btnId: 'applyAdminBulkActionHeader', section: 'admins', actionSelectId: 'adminBulkActionHeader' },
-            { btnId: 'applyTrashBulkActionHeader', section: 'trash', actionSelectId: 'trashBulkActionHeader' }
-        ];
-
-        headerBulkActions.forEach(({ btnId, section, actionSelectId }) => {
-            const button = document.getElementById(btnId);
-            if (!button) return;
-
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
-
-            newButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const actionSelect = document.getElementById(actionSelectId);
-                const action = actionSelect ? actionSelect.value : '';
-
-                if (!action) {
-                    showNotification('Please select a bulk action first', 'warning');
-                    return;
-                }
-
-                let selectedIds = getSelectedIds(section);
-
-                if (selectedIds.length === 0) {
-                    showNotification(`Please select at least one ${section} item`, 'warning');
-                    return;
-                }
-
-                // Handle actions based on section
-                if (section === 'testimonials') {
-                    if (action === 'delete') {
-                        showConfirmation('delete', `Delete ${selectedIds.length} testimonial(s)?`, () => {
-                            window.testimonialManager.bulkDeleteTestimonials();
-                        });
-                    } else if (action === 'activate' || action === 'deactivate') {
-                        const isActive = action === 'activate';
-                        showConfirmation('bulk_action', `${action} ${selectedIds.length} testimonial(s)?`, () => {
-                            window.testimonialManager.bulkUpdateTestimonialStatus(isActive);
-                        });
-                    }
-                    return;
-                }
-
-                if (section === 'admins') {
-                    if (action === 'delete') {
-                        showConfirmation('delete', `Delete ${selectedIds.length} admin(s)?`, () => {
-                            window.adminManager.bulkDelete(selectedIds);
-                        });
-                    } else if (action === 'activate' || action === 'deactivate') {
-                        const isActive = action === 'activate';
-                        showConfirmation('bulk_action', `${action} ${selectedIds.length} admin(s)?`, () => {
-                            window.adminManager.bulkUpdateStatus(selectedIds, isActive);
-                        });
-                    }
-                    return;
-                }
-
-                if (section === 'expired-content') {
-                    if (action === 'reactivate') {
-                        showConfirmation('bulk_reactivate', `Reactivate ${selectedIds.length} item(s)?`, () => {
-                            bulkReactivateExpiredContent(selectedIds);
-                        });
-                    } else if (action === 'delete') {
-                        showConfirmation('delete', `Delete ${selectedIds.length} item(s)?`, () => {
-                            bulkDeleteExpiredContent(selectedIds);
-                        });
-                    }
-                    return;
-                }
-
-                if (section === 'trash') {
-                    if (action === 'restore') {
-                        showConfirmation('bulk_action', `Restore ${selectedIds.length} item(s) from trash?`, () => {
-                            bulkRestoreTrashItems(selectedIds);
-                        });
-                    } else if (action === 'delete') {
-                        showConfirmation('delete', `Permanently delete ${selectedIds.length} item(s)?`, () => {
-                            bulkPermanentlyDeleteTrashItems(selectedIds);
-                        });
-                    }
-                    return;
-                }
-
-                // Regular sections
-                if (action === 'delete') {
-                    showConfirmation('delete', `Delete ${selectedIds.length} ${section}?`, () => {
-                        performBulkDelete(section, selectedIds);
-                    });
-                } else if (action === 'activate' || action === 'deactivate') {
-                    const isActive = action === 'activate';
-                    showConfirmation('bulk_action', `${action} ${selectedIds.length} ${section}?`, () => {
-                        performBulkStatusUpdate(section, selectedIds, isActive);
-                    });
-                } else if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_replied') {
-                    const status = action.replace('mark_', '');
-                    showConfirmation('bulk_action', `Mark ${selectedIds.length} message(s) as ${status}?`, () => {
-                        performBulkMessageStatusUpdate(section, selectedIds, status);
-                    });
-                }
-            });
-        });
-
-        console.log('✅ Header bulk actions setup complete');
-    }
-
-    // ===== HELPER FUNCTION FOR BUTTON STATE - SINGLE SOURCE OF TRUTH =====
-    function updateBulkButtonState(section, selectedCount) {
-        // Map section to button ID
-        const buttonMap = {
-            'courses': 'applyCourseBulkAction',
-            'jobs': 'applyJobBulkAction',
-            'internships': 'applyInternshipBulkAction',
-            'blog': 'applyBlogBulkAction',
-            'users': 'applyUserBulkAction',
-            'messages': 'applyMessageBulkAction',
-            'newsletter': 'applyNewsletterBulkAction',
-            'testimonials': 'applyTestimonialBulkAction',
-            'admins': 'applyAdminBulkAction',
-            'expired-content': 'applyExpiredContentBulkAction',
-            'trash': 'applyTrashBulkAction'
-        };
-
-        const buttonId = buttonMap[section];
-        if (!buttonId) return;
-
-        const button = document.getElementById(buttonId);
-        if (button) {
-            button.disabled = selectedCount === 0;
-            // Optional: Add visual feedback
-            if (selectedCount > 0) {
-                button.style.opacity = '1';
-            } else {
-                button.style.opacity = '0.6';
-            }
-        }
-    }
-
-    // Update the select all checkbox state
-    function updateSelectAllCheckbox(section) {
-        // Handle testimonial section separately
-        if (section === 'testimonials') {
-            const selectAll = document.getElementById('selectAllTestimonials');
-            if (!selectAll) return;
-
-            if (window.testimonialManager) {
-                const totalCheckboxes = document.querySelectorAll('#testimonialsTableBody .testimonial-checkbox').length;
-                const checkedCount = window.testimonialManager.selectedIds.length;
-
-                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
-            }
-            return;
-        }
-
-        // Handle admin section separately
-        if (section === 'admins') {
-            const selectAll = document.getElementById('selectAllAdmins');
-            if (!selectAll) return;
-
-            if (window.adminManager) {
-                const totalCheckboxes = document.querySelectorAll('#adminsTableBody .admin-checkbox:not([disabled])').length;
-                const checkedCount = window.adminManager.selectedAdmins.length;
-
-                selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
-            }
-            return;
-        }
-
-        // Handle expired content section
-        if (section === 'expired-content') {
-            const selectAll = document.getElementById('selectAllExpired');
-            if (!selectAll) return;
-
-            const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
-            const checkedCount = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').length;
-
-            if (checkboxes.length > 0) {
-                selectAll.checked = checkedCount === checkboxes.length;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-            } else {
-                selectAll.checked = false;
-                selectAll.indeterminate = false;
-            }
-            return;
-        }
-
-        // Handle trash section
-        if (section === 'trash') {
-            const selectAll = document.getElementById('selectAllTrash');
-            if (!selectAll) return;
-
-            const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
-            const checkedCount = document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').length;
-
-            if (checkboxes.length > 0) {
-                selectAll.checked = checkedCount === checkboxes.length;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-            } else {
-                selectAll.checked = false;
-                selectAll.indeterminate = false;
-            }
-            return;
-        }
-
-        // Handle regular sections
-        const sectionId = section.charAt(0).toUpperCase() + section.slice(1);
-        const selectAll = document.getElementById(`selectAll${sectionId}`);
-        if (!selectAll) return;
-
-        const tableBody = document.getElementById(`${section}TableBody`);
-        if (!tableBody) return;
-
-        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-        const checkedCount = selectedItems[section] ? selectedItems[section].length : 0;
-
-        selectAll.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
-        selectAll.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
-    }
-
-    // Soft bulk delete function
-    function performBulkDelete(section, ids) {
-        if (!ids || ids.length === 0) {
-            showNotification('No items selected for deletion', 'warning');
-            return;
-        }
-
-        showLoading();
-
-        // Map section to API endpoint - using correct backend endpoints
-        let apiSection = section;
-        let endpoint = `/api/admin/${apiSection}/bulk-delete`;
-
-        // Special handling for different resource types
-        if (section === 'blog') {
-            apiSection = 'blog';
-            endpoint = '/api/admin/blog/bulk-delete';
-        } else if (section === 'newsletter') {
-            apiSection = 'newsletter';
-            endpoint = '/api/admin/newsletter/bulk-delete';
-        } else if (section === 'users') {
-            apiSection = 'users';
-            endpoint = '/api/admin/users/bulk-delete';
-        } else if (section === 'messages') {
-            apiSection = 'messages';
-            endpoint = '/api/admin/messages/bulk-delete';
-        } else if (section === 'testimonials') {
-            apiSection = 'testimonials';
-            endpoint = '/api/admin/testimonials/bulk-delete';
-        }
-
-        console.log(`Bulk deleting ${section} with IDs: ${ids} using endpoint: ${endpoint}`);
-
-        fetch(endpoint, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ ids: ids })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.message || `Failed to delete ${section}`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                const message = result.moved_to_trash !== false ?
-                    `${ids.length} ${section} moved to trash` :
-                    `${ids.length} ${section} deleted successfully`;
-                showNotification(message, 'success');
-
-                // Clear selection
-                if (selectedItems[section]) {
-                    selectedItems[section] = [];
-                }
-                updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, 0);
-
-                // Reload the current section to reflect changes
-                if (section === 'testimonials') {
-                    if (window.testimonialManager) {
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                } else if (section === 'admins') {
-                    if (window.adminManager) {
-                        window.adminManager.loadAdmins();
-                    }
-                } else {
-                    loadSectionData(section, currentPage[section]);
-                }
-
-                // Update dashboard stats (including trash count)
-                loadDashboardStats();
-                loadTrashStats(true);
-
-                // If we're in the trash section, refresh it
-                if (currentSection === 'trash') {
-                    loadTrashItems(currentTrashPage);
-                }
-            } else {
-                showNotification(result.message || `Failed to delete ${section}`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error bulk deleting ${section}:`, error);
-            showNotification(error.message || `Failed to delete ${section}. Please try again.`, 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-
-    // bulk status update function
-    function performBulkStatusUpdate(section, ids, isActive) {
-        if (!ids || ids.length === 0) {
-            showNotification('No items selected', 'warning');
-            return;
-        }
-
-        showLoading();
-
-        // Fix section names for API endpoints - matches backend
-        let apiSection = section;
-        let endpoint = `/api/admin/${apiSection}/bulk-status`;
-
-        // Special handling for blog posts (uses blog_posts table)
-        if (section === 'blog') {
-            apiSection = 'blog_posts';
-            endpoint = '/api/admin/blog_posts/bulk-status';
-        }
-        // Special handling for newsletter subscribers
-        else if (section === 'newsletter') {
-            apiSection = 'newsletter_subscribers';
-            endpoint = '/api/admin/newsletter_subscribers/bulk-status';
-        }
-        // Special handling for users
-        else if (section === 'users') {
-            apiSection = 'users';
-            endpoint = '/api/admin/users/bulk-status';
-        }
-
-        console.log(`Bulk status update: ${section} -> ${apiSection}, isActive: ${isActive}`);
-
-        fetch(endpoint, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ ids: ids, is_active: isActive })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-                });
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                const statusText = isActive ? 'activated' : 'deactivated';
-                showNotification(`${ids.length} ${section} ${statusText} successfully`, 'success');
-
-                // Clear selection
-                if (selectedItems[section]) {
-                    selectedItems[section] = [];
-                }
-                updateSelectAllCheckbox(section);
-                updateBulkButtonState(section, 0);
-
-                // Reload the section data
-                if (section === 'testimonials') {
-                    if (window.testimonialManager) {
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                } else if (section === 'admins') {
-                    if (window.adminManager) {
-                        window.adminManager.loadAdmins();
-                    }
-                } else {
-                    loadSectionData(section, currentPage[section]);
-                }
-            } else {
-                showNotification(result.message || `Failed to update ${section} status`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error bulk updating ${section} status:`, error);
-            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-
-    // bulk message status update function
-    function performBulkMessageStatusUpdate(section, ids, status) {
-        if (!ids || ids.length === 0) {
-            showNotification('No items selected', 'warning');
-            return;
-        }
-
-        showLoading();
-
-        console.log(`Bulk updating ${section} status to ${status} for IDs:`, ids);
-
-        fetch(`/api/admin/${section}/bulk-status`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ ids: ids, status: status })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                showNotification(`${ids.length} ${section} status updated to ${status} successfully`, 'success');
-                // Clear selection and reload data
-                if (selectedItems[section]) {
-                    selectedItems[section] = [];
-                }
-                updateBulkButtonState(section, 0);
-                loadSectionData(section, currentPage[section]);
-            } else {
-                showNotification(result.message || `Failed to update ${section} status`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error(`Error bulk updating ${section} status:`, error);
-            showNotification(`Failed to update ${section} status. Please try again.`, 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-    // Filter setup
-    function setupSearchFilters() {
-        // Search functionality - ONLY on button click or Enter key
-        document.querySelectorAll('.search-box').forEach(searchBox => {
-            const searchInput = searchBox.querySelector('input');
-            const searchBtn = searchBox.querySelector('.search-btn');
-
-            if (!searchInput || !searchBtn) return;
-
-            // Remove any existing listeners by cloning
-            const newSearchBtn = searchBtn.cloneNode(true);
-            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
-
-            // Search button click handler
-            newSearchBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const section = searchBox.closest('.admin-section');
-                if (!section) return;
-
-                const sectionId = section.id;
-                const searchTerm = searchInput.value.trim();
-
-                // Show loading state on button
-                const originalHTML = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.disabled = true;
-
-                // Get current filters
-                const filters = getCurrentFilters(sectionId);
-
-                // Reset to page 1 and load data with search and filters
-                if (sectionId === 'testimonials') {
-                    if (window.testimonialManager) {
-                        window.testimonialManager.currentPage = 1;
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                } else if (sectionId === 'expired-content') {
-                    currentExpiredPage = 1;
-                    loadExpiredContentData(1, searchTerm);
-                } else if (sectionId === 'trash') {
-                    currentTrashPage = 1;
-                    loadTrashItems(1, searchTerm);
-                } else {
-                    // For courses, jobs, internships, blog, users, messages, newsletter
-                    if (currentPage[sectionId] !== undefined) {
-                        currentPage[sectionId] = 1;
-                    }
-                    loadSectionData(sectionId, 1, searchTerm, filters);
-                }
-
-                // Restore button after delay
-                setTimeout(() => {
-                    this.innerHTML = originalHTML;
-                    this.disabled = false;
-                }, 1000);
-            });
-
-            // Enter key also triggers search
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    newSearchBtn.click();
-                }
-            });
-        });
-
-        // DROP DOWN FILTER FUNCTIONALITY
-        document.querySelectorAll('.filter-select').forEach(select => {
-            const newSelect = select.cloneNode(true);
-            select.parentNode.replaceChild(newSelect, select);
-
-            newSelect.addEventListener('change', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const section = this.closest('.admin-section');
-                if (!section) return;
-
-                const sectionId = section.id;
-
-                // Get current search term
-                const searchInput = section.querySelector('.search-box input');
-                const searchTerm = searchInput ? searchInput.value.trim() : '';
-
-                // Get all filters from this section
-                const filters = getCurrentFilters(sectionId);
-
-                console.log(`🎯 Filter changed in ${sectionId}:`, filters);
-
-                // Reset to page 1 and load data with filters
-                if (sectionId === 'testimonials') {
-                    if (window.testimonialManager) {
-                        window.testimonialManager.currentPage = 1;
-                        window.testimonialManager.loadTestimonialsData(1);
-                    }
-                } else if (sectionId === 'expired-content') {
-                    currentExpiredPage = 1;
-                    loadExpiredContentData(1, searchTerm);
-                } else if (sectionId === 'trash') {
-                    currentTrashPage = 1;
-                    loadTrashItems(1, searchTerm);
-                } else {
-                    if (currentPage[sectionId] !== undefined) {
-                        currentPage[sectionId] = 1;
-                    }
-                    loadSectionData(sectionId, 1, searchTerm, filters);
-                }
-            });
-        });
-    }
-
-    // Enhanced data loading with filters
-    function loadSectionDataWithFilters(section, page = 1, search = '') {
-        const filters = getCurrentFilters(section);
-        loadSectionData(section, page, search, filters);
-    }
-
-    function getCurrentFilters(section) {
-        const filters = {};
-
-        switch(section) {
-            case 'courses':
-                const categoryFilter = document.getElementById('courseCategoryFilter');
-                if (categoryFilter && categoryFilter.value) {
-                    filters.category = categoryFilter.value;
-                }
-                break;
-
-            case 'jobs':
-                const jobTypeFilter = document.getElementById('jobTypeFilter');
-                if (jobTypeFilter && jobTypeFilter.value) {
-                    filters.type = jobTypeFilter.value;
-                }
-                break;
-
-            case 'internships':
-                const internshipTypeFilter = document.getElementById('internshipTypeFilter');
-                if (internshipTypeFilter && internshipTypeFilter.value) {
-                    filters.type = internshipTypeFilter.value;
-                }
-                break;
-
-            case 'blog':
-                const blogCategoryFilter = document.getElementById('blogCategoryFilter');
-                if (blogCategoryFilter && blogCategoryFilter.value) {
-                    filters.category = blogCategoryFilter.value;
-                }
-                break;
-
-            case 'users':
-                // Updated: Use status filter instead of role filter
-                const userStatusFilter = document.getElementById('userStatusFilter');
-                if (userStatusFilter && userStatusFilter.value) {
-                    filters.status = userStatusFilter.value;
-                }
-                break;
-
-            case 'messages':
-                const messageStatusFilter = document.getElementById('messageStatusFilter');
-                if (messageStatusFilter && messageStatusFilter.value) {
-                    filters.status = messageStatusFilter.value;
-                }
-                break;
-
-            case 'newsletter':
-                const newsletterStatusFilter = document.getElementById('newsletterStatusFilter');
-                if (newsletterStatusFilter && newsletterStatusFilter.value) {
-                    filters.status = newsletterStatusFilter.value;
-                }
-                break;
-
-            case 'testimonials':
-                const testimonialStatusFilter = document.getElementById('testimonialStatusFilter');
-                if (testimonialStatusFilter && testimonialStatusFilter.value) {
-                    filters.status = testimonialStatusFilter.value;
-                }
-                break;
-
-            case 'expired-content':
-                const expiredTypeFilter = document.getElementById('expiredContentTypeFilter');
-                if (expiredTypeFilter && expiredTypeFilter.value) {
-                    filters.type = expiredTypeFilter.value;
-                }
-                break;
-
-            case 'trash':
-                const trashTypeFilter = document.getElementById('trashTypeFilter');
-                if (trashTypeFilter && trashTypeFilter.value && trashTypeFilter.value !== 'all') {
-                    filters.type = trashTypeFilter.value;
-                }
-                break;
-        }
-
-        return filters;
-    }
-
-    function setupPagination() {
-        console.log('🔄 Setting up pagination...');
-
-        // For regular sections, ensure updatePaginationInfo calls the global UI
-        window.updatePaginationInfo = function(section, totalItems, currentPageNum) {
-            if (typeof updatePaginationUI === 'function') {
-                updatePaginationUI(section, currentPageNum, totalItems, itemsPerPage);
-            }
-        };
-
-        // For testimonial manager - override its pagination method
-        if (window.testimonialManager) {
-            window.testimonialManager.updatePaginationInfo = function(totalItems, currentPage, perPage) {
-                if (typeof updatePaginationUI === 'function') {
-                    updatePaginationUI('testimonials', currentPage, totalItems, perPage);
-                }
-            };
-        }
-
-        // For admin manager - override its pagination method
-        if (window.adminManager) {
-            const originalUpdatePagination = window.adminManager.updatePagination;
-            window.adminManager.updatePagination = function(totalCount) {
-                if (originalUpdatePagination) {
-                    originalUpdatePagination.call(this, totalCount);
-                }
-                if (typeof updatePaginationUI === 'function') {
-                    updatePaginationUI('admins', this.currentPage, totalCount, this.perPage);
-                }
-            };
-        }
-
-        // For expired content - override its pagination function
-        if (typeof updateExpiredPaginationInfo === 'function') {
-            window.updateExpiredPaginationInfo = function(totalItems, currentPage, perPage) {
-                if (typeof updatePaginationUI === 'function') {
-                    updatePaginationUI('expired-content', currentPage, totalItems, perPage || expiredItemsPerPage);
-                }
-            };
-        }
-
-        // For trash - override its pagination function
-        if (typeof updateTrashPaginationInfo === 'function') {
-            window.updateTrashPaginationInfo = function(totalItems, currentPage, perPage) {
-                if (typeof updatePaginationUI === 'function') {
-                    updatePaginationUI('trash', currentPage, totalItems, perPage || trashItemsPerPage);
-                }
-            };
-        }
-
-        console.log('✅ Pagination setup complete');
-    }
-
-    function updatePaginationInfo(section, totalItems, currentPageNum) {
-        const paginationInfo = document.getElementById(`${section}PageInfo`);
-        if (!paginationInfo) return;
-
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const startItem = (currentPageNum - 1) * itemsPerPage + 1;
-        const endItem = Math.min(currentPageNum * itemsPerPage, totalItems);
-
-        paginationInfo.textContent = `Page ${currentPageNum} of ${totalPages}`;
-
-        const prevBtn = document.getElementById(`prev${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
-        const nextBtn = document.getElementById(`next${section.charAt(0).toUpperCase() + section.slice(1)}Page`);
-
-        if (prevBtn) prevBtn.disabled = currentPageNum === 1;
-        if (nextBtn) nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
-    }
-
-    function showNotification(message, type = 'info', duration = 5000) {
-        const notificationContainer = document.getElementById('notificationContainer');
-        if (!notificationContainer) return;
-
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-
-        const icons = {
-            'success': 'fa-check-circle',
-            'error': 'fa-exclamation-circle',
-            'warning': 'fa-exclamation-triangle',
-            'info': 'fa-info-circle'
-        };
-
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas ${icons[type] || icons.info}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="notification-close">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-
-        notificationContainer.appendChild(notification);
-
-        // Auto-hide after duration (except for warnings which stay longer)
-        if (type !== 'warning' || duration > 0) {
-            const timeout = setTimeout(() => {
-                notification.classList.add('fade-out');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 500);
-            }, duration);
-
-            // Add click to dismiss
-            notification.querySelector('.notification-close').addEventListener('click', () => {
-                clearTimeout(timeout);
-                notification.classList.add('fade-out');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 500);
-            });
-        } else {
-            // For warnings with duration 0 (persistent), only add click dismiss
-            notification.querySelector('.notification-close').addEventListener('click', () => {
-                notification.classList.add('fade-out');
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 500);
-            });
-        }
-    }
-
-    function showLoading() {
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'flex';
-        }
-    }
-
-    function hideLoading() {
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        if (loadingOverlay) {
-            loadingOverlay.style.display = 'none';
-        }
-    }
-
-    function escapeHTML(str) {
-        if (!str) return '';
-        return str.toString()
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function formatDate(dateString, includeTime = false) {
-        if (!dateString) return 'N/A';
-
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Invalid Date';
-
-        const options = {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        };
-
-        if (includeTime) {
-            options.hour = '2-digit';
-            options.minute = '2-digit';
-        }
-
-        return date.toLocaleDateString('en-US', options);
-    }
-
-    function setupGlobalErrorHandling() {
-        // Store original fetch function
-        const originalFetch = window.fetch;
-
-        // Override fetch to handle session errors globally
-        window.fetch = function(...args) {
-            return originalFetch.apply(this, args)
-                .then(response => {
-                    if (response.status === 401) {
-                        return response.json().then(data => {
-                            if (data.requires_login) {
-                                // Don't redirect immediately, just return the response
-                                return response;
-                            }
-                            return response;
-                        });
-                    }
-                    return response;
-                })
-                .catch(error => {
-                    if (error.message.includes('Failed to fetch')) {
-                        showNotification('Network error. Please check your connection.', 'error');
-                    }
-                    throw error;
-                });
-        };
-    }
-
-    // Newsletter form handling
-    function handleNewsletterSubmit(e) {
-        e.preventDefault();
-
-        // Show loading state
-        showLoading();
-
-        // Simulate API call - replace with actual implementation
-        setTimeout(() => {
-            showNotification('Newsletter sent successfully!', 'success');
-            closeModal();
-            hideLoading();
-        }, 1000);
-
-        // Actual implementation would look like:
-        fetch('/api/admin/newsletter/send', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                showNotification('Newsletter sent successfully!', 'success');
-                closeModal();
-            } else {
-                showNotification(result.message || 'Failed to send newsletter', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error sending newsletter:', error);
-            showNotification('Failed to send newsletter', 'error');
-        })
-        .finally(() => {
-            hideLoading();
-        });
-    }
-
-    // ===== SIDEBAR MENU SCROLL MANAGER =====
-    class SidebarMenuScrollManager {
-        constructor() {
-            this.sidebarMenu = document.querySelector('.sidebar-menu');
-            this.sidebar = document.querySelector('.sidebar');
-            this.scrollbar = null;
-            this.scrollbarThumb = null;
-            this.isDragging = false;
-            this.isMobile = window.innerWidth <= 768;
-            this.scrollTimeout = null;
-
-            if (!this.sidebarMenu) {
-                console.warn('Sidebar menu not found');
-                return;
-            }
-
-            this.init();
-        }
-
-        init() {
-            console.log('🔄 Initializing sidebar menu scroll manager...');
-
-            // First, make sure menu is scrollable
-            this.setupMenuScrolling();
-
-            // Create custom scrollbar
-            this.createScrollbar();
-
-            // Setup event listeners
-            this.setupEventListeners();
-
-            // Initial update
-            this.updateScrollbar();
-
-            // Show on mobile immediately
-            if (this.isMobile) {
-                this.showScrollbar();
-            }
-        }
-
-        setupMenuScrolling() {
-            // Make menu scrollable
-            this.sidebarMenu.style.overflowY = 'auto';
-            this.sidebarMenu.style.overflowX = 'hidden';
-            this.sidebarMenu.style.maxHeight = 'calc(100vh - 150px)'; // Adjust based on your header/footer height
-            this.sidebarMenu.style.position = 'relative';
-            this.sidebarMenu.style.paddingRight = '8px'; // Space for scrollbar
-
-            // Hide native scrollbar
-            this.sidebarMenu.style.scrollbarWidth = 'none';
-            this.sidebarMenu.style.msOverflowStyle = 'none';
-
-            // For Webkit browsers
-            const style = document.createElement('style');
-            style.textContent = `
-                .sidebar-menu::-webkit-scrollbar {
-                    display: none;
-                    width: 0;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        createScrollbar() {
-            // Remove existing custom scrollbar
-            const existing = this.sidebarMenu.parentElement.querySelector('.menu-scrollbar');
-            if (existing) existing.remove();
-
-            // Create scrollbar container
-            this.scrollbar = document.createElement('div');
-            this.scrollbar.className = 'menu-scrollbar';
-            this.scrollbar.style.cssText = `
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 6px;
-                height: 100%;
-                z-index: 10;
-                opacity: ${this.isMobile ? '0.8' : '0'};
-                transition: opacity 0.3s ease;
-                pointer-events: none;
-            `;
-
-            // Create scrollbar track
-            const track = document.createElement('div');
-            track.className = 'menu-scrollbar-track';
-            track.style.cssText = `
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.05);
-                border-radius: 3px;
-            `;
-
-            // Create scrollbar thumb
-            this.scrollbarThumb = document.createElement('div');
-            this.scrollbarThumb.className = 'menu-scrollbar-thumb';
-            this.scrollbarThumb.style.cssText = `
-                position: absolute;
-                right: 0;
-                width: 100%;
-                background: rgba(0,0,0,0.3);
-                border-radius: 3px;
-                cursor: pointer;
-                transition: background 0.2s ease, height 0.2s ease;
-                pointer-events: auto;
-                user-select: none;
-            `;
-
-            // Dark mode adjustments
-            if (document.querySelector('.admin-dashboard.dark-mode')) {
-                track.style.background = 'rgba(255,255,255,0.05)';
-                this.scrollbarThumb.style.background = 'rgba(255,255,255,0.3)';
-            }
-
-            // Assemble
-            track.appendChild(this.scrollbarThumb);
-            this.scrollbar.appendChild(track);
-
-            // Position scrollbar relative to sidebar menu
-            const menuRect = this.sidebarMenu.getBoundingClientRect();
-            const sidebarRect = this.sidebarMenu.parentElement.getBoundingClientRect();
-
-            this.scrollbar.style.top = `${menuRect.top - sidebarRect.top}px`;
-            this.scrollbar.style.height = `${menuRect.height}px`;
-
-            // Add to sidebar (parent of menu)
-            this.sidebarMenu.parentElement.appendChild(this.scrollbar);
-
-            console.log('✅ Custom scrollbar created');
-        }
-
-        updateScrollbar() {
-            if (!this.scrollbarThumb || !this.sidebarMenu) return;
-
-            const menuHeight = this.sidebarMenu.clientHeight;
-            const scrollHeight = this.sidebarMenu.scrollHeight;
-            const scrollTop = this.sidebarMenu.scrollTop;
-
-            // Hide if no scrolling needed
-            if (scrollHeight <= menuHeight) {
-                this.scrollbar.style.opacity = '0';
-                this.scrollbar.style.pointerEvents = 'none';
-                return;
-            }
-
-            // Calculate thumb size and position
-            const ratio = menuHeight / scrollHeight;
-            const thumbHeight = Math.max(menuHeight * ratio, 20); // Minimum 20px
-            const maxScroll = scrollHeight - menuHeight;
-            const thumbTop = (scrollTop / maxScroll) * (menuHeight - thumbHeight);
-
-            // Update thumb
-            this.scrollbarThumb.style.height = `${thumbHeight}px`;
-            this.scrollbarThumb.style.top = `${thumbTop}px`;
-
-            // Show scrollbar
-            this.showScrollbar();
-
-            console.log('📏 Scrollbar updated:', { menuHeight, scrollHeight, thumbHeight, thumbTop });
-        }
-
-        showScrollbar() {
-            if (this.scrollbar) {
-                this.scrollbar.style.opacity = this.isMobile ? '0.8' : '1';
-                this.scrollbar.style.pointerEvents = 'auto';
-            }
-        }
-
-        hideScrollbar() {
-            if (this.scrollbar && !this.isDragging && !this.isMobile) {
-                this.scrollbar.style.opacity = '0';
-                this.scrollbar.style.pointerEvents = 'none';
-            }
-        }
-
-        setupEventListeners() {
-            // Menu scroll event
-            this.sidebarMenu.addEventListener('scroll', () => {
-                this.updateScrollbar();
-                this.showScrollbar();
-
-                // Auto-hide on desktop
-                if (!this.isMobile) {
-                    clearTimeout(this.scrollTimeout);
-                    this.scrollTimeout = setTimeout(() => this.hideScrollbar(), 1500);
-                }
-            });
-
-            // Mouse events for thumb dragging
-            this.scrollbarThumb.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                this.isDragging = true;
-                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
-
-                const startY = e.clientY;
-                const startTop = parseFloat(this.scrollbarThumb.style.top) || 0;
-                const menuHeight = this.sidebarMenu.clientHeight;
-                const thumbHeight = this.scrollbarThumb.offsetHeight;
-
-                const onMouseMove = (moveE) => {
-                    if (!this.isDragging) return;
-
-                    const deltaY = moveE.clientY - startY;
-                    const newTop = Math.max(0, Math.min(startTop + deltaY, menuHeight - thumbHeight));
-
-                    // Calculate scroll position
-                    const scrollRatio = newTop / (menuHeight - thumbHeight);
-                    const maxScroll = this.sidebarMenu.scrollHeight - menuHeight;
-                    this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
-
-                    // Update thumb position
-                    this.scrollbarThumb.style.top = `${newTop}px`;
-                };
-
-                const onMouseUp = () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    this.isDragging = false;
-                    this.scrollbarThumb.style.background = '';
-
-                    if (!this.isMobile) {
-                        setTimeout(() => this.hideScrollbar(), 1000);
-                    }
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-
-            // Hover events
-            this.sidebarMenu.addEventListener('mouseenter', () => {
-                if (!this.isMobile) this.showScrollbar();
-            });
-
-            this.sidebarMenu.addEventListener('mouseleave', () => {
-                if (!this.isDragging && !this.isMobile) {
-                    setTimeout(() => this.hideScrollbar(), 500);
-                }
-            });
-
-            // Touch events for mobile
-            this.scrollbarThumb.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                this.isDragging = true;
-                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
-            }, { passive: false });
-
-            document.addEventListener('touchmove', (e) => {
-                if (!this.isDragging) return;
-                e.preventDefault();
-
-                const touch = e.touches[0];
-                const thumbRect = this.scrollbarThumb.getBoundingClientRect();
-                const menuRect = this.sidebarMenu.getBoundingClientRect();
-
-                // Calculate new position
-                const newTop = Math.max(0, Math.min(touch.clientY - menuRect.top - thumbRect.height/2, menuRect.height - thumbRect.height));
-
-                // Calculate scroll position
-                const scrollRatio = newTop / (menuRect.height - thumbRect.height);
-                const maxScroll = this.sidebarMenu.scrollHeight - menuRect.height;
-                this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
-            }, { passive: false });
-
-            document.addEventListener('touchend', () => {
-                this.isDragging = false;
-                this.scrollbarThumb.style.background = '';
-            });
-
-            // Window resize
-            window.addEventListener('resize', () => {
-                this.isMobile = window.innerWidth <= 768;
-                this.updateScrollbar();
-
-                // Recreate scrollbar on resize to fix positioning
-                setTimeout(() => {
-                    this.createScrollbar();
-                    this.updateScrollbar();
-                }, 100);
-            });
-
-            // Also update when menu items change
-            const observer = new MutationObserver(() => {
-                setTimeout(() => this.updateScrollbar(), 100);
-            });
-
-            observer.observe(this.sidebarMenu, {
-                childList: true,
-                subtree: true,
-                attributes: false,
-                characterData: false
-            });
-        }
-
-        destroy() {
-            if (this.scrollbar) {
-                this.scrollbar.remove();
-            }
-
-            // Reset menu styles
-            this.sidebarMenu.style.overflowY = '';
-            this.sidebarMenu.style.maxHeight = '';
-            this.sidebarMenu.style.paddingRight = '';
-            this.sidebarMenu.style.position = '';
-
-            console.log('🗑️ Sidebar menu scroll manager destroyed');
-        }
-    }
-
-    // Initialize sidebar menu scrolling
-    let sidebarMenuScrollManager = null;
-
-    function initSidebarMenuScrolling() {
-        // Destroy existing
-        if (sidebarMenuScrollManager) {
-            sidebarMenuScrollManager.destroy();
-        }
-
-        // Initialize new
-        sidebarMenuScrollManager = new SidebarMenuScrollManager();
-
-        // Also update after a delay to ensure everything is loaded
-        setTimeout(() => {
-            if (sidebarMenuScrollManager) {
-                sidebarMenuScrollManager.updateScrollbar();
-            }
-        }, 1000);
-    }
-
-    // Re-initialize scrollbar on resize
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            initSidebarMenuScrolling();
-        }, 250);
-    });
+    // ============================================
+    // ========== 12. TRASH FUNCTIONS ==========
+    // ============================================
 
     // ===== TRASH MANAGEMENT =====
 
@@ -7114,33 +4838,6 @@
     let selectedTrashItems = [];
     let isLoadingTrash = false;
     let hasInitializedTrash = false;
-
-    // Helper function to get days ago text
-    function getDaysAgo(dateString) {
-        if (!dateString) return '';
-
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-            const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-            if (diffMinutes < 1) return 'Just now';
-            if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-            if (diffDays === 0) return 'Today';
-            if (diffDays === 1) return 'Yesterday';
-            if (diffDays < 7) return `${diffDays} days ago`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-            if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
-            return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`;
-        } catch (error) {
-            console.warn('Error calculating days ago:', error);
-            return '';
-        }
-    }
 
     // Load trash stats and update dashboard card with micro loader
     function loadTrashStats(showMicroLoader = true) {
@@ -7357,11 +5054,6 @@
             hideLoading(); // Hide loading indicator
         });
     }
-
-    // Retry function for error state
-    window.retryLoadTrash = function() {
-        loadTrashItems(1);
-    };
 
     // Update trash pagination info
     function updateTrashPaginationInfo(totalItems, currentPage, perPage) {
@@ -8195,31 +5887,6 @@
         );
     }
 
-    // Helper function to get display name
-    function getDisplayName(contentType) {
-        const names = {
-            'course': 'Course',
-            'job': 'Job',
-            'internship': 'Internship',
-            'blog': 'Blog Post',
-            'testimonial': 'Testimonial',
-            'user': 'User',
-            'message': 'Message',
-            'newsletter': 'Newsletter Subscriber',
-            'admin': 'Admin'
-        };
-        return names[contentType] || contentType;
-    }
-
-    // Helper function to get state description
-    function getStateDescription(contentType) {
-        const hasFeatured = ['course', 'job', 'internship', 'blog'].includes(contentType);
-        if (hasFeatured) {
-            return 'inactive state (featured status will be removed)';
-        }
-        return 'inactive state';
-    }
-
     // "Permanently delete" from trash - mark as hidden in database
     function permanentlyDeleteSingleItem(contentType, contentId, tableName) {
         showConfirmation('delete',
@@ -8591,6 +6258,1830 @@
         });
     }
 
+    // ============================================
+    // ========== 13. ACTIVITY FUNCTIONS ==========
+    // ============================================
+
+    // Initialize activity scrollbar
+    function initActivityScrollbar() {
+        const activityContainer = document.querySelector('.activity-container');
+        const activityList = document.querySelector('.activity-list');
+
+        if (!activityContainer || !activityList) return;
+
+        // Calculate if we need scrollbar
+        const containerHeight = activityContainer.clientHeight;
+        const contentHeight = activityList.scrollHeight;
+
+        // Show scrollbar only if content overflows
+        if (contentHeight > containerHeight) {
+            activityContainer.classList.add('scrollable');
+            console.log(`📜 Scrollbar enabled (Content: ${contentHeight}px, Container: ${containerHeight}px)`);
+        } else {
+            activityContainer.classList.remove('scrollable');
+        }
+
+        // Update on window resize
+        window.addEventListener('resize', initActivityScrollbar);
+    }
+
+    // Helper function: Update activities display
+    function updateActivitiesDisplay(activities) {
+        const activityList = document.querySelector('.activity-list');
+        const activityCount = document.getElementById('activityCount');
+
+        if (!activityList) {
+            console.error('❌ Cannot update activities: .activity-list element not found');
+            return;
+        }
+
+        // Update activity count
+        if (activityCount) {
+            activityCount.textContent = activities?.length || 0;
+        }
+
+        if (!activities || activities.length === 0) {
+            showNoActivitiesMessage();
+            return;
+        }
+
+        console.log(`🔄 Rendering ${activities.length} activities in scrollable container`);
+
+        activityList.innerHTML = activities.map(activity => {
+            const icon = activity.icon || getActivityIcon(activity.type);
+            const message = escapeHTML(activity.message || 'No message');
+            const timeAgo = formatActivityTime(activity.time || activity.timestamp || activity.created_at);
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p class="activity-message">${message}</p>
+                        <small class="activity-time">${timeAgo}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Initialize scrollbar after content is loaded
+        setTimeout(initActivityScrollbar, 100);
+    }
+
+    // ============================================
+    // ========== 14. BLOG FUNCTIONS ==========
+    // ============================================
+
+    // Global variable to store the categories manager
+    let blogCategoriesManager = null;
+
+    //  single category dropdown for blog posts
+    function setupBlogCategories() {
+        console.log('Setting up blog category dropdown');
+
+        const categorySelect = document.getElementById('blogCategory');
+        const hiddenInput = document.getElementById('blogCategoriesHidden');
+
+        if (!categorySelect) {
+            console.log('Blog category select not found');
+            return null;
+        }
+
+        // Function to set the selected category
+        function setCategory(category) {
+            if (category) {
+                categorySelect.value = category;
+                if (hiddenInput) {
+                    // ALWAYS store as JSON array string - this is what old file expects
+                    hiddenInput.value = JSON.stringify([category]);
+                }
+            }
+        }
+
+        // Initialize with any existing values (for edit mode)
+        function initializeWithValues(categories) {
+            console.log('Setting category with:', categories);
+            if (categories) {
+                let categoryValue = '';
+
+                // Handle different possible formats
+                if (Array.isArray(categories) && categories.length > 0) {
+                    categoryValue = categories[0];
+                } else if (typeof categories === 'string') {
+                    // Try to parse if it's a JSON string
+                    try {
+                        const parsed = JSON.parse(categories);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            categoryValue = parsed[0];
+                        } else {
+                            categoryValue = categories;
+                        }
+                    } catch (e) {
+                        // Not JSON, use as is
+                        categoryValue = categories;
+                    }
+                }
+
+                if (categoryValue) {
+                    setCategory(categoryValue);
+                }
+            }
+        }
+
+        // Clear selection
+        function clearSelections() {
+            console.log('Clearing category selection');
+            categorySelect.value = '';
+            if (hiddenInput) {
+                hiddenInput.value = '';
+            }
+        }
+
+        // Get selected category as array (for compatibility with old code)
+        function getSelectedCategories() {
+            return categorySelect.value ? [categorySelect.value] : [];
+        }
+
+        // Handle category change - update hidden input with JSON array
+        categorySelect.addEventListener('change', function(e) {
+            const selectedCategory = e.target.value;
+            if (hiddenInput) {
+                if (selectedCategory) {
+                    // Store as JSON array string - exactly what old file expects
+                    hiddenInput.value = JSON.stringify([selectedCategory]);
+                } else {
+                    hiddenInput.value = '';
+                }
+            }
+        });
+
+        console.log('✅ Blog category dropdown setup complete');
+
+        return {
+            initializeWithValues: initializeWithValues,
+            clearSelections: clearSelections,
+            getSelectedCategories: getSelectedCategories
+        };
+    }
+
+    // ============================================
+    // ========== 15. LOGO PREVIEW FUNCTIONS ==========
+    // ============================================
+
+    // Add this function to handle logo previews
+    function setupLogoPreview() {
+        // Listen for input on company fields in all modals
+        document.addEventListener('input', function(e) {
+            if (e.target.name === 'company' || e.target.id.includes('Company')) {
+                const companyName = e.target.value.trim();
+                if (companyName.length > 2) {
+                    // Add delay to avoid too many API calls
+                    clearTimeout(e.target.logoPreviewTimeout);
+                    e.target.logoPreviewTimeout = setTimeout(() => {
+                        previewCompanyLogo(companyName, e.target);
+                    }, 500);
+                } else {
+                    // Clear preview if company name is too short
+                    clearLogoPreview(e.target);
+                }
+            }
+        });
+
+        // Also handle blur event for immediate response
+        document.addEventListener('blur', function(e) {
+            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
+                previewCompanyLogo(e.target.value.trim(), e.target);
+            }
+        }, true);
+    }
+
+    function clearLogoPreview(inputField) {
+        const formGroup = inputField.closest('.form-group');
+        if (!formGroup) return;
+
+        const existingPreview = formGroup.querySelector('.logo-preview');
+        if (existingPreview) {
+            existingPreview.remove();
+        }
+    }
+
+    function previewCompanyLogo(companyName, inputField) {
+        // Clear any existing preview first
+        clearLogoPreview(inputField);
+
+        const formGroup = inputField.closest('.form-group');
+        if (!formGroup) return;
+
+        // Create preview container
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'logo-preview';
+        previewContainer.innerHTML = `
+            <div class="logo-preview-content">
+                <div class="logo-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Searching logo for "${companyName}"...</span>
+                </div>
+                <div class="logo-result" style="display: none;">
+                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                    <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+                </div>
+                <div class="logo-error" style="display: none;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                    <span style="font-size: 12px; color: #666;">No logo found</span>
+                </div>
+            </div>
+        `;
+
+        // Add some basic styles
+        previewContainer.style.cssText = `
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        `;
+
+        // Insert after the input field's parent container
+        inputField.parentNode.appendChild(previewContainer);
+
+        // Fetch logo preview
+        fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const loading = previewContainer.querySelector('.logo-loading');
+                const result = previewContainer.querySelector('.logo-result');
+                const error = previewContainer.querySelector('.logo-error');
+                const logoImage = previewContainer.querySelector('.logo-image');
+
+                if (loading) loading.style.display = 'none';
+
+                if (data.success && data.logo_url) {
+                    if (result) {
+                        logoImage.src = data.logo_url;
+                        logoImage.alt = `${companyName} logo`;
+                        result.style.display = 'flex';
+                        result.style.alignItems = 'center';
+                    }
+                } else {
+                    if (error) {
+                        error.style.display = 'flex';
+                        error.style.alignItems = 'center';
+                        error.style.gap = '8px';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching logo preview:', error);
+                const loading = previewContainer.querySelector('.logo-loading');
+                const errorDiv = previewContainer.querySelector('.logo-error');
+                if (loading) loading.style.display = 'none';
+                if (errorDiv) {
+                    errorDiv.style.display = 'flex';
+                    errorDiv.style.alignItems = 'center';
+                    errorDiv.style.gap = '8px';
+                }
+            });
+    }
+
+    // ============================================
+    // ========== 16. NOTIFICATION FUNCTIONS ==========
+    // ============================================
+
+    // Enhanced notification functionality
+    function setupNotificationEvents() {
+        const notificationBell = document.querySelector('.notification-bell');
+        const notificationList = document.getElementById('notificationList');
+        const viewToggleBtn = document.getElementById('viewToggleBtn');
+        const markAllReadBtn = document.querySelector('.mark-all-read');
+
+        if (notificationBell && notificationList) {
+            notificationBell.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isShowing = notificationList.classList.contains('show');
+
+                if (!isShowing) {
+                    // Reset to limited view when opening
+                    showAllNotifications = false;
+                    renderNotifications();
+                }
+
+                notificationList.classList.toggle('show');
+
+                // Update toggle button state
+                if (viewToggleBtn) {
+                    viewToggleBtn.classList.toggle('expanded', showAllNotifications);
+                }
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!notificationBell.contains(e.target) && !notificationList.contains(e.target)) {
+                    notificationList.classList.remove('show');
+                    showAllNotifications = false;
+                    renderNotifications();
+                }
+            });
+        }
+
+        if (viewToggleBtn) {
+            viewToggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                showAllNotifications = !showAllNotifications;
+                this.classList.toggle('expanded', showAllNotifications);
+                renderNotifications();
+
+                // Smooth scroll to show new items
+                if (showAllNotifications) {
+                    const notificationItems = document.querySelector('.notification-items');
+                    if (notificationItems) {
+                        notificationItems.scrollTop = notificationItems.scrollHeight;
+                    }
+                }
+            });
+        }
+
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                markAllNotificationsAsRead();
+            });
+        }
+    }
+
+    function loadNotifications() {
+        return fetch('/api/admin/notifications', {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch notifications');
+            return response.json();
+        })
+        .then(notifications => {
+            allNotifications = notifications;
+            renderNotifications();
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+            throw error; // Re-throw to handle in Promise.all
+        });
+    }
+
+    // Enhanced notification rendering
+    function renderNotifications() {
+        const notificationItems = document.querySelector('.notification-items');
+        const notificationCount = document.getElementById('notificationCount');
+        const viewToggleBtn = document.getElementById('viewToggleBtn');
+
+        if (!notificationItems) return;
+
+        notificationItems.innerHTML = '';
+
+        // Determine which notifications to display
+        const displayedNotifications = showAllNotifications ?
+            allNotifications :
+            allNotifications.slice(0, 4);
+
+        // Update notification count
+        const unreadCount = allNotifications.filter(n => !n.is_read).length;
+        const displayCount = Math.min(unreadCount, 99);
+        notificationCount.textContent = displayCount > 0 ? displayCount : '';
+        notificationCount.style.display = displayCount > 0 ? 'flex' : 'none';
+
+        // Update view toggle button visibility and text
+        if (viewToggleBtn) {
+            if (allNotifications.length <= 4) {
+                viewToggleBtn.style.display = 'none';
+            } else {
+                viewToggleBtn.style.display = 'flex';
+                viewToggleBtn.innerHTML = showAllNotifications ?
+                    '<i class="fas fa-chevron-up"></i> Show Less' :
+                    '<i class="fas fa-chevron-down"></i> View More (' + (allNotifications.length - 4) + ')';
+            }
+        }
+
+        if (allNotifications.length === 0) {
+            notificationItems.innerHTML = `
+                <div class="no-notifications">
+                    <i class="fas fa-bell-slash"></i>
+                    <div>No notifications</div>
+                    <small>You're all caught up!</small>
+                </div>
+            `;
+            return;
+        }
+
+        displayedNotifications.forEach((notification, index) => {
+            const notificationItem = document.createElement('div');
+            notificationItem.className = `notification-item ${notification.is_read ? '' : 'unread'} ${index < 2 ? 'new' : ''}`;
+            notificationItem.setAttribute('data-type', notification.type);
+            notificationItem.setAttribute('data-id', notification.related_id);
+
+            const formattedDate = formatDate(notification.created_at, true);
+
+            notificationItem.innerHTML = `
+                <div class="notification-icon">
+                    <i class="fas fa-${getNotificationIcon(notification.type)}"></i>
+                </div>
+                <div class="notification-content">
+                    <p>${notification.message}</p>
+                    <small>${formattedDate}</small>
+                </div>
+                <span class="notification-type-badge">${notification.type}</span>
+            `;
+
+            // Add click event to navigate to relevant section
+            notificationItem.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                const id = this.getAttribute('data-id');
+
+                // Close notification dropdown
+                document.getElementById('notificationList').classList.remove('show');
+
+                // Navigate to appropriate section
+                const sectionMap = {
+                    'message': 'messages',
+                    'user': 'users',
+                    'course': 'courses',
+                    'job': 'jobs',
+                    'internship': 'internships',
+                    'blog': 'blog'
+                };
+
+                if (sectionMap[type]) {
+                    const menuItem = document.querySelector(`.sidebar-menu a[href="#${sectionMap[type]}"]`);
+                    if (menuItem) {
+                        menuItem.click();
+                    }
+                }
+            });
+
+            notificationItems.appendChild(notificationItem);
+        });
+    }
+
+    function markAllNotificationsAsRead() {
+        fetch('/api/admin/notifications/mark-all-read', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to mark notifications as read');
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+                showNotification('All notifications marked as read', 'success');
+            } else {
+                showNotification(data.message || 'Failed to mark notifications as read', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error marking notifications as read:', error);
+            showNotification('Failed to mark notifications as read', 'error');
+        });
+    }
+
+    // ============================================
+    // ========== 17. NAVIGATION & HISTORY FUNCTIONS ==========
+    // ============================================
+
+     function initializeHistory() {
+        // Set initial history state if none exists
+        if (!history.state) {
+            const initialSection = currentSection || 'dashboard';
+            const state = { section: initialSection };
+            const title = document.title;
+            const url = `#${initialSection}`;
+
+            history.replaceState(state, title, url);
+        }
+     }
+
+    // Section restoration
+    function restoreCurrentSection() {
+        console.log('🔄 restoreCurrentSection() called');
+
+        // Check if this is a fresh login (no previous session)
+        const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
+        console.log('Fresh login detected:', isFreshLogin);
+
+        // Define valid sections including ALL sections
+        const validSections = [
+            'dashboard', 'courses', 'jobs', 'internships',
+            'blog', 'newsletter', 'testimonials',
+            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics'
+        ];
+
+        console.log('Valid sections:', validSections);
+
+        // If fresh login, always start with dashboard and set session flag
+        if (isFreshLogin) {
+            sessionStorage.setItem('adminSessionStarted', 'true');
+            sessionStorage.setItem('currentSection', 'dashboard');
+            currentSection = 'dashboard';
+
+            // Initialize history for fresh login
+            const initialState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isInitial: true
+            };
+            history.replaceState(initialState, '', '#dashboard');
+
+            // Show greeting message immediately
+            displayWelcomeMessage();
+
+            // Force dashboard
+            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+            const dashboardSection = document.getElementById('dashboard');
+
+            if (dashboardItem && dashboardSection) {
+                // Remove active class from all menu items and sections first
+                document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelectorAll('.admin-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                // Activate dashboard
+                dashboardItem.classList.add('active');
+                dashboardSection.classList.add('active');
+
+                // Update page title
+                document.getElementById('pageTitle').textContent = 'Dashboard Management';
+
+                // Show micro loaders on dashboard stats immediately
+                console.log('📊 Showing micro loaders on dashboard stats...');
+                loadDashboardStats();
+                loadNotifications();
+                loadExpiredContentStats();
+                loadTrashStats(true);
+
+                console.log('✅ Fresh login: Dashboard loaded with micro loaders');
+                return;
+            }
+        }
+
+        // Priority 1: Check URL hash FIRST (most reliable on refresh)
+        const hash = window.location.hash.substring(1);
+        console.log('Current URL hash:', hash);
+
+        if (hash && validSections.includes(hash)) {
+            console.log(`🔗 Restoring from URL hash: ${hash}`);
+
+            // Check if the section exists in DOM
+            const sectionExists = document.getElementById(hash) !== null;
+            console.log(`Section "${hash}" exists in DOM:`, sectionExists);
+
+            if (sectionExists) {
+                const menuItem = document.querySelector(`.sidebar-menu a[href="#${hash}"]`);
+
+                // Special handling for admins section (since it's in submenu)
+                if (hash === 'admins') {
+                    // Open the parent submenu first
+                    const parentSubmenu = document.querySelector('.has-submenu');
+                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                        parentSubmenu.classList.add('open');
+                    }
+                }
+
+                if (menuItem) {
+                    navigateToSection(hash, menuItem, true);
+                    return;
+                } else {
+                    console.warn(`Menu item for "${hash}" not found`);
+                }
+            } else {
+                console.warn(`Section element for "${hash}" not found in DOM`);
+            }
+        }
+
+        // Priority 2: Check browser history state
+        if (history.state && history.state.section) {
+            const section = history.state.section;
+            console.log('History state section:', section);
+
+            if (validSections.includes(section)) {
+                const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
+                const targetSection = document.getElementById(section);
+
+                // Special handling for admins section
+                if (section === 'admins') {
+                    const parentSubmenu = document.querySelector('.has-submenu');
+                    if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                        parentSubmenu.classList.add('open');
+                    }
+                }
+
+                if (menuItem && targetSection) {
+                    navigateToSection(section, menuItem, true);
+                    return;
+                }
+            }
+        }
+
+        // Priority 3: Check session storage
+        const savedSection = sessionStorage.getItem('currentSection');
+        console.log('Saved section from sessionStorage:', savedSection);
+
+        if (savedSection && validSections.includes(savedSection)) {
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${savedSection}"]`);
+            const targetSection = document.getElementById(savedSection);
+
+            // Special handling for admins section
+            if (savedSection === 'admins') {
+                const parentSubmenu = document.querySelector('.has-submenu');
+                if (parentSubmenu && !parentSubmenu.classList.contains('open')) {
+                    parentSubmenu.classList.add('open');
+                }
+            }
+
+            if (menuItem && targetSection) {
+                navigateToSection(savedSection, menuItem, true);
+                return;
+            }
+        }
+
+        // Default: Dashboard
+        console.log('🏠 No saved section found, defaulting to dashboard');
+        const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+        const dashboardSection = document.getElementById('dashboard');
+
+        if (dashboardItem && dashboardSection) {
+            // Remove active class from all menu items and sections first
+            document.querySelectorAll('.sidebar-menu a').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.admin-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Activate dashboard
+            dashboardItem.classList.add('active');
+            dashboardSection.classList.add('active');
+
+            // Update page title
+            document.getElementById('pageTitle').textContent = 'Dashboard Management';
+
+            // Update current section
+            currentSection = 'dashboard';
+            sessionStorage.setItem('currentSection', 'dashboard');
+
+            // Show greeting message for returning users too
+            displayWelcomeMessage();
+
+            // Show micro loaders on dashboard stats
+            console.log('📊 Loading dashboard with micro loaders...');
+            loadDashboardStats();
+            loadNotifications();
+            loadExpiredContentStats();
+            loadTrashStats(true);
+
+            console.log('✅ Default dashboard loaded with micro loaders');
+        }
+    }
+
+    // Navigate to specific section with history management
+    function navigateToSection(targetSection, menuItem = null, fromPopState = false) {
+        console.log(`🔄 navigateToSection: ${targetSection}, fromPopState: ${fromPopState}`);
+
+        // CLOSE MOBILE MENU - This is what closes the sidebar on mobile
+        if (window.innerWidth <= 768) {
+            const sidebar = document.querySelector('.sidebar');
+            const mobileToggle = document.querySelector('.mobile-menu-toggle');
+            const overlay = document.querySelector('.mobile-overlay');
+
+            if (sidebar && sidebar.classList.contains('mobile-active')) {
+                sidebar.classList.remove('mobile-active');
+                if (mobileToggle) mobileToggle.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Update menu active state
+        document.querySelectorAll('.sidebar-menu a').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        if (menuItem) {
+            menuItem.classList.add('active');
+        } else {
+            const correspondingMenuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
+            if (correspondingMenuItem) {
+                correspondingMenuItem.classList.add('active');
+            }
+        }
+
+        // Hide all sections
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        const sectionElement = document.getElementById(targetSection);
+        if (!sectionElement) {
+            console.error(`❌ Section element not found: ${targetSection}`);
+            const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+            if (dashboardItem) dashboardItem.click();
+            return;
+        }
+
+        // Show target section
+        sectionElement.classList.add('active');
+
+        // Helper function to get proper section name - ADD analytics here
+        function getSectionDisplayName(section) {
+            const names = {
+                'dashboard': 'Dashboard',
+                'courses': 'Courses',
+                'jobs': 'Jobs',
+                'internships': 'Internships',
+                'blog': 'Blog',
+                'newsletter': 'Newsletter',
+                'testimonials': 'Testimonials',
+                'expired-content': 'Expired Content',
+                'users': 'Users',
+                'messages': 'Messages',
+                'trash': 'Trash',
+                'admins': 'Admin Management',
+                'analytics': 'Website Analytics'  // ADD THIS LINE
+            };
+            return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
+        }
+
+        // Update page title
+        const sectionName = getSectionDisplayName(targetSection);
+        document.getElementById('pageTitle').textContent = sectionName + ' Management';
+
+        // Update current section and session storage
+        currentSection = targetSection;
+        sessionStorage.setItem('currentSection', targetSection);
+        console.log(`💾 Saved to sessionStorage: ${targetSection}`);
+
+        // Initialize page number if not set
+        if (currentPage[targetSection] === undefined) {
+            currentPage[targetSection] = 1;
+        }
+
+        // Update browser history if not from popstate
+        if (!fromPopState) {
+            let pageToSave = currentPage[targetSection];
+            if (targetSection === 'trash') {
+                pageToSave = currentTrashPage || 1;
+            }
+            const state = {
+                section: targetSection,
+                page: pageToSave,
+                timestamp: Date.now()
+            };
+            history.pushState(state, '', `#${targetSection}`);
+            console.log(`📝 Updated URL hash to: #${targetSection}`);
+        }
+
+        // Load section data based on type
+        switch(targetSection) {
+            case 'dashboard':
+                console.log('📊 Loading dashboard...');
+                loadDashboardStats();
+                loadNotifications();
+                loadExpiredContentStats();
+                loadTrashStats(true);
+                break;
+            case 'trash':
+                console.log('🗑️ Loading trash section...');
+                if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
+                    currentTrashPage = currentPage.trash || 1;
+                }
+                loadTrashItems(currentTrashPage);
+                loadTrashStats(false);
+                break;
+            case 'expired-content':
+                console.log('⏰ Loading expired content section...');
+                if (typeof loadExpiredContentData === 'function') {
+                    loadExpiredContentData(currentPage['expired-content']);
+                }
+                break;
+            case 'testimonials':
+                console.log('💬 Loading testimonials section...');
+                if (window.testimonialManager) {
+                    if (!window.testimonialManager.isInitialized) {
+                        window.testimonialManager.init();
+                    } else {
+                        window.testimonialManager.loadTestimonialsData(currentPage.testimonials);
+                    }
+                }
+                break;
+            case 'admins':
+                console.log('👥 Loading admins section...');
+                if (window.adminManager) {
+                    window.adminManager.loadAdmins();
+                }
+                break;
+            case 'analytics':  // ADD THIS CASE
+                console.log('📈 Loading analytics section...');
+                setTimeout(() => {
+                    if (typeof loadAnalyticsData === 'function') {
+                        loadAnalyticsData();
+                    }
+                    if (typeof setupAnalyticsEvents === 'function') {
+                        setupAnalyticsEvents();
+                    }
+                    if (typeof loadRecentPageVisits === 'function') {
+                        loadRecentPageVisits();
+                    }
+                }, 100);
+                break;
+            default:
+                console.log(`📋 Loading ${targetSection} section...`);
+                const tableBody = document.getElementById(`${targetSection}TableBody`);
+                if (tableBody) {
+                    const colSpan = document.querySelector(`#${targetSection} thead tr`)?.cells.length || 8;
+                    tableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading...</p></td></tr>`;
+                }
+                if (typeof loadSectionData === 'function') {
+                    loadSectionData(targetSection, currentPage[targetSection]);
+                }
+                break;
+        }
+    }
+
+    // Enhanced navigation with back button handling - No logout on back button
+    function setupNavigation() {
+        // Select ALL logout links - both in sidebar-menu AND sidebar-footer
+        const logoutLinks = document.querySelectorAll('.sidebar-menu a[href="/admin/logout"], .sidebar-logout a');
+
+        // Handle logout links separately (outside the menuItems loop)
+        logoutLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                showConfirmation('logout', 'Are you sure you want to logout?', () => {
+                    // Clear all session data
+                    sessionStorage.removeItem('adminSessionStarted');
+                    sessionStorage.removeItem('currentSection');
+
+                    // Set a flag to indicate we're logging out programmatically
+                    sessionStorage.setItem('logoutInitiated', 'true');
+
+                    window.location.href = '/admin/logout';
+                });
+            });
+        });
+
+        const menuItems = document.querySelectorAll('.sidebar-menu a:not([href="/admin/logout"])');
+
+        // Initialize history state to prevent back button logout
+        if (history.state === null) {
+            const initialState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isInitial: true
+            };
+            history.replaceState(initialState, '', '#dashboard');
+
+            // Push another state to create a buffer
+            const secondState = {
+                section: 'dashboard',
+                timestamp: Date.now(),
+                isBuffer: true
+            };
+            history.pushState(secondState, '', '#dashboard');
+        }
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Skip dark mode toggle (it's now handled separately)
+                if (this.id === 'darkModeToggle' || this.closest('#darkModeToggle')) {
+                    return;
+                }
+
+                if (this.getAttribute('href').startsWith('#')) {
+                    e.preventDefault();
+
+                    // Use history API to update URL without page reload
+                    const targetSection = this.getAttribute('href').substring(1);
+                    navigateToSection(targetSection, this);
+                }
+            });
+        });
+
+        // Enhanced browser back/forward button handling - No logout allowed
+        window.addEventListener('popstate', function(event) {
+            console.log('🔙 Popstate event:', event.state);
+
+            // If we're at the initial state and user tries to go back further
+            if (event.state && event.state.isInitial) {
+                // We're at the beginning - prevent going back to login
+                const currentState = {
+                    section: currentSection || 'dashboard',
+                    timestamp: Date.now(),
+                    isInitial: true
+                };
+                history.pushState(currentState, '', `#${currentSection || 'dashboard'}`);
+
+                showNotification('You are already at the beginning of the dashboard navigation', 'info', 3000);
+                return;
+            }
+
+            // If no state, go to dashboard
+            if (!event.state || !event.state.section) {
+                navigateToSection('dashboard', null, true);
+                return;
+            }
+
+            // Navigate to the section from history
+            const section = event.state.section;
+            const menuItem = document.querySelector(`.sidebar-menu a[href="#${section}"]`);
+
+            if (menuItem) {
+                navigateToSection(section, menuItem, true);
+
+                // If page info exists in state, update current page
+                if (event.state.page && currentPage[section] !== undefined) {
+                    currentPage[section] = event.state.page;
+                }
+            } else {
+                navigateToSection('dashboard', null, true);
+            }
+        });
+
+        // Remove beforeunload warning for internal navigation
+        window.addEventListener('beforeunload', function(e) {
+            // Only show warning if not logging out intentionally
+            if (!sessionStorage.getItem('logoutInitiated')) {
+                // Don't show warning for internal navigation
+                return;
+            }
+        });
+
+        // Handle stat card links - ENHANCED to refresh dashboard when returning
+        document.querySelectorAll('.stat-card a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetSection = this.getAttribute('href').substring(1);
+
+                const menuItem = document.querySelector(`.sidebar-menu a[href="#${targetSection}"]`);
+                if (menuItem) {
+                    menuItem.click();
+                }
+            });
+        });
+    }
+
+    // ============================================
+    // ========== 18. SESSION & AUTH FUNCTIONS ==========
+    // ============================================
+
+    // Enhanced session check with automatic redirect
+    function checkAdminSession() {
+        fetch('/api/admin/check-session', {
+            credentials: 'include'
+        })
+        .then(response => {
+            if (response.status === 401) {
+                throw new Error('Session expired');
+            }
+            if (!response.ok) {
+                throw new Error('Failed to check session');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.logged_in) {
+                showSessionExpiredMessage();
+            }
+        })
+        .catch(error => {
+            console.error('Session check failed:', error);
+            showSessionExpiredMessage();
+        });
+    }
+
+    // Show session expired message and redirect to login
+    function showSessionExpiredMessage() {
+        // Create overlay for session expired message
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        `;
+
+        // Create message card
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        `;
+
+        // Add icon and message
+        card.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f39c12; margin-bottom: 20px;"></i>
+            <h2 style="margin: 0 0 15px 0; color: #333; font-weight: 600;">Session Expired</h2>
+            <p style="margin: 0 0 25px 0; color: #666; line-height: 1.5;">Your admin session has expired. Please log in again to continue.</p>
+            <button id="loginRedirectBtn" style="background: #4a6cf7; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s;">Login Again</button>
+            <div id="countdown" style="margin-top: 15px; font-size: 14px; color: #888;">Redirecting in 10 seconds...</div>
+        `;
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+
+        // Add button event listener
+        document.getElementById('loginRedirectBtn').addEventListener('click', function() {
+            window.location.href = '/admin/login?message=session_expired';
+        });
+
+        // Auto-redirect after 10 seconds
+        let seconds = 10;
+        const countdownInterval = setInterval(() => {
+            seconds--;
+            document.getElementById('countdown').textContent = `Redirecting in ${seconds} seconds...`;
+
+            if (seconds <= 0) {
+                clearInterval(countdownInterval);
+                window.location.href = '/admin/login?message=session_expired';
+            }
+        }, 1000);
+    }
+
+    // Content expiration function
+    // Handle expiration date in forms
+    function setupExpirationDateFields() {
+        // Set minimum date to today for expiration date fields
+        const today = new Date().toISOString().slice(0, 16);
+        document.querySelectorAll('input[type="datetime-local"][name="expiration_date"]').forEach(input => {
+            input.min = today;
+        });
+    }
+
+    // Add this to check for expired content every minute
+    function startExpirationChecker() {
+        setInterval(() => {
+            // This would call your backend API to check expired content
+            fetch('/api/admin/check-expired-content', {
+                method: 'POST',
+                credentials: 'include'
+            }).catch(error => {
+                console.error('Error checking expired content:', error);
+            });
+        }, 60000); // Check every minute
+    }
+
+    // Enhanced greeting function
+    function displayWelcomeMessage() {
+        const hour = new Date().getHours();
+        let greeting;
+
+        if (hour < 12) {
+            greeting = "Good morning";
+        } else if (hour < 17) {
+            greeting = "Good afternoon";
+        } else {
+            greeting = "Good evening";
+        }
+
+        // Get the greeting element
+        const greetingElement = document.getElementById('adminGreeting');
+        const greetingText = document.getElementById('greetingText');
+
+        if (greetingElement && greetingText) {
+            // Update the greeting text
+            greetingText.textContent = greeting + ',';
+
+            // Show the greeting
+            greetingElement.style.display = 'flex';
+            greetingElement.classList.add('show');
+            greetingElement.classList.remove('fade-out');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                greetingElement.classList.add('fade-out');
+
+                // Remove from DOM after fade out animation completes
+                setTimeout(() => {
+                    greetingElement.style.display = 'none';
+                    greetingElement.classList.remove('show');
+                }, 500); // Match this with CSS transition time
+            }, 5000);
+        }
+    }
+
+    function setupGlobalErrorHandling() {
+        // Store original fetch function
+        const originalFetch = window.fetch;
+
+        // Override fetch to handle session errors globally
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    if (response.status === 401) {
+                        return response.json().then(data => {
+                            if (data.requires_login) {
+                                // Don't redirect immediately, just return the response
+                                return response;
+                            }
+                            return response;
+                        });
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    if (error.message.includes('Failed to fetch')) {
+                        showNotification('Network error. Please check your connection.', 'error');
+                    }
+                    throw error;
+                });
+        };
+    }
+
+    // ============================================
+    // ========== 19. ANALYTICS FUNCTIONS ==========
+    // ============================================
+
+    // ===== ANALYTICS FUNCTIONS  =====
+
+    // Global variables for analytics
+    let visitorsChartInstance = null;
+    let browserChartInstance = null;
+    let currentAnalyticsDays = 30;
+
+    // Load analytics data (called when section opens)
+    function loadAnalyticsData() {
+        console.log('📊 Loading analytics data...');
+
+        // Check if we're in analytics section
+        const analyticsSection = document.getElementById('analytics');
+        if (!analyticsSection || !analyticsSection.classList.contains('active')) {
+            console.log('Analytics section not active, skipping load');
+            return;
+        }
+
+        // Show loading state on cards
+        showAnalyticsLoading();
+
+        // Load summary stats (total visitors, total views, etc.)
+        loadAnalyticsSummary();
+
+        // Load chart data for current days
+        loadAnalyticsDailyChart(currentAnalyticsDays);
+
+        // Load popular pages
+        loadAnalyticsPopularPages();
+
+        // Load device stats
+        loadAnalyticsDeviceStats();
+    }
+
+    // Load analytics summary stats (fixes the count issue)
+    function loadAnalyticsSummary() {
+        console.log('📊 Loading analytics summary...');
+
+        fetch('/api/admin/analytics/summary', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Analytics summary response:', data);
+
+            // Update the stat cards - FIXED element IDs
+            const totalVisitorsEl = document.getElementById('totalVisitors');
+            const totalViewsEl = document.getElementById('totalViews');
+            const weeklyVisitorsEl = document.getElementById('weeklyVisitors');
+            const todayVisitorsEl = document.getElementById('todayVisitors');
+
+            if (totalVisitorsEl) {
+                totalVisitorsEl.textContent = (data.total_visitors || 0).toLocaleString();
+            }
+            if (totalViewsEl) {
+                totalViewsEl.textContent = (data.total_views || 0).toLocaleString();
+            }
+            if (weeklyVisitorsEl) {
+                weeklyVisitorsEl.textContent = (data.weekly_visitors || 0).toLocaleString();
+            }
+            if (todayVisitorsEl) {
+                todayVisitorsEl.textContent = (data.today_visitors || 0).toLocaleString();
+            }
+
+            console.log('✅ Analytics summary updated');
+        })
+        .catch(error => {
+            console.error('Error loading analytics summary:', error);
+            // Set fallback values
+            const totalVisitorsEl = document.getElementById('totalVisitors');
+            const totalViewsEl = document.getElementById('totalViews');
+            const weeklyVisitorsEl = document.getElementById('weeklyVisitors');
+            const todayVisitorsEl = document.getElementById('todayVisitors');
+
+            if (totalVisitorsEl) totalVisitorsEl.textContent = '0';
+            if (totalViewsEl) totalViewsEl.textContent = '0';
+            if (weeklyVisitorsEl) weeklyVisitorsEl.textContent = '0';
+            if (todayVisitorsEl) todayVisitorsEl.textContent = '0';
+        })
+        .finally(() => {
+            hideAnalyticsLoading();
+        });
+    }
+
+    // Load daily chart data - FIXED to respond to button clicks
+    function loadAnalyticsDailyChart(days) {
+        console.log(`📈 Loading daily chart for ${days} days...`);
+        currentAnalyticsDays = days;
+
+        const canvas = document.getElementById('visitorsChart');
+        if (canvas) {
+            canvas.style.opacity = '0.5';
+        }
+
+        fetch(`/api/admin/analytics/daily?days=${days}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.daily_data && data.daily_data.length > 0) {
+                renderAnalyticsVisitorsChart(data.daily_data);
+            } else {
+                // Generate sample data for demo when no real data exists
+                const sampleData = generateSampleDailyData(days);
+                renderAnalyticsVisitorsChart(sampleData);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading daily chart:', error);
+            // Generate sample data on error
+            const sampleData = generateSampleDailyData(days);
+            renderAnalyticsVisitorsChart(sampleData);
+        })
+        .finally(() => {
+            if (canvas) {
+                canvas.style.opacity = '1';
+            }
+        });
+    }
+
+    // Generate sample daily data for demo
+    function generateSampleDailyData(days) {
+        const sampleData = [];
+        const today = new Date();
+
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
+            sampleData.push({
+                date: date.toISOString().split('T')[0],
+                unique_visitors: Math.floor(Math.random() * 100) + 20,
+                total_views: Math.floor(Math.random() * 300) + 100
+            });
+        }
+        return sampleData;
+    }
+
+    // Render visitors chart
+    function renderAnalyticsVisitorsChart(dailyData) {
+        const canvas = document.getElementById('visitorsChart');
+        if (!canvas) {
+            console.error('Visitors chart canvas not found');
+            return;
+        }
+
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.minHeight = '300px';
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Format dates
+        const dates = dailyData.map(d => {
+            try {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } catch (e) {
+                return d.date;
+            }
+        });
+
+        const uniqueVisitors = dailyData.map(d => d.unique_visitors || 0);
+        const totalViews = dailyData.map(d => d.total_views || 0);
+
+        // Destroy existing chart
+        if (visitorsChartInstance) {
+            try { visitorsChartInstance.destroy(); } catch(e) {}
+            visitorsChartInstance = null;
+        }
+
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded!');
+            return;
+        }
+
+        try {
+            visitorsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Unique Visitors',
+                            data: uniqueVisitors,
+                            borderColor: '#4a6cf7',
+                            backgroundColor: 'rgba(74, 108, 247, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Total Page Views',
+                            data: totalViews,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${(context.raw || 0).toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log('✅ Visitors chart rendered');
+        } catch (error) {
+            console.error('Error rendering chart:', error);
+        }
+    }
+
+    // Load popular pages
+    function loadAnalyticsPopularPages() {
+        const container = document.getElementById('popularPagesList');
+        if (!container) return;
+
+        container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading pages...</div>';
+
+        fetch('/api/admin/analytics/popular-pages?days=30&limit=10', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.pages && data.pages.length > 0) {
+                renderAnalyticsPopularPages(data.pages);
+            } else {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No page data available</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading popular pages:', error);
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Failed to load data</div>';
+        });
+    }
+
+    // Render popular pages with hover + click timestamp
+    function renderAnalyticsPopularPages(pages) {
+        const container = document.getElementById('popularPagesList');
+        if (!container) return;
+
+        if (!pages || pages.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No page data available</div>';
+            return;
+        }
+
+        container.innerHTML = pages.map((page, index) => `
+            <div class="popular-page-item">
+                <div class="rank">${index + 1}</div>
+                <div class="page-info">
+                    <div class="page-title">${escapeHTML(page.title)}</div>
+                    <div class="page-url">${escapeHTML(page.url)}</div>
+                    <div class="page-meta">
+                        <span class="page-views"><i class="fas fa-eye"></i> ${page.views} views</span>
+                        ${page.last_visited ? `
+                        <span class="timestamp-wrapper">
+                            <span class="timestamp-trigger"
+                                  data-timestamp="${page.last_visited}"
+                                  data-formatted="${formatDateTime(page.last_visited)}">
+                                <i class="far fa-clock"></i> ${getTimeAgo(page.last_visited)}
+                            </span>
+                            <span class="timestamp-tooltip">${formatDateTime(page.last_visited)}</span>
+                        </span>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="page-views-badge">${page.views}</div>
+            </div>
+        `).join('');
+
+        // Add click event for mobile (shows small horizontal strip)
+        document.querySelectorAll('.timestamp-trigger').forEach(trigger => {
+            // Remove any existing listener by cloning
+            const newTrigger = trigger.cloneNode(true);
+            trigger.parentNode.replaceChild(newTrigger, trigger);
+
+            // Add click event
+            newTrigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const formattedTime = this.getAttribute('data-formatted');
+                if (formattedTime) {
+                    showClickTimestampTooltip(formattedTime, this);
+                }
+            });
+        });
+    }
+
+    // Show small horizontal strip popup (simple and minimal)
+    function showClickTimestampTooltip(formattedTime, targetElement) {
+        // Remove any existing click tooltip
+        const existingTooltip = document.querySelector('.click-timestamp-tooltip');
+        if (existingTooltip) existingTooltip.remove();
+
+        // Get the timestamp-wrapper element (parent)
+        const wrapper = targetElement.closest('.timestamp-wrapper');
+        if (!wrapper) return;
+
+        // Remove any existing tooltip inside wrapper
+        const existingInnerTooltip = wrapper.querySelector('.click-timestamp-tooltip');
+        if (existingInnerTooltip) existingInnerTooltip.remove();
+
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'click-timestamp-tooltip';
+        tooltip.innerHTML = `
+            <i class="fas fa-calendar-alt"></i>
+            <span>${formattedTime}</span>
+        `;
+
+        // Append to wrapper (not to the trigger)
+        wrapper.appendChild(tooltip);
+
+        // Auto remove after 3 seconds
+        const timeout = setTimeout(() => {
+            if (tooltip && tooltip.remove) tooltip.remove();
+        }, 3000);
+
+        // Remove on click outside
+        const removeOnClickOutside = function(e) {
+            if (!wrapper.contains(e.target)) {
+                if (tooltip && tooltip.remove) tooltip.remove();
+                document.removeEventListener('click', removeOnClickOutside);
+            }
+        };
+
+        // Delay to avoid immediate removal
+        setTimeout(() => {
+            document.addEventListener('click', removeOnClickOutside);
+        }, 100);
+    }
+
+    // Load device stats
+    function loadAnalyticsDeviceStats() {
+        const container = document.getElementById('deviceStats');
+        if (!container) return;
+
+        container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading device data...</div>';
+
+        fetch('/api/admin/analytics/devices?days=30', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderAnalyticsDeviceStats(data.device_stats || { desktop: 0, mobile: 0, tablet: 0 });
+                renderAnalyticsBrowserChart(data.browser_stats || {});
+            } else {
+                renderAnalyticsDeviceStats({ desktop: 0, mobile: 0, tablet: 0 });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading device stats:', error);
+            renderAnalyticsDeviceStats({ desktop: 0, mobile: 0, tablet: 0 });
+        });
+    }
+
+    // Render device stats
+    function renderAnalyticsDeviceStats(deviceStats) {
+        const container = document.getElementById('deviceStats');
+        if (!container) return;
+
+        const devices = [
+            { name: 'Desktop', icon: '💻', count: deviceStats.desktop || 0 },
+            { name: 'Mobile', icon: '📱', count: deviceStats.mobile || 0 },
+            { name: 'Tablet', icon: '📟', count: deviceStats.tablet || 0 }
+        ];
+
+        const total = devices.reduce((sum, d) => sum + d.count, 0);
+
+        if (total === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No device data available</div>';
+            return;
+        }
+
+        container.innerHTML = devices.map(device => {
+            const percentage = ((device.count / total) * 100).toFixed(1);
+            return `
+                <div style="margin-bottom:20px">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                        <div style="font-size:24px">${device.icon}</div>
+                        <div style="flex:1">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+                                <span style="font-weight:500">${device.name}</span>
+                                <span style="color:#4a6cf7;font-weight:600">${device.count.toLocaleString()}</span>
+                            </div>
+                            <div style="background:#e2e8f0;border-radius:10px;overflow:hidden;height:8px">
+                                <div style="background:#4a6cf7;width:${percentage}%;height:100%;border-radius:10px"></div>
+                            </div>
+                            <div style="margin-top:5px;font-size:12px;color:#94a3b8">${percentage}%</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Render browser chart
+    function renderAnalyticsBrowserChart(browserStats) {
+        const canvas = document.getElementById('browserChart');
+        if (!canvas) return;
+
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.minHeight = '250px';
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const browsers = Object.keys(browserStats);
+        const counts = Object.values(browserStats);
+
+        if (browserChartInstance) {
+            try { browserChartInstance.destroy(); } catch(e) {}
+            browserChartInstance = null;
+        }
+
+        if (typeof Chart === 'undefined') return;
+
+        if (browsers.length === 0 || counts.every(c => c === 0)) {
+            return;
+        }
+
+        const colors = ['#4a6cf7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec489a'];
+
+        try {
+            browserChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: browsers,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: colors.slice(0, browsers.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+            console.log('✅ Browser chart rendered');
+        } catch(error) {
+            console.error('Error rendering browser chart:', error);
+        }
+    }
+
+    // Setup analytics events
+    function setupAnalyticsEvents() {
+        console.log('🔧 Setting up analytics events...');
+
+        // Existing refresh button for analytics
+        const refreshBtn = document.getElementById('refreshAnalyticsBtn');
+        if (refreshBtn) {
+            const newBtn = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                console.log('🔄 Refreshing analytics data...');
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                this.disabled = true;
+
+                // Refresh all analytics data
+                loadAnalyticsSummary();
+                loadAnalyticsDailyChart(currentAnalyticsDays);
+                loadAnalyticsPopularPages();  // This will now show timestamps
+                loadAnalyticsDeviceStats();
+
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }, 2000);
+            });
+        }
+
+        // NEW: Refresh button specifically for popular pages
+        const refreshPopularBtn = document.getElementById('refreshPopularPagesBtn');
+        if (refreshPopularBtn) {
+            const newBtn = refreshPopularBtn.cloneNode(true);
+            refreshPopularBtn.parentNode.replaceChild(newBtn, refreshPopularBtn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                this.disabled = true;
+
+                loadAnalyticsPopularPages();
+
+                setTimeout(() => {
+                    this.innerHTML = originalHTML;
+                    this.disabled = false;
+                }, 1000);
+            });
+        }
+
+        // Chart period buttons (existing code)
+        const chartButtonsContainer = document.querySelector('#analytics .chart-controls');
+        if (!chartButtonsContainer) return;
+
+        const chartButtons = chartButtonsContainer.querySelectorAll('.btn-sm');
+        chartButtons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        chartButtons.forEach(btn => {
+            const days = parseInt(btn.getAttribute('data-days'));
+            if (days === currentAnalyticsDays) {
+                btn.classList.add('active');
+            }
+        });
+
+        chartButtons.forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const days = parseInt(this.getAttribute('data-days'));
+                console.log(`Chart button clicked: ${days} days`);
+
+                if (days) {
+                    const allBtns = chartButtonsContainer.querySelectorAll('.btn-sm');
+                    allBtns.forEach(b => {
+                        b.classList.remove('active');
+                    });
+
+                    this.classList.add('active');
+                    currentAnalyticsDays = days;
+                    loadAnalyticsDailyChart(days);
+                }
+            });
+        });
+    }
+
+    // Initialize analytics section (call this from your DOM function)
+    function initAnalyticsSection() {
+        console.log('📊 Initializing analytics section...');
+
+        // Setup analytics navigation link - EXACT same pattern as other sections
+        const analyticsLink = document.querySelector('.sidebar-menu a[href="#analytics"]');
+        if (analyticsLink) {
+            // Remove existing listeners by cloning (same as other sections)
+            const newLink = analyticsLink.cloneNode(true);
+            analyticsLink.parentNode.replaceChild(newLink, analyticsLink);
+
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                console.log('📊 Opening analytics section...');
+
+                // Use the global navigateToSection function (SAME as other sections)
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('analytics', this);
+                }
+            });
+            console.log('✅ Analytics navigation setup complete');
+        }
+
+        // Setup analytics events (refresh button, chart buttons)
+        setupAnalyticsEvents();
+
+        // Setup observer for when analytics section becomes active (SAME as expired-content, testimonials)
+        const analyticsSection = document.getElementById('analytics');
+        if (analyticsSection) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (analyticsSection.classList.contains('active')) {
+                            console.log('🎯 Analytics section activated - loading data');
+                            loadAnalyticsData();
+                            setupAnalyticsEvents();
+                        }
+                    }
+                });
+            });
+            observer.observe(analyticsSection, { attributes: true });
+            console.log('✅ Analytics observer setup complete');
+        }
+
+        // Check if analytics section is already active on page load
+        if (analyticsSection && analyticsSection.classList.contains('active')) {
+            console.log('📊 Analytics section already active, loading data...');
+            setTimeout(() => {
+                loadAnalyticsData();
+                setupAnalyticsEvents();
+            }, 100);
+        }
+    }
+
+    // ============================================
+    // ========== 20. SIDEBAR & MENU FUNCTIONS ==========
+    // ============================================
+
     // ===== ADMIN DASHBOARD MOBILE MENU (Matches main site) =====
     function setupMobileMenu() {
         console.log('📱 Setting up admin mobile menu...');
@@ -8737,6 +8228,1141 @@
         });
 
         console.log('✅ Vertical submenu initialized');
+    }
+
+    // Initialize sidebar menu scrolling
+    let sidebarMenuScrollManager = null;
+
+    function initSidebarMenuScrolling() {
+        // Destroy existing
+        if (sidebarMenuScrollManager) {
+            sidebarMenuScrollManager.destroy();
+        }
+
+        // Initialize new
+        sidebarMenuScrollManager = new SidebarMenuScrollManager();
+
+        // Also update after a delay to ensure everything is loaded
+        setTimeout(() => {
+            if (sidebarMenuScrollManager) {
+                sidebarMenuScrollManager.updateScrollbar();
+            }
+        }, 1000);
+    }
+
+    // Re-initialize scrollbar on resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            initSidebarMenuScrolling();
+        }, 250);
+    });
+
+    // ============================================
+    // ========== 21. TESTIMONIALS INTEGRATION ==========
+    // ============================================
+
+    // ===== TESTIMONIAL INTEGRATION WITH DASHBOARD =====
+    // Add testimonials to global section loading system
+    function setupTestimonialsGlobalIntegration() {
+        // Add to section navigation
+        const testimonialsLink = document.querySelector('a[href="#testimonials"]');
+        if (testimonialsLink) {
+            testimonialsLink.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Use global navigation function
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('testimonials', this);
+                }
+
+                // Ensure testimonial manager is initialized
+                setTimeout(() => {
+                    if (window.testimonialManager && !window.testimonialManager.isInitialized) {
+                        window.testimonialManager.init();
+                    } else if (window.testimonialManager) {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    }
+                }, 200);
+            });
+        }
+
+        // Add to global section loaders
+        if (typeof window.sectionLoaders === 'undefined') {
+            window.sectionLoaders = {};
+        }
+        window.sectionLoaders.testimonials = function() {
+            if (window.testimonialManager) {
+                if (!window.testimonialManager.isInitialized) {
+                    window.testimonialManager.init();
+                } else {
+                    window.testimonialManager.loadTestimonialsData(1);
+                }
+            }
+        };
+
+        console.log('✅ Testimonials global integration complete');
+    }
+
+    // ============================================
+    // ========== 22. ADMIN MANAGER INITIALIZATION ==========
+    // ============================================
+
+    // Initialize
+    let adminManager = null;
+    function initAdminManager() {
+        if (!adminManager) {
+            adminManager = new AdminManager();
+            adminManager.init();
+            window.adminManager = adminManager;
+        }
+    }
+
+    // ============================================
+    // ========== 23. MAIN INITIALIZATION ==========
+    // ============================================
+
+    // ===== COMPLETE DASHBOARD INITIALIZATION =====
+    function initializeDashboard() {
+        console.log('🚀 Starting Admin Dashboard Initialization...');
+
+        try {
+            // === 1. INITIALIZE MANAGERS ===
+            console.log('🔄 Step 1: Initializing managers...');
+            window.adminDarkMode = new DarkMode();
+            console.log('✅ Dark Mode initialized');
+
+            // === 2. DISPLAY WELCOME MESSAGE ===
+            console.log('🔄 Step 2: Displaying welcome message...');
+            displayWelcomeMessage();
+            console.log('✅ Welcome message displayed');
+
+            // === 3. SETUP ALL EVENT LISTENERS ===
+            console.log('🔄 Step 3: Setting up event listeners...');
+
+            setupNavigation();
+            console.log('✅ Navigation setup complete');
+
+            setupNotificationEvents();
+            console.log('✅ Notification events setup complete');
+
+            setupModals();
+            console.log('✅ Modals setup complete');
+
+            setupForms();
+            console.log('✅ Forms setup complete');
+
+            setupBulkActions();
+            console.log('✅ Bulk actions setup complete');
+
+            setupSearchFilters();
+            console.log('✅ Search filters setup complete');
+
+            setupPagination();
+            console.log('✅ Pagination setup complete');
+
+            setupBlogCategories();
+            console.log('✅ Blog categories setup complete');
+
+            setupLogoPreview();
+            console.log('✅ Logo preview setup complete');
+
+            setupExpirationDateFields();
+            console.log('✅ Expiration date fields setup complete');
+
+            setupTestimonialsGlobalIntegration();
+            console.log('✅ Testimonials global integration complete');
+
+            initSidebarMenuScrolling();
+            console.log('✅ Sidebar menu scrolling initialized');
+
+            // === 4. SETUP DASHBOARD SPECIFIC FUNCTIONALITY ===
+            console.log('🔄 Step 4: Setting up dashboard functionality...');
+
+            // Setup dashboard refresh button
+            const refreshBtn = document.getElementById('refreshDashboardBtn');
+            if (refreshBtn) {
+                // Remove existing listeners by cloning
+                const newBtn = refreshBtn.cloneNode(true);
+                refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    refreshDashboard();
+                });
+                console.log('✅ Refresh dashboard button setup complete');
+            }
+
+            // Setup expired content check button (on dashboard)
+            const checkExpiredBtn = document.getElementById('checkExpiredContentBtn');
+            if (checkExpiredBtn) {
+                // Remove existing listeners by cloning
+                const newExpiredBtn = checkExpiredBtn.cloneNode(true);
+                checkExpiredBtn.parentNode.replaceChild(newExpiredBtn, checkExpiredBtn);
+
+                newExpiredBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    checkExpiredContentNow();
+                });
+                console.log('✅ Check expired content button setup complete');
+            }
+
+            // === 5. SETUP EXPIRED CONTENT SECTION ===
+            console.log('🔄 Step 5: Setting up expired content section...');
+            setupExpiredContentEvents();
+            console.log('✅ Expired content events setup complete');
+
+            setupExpiredContentCheckButton();
+            console.log('✅ Expired content check button setup complete');
+
+            // === 6. SETUP GLOBAL ERROR HANDLING ===
+            console.log('🔄 Step 6: Setting up global error handling...');
+            setupGlobalErrorHandling();
+            console.log('✅ Global error handling setup complete');
+
+            // === 7. LOAD INITIAL DASHBOARD DATA ===
+            console.log('🔄 Step 7: Loading initial dashboard data...');
+
+            // Check if we're on dashboard section
+            const dashboardSection = document.getElementById('dashboard');
+            const isDashboardActive = dashboardSection && dashboardSection.classList.contains('active');
+
+            if (isDashboardActive) {
+                // Load dashboard stats with micro loaders
+                console.log('📊 Dashboard is active, loading stats...');
+                loadDashboardStats();
+                loadNotifications();
+                loadExpiredContentStats();
+            }
+
+            console.log('✅ Initial data loading started');
+
+            // === 8. INITIALIZE HISTORY ===
+            console.log('🔄 Step 9: Initializing history...');
+            initializeHistory();
+            console.log('✅ History initialized');
+
+            // === 9. SETUP SESSION CHECK ===
+            console.log('🔄 Step 10: Setting up session check...');
+            setInterval(checkAdminSession, 5 * 60 * 1000);
+            console.log('✅ Session check interval set');
+
+            // === 10. SETUP TESTIMONIAL MANAGER ===
+            console.log('🔄 Step 11: Setting up testimonial manager...');
+            setTimeout(() => {
+                console.log('🎯 Initializing Testimonial Manager...');
+                window.testimonialManager = new TestimonialManager();
+
+                // Setup testimonial refresh button
+                const refreshTestimonialsBtn = document.getElementById('refreshTestimonialsBtn');
+                if (refreshTestimonialsBtn && window.testimonialManager.loadTestimonialsData) {
+                    refreshTestimonialsBtn.addEventListener('click', function() {
+                        window.testimonialManager.loadTestimonialsData(1);
+                    });
+                    console.log('✅ Testimonial refresh button setup complete');
+                }
+
+                // Load testimonials if section is active
+                const testimonialsSection = document.getElementById('testimonials');
+                if (testimonialsSection && testimonialsSection.classList.contains('active')) {
+                    window.testimonialManager.loadTestimonialsData(1);
+                }
+            }, 1500);
+
+            // === 11. SETUP EXPIRED CONTENT SECTION LOADER ===
+            console.log('🔄 Step 12: Setting up expired content section loader...');
+            setupExpiredContentSection();
+            console.log('✅ Expired content section loader setup complete');
+
+            // === 12. SETUP MOBILE MENU ===
+            console.log('🔄 Step 13: Setting up mobile menu...');
+            setupMobileMenu();
+            console.log('✅ Mobile menu setup complete');
+
+            console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
+
+            // === 13. FINAL CHECKS ===
+            setTimeout(() => {
+                console.log('🔍 Running final checks...');
+
+                // Check if any section is active (should be after restoreCurrentSection)
+                const activeSection = document.querySelector('.admin-section.active');
+                if (!activeSection) {
+                    console.warn('⚠️ No active section found, defaulting to dashboard');
+                    const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
+                    if (dashboardItem) {
+                        dashboardItem.click();
+                    }
+                }
+
+                console.log('✅ Final checks completed');
+            }, 2000);
+
+            // === 14. SETUP TRASH SECTION ===
+            console.log('🔄 Step 14: Setting up trash section...');
+            initTrashSection();
+            console.log('✅ Trash section setup complete');
+
+            // === RESTORE SESSION STATE ===
+            console.log('🔄 Step 8: Restoring session state...');
+            setTimeout(() => {
+                restoreCurrentSection();
+            }, 100);
+            console.log('✅ Current section restored');
+
+            // Setup submenu
+            initSubmenu();
+
+            // Admin Management
+            setTimeout(() => {
+                initAdminManager();
+            }, 500);
+
+            // Initialize analytics
+            initAnalyticsSection();
+
+        } catch (error) {
+            console.error('❌❌❌ Dashboard initialization failed:', error);
+            showNotification('Dashboard initialization failed. Please refresh the page.', 'error');
+
+            // Try to at least show dashboard on error
+            setTimeout(() => {
+                const dashboardSection = document.getElementById('dashboard');
+                if (dashboardSection) {
+                    dashboardSection.classList.add('active');
+                    loadDashboardStats();
+                }
+            }, 1000);
+        }
+    }
+
+    // ============================================
+    // ========== 24. CLASS DEFINITIONS ==========
+    // ============================================
+
+    // ===== DARK MODE FUNCTIONALITY =====
+    class DarkMode {
+        constructor() {
+            this.isDarkMode = localStorage.getItem('adminDarkMode') === 'true';
+            this.toggleButton = document.getElementById('darkModeToggle');
+            this.checkbox = document.getElementById('darkModeCheckbox');
+            this.init();
+        }
+
+        init() {
+            this.applyDarkMode();
+            this.bindEvents();
+            this.updateCheckbox();
+        }
+
+        applyDarkMode() {
+            const adminDashboard = document.querySelector('.admin-dashboard');
+            if (!adminDashboard) return;
+
+            if (this.isDarkMode) {
+                adminDashboard.classList.add('dark-mode');
+            } else {
+                adminDashboard.classList.remove('dark-mode');
+            }
+        }
+
+        bindEvents() {
+            // Handle toggle button click
+            if (this.toggleButton) {
+                this.toggleButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggle();
+                });
+            }
+
+            // Handle checkbox change
+            if (this.checkbox) {
+                this.checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the parent click
+                });
+
+                this.checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    this.toggle();
+                });
+            }
+
+            // Keyboard shortcut (Ctrl+Shift+D)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                    e.preventDefault();
+                    this.toggle();
+                }
+            });
+        }
+
+        updateCheckbox() {
+            if (this.checkbox) {
+                this.checkbox.checked = this.isDarkMode;
+            }
+        }
+
+        toggle() {
+            this.isDarkMode = !this.isDarkMode;
+            localStorage.setItem('adminDarkMode', this.isDarkMode);
+            this.applyDarkMode();
+            this.updateCheckbox();
+            this.showToggleNotification();
+        }
+
+        showToggleNotification() {
+            const message = this.isDarkMode ?
+                'Dark mode enabled' : 'Light mode enabled';
+            const type = this.isDarkMode ? 'info' : 'success';
+
+            // Use your existing notification system
+            if (typeof showNotification === 'function') {
+                showNotification(message, type);
+            } else {
+                // Fallback notification
+                console.log(message);
+            }
+        }
+
+        getCurrentMode() {
+            return this.isDarkMode ? 'dark' : 'light';
+        }
+
+        setMode(mode) {
+            this.isDarkMode = mode === 'dark';
+            localStorage.setItem('adminDarkMode', this.isDarkMode);
+            this.applyDarkMode();
+            this.updateCheckbox();
+        }
+    }
+
+    // Initialize dark mode
+    window.adminDarkMode = new DarkMode();
+
+    // ===== TESTIMONIAL MANAGER
+    class TestimonialManager {
+        constructor() {
+            this.currentPage = 1;
+            this.perPage = 10;
+            this.selectedIds = [];
+            this.isInitialized = false;
+            this.sectionId = 'testimonials';
+            this.isLoading = false; // ADD THIS LINE
+            this.hasLoaded = false; // ADD THIS LINE to prevent duplicate loads
+        }
+
+        init() {
+            if (this.isInitialized) return;
+
+            console.log('🔄 Initializing testimonial management...');
+            this.setupEventListeners();
+            this.isInitialized = true;
+
+            // Load testimonials if section is active
+            if (this.isSectionActive()) {
+                console.log('✅ Testimonials section active, loading data...');
+                this.loadTestimonialsData(1);
+            }
+
+            // Set up section observer
+            this.setupSectionObserver();
+        }
+
+        setupSectionObserver() {
+            const testimonialsSection = document.getElementById(this.sectionId);
+            if (testimonialsSection) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            if (testimonialsSection.classList.contains('active')) {
+                                console.log('🎯 Testimonials section activated - loading data');
+                                this.loadTestimonialsData(1);
+                            }
+                        }
+                    });
+                });
+                observer.observe(testimonialsSection, { attributes: true });
+            }
+        }
+
+        isSectionActive() {
+            const section = document.getElementById(this.sectionId);
+            return section && section.classList.contains('active');
+        }
+
+        setupEventListeners() {
+            console.log('🔧 Setting up testimonial event listeners...');
+
+            // Refresh button
+            this.setupElementListener('refreshTestimonialsBtn', 'click', () => {
+                this.loadTestimonialsData(1);
+            });
+
+            // Search functionality
+            this.setupSearchListener('testimonialSearch', () => {
+                this.currentPage = 1;
+                this.loadTestimonialsData(1);
+            });
+
+            // Status filter
+            this.setupElementListener('testimonialStatusFilter', 'change', () => {
+                this.currentPage = 1;
+                this.loadTestimonialsData(1);
+            });
+
+            // Bulk actions
+            this.setupElementListener('applyTestimonialBulkAction', 'click', () => {
+                this.performBulkAction();
+            });
+
+            // Pagination
+            this.setupElementListener('prevTestimonialPage', 'click', () => {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.loadTestimonialsData(this.currentPage);
+                }
+            });
+
+            this.setupElementListener('nextTestimonialPage', 'click', () => {
+                this.currentPage++;
+                this.loadTestimonialsData(this.currentPage);
+            });
+
+            // Select all checkbox
+            this.setupElementListener('selectAllTestimonials', 'change', (e) => {
+                this.toggleSelectAll(e.target.checked);
+            });
+
+        }
+
+        setupElementListener(id, event, handler) {
+            const element = document.getElementById(id);
+            if (element) {
+                // Remove any existing listeners
+                const newElement = element.cloneNode(true);
+                element.parentNode.replaceChild(newElement, element);
+
+                newElement.addEventListener(event, handler);
+                console.log(`✅ Added ${event} listener to ${id}`);
+            } else {
+                console.warn(`❌ Element with id '${id}' not found`);
+            }
+        }
+
+        setupSearchListener(id, handler) {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            // Find the search box and button
+            const searchBox = element.closest('.search-box');
+            const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
+
+            if (searchBtn) {
+                // Remove existing listeners by cloning
+                const newBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newBtn, searchBtn);
+
+                let isSearching = false;
+
+                // Search button click handler
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (isSearching) return;
+                    isSearching = true;
+
+                    // Show loading state on button
+                    const originalHTML = newBtn.innerHTML;
+                    newBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    newBtn.disabled = true;
+
+                    // Call the search handler
+                    handler(e);
+
+                    setTimeout(() => {
+                        newBtn.innerHTML = originalHTML;
+                        newBtn.disabled = false;
+                        isSearching = false;
+                    }, 1000);
+                });
+
+                console.log(`✅ Search button listener setup for ${id}`);
+            } else {
+                console.warn(`⚠️ Search button not found for ${id}`);
+            }
+
+            // Enter key support
+            element.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const searchBox = element.closest('.search-box');
+                    const searchBtn = searchBox ? searchBox.querySelector('.search-btn') : null;
+                    if (searchBtn) {
+                        searchBtn.click();
+                    } else {
+                        // Fallback if no button found
+                        handler(e);
+                    }
+                }
+            });
+
+            console.log(`✅ Search listener setup complete for ${id} (no auto-search)`);
+        }
+
+        async loadTestimonialsData(page = 1) {
+            if (this.isLoading) {
+                console.log('⏳ Testimonials load already in progress, skipping...');
+                return;
+            }
+
+            this.isLoading = true;
+            console.log(`📥 Loading testimonials page ${page}...`);
+            showLoading();
+
+            try {
+                const search = document.getElementById('testimonialSearch')?.value || '';
+                const status = document.getElementById('testimonialStatusFilter')?.value || '';
+
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    ...(search && { search }),
+                    ...(status && { status })
+                });
+
+                const response = await fetch(`/api/admin/testimonials?${params}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    console.log('✅ Testimonials data received:', data);
+                    this.renderTestimonialsTable(data.testimonials || []);
+                    this.totalCount = data.total_count || 0; // Store total count
+                    this.updatePaginationInfo(this.totalCount, page, data.per_page || this.perPage);
+                    this.currentPage = page;
+
+                    this.selectedIds = [];
+                    this.updateBulkActionButton();
+
+                    showNotification(`Loaded ${data.testimonials?.length || 0} testimonials`, 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to load testimonials');
+                }
+
+            } catch (error) {
+                console.error('❌ Error loading testimonials:', error);
+                showNotification('Failed to load testimonials', 'error');
+                this.renderTestimonialsTable([]);
+            } finally {
+                this.isLoading = false;
+                hideLoading();
+            }
+        }
+
+        renderTestimonialsTable(testimonials) {
+            const tableBody = document.getElementById('testimonialsTableBody');
+            if (!tableBody) {
+                console.error('❌ Testimonials table body not found');
+                return;
+            }
+
+            if (!testimonials || testimonials.length === 0) {
+                tableBody.innerHTML = this.getEmptyStateHTML();
+                return;
+            }
+
+            tableBody.innerHTML = testimonials.map((testimonial, index) =>
+                this.getTestimonialRowHTML(testimonial, index)
+            ).join('');
+
+            this.addRowEventListeners();
+            this.updateBulkActionButton();
+
+            console.log(`✅ Rendered ${testimonials.length} testimonials`);
+        }
+
+        getEmptyStateHTML() {
+            return `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-comment-slash" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
+                        <h3 style="color: #6c757d; margin: 0;">No Testimonials Found</h3>
+                        <p style="color: #6c757d; margin: 10px 0 0 0;">No testimonials match your search criteria.</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        getTestimonialRowHTML(testimonial, index) {
+            const serialNo = ((this.currentPage - 1) * this.perPage) + index + 1;
+            const postedDate = formatDate(testimonial.created_at, true);
+            const rating = testimonial.rating || 5;
+            const content = testimonial.content || '';
+            const truncatedContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
+
+            return `
+                <tr>
+                    <td style="vertical-align: middle;">
+                        <input type="checkbox" class="testimonial-checkbox" data-id="${testimonial.id}">
+                    </td>
+                    <td class="serial-no" style="vertical-align: middle;">${serialNo}</td>
+                    <td style="vertical-align: middle;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <img src="${testimonial.profile_pic_url || '/static/images/default-avatar.png'}"
+                                 alt="${testimonial.username}"
+                                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #e9ecef;">
+                            <div>
+                                <strong style="font-size: 14px;">${escapeHTML(testimonial.username)}</strong>
+                                ${testimonial.user_email ? `<br><small style="color: #6c757d; font-size: 12px;">${escapeHTML(testimonial.user_email)}</small>` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <div title="${escapeHTML(content)}" style="max-width: 300px; line-height: 1.4;">
+                            ${escapeHTML(truncatedContent)}
+                        </div>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <div style="text-align: center;">
+                            <span style="color: #ffc107; font-size: 14px;">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>
+                            <br><small style="color: #6c757d;">${rating}/5</small>
+                        </div>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <small>${postedDate}</small>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <div class="status-toggle">
+                            <label class="switch">
+                                <input type="checkbox" class="status-toggle-checkbox"
+                                       ${testimonial.is_active ? 'checked' : ''}
+                                       data-id="${testimonial.id}">
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="status-text ${testimonial.is_active ? 'active' : 'inactive'}">
+                                ${testimonial.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </td>
+                    <td style="vertical-align: middle;">
+                        <div class="action-buttons">
+                            <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon delete-testimonial" data-id="${testimonial.id}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        addRowEventListeners() {
+            // Status toggle
+            document.querySelectorAll('.status-toggle-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const testimonialId = e.target.getAttribute('data-id');
+                    const isActive = e.target.checked;
+                    this.toggleTestimonialStatus(testimonialId, isActive);
+                });
+            });
+
+            // Delete buttons
+            document.querySelectorAll('.delete-testimonial').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const testimonialId = e.target.closest('button').getAttribute('data-id');
+                    this.deleteTestimonial(testimonialId);
+                });
+            });
+
+            // View buttons
+            document.querySelectorAll('.view-testimonial').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const testimonialId = e.target.closest('button').getAttribute('data-id');
+                    this.viewTestimonial(testimonialId);
+                });
+            });
+
+            // Checkboxes
+            document.querySelectorAll('.testimonial-checkbox').forEach(checkbox => {
+                const newCheckbox = checkbox.cloneNode(true);
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+                newCheckbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const testimonialId = e.target.getAttribute('data-id');
+                    if (e.target.checked) {
+                        if (!this.selectedIds.includes(testimonialId)) {
+                            this.selectedIds.push(testimonialId);
+                        }
+                    } else {
+                        this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
+                    }
+                    this.updateBulkActionButton();
+                    // Update header count
+                    updateHeaderSelectedCount('testimonials', this.selectedIds.length);
+                });
+            });
+
+            console.log('✅ Added row event listeners');
+        }
+
+        toggleSelectAll(checked) {
+            this.selectedIds = [];
+            const checkboxes = document.querySelectorAll('.testimonial-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = checked;
+                if (checked) {
+                    this.selectedIds.push(checkbox.getAttribute('data-id'));
+                }
+            });
+
+            this.updateBulkActionButton();
+            // Update header count
+            updateHeaderSelectedCount('testimonials', this.selectedIds.length);
+            console.log(`✅ ${checked ? 'Selected' : 'Deselected'} all ${checkboxes.length} testimonials`);
+        }
+
+        async toggleTestimonialStatus(testimonialId, isActive) {
+            try {
+                showLoading();
+
+                const response = await fetch(`/api/admin/testimonials/${testimonialId}/status`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ is_active: isActive })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(`Testimonial ${isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+                    // Reload data to reflect changes
+                    this.loadTestimonialsData(this.currentPage);
+                } else {
+                    throw new Error(result.error || 'Failed to update status');
+                }
+            } catch (error) {
+                console.error('❌ Error updating testimonial status:', error);
+                showNotification('Failed to update testimonial status', 'error');
+                // Revert checkbox
+                const checkbox = document.querySelector(`.status-toggle-checkbox[data-id="${testimonialId}"]`);
+                if (checkbox) {
+                    checkbox.checked = !isActive;
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        deleteTestimonial(testimonialId) {
+            showConfirmation('delete',
+                'Are you sure you want to delete this testimonial? It will be moved to trash.',
+                async () => {
+                    try {
+                        showLoading();
+
+                        const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
+                            method: 'DELETE',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `HTTP ${response.status}`);
+                        }
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            showNotification('Testimonial moved to trash', 'success');
+
+                            // Remove from UI
+                            const row = document.querySelector(`#testimonialsTableBody tr .delete-testimonial[data-id="${testimonialId}"]`)?.closest('tr');
+                            if (row) {
+                                row.remove();
+                            }
+
+                            // Check if table is empty
+                            const tableBody = document.getElementById('testimonialsTableBody');
+                            if (tableBody && tableBody.children.length === 0) {
+                                tableBody.innerHTML = `
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; padding: 40px;">
+                                            <i class="fas fa-comment-slash" style="color: #6c757d; font-size: 48px; margin-bottom: 15px;"></i>
+                                            <h3 style="color: #6c757d; margin: 0;">No Testimonials Found</h3>
+                                            <p style="color: #6c757d; margin: 10px 0 0 0;">No testimonials match your search criteria.</p>
+                                        </td>
+                                    </tr>
+                                `;
+                            }
+
+                            // Update counts
+                            this.loadTestimonialsData(this.currentPage);
+                            loadDashboardStats();
+                            loadTrashStats(true);
+
+                            // Clear from selected items
+                            this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
+                            this.updateBulkActionButton();
+                        } else {
+                            throw new Error(result.error || 'Failed to delete testimonial');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error deleting testimonial:', error);
+                        showNotification('Failed to delete testimonial', 'error');
+                    } finally {
+                        hideLoading();
+                    }
+                }
+            );
+        }
+
+        async viewTestimonial(testimonialId) {
+            try {
+                showLoading();
+
+                const response = await fetch(`/api/admin/testimonials/${testimonialId}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.showTestimonialModal(result.testimonial);
+                } else {
+                    throw new Error(result.error || 'Failed to load testimonial');
+                }
+            } catch (error) {
+                console.error('❌ Error loading testimonial:', error);
+                showNotification('Failed to load testimonial details', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        showTestimonialModal(testimonial) {
+            const modal = document.getElementById('contentViewModal');
+            if (modal) {
+                const title = modal.querySelector('.modal-title');
+                const body = modal.querySelector('#contentViewBody');
+
+                if (title) title.textContent = 'Testimonial Details';
+                if (body) {
+                    body.innerHTML = `
+                        <div class="view-field">
+                            <label>User:</label>
+                            <span>${escapeHTML(testimonial.username)}</span>
+                        </div>
+                        <div class="view-field">
+                            <label>Email:</label>
+                            <span>${escapeHTML(testimonial.user_email || testimonial.email || 'N/A')}</span>
+                        </div>
+                        <div class="view-field">
+                            <label>Rating:</label>
+                            <span>${testimonial.rating || 5}/5</span>
+                        </div>
+                        <div class="view-field">
+                            <label>Status:</label>
+                            <span class="status-badge ${testimonial.is_active ? 'active' : 'inactive'}">
+                                ${testimonial.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                        <div class="view-field">
+                            <label>Posted:</label>
+                            <span>${formatDate(testimonial.created_at, true)}</span>
+                        </div>
+                        <div class="view-field full-width">
+                            <label>Content:</label>
+                            <div class="view-content" style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #4a6cf7;">
+                                ${escapeHTML(testimonial.content || 'No content')}
+                            </div>
+                        </div>
+                    `;
+                }
+                modal.style.display = 'block';
+                console.log('✅ Testimonial modal displayed');
+            }
+        }
+
+        performBulkAction() {
+            const actionSelect = document.getElementById('testimonialBulkAction');
+            const action = actionSelect ? actionSelect.value : '';
+
+            if (!action) {
+                this.showNotification('Please select a bulk action first', 'warning');
+                return;
+            }
+
+            if (this.selectedIds.length === 0) {
+                this.showNotification('Please select at least one testimonial', 'warning');
+                return;
+            }
+
+            if (action === 'delete') {
+                this.showConfirmation('delete',
+                    `Are you sure you want to delete ${this.selectedIds.length} testimonial(s)?`,
+                    () => this.bulkDeleteTestimonials()
+                );
+            } else if (action === 'activate' || action === 'deactivate') {
+                const isActive = action === 'activate';
+                const actionText = isActive ? 'activate' : 'deactivate';
+                this.showConfirmation('bulk_action',
+                    `Are you sure you want to ${actionText} ${this.selectedIds.length} testimonial(s)?`,
+                    () => this.bulkUpdateTestimonialStatus(isActive)
+                );
+            }
+        }
+
+        bulkDeleteTestimonials() {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                showNotification('No testimonials selected', 'warning');
+                return;
+            }
+
+            showLoading();
+
+            fetch('/api/admin/testimonials/bulk-delete', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ids: this.selectedIds })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification(`${result.deleted_count || this.selectedIds.length} testimonial(s) moved to trash`, 'success');
+                    this.selectedIds = [];
+                    this.updateBulkActionButton();
+                    this.loadTestimonialsData(this.currentPage);
+                    loadDashboardStats();
+                    loadTrashStats(true);
+                } else {
+                    showNotification(result.error || 'Failed to delete testimonials', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error bulk deleting testimonials:', error);
+                showNotification('Failed to delete testimonials', 'error');
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        }
+
+         async bulkUpdateTestimonialStatus(isActive) {
+            if (!this.selectedIds || this.selectedIds.length === 0) {
+                showNotification('No testimonials selected', 'warning');
+                return;
+            }
+
+            try {
+                showLoading();
+
+                const response = await fetch('/api/admin/testimonials/bulk-status', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ids: this.selectedIds,
+                        is_active: isActive
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const action = isActive ? 'activated' : 'deactivated';
+                    showNotification(`${result.updated_count || this.selectedIds.length} testimonial(s) ${action} successfully`, 'success');
+                    this.selectedIds = [];
+                    this.loadTestimonialsData(this.currentPage);
+                    this.updateBulkActionButton();
+                } else {
+                    throw new Error(result.error || 'Failed to update testimonials');
+                }
+            } catch (error) {
+                console.error('❌ Error bulk updating testimonial status:', error);
+                showNotification('Failed to update testimonials', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        updatePaginationInfo(totalItems, currentPage, perPage) {
+            // Call the global pagination UI update
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI('testimonials', currentPage, totalItems, perPage);
+            }
+        }
+
+        updateBulkActionButton() {
+            const button = document.getElementById('applyTestimonialBulkAction');
+            const selectAll = document.getElementById('selectAllTestimonials');
+            const headerButton = document.getElementById('applyTestimonialBulkActionHeader');
+
+            if (button) {
+                button.disabled = this.selectedIds.length === 0;
+            }
+            if (headerButton) {
+                headerButton.disabled = this.selectedIds.length === 0;
+            }
+
+            // Update header count
+            if (typeof updateHeaderSelectedCount === 'function') {
+                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
+            }
+
+            if (selectAll) {
+                const totalCheckboxes = document.querySelectorAll('.testimonial-checkbox').length;
+                selectAll.checked = this.selectedIds.length > 0 && this.selectedIds.length === totalCheckboxes;
+                selectAll.indeterminate = this.selectedIds.length > 0 && this.selectedIds.length < totalCheckboxes;
+            }
+        }
     }
 
     /// ===== ADMIN MANAGER CLASS - WITH PROPER PASSWORD VALIDATION =====
@@ -10084,971 +10710,328 @@
         }
     }
 
-    // Initialize
-    let adminManager = null;
-    function initAdminManager() {
-        if (!adminManager) {
-            adminManager = new AdminManager();
-            adminManager.init();
-            window.adminManager = adminManager;
-        }
-    }
+    // ===== SIDEBAR MENU SCROLL MANAGER =====
+    class SidebarMenuScrollManager {
+        constructor() {
+            this.sidebarMenu = document.querySelector('.sidebar-menu');
+            this.sidebar = document.querySelector('.sidebar');
+            this.scrollbar = null;
+            this.scrollbarThumb = null;
+            this.isDragging = false;
+            this.isMobile = window.innerWidth <= 768;
+            this.scrollTimeout = null;
 
-    // ===== ANALYTICS FUNCTIONS  =====
+            if (!this.sidebarMenu) {
+                console.warn('Sidebar menu not found');
+                return;
+            }
 
-    // Global variables for analytics
-    let visitorsChartInstance = null;
-    let browserChartInstance = null;
-    let currentAnalyticsDays = 30;
-
-    // Load analytics data (called when section opens)
-    function loadAnalyticsData() {
-        console.log('📊 Loading analytics data...');
-
-        // Check if we're in analytics section
-        const analyticsSection = document.getElementById('analytics');
-        if (!analyticsSection || !analyticsSection.classList.contains('active')) {
-            console.log('Analytics section not active, skipping load');
-            return;
+            this.init();
         }
 
-        // Show loading state on cards
-        showAnalyticsLoading();
+        init() {
+            console.log('🔄 Initializing sidebar menu scroll manager...');
 
-        // Load summary stats (total visitors, total views, etc.)
-        loadAnalyticsSummary();
+            // First, make sure menu is scrollable
+            this.setupMenuScrolling();
 
-        // Load chart data for current days
-        loadAnalyticsDailyChart(currentAnalyticsDays);
+            // Create custom scrollbar
+            this.createScrollbar();
 
-        // Load popular pages
-        loadAnalyticsPopularPages();
+            // Setup event listeners
+            this.setupEventListeners();
 
-        // Load device stats
-        loadAnalyticsDeviceStats();
-    }
+            // Initial update
+            this.updateScrollbar();
 
-    // Load analytics summary stats (fixes the count issue)
-    function loadAnalyticsSummary() {
-        console.log('📊 Loading analytics summary...');
-
-        fetch('/api/admin/analytics/summary', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+            // Show on mobile immediately
+            if (this.isMobile) {
+                this.showScrollbar();
             }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Analytics summary response:', data);
-
-            // Update the stat cards - FIXED element IDs
-            const totalVisitorsEl = document.getElementById('totalVisitors');
-            const totalViewsEl = document.getElementById('totalViews');
-            const weeklyVisitorsEl = document.getElementById('weeklyVisitors');
-            const todayVisitorsEl = document.getElementById('todayVisitors');
-
-            if (totalVisitorsEl) {
-                totalVisitorsEl.textContent = (data.total_visitors || 0).toLocaleString();
-            }
-            if (totalViewsEl) {
-                totalViewsEl.textContent = (data.total_views || 0).toLocaleString();
-            }
-            if (weeklyVisitorsEl) {
-                weeklyVisitorsEl.textContent = (data.weekly_visitors || 0).toLocaleString();
-            }
-            if (todayVisitorsEl) {
-                todayVisitorsEl.textContent = (data.today_visitors || 0).toLocaleString();
-            }
-
-            console.log('✅ Analytics summary updated');
-        })
-        .catch(error => {
-            console.error('Error loading analytics summary:', error);
-            // Set fallback values
-            const totalVisitorsEl = document.getElementById('totalVisitors');
-            const totalViewsEl = document.getElementById('totalViews');
-            const weeklyVisitorsEl = document.getElementById('weeklyVisitors');
-            const todayVisitorsEl = document.getElementById('todayVisitors');
-
-            if (totalVisitorsEl) totalVisitorsEl.textContent = '0';
-            if (totalViewsEl) totalViewsEl.textContent = '0';
-            if (weeklyVisitorsEl) weeklyVisitorsEl.textContent = '0';
-            if (todayVisitorsEl) todayVisitorsEl.textContent = '0';
-        })
-        .finally(() => {
-            hideAnalyticsLoading();
-        });
-    }
-
-    // Load daily chart data - FIXED to respond to button clicks
-    function loadAnalyticsDailyChart(days) {
-        console.log(`📈 Loading daily chart for ${days} days...`);
-        currentAnalyticsDays = days;
-
-        const canvas = document.getElementById('visitorsChart');
-        if (canvas) {
-            canvas.style.opacity = '0.5';
         }
 
-        fetch(`/api/admin/analytics/daily?days=${days}`, {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.daily_data && data.daily_data.length > 0) {
-                renderAnalyticsVisitorsChart(data.daily_data);
-            } else {
-                // Generate sample data for demo when no real data exists
-                const sampleData = generateSampleDailyData(days);
-                renderAnalyticsVisitorsChart(sampleData);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading daily chart:', error);
-            // Generate sample data on error
-            const sampleData = generateSampleDailyData(days);
-            renderAnalyticsVisitorsChart(sampleData);
-        })
-        .finally(() => {
-            if (canvas) {
-                canvas.style.opacity = '1';
-            }
-        });
-    }
+        setupMenuScrolling() {
+            // Make menu scrollable
+            this.sidebarMenu.style.overflowY = 'auto';
+            this.sidebarMenu.style.overflowX = 'hidden';
+            this.sidebarMenu.style.maxHeight = 'calc(100vh - 150px)'; // Adjust based on your header/footer height
+            this.sidebarMenu.style.position = 'relative';
+            this.sidebarMenu.style.paddingRight = '8px'; // Space for scrollbar
 
-    // Generate sample daily data for demo
-    function generateSampleDailyData(days) {
-        const sampleData = [];
-        const today = new Date();
+            // Hide native scrollbar
+            this.sidebarMenu.style.scrollbarWidth = 'none';
+            this.sidebarMenu.style.msOverflowStyle = 'none';
 
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(today.getDate() - i);
-            sampleData.push({
-                date: date.toISOString().split('T')[0],
-                unique_visitors: Math.floor(Math.random() * 100) + 20,
-                total_views: Math.floor(Math.random() * 300) + 100
-            });
-        }
-        return sampleData;
-    }
-
-    // Render visitors chart
-    function renderAnalyticsVisitorsChart(dailyData) {
-        const canvas = document.getElementById('visitorsChart');
-        if (!canvas) {
-            console.error('Visitors chart canvas not found');
-            return;
-        }
-
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
-        canvas.style.minHeight = '300px';
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        // Format dates
-        const dates = dailyData.map(d => {
-            try {
-                const date = new Date(d.date);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            } catch (e) {
-                return d.date;
-            }
-        });
-
-        const uniqueVisitors = dailyData.map(d => d.unique_visitors || 0);
-        const totalViews = dailyData.map(d => d.total_views || 0);
-
-        // Destroy existing chart
-        if (visitorsChartInstance) {
-            try { visitorsChartInstance.destroy(); } catch(e) {}
-            visitorsChartInstance = null;
-        }
-
-        // Check if Chart.js is loaded
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js is not loaded!');
-            return;
-        }
-
-        try {
-            visitorsChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [
-                        {
-                            label: 'Unique Visitors',
-                            data: uniqueVisitors,
-                            borderColor: '#4a6cf7',
-                            backgroundColor: 'rgba(74, 108, 247, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
-                        },
-                        {
-                            label: 'Total Page Views',
-                            data: totalViews,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: { usePointStyle: true }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${(context.raw || 0).toLocaleString()}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString();
-                                }
-                            }
-                        }
-                    }
+            // For Webkit browsers
+            const style = document.createElement('style');
+            style.textContent = `
+                .sidebar-menu::-webkit-scrollbar {
+                    display: none;
+                    width: 0;
                 }
-            });
-            console.log('✅ Visitors chart rendered');
-        } catch (error) {
-            console.error('Error rendering chart:', error);
-        }
-    }
-
-    // Load popular pages
-    function loadAnalyticsPopularPages() {
-        const container = document.getElementById('popularPagesList');
-        if (!container) return;
-
-        container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading pages...</div>';
-
-        fetch('/api/admin/analytics/popular-pages?days=30&limit=10', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.pages && data.pages.length > 0) {
-                renderAnalyticsPopularPages(data.pages);
-            } else {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No page data available</div>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading popular pages:', error);
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Failed to load data</div>';
-        });
-    }
-
-    // Render popular pages with hover + click timestamp
-    function renderAnalyticsPopularPages(pages) {
-        const container = document.getElementById('popularPagesList');
-        if (!container) return;
-
-        if (!pages || pages.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No page data available</div>';
-            return;
-        }
-
-        container.innerHTML = pages.map((page, index) => `
-            <div class="popular-page-item">
-                <div class="rank">${index + 1}</div>
-                <div class="page-info">
-                    <div class="page-title">${escapeHTML(page.title)}</div>
-                    <div class="page-url">${escapeHTML(page.url)}</div>
-                    <div class="page-meta">
-                        <span class="page-views"><i class="fas fa-eye"></i> ${page.views} views</span>
-                        ${page.last_visited ? `
-                        <span class="timestamp-wrapper">
-                            <span class="timestamp-trigger"
-                                  data-timestamp="${page.last_visited}"
-                                  data-formatted="${formatDateTime(page.last_visited)}">
-                                <i class="far fa-clock"></i> ${getTimeAgo(page.last_visited)}
-                            </span>
-                            <span class="timestamp-tooltip">${formatDateTime(page.last_visited)}</span>
-                        </span>
-                        ` : ''}
-                    </div>
-                </div>
-                <div class="page-views-badge">${page.views}</div>
-            </div>
-        `).join('');
-
-        // Add click event for mobile (shows small horizontal strip)
-        document.querySelectorAll('.timestamp-trigger').forEach(trigger => {
-            // Remove any existing listener by cloning
-            const newTrigger = trigger.cloneNode(true);
-            trigger.parentNode.replaceChild(newTrigger, trigger);
-
-            // Add click event
-            newTrigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const formattedTime = this.getAttribute('data-formatted');
-                if (formattedTime) {
-                    showClickTimestampTooltip(formattedTime, this);
-                }
-            });
-        });
-    }
-
-    // Show small horizontal strip popup (simple and minimal)
-    function showClickTimestampTooltip(formattedTime, targetElement) {
-        // Remove any existing click tooltip
-        const existingTooltip = document.querySelector('.click-timestamp-tooltip');
-        if (existingTooltip) existingTooltip.remove();
-
-        // Get the timestamp-wrapper element (parent)
-        const wrapper = targetElement.closest('.timestamp-wrapper');
-        if (!wrapper) return;
-
-        // Remove any existing tooltip inside wrapper
-        const existingInnerTooltip = wrapper.querySelector('.click-timestamp-tooltip');
-        if (existingInnerTooltip) existingInnerTooltip.remove();
-
-        // Create tooltip
-        const tooltip = document.createElement('div');
-        tooltip.className = 'click-timestamp-tooltip';
-        tooltip.innerHTML = `
-            <i class="fas fa-calendar-alt"></i>
-            <span>${formattedTime}</span>
-        `;
-
-        // Append to wrapper (not to the trigger)
-        wrapper.appendChild(tooltip);
-
-        // Auto remove after 3 seconds
-        const timeout = setTimeout(() => {
-            if (tooltip && tooltip.remove) tooltip.remove();
-        }, 3000);
-
-        // Remove on click outside
-        const removeOnClickOutside = function(e) {
-            if (!wrapper.contains(e.target)) {
-                if (tooltip && tooltip.remove) tooltip.remove();
-                document.removeEventListener('click', removeOnClickOutside);
-            }
-        };
-
-        // Delay to avoid immediate removal
-        setTimeout(() => {
-            document.addEventListener('click', removeOnClickOutside);
-        }, 100);
-    }
-
-    // Get time ago string
-    function getTimeAgo(timestamp) {
-        if (!timestamp) return 'Unknown';
-
-        try {
-            const now = new Date();
-            const past = new Date(timestamp);
-            const diffMs = now - past;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-            if (diffDays === 1) return 'Yesterday';
-            if (diffDays < 7) return `${diffDays} days ago`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-
-            return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        } catch (e) {
-            return formatDateTime(timestamp);
-        }
-    }
-
-    // Format date time (if needed)
-    function formatDateTime(timestamp) {
-        if (!timestamp) return 'N/A';
-        try {
-            const date = new Date(timestamp);
-            return date.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch (e) {
-            return timestamp;
-        }
-    }
-
-    // Load device stats
-    function loadAnalyticsDeviceStats() {
-        const container = document.getElementById('deviceStats');
-        if (!container) return;
-
-        container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin"></i> Loading device data...</div>';
-
-        fetch('/api/admin/analytics/devices?days=30', {
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                renderAnalyticsDeviceStats(data.device_stats || { desktop: 0, mobile: 0, tablet: 0 });
-                renderAnalyticsBrowserChart(data.browser_stats || {});
-            } else {
-                renderAnalyticsDeviceStats({ desktop: 0, mobile: 0, tablet: 0 });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading device stats:', error);
-            renderAnalyticsDeviceStats({ desktop: 0, mobile: 0, tablet: 0 });
-        });
-    }
-
-    // Render device stats
-    function renderAnalyticsDeviceStats(deviceStats) {
-        const container = document.getElementById('deviceStats');
-        if (!container) return;
-
-        const devices = [
-            { name: 'Desktop', icon: '💻', count: deviceStats.desktop || 0 },
-            { name: 'Mobile', icon: '📱', count: deviceStats.mobile || 0 },
-            { name: 'Tablet', icon: '📟', count: deviceStats.tablet || 0 }
-        ];
-
-        const total = devices.reduce((sum, d) => sum + d.count, 0);
-
-        if (total === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">No device data available</div>';
-            return;
-        }
-
-        container.innerHTML = devices.map(device => {
-            const percentage = ((device.count / total) * 100).toFixed(1);
-            return `
-                <div style="margin-bottom:20px">
-                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-                        <div style="font-size:24px">${device.icon}</div>
-                        <div style="flex:1">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                                <span style="font-weight:500">${device.name}</span>
-                                <span style="color:#4a6cf7;font-weight:600">${device.count.toLocaleString()}</span>
-                            </div>
-                            <div style="background:#e2e8f0;border-radius:10px;overflow:hidden;height:8px">
-                                <div style="background:#4a6cf7;width:${percentage}%;height:100%;border-radius:10px"></div>
-                            </div>
-                            <div style="margin-top:5px;font-size:12px;color:#94a3b8">${percentage}%</div>
-                        </div>
-                    </div>
-                </div>
             `;
-        }).join('');
-    }
-
-    // Render browser chart
-    function renderAnalyticsBrowserChart(browserStats) {
-        const canvas = document.getElementById('browserChart');
-        if (!canvas) return;
-
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
-        canvas.style.minHeight = '250px';
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const browsers = Object.keys(browserStats);
-        const counts = Object.values(browserStats);
-
-        if (browserChartInstance) {
-            try { browserChartInstance.destroy(); } catch(e) {}
-            browserChartInstance = null;
+            document.head.appendChild(style);
         }
 
-        if (typeof Chart === 'undefined') return;
+        createScrollbar() {
+            // Remove existing custom scrollbar
+            const existing = this.sidebarMenu.parentElement.querySelector('.menu-scrollbar');
+            if (existing) existing.remove();
 
-        if (browsers.length === 0 || counts.every(c => c === 0)) {
-            return;
+            // Create scrollbar container
+            this.scrollbar = document.createElement('div');
+            this.scrollbar.className = 'menu-scrollbar';
+            this.scrollbar.style.cssText = `
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 6px;
+                height: 100%;
+                z-index: 10;
+                opacity: ${this.isMobile ? '0.8' : '0'};
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            `;
+
+            // Create scrollbar track
+            const track = document.createElement('div');
+            track.className = 'menu-scrollbar-track';
+            track.style.cssText = `
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.05);
+                border-radius: 3px;
+            `;
+
+            // Create scrollbar thumb
+            this.scrollbarThumb = document.createElement('div');
+            this.scrollbarThumb.className = 'menu-scrollbar-thumb';
+            this.scrollbarThumb.style.cssText = `
+                position: absolute;
+                right: 0;
+                width: 100%;
+                background: rgba(0,0,0,0.3);
+                border-radius: 3px;
+                cursor: pointer;
+                transition: background 0.2s ease, height 0.2s ease;
+                pointer-events: auto;
+                user-select: none;
+            `;
+
+            // Dark mode adjustments
+            if (document.querySelector('.admin-dashboard.dark-mode')) {
+                track.style.background = 'rgba(255,255,255,0.05)';
+                this.scrollbarThumb.style.background = 'rgba(255,255,255,0.3)';
+            }
+
+            // Assemble
+            track.appendChild(this.scrollbarThumb);
+            this.scrollbar.appendChild(track);
+
+            // Position scrollbar relative to sidebar menu
+            const menuRect = this.sidebarMenu.getBoundingClientRect();
+            const sidebarRect = this.sidebarMenu.parentElement.getBoundingClientRect();
+
+            this.scrollbar.style.top = `${menuRect.top - sidebarRect.top}px`;
+            this.scrollbar.style.height = `${menuRect.height}px`;
+
+            // Add to sidebar (parent of menu)
+            this.sidebarMenu.parentElement.appendChild(this.scrollbar);
+
+            console.log('✅ Custom scrollbar created');
         }
 
-        const colors = ['#4a6cf7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec489a'];
+        updateScrollbar() {
+            if (!this.scrollbarThumb || !this.sidebarMenu) return;
 
-        try {
-            browserChartInstance = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: browsers,
-                    datasets: [{
-                        data: counts,
-                        backgroundColor: colors.slice(0, browsers.length),
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } }
-                    }
+            const menuHeight = this.sidebarMenu.clientHeight;
+            const scrollHeight = this.sidebarMenu.scrollHeight;
+            const scrollTop = this.sidebarMenu.scrollTop;
+
+            // Hide if no scrolling needed
+            if (scrollHeight <= menuHeight) {
+                this.scrollbar.style.opacity = '0';
+                this.scrollbar.style.pointerEvents = 'none';
+                return;
+            }
+
+            // Calculate thumb size and position
+            const ratio = menuHeight / scrollHeight;
+            const thumbHeight = Math.max(menuHeight * ratio, 20); // Minimum 20px
+            const maxScroll = scrollHeight - menuHeight;
+            const thumbTop = (scrollTop / maxScroll) * (menuHeight - thumbHeight);
+
+            // Update thumb
+            this.scrollbarThumb.style.height = `${thumbHeight}px`;
+            this.scrollbarThumb.style.top = `${thumbTop}px`;
+
+            // Show scrollbar
+            this.showScrollbar();
+
+            console.log('📏 Scrollbar updated:', { menuHeight, scrollHeight, thumbHeight, thumbTop });
+        }
+
+        showScrollbar() {
+            if (this.scrollbar) {
+                this.scrollbar.style.opacity = this.isMobile ? '0.8' : '1';
+                this.scrollbar.style.pointerEvents = 'auto';
+            }
+        }
+
+        hideScrollbar() {
+            if (this.scrollbar && !this.isDragging && !this.isMobile) {
+                this.scrollbar.style.opacity = '0';
+                this.scrollbar.style.pointerEvents = 'none';
+            }
+        }
+
+        setupEventListeners() {
+            // Menu scroll event
+            this.sidebarMenu.addEventListener('scroll', () => {
+                this.updateScrollbar();
+                this.showScrollbar();
+
+                // Auto-hide on desktop
+                if (!this.isMobile) {
+                    clearTimeout(this.scrollTimeout);
+                    this.scrollTimeout = setTimeout(() => this.hideScrollbar(), 1500);
                 }
             });
-            console.log('✅ Browser chart rendered');
-        } catch(error) {
-            console.error('Error rendering browser chart:', error);
-        }
-    }
 
-    // Show analytics loading state
-    function showAnalyticsLoading() {
-        const statIds = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
-        statIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                if (!element.dataset.originalValue) {
-                    element.dataset.originalValue = element.textContent;
-                }
-                element.classList.add('loading');
-                element.textContent = '...';
-            }
-        });
-    }
-
-    // Hide analytics loading state
-    function hideAnalyticsLoading() {
-        const statIds = ['totalVisitors', 'totalViews', 'weeklyVisitors', 'todayVisitors'];
-        statIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element && element.classList.contains('loading')) {
-                element.classList.remove('loading');
-                if (element.dataset.originalValue && element.dataset.originalValue !== '...') {
-                    element.textContent = element.dataset.originalValue;
-                } else {
-                    element.textContent = '0';
-                }
-                delete element.dataset.originalValue;
-            }
-        });
-    }
-
-    // Setup analytics events
-    function setupAnalyticsEvents() {
-        console.log('🔧 Setting up analytics events...');
-
-        // Existing refresh button for analytics
-        const refreshBtn = document.getElementById('refreshAnalyticsBtn');
-        if (refreshBtn) {
-            const newBtn = refreshBtn.cloneNode(true);
-            refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
-
-            newBtn.addEventListener('click', function(e) {
+            // Mouse events for thumb dragging
+            this.scrollbarThumb.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
-                console.log('🔄 Refreshing analytics data...');
-                const originalHTML = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-                this.disabled = true;
+                this.isDragging = true;
+                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
 
-                // Refresh all analytics data
-                loadAnalyticsSummary();
-                loadAnalyticsDailyChart(currentAnalyticsDays);
-                loadAnalyticsPopularPages();  // This will now show timestamps
-                loadAnalyticsDeviceStats();
+                const startY = e.clientY;
+                const startTop = parseFloat(this.scrollbarThumb.style.top) || 0;
+                const menuHeight = this.sidebarMenu.clientHeight;
+                const thumbHeight = this.scrollbarThumb.offsetHeight;
 
+                const onMouseMove = (moveE) => {
+                    if (!this.isDragging) return;
+
+                    const deltaY = moveE.clientY - startY;
+                    const newTop = Math.max(0, Math.min(startTop + deltaY, menuHeight - thumbHeight));
+
+                    // Calculate scroll position
+                    const scrollRatio = newTop / (menuHeight - thumbHeight);
+                    const maxScroll = this.sidebarMenu.scrollHeight - menuHeight;
+                    this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
+
+                    // Update thumb position
+                    this.scrollbarThumb.style.top = `${newTop}px`;
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    this.isDragging = false;
+                    this.scrollbarThumb.style.background = '';
+
+                    if (!this.isMobile) {
+                        setTimeout(() => this.hideScrollbar(), 1000);
+                    }
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Hover events
+            this.sidebarMenu.addEventListener('mouseenter', () => {
+                if (!this.isMobile) this.showScrollbar();
+            });
+
+            this.sidebarMenu.addEventListener('mouseleave', () => {
+                if (!this.isDragging && !this.isMobile) {
+                    setTimeout(() => this.hideScrollbar(), 500);
+                }
+            });
+
+            // Touch events for mobile
+            this.scrollbarThumb.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.isDragging = true;
+                this.scrollbarThumb.style.background = 'rgba(0,0,0,0.5)';
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!this.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const thumbRect = this.scrollbarThumb.getBoundingClientRect();
+                const menuRect = this.sidebarMenu.getBoundingClientRect();
+
+                // Calculate new position
+                const newTop = Math.max(0, Math.min(touch.clientY - menuRect.top - thumbRect.height/2, menuRect.height - thumbRect.height));
+
+                // Calculate scroll position
+                const scrollRatio = newTop / (menuRect.height - thumbRect.height);
+                const maxScroll = this.sidebarMenu.scrollHeight - menuRect.height;
+                this.sidebarMenu.scrollTop = scrollRatio * maxScroll;
+            }, { passive: false });
+
+            document.addEventListener('touchend', () => {
+                this.isDragging = false;
+                this.scrollbarThumb.style.background = '';
+            });
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                this.isMobile = window.innerWidth <= 768;
+                this.updateScrollbar();
+
+                // Recreate scrollbar on resize to fix positioning
                 setTimeout(() => {
-                    this.innerHTML = originalHTML;
-                    this.disabled = false;
-                }, 2000);
+                    this.createScrollbar();
+                    this.updateScrollbar();
+                }, 100);
+            });
+
+            // Also update when menu items change
+            const observer = new MutationObserver(() => {
+                setTimeout(() => this.updateScrollbar(), 100);
+            });
+
+            observer.observe(this.sidebarMenu, {
+                childList: true,
+                subtree: true,
+                attributes: false,
+                characterData: false
             });
         }
 
-        // NEW: Refresh button specifically for popular pages
-        const refreshPopularBtn = document.getElementById('refreshPopularPagesBtn');
-        if (refreshPopularBtn) {
-            const newBtn = refreshPopularBtn.cloneNode(true);
-            refreshPopularBtn.parentNode.replaceChild(newBtn, refreshPopularBtn);
-
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const originalHTML = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.disabled = true;
-
-                loadAnalyticsPopularPages();
-
-                setTimeout(() => {
-                    this.innerHTML = originalHTML;
-                    this.disabled = false;
-                }, 1000);
-            });
-        }
-
-        // Chart period buttons (existing code)
-        const chartButtonsContainer = document.querySelector('#analytics .chart-controls');
-        if (!chartButtonsContainer) return;
-
-        const chartButtons = chartButtonsContainer.querySelectorAll('.btn-sm');
-        chartButtons.forEach(btn => {
-            btn.classList.remove('active');
-        });
-
-        chartButtons.forEach(btn => {
-            const days = parseInt(btn.getAttribute('data-days'));
-            if (days === currentAnalyticsDays) {
-                btn.classList.add('active');
+        destroy() {
+            if (this.scrollbar) {
+                this.scrollbar.remove();
             }
-        });
 
-        chartButtons.forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
+            // Reset menu styles
+            this.sidebarMenu.style.overflowY = '';
+            this.sidebarMenu.style.maxHeight = '';
+            this.sidebarMenu.style.paddingRight = '';
+            this.sidebarMenu.style.position = '';
 
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const days = parseInt(this.getAttribute('data-days'));
-                console.log(`Chart button clicked: ${days} days`);
-
-                if (days) {
-                    const allBtns = chartButtonsContainer.querySelectorAll('.btn-sm');
-                    allBtns.forEach(b => {
-                        b.classList.remove('active');
-                    });
-
-                    this.classList.add('active');
-                    currentAnalyticsDays = days;
-                    loadAnalyticsDailyChart(days);
-                }
-            });
-        });
-    }
-
-    // Initialize analytics section (call this from your DOM function)
-    function initAnalyticsSection() {
-        console.log('📊 Initializing analytics section...');
-
-        // Setup analytics navigation link - EXACT same pattern as other sections
-        const analyticsLink = document.querySelector('.sidebar-menu a[href="#analytics"]');
-        if (analyticsLink) {
-            // Remove existing listeners by cloning (same as other sections)
-            const newLink = analyticsLink.cloneNode(true);
-            analyticsLink.parentNode.replaceChild(newLink, analyticsLink);
-
-            newLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                console.log('📊 Opening analytics section...');
-
-                // Use the global navigateToSection function (SAME as other sections)
-                if (typeof navigateToSection === 'function') {
-                    navigateToSection('analytics', this);
-                }
-            });
-            console.log('✅ Analytics navigation setup complete');
-        }
-
-        // Setup analytics events (refresh button, chart buttons)
-        setupAnalyticsEvents();
-
-        // Setup observer for when analytics section becomes active (SAME as expired-content, testimonials)
-        const analyticsSection = document.getElementById('analytics');
-        if (analyticsSection) {
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                        if (analyticsSection.classList.contains('active')) {
-                            console.log('🎯 Analytics section activated - loading data');
-                            loadAnalyticsData();
-                            setupAnalyticsEvents();
-                        }
-                    }
-                });
-            });
-            observer.observe(analyticsSection, { attributes: true });
-            console.log('✅ Analytics observer setup complete');
-        }
-
-        // Check if analytics section is already active on page load
-        if (analyticsSection && analyticsSection.classList.contains('active')) {
-            console.log('📊 Analytics section already active, loading data...');
-            setTimeout(() => {
-                loadAnalyticsData();
-                setupAnalyticsEvents();
-            }, 100);
+            console.log('🗑️ Sidebar menu scroll manager destroyed');
         }
     }
 
-    // Helper function for escaping HTML
-    function escapeHTML(str) {
-        if (!str) return '';
-        return str.toString()
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
+    // ============================================
+    // ========== 25. WINDOW METHODS & EVENT LISTENERS ==========
+    // ============================================
 
-    // ===== COMPLETE DASHBOARD INITIALIZATION =====
-    function initializeDashboard() {
-        console.log('🚀 Starting Admin Dashboard Initialization...');
-
-        try {
-            // === 1. INITIALIZE MANAGERS ===
-            console.log('🔄 Step 1: Initializing managers...');
-            window.adminDarkMode = new DarkMode();
-            console.log('✅ Dark Mode initialized');
-
-            // === 2. DISPLAY WELCOME MESSAGE ===
-            console.log('🔄 Step 2: Displaying welcome message...');
-            displayWelcomeMessage();
-            console.log('✅ Welcome message displayed');
-
-            // === 3. SETUP ALL EVENT LISTENERS ===
-            console.log('🔄 Step 3: Setting up event listeners...');
-
-            setupNavigation();
-            console.log('✅ Navigation setup complete');
-
-            setupNotificationEvents();
-            console.log('✅ Notification events setup complete');
-
-            setupModals();
-            console.log('✅ Modals setup complete');
-
-            setupForms();
-            console.log('✅ Forms setup complete');
-
-            setupBulkActions();
-            console.log('✅ Bulk actions setup complete');
-
-            setupSearchFilters();
-            console.log('✅ Search filters setup complete');
-
-            setupPagination();
-            console.log('✅ Pagination setup complete');
-
-            setupBlogCategories();
-            console.log('✅ Blog categories setup complete');
-
-            setupLogoPreview();
-            console.log('✅ Logo preview setup complete');
-
-            setupExpirationDateFields();
-            console.log('✅ Expiration date fields setup complete');
-
-            setupTestimonialsGlobalIntegration();
-            console.log('✅ Testimonials global integration complete');
-
-            initSidebarMenuScrolling();
-            console.log('✅ Sidebar menu scrolling initialized');
-
-            // === 4. SETUP DASHBOARD SPECIFIC FUNCTIONALITY ===
-            console.log('🔄 Step 4: Setting up dashboard functionality...');
-
-            // Setup dashboard refresh button
-            const refreshBtn = document.getElementById('refreshDashboardBtn');
-            if (refreshBtn) {
-                // Remove existing listeners by cloning
-                const newBtn = refreshBtn.cloneNode(true);
-                refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
-
-                newBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    refreshDashboard();
-                });
-                console.log('✅ Refresh dashboard button setup complete');
-            }
-
-            // Setup expired content check button (on dashboard)
-            const checkExpiredBtn = document.getElementById('checkExpiredContentBtn');
-            if (checkExpiredBtn) {
-                // Remove existing listeners by cloning
-                const newExpiredBtn = checkExpiredBtn.cloneNode(true);
-                checkExpiredBtn.parentNode.replaceChild(newExpiredBtn, checkExpiredBtn);
-
-                newExpiredBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    checkExpiredContentNow();
-                });
-                console.log('✅ Check expired content button setup complete');
-            }
-
-            // === 5. SETUP EXPIRED CONTENT SECTION ===
-            console.log('🔄 Step 5: Setting up expired content section...');
-            setupExpiredContentEvents();
-            console.log('✅ Expired content events setup complete');
-
-            setupExpiredContentCheckButton();
-            console.log('✅ Expired content check button setup complete');
-
-            // === 6. SETUP GLOBAL ERROR HANDLING ===
-            console.log('🔄 Step 6: Setting up global error handling...');
-            setupGlobalErrorHandling();
-            console.log('✅ Global error handling setup complete');
-
-            // === 7. LOAD INITIAL DASHBOARD DATA ===
-            console.log('🔄 Step 7: Loading initial dashboard data...');
-
-            // Check if we're on dashboard section
-            const dashboardSection = document.getElementById('dashboard');
-            const isDashboardActive = dashboardSection && dashboardSection.classList.contains('active');
-
-            if (isDashboardActive) {
-                // Load dashboard stats with micro loaders
-                console.log('📊 Dashboard is active, loading stats...');
-                loadDashboardStats();
-                loadNotifications();
-                loadExpiredContentStats();
-            }
-
-            console.log('✅ Initial data loading started');
-
-            // === 8. INITIALIZE HISTORY ===
-            console.log('🔄 Step 9: Initializing history...');
-            initializeHistory();
-            console.log('✅ History initialized');
-
-            // === 9. SETUP SESSION CHECK ===
-            console.log('🔄 Step 10: Setting up session check...');
-            setInterval(checkAdminSession, 5 * 60 * 1000);
-            console.log('✅ Session check interval set');
-
-            // === 10. SETUP TESTIMONIAL MANAGER ===
-            console.log('🔄 Step 11: Setting up testimonial manager...');
-            setTimeout(() => {
-                console.log('🎯 Initializing Testimonial Manager...');
-                window.testimonialManager = new TestimonialManager();
-
-                // Setup testimonial refresh button
-                const refreshTestimonialsBtn = document.getElementById('refreshTestimonialsBtn');
-                if (refreshTestimonialsBtn && window.testimonialManager.loadTestimonialsData) {
-                    refreshTestimonialsBtn.addEventListener('click', function() {
-                        window.testimonialManager.loadTestimonialsData(1);
-                    });
-                    console.log('✅ Testimonial refresh button setup complete');
-                }
-
-                // Load testimonials if section is active
-                const testimonialsSection = document.getElementById('testimonials');
-                if (testimonialsSection && testimonialsSection.classList.contains('active')) {
-                    window.testimonialManager.loadTestimonialsData(1);
-                }
-            }, 1500);
-
-            // === 11. SETUP EXPIRED CONTENT SECTION LOADER ===
-            console.log('🔄 Step 12: Setting up expired content section loader...');
-            setupExpiredContentSection();
-            console.log('✅ Expired content section loader setup complete');
-
-            // === 12. SETUP MOBILE MENU ===
-            console.log('🔄 Step 13: Setting up mobile menu...');
-            setupMobileMenu();
-            console.log('✅ Mobile menu setup complete');
-
-            console.log('✅✅✅ Admin Dashboard Fully Initialized ✅✅✅');
-
-            // === 13. FINAL CHECKS ===
-            setTimeout(() => {
-                console.log('🔍 Running final checks...');
-
-                // Check if any section is active (should be after restoreCurrentSection)
-                const activeSection = document.querySelector('.admin-section.active');
-                if (!activeSection) {
-                    console.warn('⚠️ No active section found, defaulting to dashboard');
-                    const dashboardItem = document.querySelector('.sidebar-menu a[href="#dashboard"]');
-                    if (dashboardItem) {
-                        dashboardItem.click();
-                    }
-                }
-
-                console.log('✅ Final checks completed');
-            }, 2000);
-
-            // === 14. SETUP TRASH SECTION ===
-            console.log('🔄 Step 14: Setting up trash section...');
-            initTrashSection();
-            console.log('✅ Trash section setup complete');
-
-            // === RESTORE SESSION STATE ===
-            console.log('🔄 Step 8: Restoring session state...');
-            setTimeout(() => {
-                restoreCurrentSection();
-            }, 100);
-            console.log('✅ Current section restored');
-
-            // Setup submenu
-            initSubmenu();
-
-            // Admin Management
-            setTimeout(() => {
-                initAdminManager();
-            }, 500);
-
-            // Initialize analytics
-            initAnalyticsSection();
-
-        } catch (error) {
-            console.error('❌❌❌ Dashboard initialization failed:', error);
-            showNotification('Dashboard initialization failed. Please refresh the page.', 'error');
-
-            // Try to at least show dashboard on error
-            setTimeout(() => {
-                const dashboardSection = document.getElementById('dashboard');
-                if (dashboardSection) {
-                    dashboardSection.classList.add('active');
-                    loadDashboardStats();
-                }
-            }, 1000);
-        }
-    }
+    // Retry function for error state
+    window.retryLoadTrash = function() {
+        loadTrashItems(1);
+    };
 
     // ===== SINGLE DOMContentLoaded LISTENER =====
     document.addEventListener('DOMContentLoaded', function() {
