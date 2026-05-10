@@ -637,6 +637,36 @@
         }
     }
 
+    // Helper function to update header selected count display
+    function updateHeaderSelectedCount(section, count) {
+        const selectedCountId = {
+            'courses': 'courseSelectedCountHeader',
+            'jobs': 'jobSelectedCountHeader',
+            'internships': 'internshipSelectedCountHeader',
+            'blog': 'blogSelectedCountHeader',
+            'testimonials': 'testimonialSelectedCountHeader',
+            'newsletter': 'newsletterSelectedCountHeader',
+            'expired-content': 'expiredSelectedCountHeader',
+            'users': 'userSelectedCountHeader',
+            'messages': 'messageSelectedCountHeader',
+            'admins': 'adminSelectedCountHeader',
+            'trash': 'trashSelectedCountHeader'
+        }[section];
+
+        const countElement = document.getElementById(selectedCountId);
+        if (countElement) {
+            if (count === 0) {
+                countElement.textContent = '0 selected';
+                countElement.style.color = '#666';
+                countElement.style.fontWeight = 'normal';
+            } else {
+                countElement.textContent = `${count} selected`;
+                countElement.style.color = '#4a6cf7';
+                countElement.style.fontWeight = '600';
+            }
+        }
+    }
+
     //  single category dropdown for blog posts
     function setupBlogCategories() {
         console.log('Setting up blog category dropdown');
@@ -1388,6 +1418,10 @@
         selectedItems[section] = [];
         updateSelectAllCheckbox(section);
         updateBulkButtonState(section, 0);
+
+        //  Reset header count when data reloads
+        updateHeaderSelectedCount(section, 0);
+
     }
 
     function generateTableRowHTML(section, item, index) {
@@ -3521,7 +3555,10 @@
 
             // Checkboxes
             document.querySelectorAll('.testimonial-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
+                const newCheckbox = checkbox.cloneNode(true);
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+                newCheckbox.addEventListener('change', (e) => {
                     e.stopPropagation();
                     const testimonialId = e.target.getAttribute('data-id');
                     if (e.target.checked) {
@@ -3532,6 +3569,8 @@
                         this.selectedIds = this.selectedIds.filter(id => id !== testimonialId);
                     }
                     this.updateBulkActionButton();
+                    // Update header count
+                    updateHeaderSelectedCount('testimonials', this.selectedIds.length);
                 });
             });
 
@@ -3550,6 +3589,8 @@
             });
 
             this.updateBulkActionButton();
+            // Update header count
+            updateHeaderSelectedCount('testimonials', this.selectedIds.length);
             console.log(`✅ ${checked ? 'Selected' : 'Deselected'} all ${checkboxes.length} testimonials`);
         }
 
@@ -3867,14 +3908,18 @@
         updateBulkActionButton() {
             const button = document.getElementById('applyTestimonialBulkAction');
             const selectAll = document.getElementById('selectAllTestimonials');
+            const headerButton = document.getElementById('applyTestimonialBulkActionHeader');
 
             if (button) {
                 button.disabled = this.selectedIds.length === 0;
-                if (this.selectedIds.length > 0) {
-                    button.title = `Apply action to ${this.selectedIds.length} selected testimonials`;
-                } else {
-                    button.title = 'Select testimonials to enable bulk actions';
-                }
+            }
+            if (headerButton) {
+                headerButton.disabled = this.selectedIds.length === 0;
+            }
+
+            // Update header count
+            if (typeof updateHeaderSelectedCount === 'function') {
+                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
             }
 
             if (selectAll) {
@@ -4107,7 +4152,7 @@
             });
         }
 
-        // SELECT ALL CHECKBOX - FIXED
+        // SELECT ALL CHECKBOX
         const selectAllCheckbox = document.getElementById('selectAllExpired');
         if (selectAllCheckbox) {
             console.log('✅ Setting up expired content select all');
@@ -4121,7 +4166,6 @@
                 const isChecked = this.checked;
                 const checkboxes = document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox');
 
-                // Clear or update selected items array
                 selectedExpiredItems = [];
 
                 checkboxes.forEach(checkbox => {
@@ -4134,8 +4178,10 @@
                     }
                 });
 
-                // Update UI state
                 updateExpiredBulkActionButton();
+                updateSelectAllExpiredCheckbox();
+                // Update header count
+                updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
                 console.log(`Expired select all: ${isChecked ? 'Selected' : 'Deselected'} ${checkboxes.length} items`);
             });
         }
@@ -4517,10 +4563,15 @@
     function addExpiredContentRowEventListeners() {
         // Individual checkbox events
         document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            const newCheckbox = checkbox.cloneNode(true);
+            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+            newCheckbox.addEventListener('change', function() {
                 updateSelectedExpiredItems();
                 updateExpiredBulkActionButton();
                 updateSelectAllExpiredCheckbox();
+                // Update header count
+                updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
             });
         });
 
@@ -4580,6 +4631,8 @@
                 content_id: checkbox.getAttribute('data-id')
             });
         });
+        // Update header count
+        updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
     }
 
     // Update pagination info
@@ -5289,9 +5342,9 @@
         });
     }
 
-    // ===== COMPREHENSIVE BULK ACTIONS HANDLER - SIMPLIFIED VERSION =====
+    // ===== HEADER BULK ACTIONS HANDLER =====
     function setupBulkActions() {
-        console.log('🔄 Setting up bulk actions...');
+        console.log('🔄 Setting up header bulk actions...');
 
         // Helper function to get selected IDs for any section
         function getSelectedIds(section) {
@@ -5304,7 +5357,10 @@
             if (section === 'expired-content') {
                 const selected = [];
                 document.querySelectorAll('#expiredContentTableBody .expired-item-checkbox:checked').forEach(cb => {
-                    selected.push(cb.getAttribute('data-id'));
+                    selected.push({
+                        content_type: cb.getAttribute('data-type'),
+                        content_id: cb.getAttribute('data-id')
+                    });
                 });
                 return selected;
             }
@@ -5312,9 +5368,9 @@
                 const selected = [];
                 document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(cb => {
                     selected.push({
-                        id: cb.getAttribute('data-id'),
-                        type: cb.getAttribute('data-type'),
-                        table: cb.getAttribute('data-table')
+                        content_type: cb.getAttribute('data-type'),
+                        content_id: cb.getAttribute('data-id'),
+                        table_name: cb.getAttribute('data-table')
                     });
                 });
                 return selected;
@@ -5322,323 +5378,243 @@
             return selectedItems[section] || [];
         }
 
+        // Helper function to update header selected count display
+        function updateHeaderSelectedCount(section, count) {
+            const selectedCountId = {
+                'courses': 'courseSelectedCountHeader',
+                'jobs': 'jobSelectedCountHeader',
+                'internships': 'internshipSelectedCountHeader',
+                'blog': 'blogSelectedCountHeader',
+                'testimonials': 'testimonialSelectedCountHeader',
+                'newsletter': 'newsletterSelectedCountHeader',
+                'expired-content': 'expiredSelectedCountHeader',
+                'users': 'userSelectedCountHeader',
+                'messages': 'messageSelectedCountHeader',
+                'admins': 'adminSelectedCountHeader',
+                'trash': 'trashSelectedCountHeader'
+            }[section];
+
+            const countElement = document.getElementById(selectedCountId);
+            if (countElement) {
+                if (count === 0) {
+                    countElement.textContent = '0 selected';
+                    countElement.style.color = '#666';
+                    countElement.style.fontWeight = 'normal';
+                } else {
+                    countElement.textContent = `${count} selected`;
+                    countElement.style.color = '#4a6cf7';
+                    countElement.style.fontWeight = '600';
+                }
+            }
+        }
+
         // Helper function to enable/disable bulk action button
         function setBulkActionButtonState(section, selectedCount) {
-            let buttonId;
+            const buttonMap = {
+                'courses': 'applyCourseBulkActionHeader',
+                'jobs': 'applyJobBulkActionHeader',
+                'internships': 'applyInternshipBulkActionHeader',
+                'blog': 'applyBlogBulkActionHeader',
+                'users': 'applyUserBulkActionHeader',
+                'messages': 'applyMessageBulkActionHeader',
+                'newsletter': 'applyNewsletterBulkActionHeader',
+                'testimonials': 'applyTestimonialBulkActionHeader',
+                'admins': 'applyAdminBulkActionHeader',
+                'expired-content': 'applyExpiredContentBulkActionHeader',
+                'trash': 'applyTrashBulkActionHeader'
+            };
 
-            // Map section to button ID
-            if (section === 'testimonials') {
-                buttonId = 'applyTestimonialBulkAction';
-            } else if (section === 'admins') {
-                buttonId = 'applyAdminBulkAction';
-            } else if (section === 'expired-content') {
-                buttonId = 'applyExpiredContentBulkAction';
-            } else if (section === 'trash') {
-                buttonId = 'applyTrashBulkAction';
-            } else if (section === 'courses') {
-                buttonId = 'applyCourseBulkAction';
-            } else if (section === 'jobs') {
-                buttonId = 'applyJobBulkAction';
-            } else if (section === 'internships') {
-                buttonId = 'applyInternshipBulkAction';
-            } else if (section === 'blog') {
-                buttonId = 'applyBlogBulkAction';
-            } else if (section === 'users') {
-                buttonId = 'applyUserBulkAction';
-            } else if (section === 'messages') {
-                buttonId = 'applyMessageBulkAction';
-            } else if (section === 'newsletter') {
-                buttonId = 'applyNewsletterBulkAction';
-            }
-
+            const buttonId = buttonMap[section];
             const button = document.getElementById(buttonId);
             if (button) {
                 button.disabled = selectedCount === 0;
-                console.log(`${section} bulk button ${selectedCount > 0 ? 'enabled' : 'disabled'} (${selectedCount} selected)`);
+                if (selectedCount > 0) {
+                    button.style.opacity = '1';
+                } else {
+                    button.style.opacity = '0.6';
+                }
             }
         }
 
-        // Helper function to update select all checkbox state
-        function setSelectAllState(section, selectedCount, totalCount) {
-            let selectAllId;
+        // ===== FUNCTION TO ATTACH ROW CHECKBOX LISTENERS =====
+        function attachRowCheckboxListeners(section) {
+            const tableBody = document.getElementById(`${section}TableBody`);
+            if (!tableBody) return;
 
-            // Map section to select all ID
-            if (section === 'testimonials') {
-                selectAllId = 'selectAllTestimonials';
-            } else if (section === 'admins') {
-                selectAllId = 'selectAllAdmins';
-            } else if (section === 'expired-content') {
-                selectAllId = 'selectAllExpired';
-            } else if (section === 'trash') {
-                selectAllId = 'selectAllTrash';
-            } else if (section === 'courses') {
-                selectAllId = 'selectAllCourses';
-            } else if (section === 'jobs') {
-                selectAllId = 'selectAllJobs';
-            } else if (section === 'internships') {
-                selectAllId = 'selectAllInternships';
-            } else if (section === 'blog') {
-                selectAllId = 'selectAllBlog';
-            } else if (section === 'users') {
-                selectAllId = 'selectAllUsers';
-            } else if (section === 'messages') {
-                selectAllId = 'selectAllMessages';
-            } else if (section === 'newsletter') {
-                selectAllId = 'selectAllNewsletter';
-            }
+            const checkboxes = tableBody.querySelectorAll('.row-checkbox');
 
-            const selectAll = document.getElementById(selectAllId);
-            if (selectAll) {
-                selectAll.checked = totalCount > 0 && selectedCount === totalCount;
-                selectAll.indeterminate = selectedCount > 0 && selectedCount < totalCount;
-            }
+            checkboxes.forEach(checkbox => {
+                // Remove existing listener by cloning
+                const newCheckbox = checkbox.cloneNode(true);
+                checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+
+                newCheckbox.addEventListener('change', function(e) {
+                    e.stopPropagation();
+                    const id = this.getAttribute('data-id');
+
+                    if (!selectedItems[section]) selectedItems[section] = [];
+
+                    if (this.checked) {
+                        if (!selectedItems[section].includes(id)) {
+                            selectedItems[section].push(id);
+                        }
+                    } else {
+                        selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
+                    }
+
+                    const selectedCount = selectedItems[section].length;
+                    setBulkActionButtonState(section, selectedCount);
+                    updateHeaderSelectedCount(section, selectedCount);
+                    updateSelectAllState(section);
+                });
+            });
         }
 
-        // ===== SELECT ALL CHECKBOXES =====
-        document.querySelectorAll('thead input[type="checkbox"]').forEach(checkbox => {
-            const newCheckbox = checkbox.cloneNode(true);
-            checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+        // ===== FUNCTION TO UPDATE SELECT ALL CHECKBOX STATE =====
+        function updateSelectAllState(section) {
+            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
+            const selectAllCheckbox = document.getElementById(selectAllId);
+            if (!selectAllCheckbox) return;
 
-            newCheckbox.addEventListener('change', function() {
-                const sectionId = this.id.replace('selectAll', '').toLowerCase();
+            const tableBody = document.getElementById(`${section}TableBody`);
+            if (!tableBody) return;
 
-                // Map section IDs to proper section names
-                let section = sectionId;
-                if (sectionId === 'courses') section = 'courses';
-                else if (sectionId === 'jobs') section = 'jobs';
-                else if (sectionId === 'internships') section = 'internships';
-                else if (sectionId === 'blog') section = 'blog';
-                else if (sectionId === 'users') section = 'users';
-                else if (sectionId === 'messages') section = 'messages';
-                else if (sectionId === 'newsletter') section = 'newsletter';
-                else if (sectionId === 'testimonials') section = 'testimonials';
-                else if (sectionId === 'admins') section = 'admins';
-                else if (sectionId === 'expired') section = 'expired-content';
-                else if (sectionId === 'trash') section = 'trash';
+            const totalCheckboxes = tableBody.querySelectorAll('.row-checkbox').length;
+            const selectedCount = selectedItems[section] ? selectedItems[section].length : 0;
 
+            selectAllCheckbox.checked = totalCheckboxes > 0 && selectedCount === totalCheckboxes;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCheckboxes;
+        }
+
+        // ===== OVERRIDE THE EXISTING renderTableData TO ATTACH LISTENERS AFTER DATA LOAD =====
+        // Save original renderTableData function
+        const originalRenderTableData = window.renderTableData;
+
+        // Override renderTableData
+        window.renderTableData = function(section, data) {
+            // Call original function first
+            if (originalRenderTableData) {
+                originalRenderTableData(section, data);
+            }
+
+            // After data is rendered, attach checkbox listeners for this section
+            const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
+            if (regularSections.includes(section)) {
+                setTimeout(() => {
+                    attachRowCheckboxListeners(section);
+                    // Reset selected items for this section when new data loads
+                    if (selectedItems[section]) {
+                        selectedItems[section] = [];
+                        updateHeaderSelectedCount(section, 0);
+                        setBulkActionButtonState(section, 0);
+                        updateSelectAllState(section);
+                    }
+                }, 100);
+            }
+        };
+
+        // ===== SELECT ALL CHECKBOX HANDLERS FOR REGULAR SECTIONS =====
+        const regularSections = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter'];
+
+        regularSections.forEach(section => {
+            const selectAllId = `selectAll${section.charAt(0).toUpperCase() + section.slice(1)}`;
+            const selectAllCheckbox = document.getElementById(selectAllId);
+            if (!selectAllCheckbox) return;
+
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+
+            newSelectAll.addEventListener('change', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const isChecked = this.checked;
                 const tableBody = document.getElementById(`${section}TableBody`);
                 if (!tableBody) return;
 
-                // Get checkboxes based on section
-                let rowCheckboxes;
-                if (section === 'testimonials') {
-                    rowCheckboxes = tableBody.querySelectorAll('.testimonial-checkbox');
-                } else if (section === 'admins') {
-                    rowCheckboxes = tableBody.querySelectorAll('.admin-checkbox');
-                } else if (section === 'expired-content') {
-                    rowCheckboxes = tableBody.querySelectorAll('.expired-item-checkbox');
-                } else if (section === 'trash') {
-                    rowCheckboxes = tableBody.querySelectorAll('.trash-item-checkbox');
+                const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+
+                if (!selectedItems[section]) selectedItems[section] = [];
+
+                if (isChecked) {
+                    selectedItems[section] = [];
+                    rowCheckboxes.forEach(checkbox => {
+                        checkbox.checked = true;
+                        const id = checkbox.getAttribute('data-id');
+                        if (id && !selectedItems[section].includes(id)) {
+                            selectedItems[section].push(id);
+                        }
+                    });
                 } else {
-                    rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+                    rowCheckboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    selectedItems[section] = [];
                 }
 
-                const isChecked = this.checked;
-
-                // Update all checkboxes and selected items
-                rowCheckboxes.forEach(cb => {
-                    cb.checked = isChecked;
-                    const id = cb.getAttribute('data-id');
-                    const type = cb.getAttribute('data-type');
-
-                    if (isChecked) {
-                        // Add to selected arrays
-                        if (section === 'testimonials' && window.testimonialManager) {
-                            if (!window.testimonialManager.selectedIds.includes(id)) {
-                                window.testimonialManager.selectedIds.push(id);
-                            }
-                        } else if (section === 'admins' && window.adminManager) {
-                            if (!window.adminManager.selectedAdmins.includes(id)) {
-                                window.adminManager.selectedAdmins.push(id);
-                            }
-                        } else if (section === 'expired-content') {
-                            if (!selectedExpiredItems.find(item => item.content_id === id)) {
-                                selectedExpiredItems.push({ content_type: type, content_id: id });
-                            }
-                        } else if (section === 'trash') {
-                            if (!selectedTrashItems.find(item => item.content_id === id)) {
-                                selectedTrashItems.push({
-                                    content_type: type,
-                                    content_id: id,
-                                    table_name: cb.getAttribute('data-table')
-                                });
-                            }
-                        } else {
-                            if (!selectedItems[section]) selectedItems[section] = [];
-                            if (!selectedItems[section].includes(id)) {
-                                selectedItems[section].push(id);
-                            }
-                        }
-                    } else {
-                        // Remove from selected arrays
-                        if (section === 'testimonials' && window.testimonialManager) {
-                            window.testimonialManager.selectedIds = window.testimonialManager.selectedIds.filter(i => i !== id);
-                        } else if (section === 'admins' && window.adminManager) {
-                            window.adminManager.selectedAdmins = window.adminManager.selectedAdmins.filter(i => i !== id);
-                        } else if (section === 'expired-content') {
-                            selectedExpiredItems = selectedExpiredItems.filter(item => item.content_id !== id);
-                        } else if (section === 'trash') {
-                            selectedTrashItems = selectedTrashItems.filter(item => item.content_id !== id);
-                        } else {
-                            selectedItems[section] = selectedItems[section].filter(itemId => itemId !== id);
-                        }
-                    }
-                });
-
-                // Get final selected count
-                let selectedCount;
-                if (section === 'testimonials') {
-                    selectedCount = window.testimonialManager ? window.testimonialManager.selectedIds.length : 0;
-                } else if (section === 'admins') {
-                    selectedCount = window.adminManager ? window.adminManager.selectedAdmins.length : 0;
-                } else if (section === 'expired-content') {
-                    selectedCount = selectedExpiredItems.length;
-                } else if (section === 'trash') {
-                    selectedCount = selectedTrashItems.length;
-                } else {
-                    selectedCount = selectedItems[section] ? selectedItems[section].length : 0;
-                }
-
-                // Update bulk action button state
+                const selectedCount = selectedItems[section].length;
                 setBulkActionButtonState(section, selectedCount);
-
-                // Update select all checkbox (already handled by the checkbox itself)
-                if (section === 'testimonials' && window.testimonialManager) {
-                    const selectAll = document.getElementById('selectAllTestimonials');
-                    if (selectAll) {
-                        selectAll.checked = isChecked;
-                        selectAll.indeterminate = false;
-                    }
-                    window.testimonialManager.updateBulkActionButton();
-                } else if (section === 'admins' && window.adminManager) {
-                    window.adminManager.updateBulkActionButton();
-                }
+                updateHeaderSelectedCount(section, selectedCount);
+                updateSelectAllState(section);
             });
         });
 
-        // ===== INDIVIDUAL CHECKBOX HANDLING =====
-        document.addEventListener('change', function(e) {
-            // Handle testimonial checkboxes
-            if (e.target.classList.contains('testimonial-checkbox')) {
-                const checkbox = e.target;
-                const testimonialId = checkbox.getAttribute('data-id');
+        // ===== TESTIMONIALS SECTION HANDLING =====
+        if (window.testimonialManager) {
+            const originalUpdateBulkActionButton = window.testimonialManager.updateBulkActionButton;
+            window.testimonialManager.updateBulkActionButton = function() {
+                originalUpdateBulkActionButton.call(this);
+                updateHeaderSelectedCount('testimonials', this.selectedIds.length);
+                setBulkActionButtonState('testimonials', this.selectedIds.length);
+            };
+        }
 
-                if (window.testimonialManager) {
-                    if (checkbox.checked) {
-                        if (!window.testimonialManager.selectedIds.includes(testimonialId)) {
-                            window.testimonialManager.selectedIds.push(testimonialId);
-                        }
-                    } else {
-                        window.testimonialManager.selectedIds = window.testimonialManager.selectedIds.filter(id => id !== testimonialId);
-                    }
+        // ===== ADMINS SECTION HANDLING =====
+        if (window.adminManager) {
+            const originalUpdateBulkActionButton = window.adminManager.updateBulkActionButton;
+            window.adminManager.updateBulkActionButton = function() {
+                originalUpdateBulkActionButton.call(this);
+                updateHeaderSelectedCount('admins', this.selectedAdmins.length);
+                setBulkActionButtonState('admins', this.selectedAdmins.length);
+            };
+        }
 
-                    // Update bulk button
-                    window.testimonialManager.updateBulkActionButton();
+        // ===== EXPIRED CONTENT SECTION HANDLING =====
+        if (typeof updateSelectedExpiredItems === 'function') {
+            const originalUpdateSelectedExpiredItems = updateSelectedExpiredItems;
+            window.updateSelectedExpiredItems = function() {
+                originalUpdateSelectedExpiredItems();
+                updateHeaderSelectedCount('expired-content', selectedExpiredItems.length);
+                setBulkActionButtonState('expired-content', selectedExpiredItems.length);
+            };
+        }
 
-                    // Update select all checkbox
-                    const totalCheckboxes = document.querySelectorAll('#testimonialsTableBody .testimonial-checkbox').length;
-                    const checkedCount = window.testimonialManager.selectedIds.length;
-                    const selectAll = document.getElementById('selectAllTestimonials');
-                    if (selectAll) {
-                        selectAll.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
-                        selectAll.indeterminate = checkedCount > 0 && checkedCount < totalCheckboxes;
-                    }
-                }
-                return;
-            }
+        // ===== TRASH SECTION HANDLING =====
+        if (typeof updateSelectedTrashItems === 'function') {
+            const originalUpdateSelectedTrashItems = updateSelectedTrashItems;
+            window.updateSelectedTrashItems = function() {
+                originalUpdateSelectedTrashItems();
+                updateHeaderSelectedCount('trash', selectedTrashItems.length);
+                setBulkActionButtonState('trash', selectedTrashItems.length);
+            };
+        }
 
-            // Handle admin checkboxes
-            if (e.target.classList.contains('admin-checkbox')) {
-                const checkbox = e.target;
-                const adminId = checkbox.getAttribute('data-id');
-
-                if (window.adminManager) {
-                    if (checkbox.checked) {
-                        if (!window.adminManager.selectedAdmins.includes(adminId)) {
-                            window.adminManager.selectedAdmins.push(adminId);
-                        }
-                    } else {
-                        window.adminManager.selectedAdmins = window.adminManager.selectedAdmins.filter(id => id !== adminId);
-                    }
-
-                    // Update bulk button and select all
-                    window.adminManager.updateBulkActionButton();
-                    window.adminManager.updateSelectAllCheckbox();
-                }
-                return;
-            }
-
-            // Handle expired content checkboxes
-            if (e.target.classList.contains('expired-item-checkbox')) {
-                updateSelectedExpiredItems();
-                const selectedCount = selectedExpiredItems.length;
-                setBulkActionButtonState('expired-content', selectedCount);
-                updateSelectAllExpiredCheckbox();
-                return;
-            }
-
-            // Handle trash checkboxes
-            if (e.target.classList.contains('trash-item-checkbox')) {
-                updateSelectedTrashItems();
-                const selectedCount = selectedTrashItems.length;
-                setBulkActionButtonState('trash', selectedCount);
-                updateSelectAllTrashCheckbox();
-                return;
-            }
-
-            // Handle regular row checkboxes (courses, jobs, internships, blog, users, messages, newsletter)
-            if (e.target.classList.contains('row-checkbox')) {
-                const checkbox = e.target;
-                const row = checkbox.closest('tr');
-                if (!row) return;
-
-                const section = row.closest('.admin-section');
-                if (!section) return;
-
-                const sectionId = section.id;
-                const id = checkbox.getAttribute('data-id');
-
-                // Initialize section array if not exists
-                if (!selectedItems[sectionId]) {
-                    selectedItems[sectionId] = [];
-                }
-
-                if (checkbox.checked) {
-                    if (!selectedItems[sectionId].includes(id)) {
-                        selectedItems[sectionId].push(id);
-                    }
-                } else {
-                    selectedItems[sectionId] = selectedItems[sectionId].filter(itemId => itemId !== id);
-                }
-
-                const selectedCount = selectedItems[sectionId].length;
-
-                // Update bulk action button state
-                setBulkActionButtonState(sectionId, selectedCount);
-
-                // Update select all checkbox
-                const tableBody = document.getElementById(`${sectionId}TableBody`);
-                const totalCheckboxes = tableBody ? tableBody.querySelectorAll('.row-checkbox').length : 0;
-                setSelectAllState(sectionId, selectedCount, totalCheckboxes);
-            }
-        });
-
-        // ===== BULK ACTION BUTTON HANDLERS =====
-        const bulkActionButtons = [
-            { btnId: 'applyCourseBulkAction', section: 'courses', actionSelectId: 'courseBulkAction' },
-            { btnId: 'applyJobBulkAction', section: 'jobs', actionSelectId: 'jobBulkAction' },
-            { btnId: 'applyInternshipBulkAction', section: 'internships', actionSelectId: 'internshipBulkAction' },
-            { btnId: 'applyBlogBulkAction', section: 'blog', actionSelectId: 'blogBulkAction' },
-            { btnId: 'applyUserBulkAction', section: 'users', actionSelectId: 'userBulkAction' },
-            { btnId: 'applyMessageBulkAction', section: 'messages', actionSelectId: 'messageBulkAction' },
-            { btnId: 'applyNewsletterBulkAction', section: 'newsletter', actionSelectId: 'newsletterBulkAction' },
-            { btnId: 'applyTestimonialBulkAction', section: 'testimonials', actionSelectId: 'testimonialBulkAction' },
-            { btnId: 'applyAdminBulkAction', section: 'admins', actionSelectId: 'adminBulkAction' },
-            { btnId: 'applyExpiredContentBulkAction', section: 'expired-content', actionSelectId: 'expiredContentBulkAction' },
-            { btnId: 'applyTrashBulkAction', section: 'trash', actionSelectId: 'trashBulkAction' }
+        // ===== HEADER BULK ACTION BUTTON HANDLERS =====
+        const headerBulkActions = [
+            { btnId: 'applyCourseBulkActionHeader', section: 'courses', actionSelectId: 'courseBulkActionHeader' },
+            { btnId: 'applyJobBulkActionHeader', section: 'jobs', actionSelectId: 'jobBulkActionHeader' },
+            { btnId: 'applyInternshipBulkActionHeader', section: 'internships', actionSelectId: 'internshipBulkActionHeader' },
+            { btnId: 'applyBlogBulkActionHeader', section: 'blog', actionSelectId: 'blogBulkActionHeader' },
+            { btnId: 'applyTestimonialBulkActionHeader', section: 'testimonials', actionSelectId: 'testimonialBulkActionHeader' },
+            { btnId: 'applyNewsletterBulkActionHeader', section: 'newsletter', actionSelectId: 'newsletterBulkActionHeader' },
+            { btnId: 'applyExpiredContentBulkActionHeader', section: 'expired-content', actionSelectId: 'expiredContentBulkActionHeader' },
+            { btnId: 'applyUserBulkActionHeader', section: 'users', actionSelectId: 'userBulkActionHeader' },
+            { btnId: 'applyMessageBulkActionHeader', section: 'messages', actionSelectId: 'messageBulkActionHeader' },
+            { btnId: 'applyAdminBulkActionHeader', section: 'admins', actionSelectId: 'adminBulkActionHeader' },
+            { btnId: 'applyTrashBulkActionHeader', section: 'trash', actionSelectId: 'trashBulkActionHeader' }
         ];
 
-        bulkActionButtons.forEach(({ btnId, section, actionSelectId }) => {
+        headerBulkActions.forEach(({ btnId, section, actionSelectId }) => {
             const button = document.getElementById(btnId);
             if (!button) return;
 
@@ -5657,21 +5633,14 @@
                     return;
                 }
 
-                // Get selected items
                 let selectedIds = getSelectedIds(section);
-
-                if (section === 'expired-content') {
-                    selectedIds = selectedExpiredItems;
-                } else if (section === 'trash') {
-                    selectedIds = selectedTrashItems;
-                }
 
                 if (selectedIds.length === 0) {
                     showNotification(`Please select at least one ${section} item`, 'warning');
                     return;
                 }
 
-                // Handle actions based on section (same as before)
+                // Handle actions based on section
                 if (section === 'testimonials') {
                     if (action === 'delete') {
                         showConfirmation('delete', `Delete ${selectedIds.length} testimonial(s)?`, () => {
@@ -5714,45 +5683,14 @@
                 }
 
                 if (section === 'trash') {
-                    const actionSelect = document.getElementById('trashBulkAction');
-                    const action = actionSelect ? actionSelect.value : '';
-
-                    if (!action) {
-                        showNotification('Please select a bulk action first', 'warning');
-                        return;
-                    }
-
-                    // Get selected items directly from checkboxes
-                    const selectedItemsList = [];
-                    document.querySelectorAll('#trashTableBody .trash-item-checkbox:checked').forEach(checkbox => {
-                        selectedItemsList.push({
-                            content_type: checkbox.getAttribute('data-type'),
-                            content_id: checkbox.getAttribute('data-id'),
-                            table_name: checkbox.getAttribute('data-table')
-                        });
-                    });
-
-                    console.log('Trash bulk action - Selected items:', selectedItemsList); // DEBUG
-
-                    if (selectedItemsList.length === 0) {
-                        showNotification('Please select at least one item', 'warning');
-                        return;
-                    }
-
                     if (action === 'restore') {
-                        console.log('Calling bulkRestoreTrashItems with:', selectedItemsList); // DEBUG
-                        showConfirmation('bulk_action',
-                            `Restore ${selectedItemsList.length} item(s) from trash?`,
-                            () => {
-                                console.log('Confirmation confirmed, calling bulkRestoreTrashItems'); // DEBUG
-                                bulkRestoreTrashItems(selectedItemsList);
-                            }
-                        );
+                        showConfirmation('bulk_action', `Restore ${selectedIds.length} item(s) from trash?`, () => {
+                            bulkRestoreTrashItems(selectedIds);
+                        });
                     } else if (action === 'delete') {
-                        showConfirmation('delete',
-                            `Permanently delete ${selectedItemsList.length} item(s)?`,
-                            () => bulkPermanentlyDeleteTrashItems(selectedItemsList)
-                        );
+                        showConfirmation('delete', `Permanently delete ${selectedIds.length} item(s)?`, () => {
+                            bulkPermanentlyDeleteTrashItems(selectedIds);
+                        });
                     }
                     return;
                 }
@@ -5776,7 +5714,7 @@
             });
         });
 
-        console.log('✅ All bulk actions setup complete');
+        console.log('✅ Header bulk actions setup complete');
     }
 
     // ===== HELPER FUNCTION FOR BUTTON STATE - SINGLE SOURCE OF TRUTH =====
@@ -7295,6 +7233,8 @@
                 updateSelectedTrashItems();
                 updateTrashBulkActionButton();
                 updateSelectAllTrashCheckbox();
+                // Update header count
+                updateHeaderSelectedCount('trash', selectedTrashItems.length);
             });
         });
 
@@ -7469,6 +7409,9 @@
             const count = selectedTrashItems.length;
             selectedCountEl.textContent = count === 0 ? '0 selected' : `${count} selected`;
         }
+
+        // Update header count
+        updateHeaderSelectedCount('trash', selectedTrashItems.length);
     }
 
     // Update trash bulk action button state
@@ -7627,11 +7570,26 @@
 
             newSelectAll.addEventListener('change', function() {
                 const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
+                selectedTrashItems = [];
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = this.checked;
+                    if (this.checked) {
+                        selectedTrashItems.push({
+                            content_type: checkbox.getAttribute('data-type'),
+                            content_id: checkbox.getAttribute('data-id'),
+                            table_name: checkbox.getAttribute('data-table')
+                        });
+                    }
                 });
-                updateSelectedTrashItems();
                 updateTrashBulkActionButton();
+                updateSelectAllTrashCheckbox();
+                // Update header count
+                updateHeaderSelectedCount('trash', selectedTrashItems.length);
+
+                const selectedCountEl = document.getElementById('selectedTrashCount');
+                if (selectedCountEl) {
+                    selectedCountEl.textContent = this.checked ? `${selectedTrashItems.length} selected` : '0 selected';
+                }
             });
         }
 
@@ -9360,6 +9318,8 @@
                         }
                         this.updateBulkActionButton();
                         this.updateSelectAllCheckbox();
+                        // Update header count
+                        updateHeaderSelectedCount('admins', this.selectedAdmins.length);
                     });
                 });
 
@@ -9369,18 +9329,17 @@
                     selectAll.parentNode.replaceChild(newSelectAll, selectAll);
                     newSelectAll.addEventListener('change', () => {
                         const checkboxes = document.querySelectorAll('.admin-checkbox:not([disabled])');
+                        this.selectedAdmins = [];
                         checkboxes.forEach(checkbox => {
                             checkbox.checked = newSelectAll.checked;
                             const adminId = checkbox.getAttribute('data-id');
                             if (newSelectAll.checked) {
-                                if (!this.selectedAdmins.includes(adminId)) {
-                                    this.selectedAdmins.push(adminId);
-                                }
-                            } else {
-                                this.selectedAdmins = [];
+                                this.selectedAdmins.push(adminId);
                             }
                         });
                         this.updateBulkActionButton();
+                        // Update header count
+                        updateHeaderSelectedCount('admins', this.selectedAdmins.length);
                     });
                 }
             }
@@ -9767,7 +9726,15 @@
 
         updateBulkActionButton() {
             const applyBtn = document.getElementById('applyAdminBulkAction');
+            const headerButton = document.getElementById('applyAdminBulkActionHeader');
+
             if (applyBtn) applyBtn.disabled = this.selectedAdmins.length === 0;
+            if (headerButton) headerButton.disabled = this.selectedAdmins.length === 0;
+
+            // Update header count
+            if (typeof updateHeaderSelectedCount === 'function') {
+                updateHeaderSelectedCount('admins', this.selectedAdmins.length);
+            }
         }
 
         updateSelectAllCheckbox() {
