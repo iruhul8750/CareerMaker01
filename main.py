@@ -5417,6 +5417,88 @@ def create_admin_resource(resource):
         if resource == 'blog' and 'categories' in data:
             data = handle_categories_data(data)
 
+        # ===== DUPLICATE CHECKS =====
+
+        # For blog posts - check duplicate slug (from title)
+        if resource == 'blog':
+            # Generate slug from title if not provided
+            if data.get('title') and not data.get('slug'):
+                data['slug'] = generate_slug(data['title'])
+
+            # Check for duplicate slug
+            if data.get('slug'):
+                existing = supabase_admin.table('blog_posts') \
+                    .select('id') \
+                    .eq('slug', data['slug']) \
+                    .execute()
+
+                if existing.data:
+                    return jsonify({
+                        'success': False,
+                        'message': 'A blog post with this title already exists. Please use a different title.',
+                        'field_errors': {'title': 'A blog post with this title already exists'}
+                    }), 409
+
+        # For courses - check duplicate title
+        if resource == 'courses' and data.get('title'):
+            existing = supabase_admin.table('courses') \
+                .select('id') \
+                .eq('title', data['title']) \
+                .execute()
+
+            if existing.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'A course with this title already exists. Please use a different title.',
+                    'field_errors': {'title': 'A course with this title already exists'}
+                }), 409
+
+        # For jobs - check duplicate title + company
+        if resource == 'jobs' and data.get('title') and data.get('company'):
+            existing = supabase_admin.table('jobs') \
+                .select('id') \
+                .eq('title', data['title']) \
+                .eq('company', data['company']) \
+                .execute()
+
+            if existing.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'A job with this title at this company already exists.',
+                    'field_errors': {'title': 'This job title at this company already exists'}
+                }), 409
+
+        # For internships - check duplicate title + company
+        if resource == 'internships' and data.get('title') and data.get('company'):
+            existing = supabase_admin.table('internships') \
+                .select('id') \
+                .eq('title', data['title']) \
+                .eq('company', data['company']) \
+                .execute()
+
+            if existing.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'An internship with this title at this company already exists.',
+                    'field_errors': {'title': 'This internship title at this company already exists'}
+                }), 409
+
+        # For users - check duplicate email
+        if resource == 'users' and data.get('email'):
+            existing = supabase_admin.table('users') \
+                .select('id') \
+                .eq('email', data['email']) \
+                .execute()
+
+            if existing.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'A user with this email already exists.',
+                    'field_errors': {'email': 'This email is already registered'}
+                }), 409
+
+        # ===== END DUPLICATE CHECKS =====
+
         # Handle expiration date conversion for courses, jobs, and internships
         if resource in ['courses', 'jobs', 'internships'] and 'expiration_date' in data:
             if data['expiration_date']:
@@ -5426,11 +5508,9 @@ def create_admin_resource(resource):
                     data['expiration_date'] = expiration_date.isoformat()
                     logger.info(f"Set expiration date for {resource}: {data['expiration_date']}")
                 except ValueError as e:
-                    # If invalid date, set to None
                     data['expiration_date'] = None
                     logger.warning(f"Invalid expiration date format for {resource}: {str(e)}")
             else:
-                # If empty string, set to None
                 data['expiration_date'] = None
                 logger.info(f"No expiration date set for {resource}")
 
@@ -5459,8 +5539,8 @@ def create_admin_resource(resource):
 
         # Set proper defaults for new content
         if resource in ['courses', 'jobs', 'internships', 'blog']:
-            data['is_featured'] = data.get('is_featured', False)  # Default to not featured
-            data['is_active'] = data.get('is_active', True)  # Default to active
+            data['is_featured'] = data.get('is_featured', False)
+            data['is_active'] = data.get('is_active', True)
 
         # For courses, jobs, internships, and blog, sync featured state with active state
         if resource in ['courses', 'jobs', 'internships', 'blog']:
@@ -5475,7 +5555,6 @@ def create_admin_resource(resource):
                     logger.info(f"Auto-fetched company logo for {data.get('company')}")
             except Exception as logo_error:
                 logger.warning(f"Could not fetch company logo for {data.get('company')}: {str(logo_error)}")
-                # Continue without logo if fetching fails
 
         # Insert into database
         response = supabase_admin.table(table_name).insert(data).execute()
@@ -5486,17 +5565,15 @@ def create_admin_resource(resource):
         created_item = response.data[0]
         logger.info(f"✅ Successfully created {resource[:-1]}: {created_item.get('title', 'Unknown')}")
 
-        # If creation was successful and we have a company but no logo, try to fetch it asynchronously
+        # Background logo fetch
         if resource in ['jobs', 'internships', 'courses'] and data.get('company') and not data.get('company_logo'):
             try:
                 content_id = created_item['id']
-                # Run logo fetching in background
                 from threading import Thread
                 def fetch_logo_async():
                     try:
                         logo_url = get_or_fetch_logo(data['company'], resource, content_id)
                         if logo_url:
-                            # Update the content with the fetched logo
                             supabase_admin.table(table_name).update({
                                 'company_logo': logo_url,
                                 'updated_at': get_current_utc_time().isoformat()
@@ -5532,74 +5609,115 @@ def update_admin_resource(resource, id):
 
         data = request.get_json()
 
-        # Handle categories data for blog posts
-        if resource == 'blog' and 'categories' in data:
-            data = handle_categories_data(data)
-
-        # Handle expiration date conversion for courses, jobs, and internships
-        if resource in ['courses', 'jobs', 'internships'] and 'expiration_date' in data:
-            expiration_date = data.get('expiration_date')
-
-            # Handle empty string or null - set to None (remove expiration)
-            if not expiration_date or expiration_date == '':
-                data['expiration_date'] = None
-                logger.info(f"Cleared expiration date for {resource} {id}")
-            else:
-                try:
-                    # Convert datetime-local string to ISO format
-                    expiration_date = datetime.fromisoformat(expiration_date.replace('Z', '+00:00'))
-                    data['expiration_date'] = expiration_date.isoformat()
-                    logger.info(f"Updated expiration date for {resource} {id}: {data['expiration_date']}")
-                except ValueError as e:
-                    # If invalid date, set to None
-                    data['expiration_date'] = None
-                    logger.warning(f"Invalid expiration date format for {resource} {id}: {str(e)}")
-
         # Determine the correct table name
         table_map = {
             'blog': 'blog_posts'
         }
         table_name = table_map.get(resource, resource)
 
-        # Check if resource exists
-        existing_response = supabase_admin.table(table_name).select(
-            'id, company, company_logo, expiration_date, is_active').eq('id', id).execute()
+        # Get existing item first
+        existing_response = supabase_admin.table(table_name).select('*').eq('id', id).execute()
         if not existing_response.data:
             return jsonify({'success': False, 'message': f'{resource[:-1].title()} not found'}), 404
 
-        existing_data = existing_response.data[0]
-        logger.info(f"Updating {resource} {id}: {existing_data.get('title', 'Unknown')}")
+        existing_item = existing_response.data[0]
+
+        # Handle categories data for blog posts
+        if resource == 'blog' and 'categories' in data:
+            data = handle_categories_data(data)
+
+        # ===== EDIT MODE DUPLICATE CHECKS (excluding current item) =====
+
+        # For blog posts
+        if resource == 'blog':
+            if data.get('title') and data['title'] != existing_item.get('title'):
+                new_slug = generate_slug(data['title'])
+                data['slug'] = new_slug
+
+                existing = supabase_admin.table('blog_posts') \
+                    .select('id') \
+                    .eq('slug', new_slug) \
+                    .neq('id', id) \
+                    .execute()
+
+                if existing.data:
+                    return jsonify({
+                        'success': False,
+                        'message': 'A blog post with this title already exists. Please use a different title.',
+                        'field_errors': {'title': 'A blog post with this title already exists'}
+                    }), 409
+
+        # For courses
+        if resource == 'courses' and data.get('title') and data['title'] != existing_item.get('title'):
+            existing = supabase_admin.table('courses') \
+                .select('id') \
+                .eq('title', data['title']) \
+                .neq('id', id) \
+                .execute()
+
+            if existing.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'A course with this title already exists. Please use a different title.',
+                    'field_errors': {'title': 'A course with this title already exists'}
+                }), 409
+
+        # For jobs
+        if resource == 'jobs' and data.get('title') and data.get('company'):
+            title_changed = data['title'] != existing_item.get('title')
+            company_changed = data.get('company') and data['company'] != existing_item.get('company')
+
+            if title_changed or company_changed:
+                existing = supabase_admin.table('jobs') \
+                    .select('id') \
+                    .eq('title', data['title']) \
+                    .eq('company', data['company']) \
+                    .neq('id', id) \
+                    .execute()
+
+                if existing.data:
+                    return jsonify({
+                        'success': False,
+                        'message': 'A job with this title at this company already exists.',
+                        'field_errors': {'title': 'This job title at this company already exists'}
+                    }), 409
+
+        # For internships
+        if resource == 'internships' and data.get('title') and data.get('company'):
+            title_changed = data['title'] != existing_item.get('title')
+            company_changed = data.get('company') and data['company'] != existing_item.get('company')
+
+            if title_changed or company_changed:
+                existing = supabase_admin.table('internships') \
+                    .select('id') \
+                    .eq('title', data['title']) \
+                    .eq('company', data['company']) \
+                    .neq('id', id) \
+                    .execute()
+
+                if existing.data:
+                    return jsonify({
+                        'success': False,
+                        'message': 'An internship with this title at this company already exists.',
+                        'field_errors': {'title': 'This internship title at this company already exists'}
+                    }), 409
+
+        # ===== END DUPLICATE CHECKS =====
+
+        # Handle expiration date
+        if resource in ['courses', 'jobs', 'internships'] and 'expiration_date' in data:
+            expiration_date = data.get('expiration_date')
+            if not expiration_date or expiration_date == '':
+                data['expiration_date'] = None
+            else:
+                try:
+                    expiration_date = datetime.fromisoformat(expiration_date.replace('Z', '+00:00'))
+                    data['expiration_date'] = expiration_date.isoformat()
+                except ValueError:
+                    data['expiration_date'] = None
 
         # Add updated_at timestamp
         data['updated_at'] = get_current_utc_time().isoformat()
-
-        # Enhance data with company logo if company name changed
-        if resource in ['jobs', 'internships', 'courses']:
-            current_company = existing_data.get('company')
-            new_company = data.get('company')
-
-            # If company changed or no logo exists, try to fetch new logo
-            if new_company and (new_company != current_company or not existing_data.get('company_logo')):
-                try:
-                    enhanced_data = enhance_content_with_logo(data, resource, id)
-                    if enhanced_data.get('company_logo'):
-                        data['company_logo'] = enhanced_data['company_logo']
-                        logger.info(f"✅ Auto-updated company logo for {new_company}")
-                    elif new_company != current_company:
-                        # Company changed but no logo found, clear existing logo
-                        data['company_logo'] = None
-                        logger.info(f"Cleared company logo for changed company: {new_company}")
-                except Exception as logo_error:
-                    logger.warning(f"Could not update company logo for {new_company}: {str(logo_error)}")
-                    # Keep existing logo if fetching fails
-                    if existing_data.get('company_logo') and new_company == current_company:
-                        data['company_logo'] = existing_data['company_logo']
-
-        # For courses, jobs, internships, and blog, sync featured state with active state
-        if resource in ['courses', 'jobs', 'internships', 'blog']:
-            if 'is_active' in data:
-                data['is_featured'] = data['is_active']
-                logger.info(f"Synced featured status with active status for {resource} {id}")
 
         # Update in database
         response = supabase_admin.table(table_name).update(data).eq('id', id).execute()
@@ -5607,39 +5725,10 @@ def update_admin_resource(resource, id):
         if not response.data:
             return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
-        updated_item = response.data[0]
-        logger.info(f"✅ Successfully updated {resource[:-1]}: {updated_item.get('title', 'Unknown')}")
-
-        # If update was successful and company changed but no logo was fetched, try background fetch
-        if (resource in ['jobs', 'internships', 'courses'] and
-                data.get('company') and
-                data.get('company') != existing_data.get('company') and
-                not data.get('company_logo')):
-
-            try:
-                from threading import Thread
-                def fetch_logo_async():
-                    try:
-                        logo_url = get_or_fetch_logo(data['company'], resource, id)
-                        if logo_url:
-                            # Update the content with the fetched logo
-                            supabase_admin.table(table_name).update({
-                                'company_logo': logo_url,
-                                'updated_at': get_current_utc_time().isoformat()
-                            }).eq('id', id).execute()
-                            logger.info(f"✅ Successfully updated logo for {resource} {id}")
-                    except Exception as e:
-                        logger.error(f"Background logo update failed: {str(e)}")
-
-                thread = Thread(target=fetch_logo_async)
-                thread.start()
-            except Exception as async_error:
-                logger.error(f"Failed to start background logo update: {str(async_error)}")
-
         return jsonify({
             'success': True,
             'message': f'{resource[:-1].title()} updated successfully',
-            'data': updated_item
+            'data': response.data[0]
         })
 
     except Exception as e:
@@ -5647,7 +5736,7 @@ def update_admin_resource(resource, id):
         return jsonify({'success': False, 'message': f'Failed to update {resource[:-1]}'}), 500
 
 
-# Filters for jobs and internhsips
+# Filters for jobs and internships
 @app.route('/api/jobs/filters')
 def get_job_filters():
     """API endpoint to get available job filters"""
@@ -8404,34 +8493,87 @@ def create_new_admin():
         # Check if current user is superadmin to create superadmin
         current_is_superadmin = session.get('is_superadmin', False)
         if is_superadmin and not current_is_superadmin:
-            return jsonify({'success': False, 'message': 'Only super admins can create super admin accounts'}), 403
+            return jsonify({
+                'success': False,
+                'message': 'Only super admins can create super admin accounts',
+                'field_errors': {'is_superadmin': 'Only super admins can create super admin accounts'}
+            }), 403
 
         if not full_name or not username or not email or not password:
-            return jsonify({'success': False, 'message': 'Full name, username, email, and password are required'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Full name, username, email, and password are required',
+                'field_errors': {
+                    'full_name': 'Full name is required' if not full_name else None,
+                    'username': 'Username is required' if not username else None,
+                    'email': 'Email is required' if not email else None,
+                    'password': 'Password is required' if not password else None
+                }
+            }), 400
 
         # Validate email format
-        if '@' not in email:
-            return jsonify({'success': False, 'message': 'Invalid email format'}), 400
+        if '@' not in email or '.' not in email:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid email format',
+                'field_errors': {'email': 'Please enter a valid email address'}
+            }), 400
 
         # Validate username format
         import re
         if not re.match(r'^[a-zA-Z0-9_]+$', username):
-            return jsonify(
-                {'success': False, 'message': 'Username can only contain letters, numbers, and underscore'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Username can only contain letters, numbers, and underscore',
+                'field_errors': {'username': 'Username can only contain letters, numbers, and underscore'}
+            }), 400
 
         # Validate password strength
         if len(password) < 8:
-            return jsonify({'success': False, 'message': 'Password must be at least 8 characters'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Password must be at least 8 characters',
+                'field_errors': {'password': 'Password must be at least 8 characters'}
+            }), 400
+
+        if not any(c.isupper() for c in password):
+            return jsonify({
+                'success': False,
+                'message': 'Password must contain at least one uppercase letter',
+                'field_errors': {'password': 'Password must contain at least one uppercase letter'}
+            }), 400
+
+        if not any(c.isdigit() for c in password):
+            return jsonify({
+                'success': False,
+                'message': 'Password must contain at least one number',
+                'field_errors': {'password': 'Password must contain at least one number'}
+            }), 400
+
+        if not any(c in '!@#$%^&*(),.?":{}|<>' for c in password):
+            return jsonify({
+                'success': False,
+                'message': 'Password must contain at least one special character',
+                'field_errors': {'password': 'Password must contain at least one special character (!@#$%^&*)'}
+            }), 400
 
         # Check if email already exists
         existing_email = supabase_admin.table('admins').select('id').eq('email', email).execute()
         if existing_email.data:
-            return jsonify({'success': False, 'message': 'Email already exists'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Email already exists',
+                'field_errors': {'email': 'This email is already registered'}
+            }), 409
 
         # Check if username already exists
         existing_username = supabase_admin.table('admins').select('id').eq('username', username).execute()
         if existing_username.data:
-            return jsonify({'success': False, 'message': 'Username already exists'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'Username already exists',
+                'field_errors': {'username': 'This username is already taken'}
+            }), 409
 
         # Create admin
         now_iso = get_current_utc_time().isoformat()
@@ -8527,55 +8669,120 @@ def update_admin(id):
 
         # If not superadmin and not updating self, deny
         if not current_is_superadmin and not is_current_user:
-            return jsonify({'success': False, 'message': 'You can only update your own profile'}), 403
+            return jsonify({
+                'success': False,
+                'message': 'You can only update your own profile',
+                'field_errors': {}
+            }), 403
+
+        # Check if admin exists
+        existing_admin = supabase_admin.table('admins').select('*').eq('id', id).execute()
+        if not existing_admin.data:
+            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+
+        existing = existing_admin.data[0]
 
         # Build update data (only allowed fields)
-        update_data = {
-            'full_name': data.get('full_name'),
-            'username': data.get('username'),
-            'email': data.get('email'),
-            'updated_at': get_current_utc_time().isoformat()
-        }
+        update_data = {}
 
-        # Remove None values
-        update_data = {k: v for k, v in update_data.items() if v is not None}
+        if 'full_name' in data and data['full_name']:
+            update_data['full_name'] = data['full_name']
+
+        if 'username' in data and data['username']:
+            update_data['username'] = data['username']
+
+        if 'email' in data and data['email']:
+            update_data['email'] = data['email']
+
+        # Check if username already exists (for other users)
+        if 'username' in update_data and update_data['username'] != existing.get('username'):
+            existing_user = supabase_admin.table('admins') \
+                .select('id') \
+                .eq('username', update_data['username']) \
+                .neq('id', id) \
+                .execute()
+            if existing_user.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'Username already exists',
+                    'field_errors': {'username': 'This username is already taken'}
+                }), 409
+
+        # Check if email already exists (for other users)
+        if 'email' in update_data and update_data['email'] != existing.get('email'):
+            existing_user = supabase_admin.table('admins') \
+                .select('id') \
+                .eq('email', update_data['email']) \
+                .neq('id', id) \
+                .execute()
+            if existing_user.data:
+                return jsonify({
+                    'success': False,
+                    'message': 'Email already exists',
+                    'field_errors': {'email': 'This email is already registered'}
+                }), 409
 
         # Only superadmin can change these fields
         if current_is_superadmin:
             if 'is_superadmin' in data:
                 update_data['is_superadmin'] = data.get('is_superadmin')
-            if 'is_active' in data:
+            if 'is_active' in data and not is_current_user:
                 update_data['is_active'] = data.get('is_active')
 
         # Update password if provided
         if data.get('password'):
-            update_data['password_hash'] = hash_password(data.get('password'))
+            # Validate new password strength
+            password = data.get('password')
+            if len(password) < 8:
+                return jsonify({
+                    'success': False,
+                    'message': 'Password must be at least 8 characters',
+                    'field_errors': {'password': 'Password must be at least 8 characters'}
+                }), 400
 
-        # Check if username already exists (for other users)
-        if 'username' in update_data:
-            existing = supabase_admin.table('admins').select('id').eq('username', update_data['username']).execute()
-            if existing.data and existing.data[0]['id'] != id:
-                return jsonify({'success': False, 'message': 'Username already exists'}), 400
+            if not any(c.isupper() for c in password):
+                return jsonify({
+                    'success': False,
+                    'message': 'Password must contain at least one uppercase letter',
+                    'field_errors': {'password': 'Password must contain at least one uppercase letter'}
+                }), 400
 
-        # Check if email already exists
-        if 'email' in update_data:
-            existing = supabase_admin.table('admins').select('id').eq('email', update_data['email']).execute()
-            if existing.data and existing.data[0]['id'] != id:
-                return jsonify({'success': False, 'message': 'Email already exists'}), 400
+            if not any(c.isdigit() for c in password):
+                return jsonify({
+                    'success': False,
+                    'message': 'Password must contain at least one number',
+                    'field_errors': {'password': 'Password must contain at least one number'}
+                }), 400
+
+            if not any(c in '!@#$%^&*(),.?":{}|<>' for c in password):
+                return jsonify({
+                    'success': False,
+                    'message': 'Password must contain at least one special character',
+                    'field_errors': {'password': 'Password must contain at least one special character (!@#$%^&*)'}
+                }), 400
+
+            update_data['password_hash'] = hash_password(password)
+
+        if not update_data:
+            return jsonify({'success': False, 'message': 'No data to update'}), 400
+
+        # Add updated timestamp
+        update_data['updated_at'] = get_current_utc_time().isoformat()
 
         # Update in database
         response = supabase_admin.table('admins').update(update_data).eq('id', id).execute()
 
         if not response.data:
-            return jsonify({'success': False, 'message': 'Admin not found'}), 404
+            return jsonify({'success': False, 'message': 'Failed to update admin'}), 500
 
         logger.info(f"✅ Admin {id} updated successfully")
 
         # If updating self, update session
-        if is_current_user and 'full_name' in update_data:
-            session['admin_full_name'] = update_data['full_name']
-        if is_current_user and 'username' in update_data:
-            session['admin_username'] = update_data['username']
+        if is_current_user:
+            if 'full_name' in update_data:
+                session['admin_full_name'] = update_data['full_name']
+            if 'username' in update_data:
+                session['admin_username'] = update_data['username']
 
         return jsonify({
             'success': True,

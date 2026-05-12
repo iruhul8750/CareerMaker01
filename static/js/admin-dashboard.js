@@ -224,6 +224,139 @@
         return icons[type] || icons.default;
     }
 
+    // ===== FORM FIELD VALIDATION HELPER FUNCTIONS =====
+
+    /**
+     * Shows error message below a form field and scrolls to it
+     * @param {string} inputId - The ID of the input element
+     * @param {string} message - The error message to display
+     * @param {boolean} scrollToField - Whether to scroll to the field (default: true)
+     */
+    function showFieldError(inputId, message, scrollToField = true) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        // Add error class and styling
+        input.classList.add('input-error');
+
+        // Add error icon to input if it doesn't have one
+        if (!input.parentElement.querySelector('.input-error-icon')) {
+            const errorIcon = document.createElement('i');
+            errorIcon.className = 'fas fa-exclamation-circle input-error-icon';
+            errorIcon.style.cssText = 'position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--danger); font-size: 14px;';
+            input.parentElement.style.position = 'relative';
+            input.parentElement.appendChild(errorIcon);
+        }
+
+        // Check if error span already exists
+        let errorSpan = input.parentElement.querySelector('.field-error');
+        if (!errorSpan) {
+            errorSpan = document.createElement('small');
+            errorSpan.className = 'field-error';
+            errorSpan.style.cssText = 'display: block; color: var(--danger); font-size: 12px; margin-top: 5px;';
+            input.parentElement.appendChild(errorSpan);
+        }
+
+        errorSpan.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        errorSpan.style.display = 'block';
+
+        // Add error class to parent form-group
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.add('error-group');
+        }
+
+        // Scroll to the error field
+        if (scrollToField) {
+            scrollToErrorField(input);
+        }
+    }
+
+    /**
+     * Scroll to error field with smooth animation
+     * @param {HTMLElement} element - The element to scroll to
+     */
+    function scrollToErrorField(element) {
+        if (!element) return;
+
+        // Find the modal container
+        const modal = element.closest('.modal');
+        if (modal) {
+            // Get the modal content container
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                // Calculate position relative to modal content
+                const elementPosition = element.getBoundingClientRect().top;
+                const modalContentPosition = modalContent.getBoundingClientRect().top;
+                const offset = elementPosition - modalContentPosition - 100;
+
+                modalContent.scrollTo({
+                    top: modalContent.scrollTop + offset,
+                    behavior: 'smooth'
+                });
+            } else {
+                // Fallback: scroll to element
+                element.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+        } else {
+            // Not in modal, scroll normally
+            element.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+
+        // Add highlight animation after scroll
+        setTimeout(() => {
+            element.style.transition = 'all 0.3s ease';
+            element.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.4)';
+            setTimeout(() => {
+                element.style.boxShadow = '';
+            }, 1500);
+        }, 300);
+    }
+
+    /**
+     * Clears error message from a form field
+     * @param {string} inputId - The ID of the input element
+     */
+    function clearFieldError(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.classList.remove('input-error');
+
+        // Remove error icon
+        const errorIcon = input.parentElement.querySelector('.input-error-icon');
+        if (errorIcon) {
+            errorIcon.remove();
+        }
+
+        const errorSpan = input.parentElement.querySelector('.field-error');
+        if (errorSpan) {
+            errorSpan.remove();
+        }
+
+        // Remove error class from parent form-group
+        const formGroup = input.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.remove('error-group');
+        }
+    }
+
+    /**
+     * Clears all field errors in a form
+     * @param {Array} fieldIds - Array of input IDs to clear errors from
+     */
+    function clearAllFieldErrors(fieldIds) {
+        if (fieldIds && Array.isArray(fieldIds)) {
+            fieldIds.forEach(fieldId => clearFieldError(fieldId));
+        }
+    }
+
     // ============================================
     // ========== 2. LOADING & NOTIFICATION FUNCTIONS ==========
     // ============================================
@@ -2627,6 +2760,117 @@
         console.log('Type:', type);
         console.log('ID:', id);
 
+        // Clear all previous field errors for this form type
+        const fieldIdsMap = {
+            'courses': ['courseTitle', 'courseCategory', 'courseInstructor', 'courseLink'],
+            'jobs': ['jobTitle', 'jobCompany', 'jobLocation', 'jobLink'],
+            'internships': ['internshipTitle', 'internshipCompany', 'internshipLocation', 'internshipLink'],
+            'blog': ['blogTitle', 'blogAuthor', 'blogContent', 'blogCategory']
+        };
+
+        if (fieldIdsMap[type]) {
+            fieldIdsMap[type].forEach(fieldId => {
+                clearFieldError(fieldId);
+            });
+        }
+
+        // ===== FIELD-LEVEL VALIDATION FOR EACH SECTION =====
+
+        // Courses Validation
+        if (type === 'courses') {
+            let isValid = true;
+            if (!data.title) {
+                showFieldError('courseTitle', 'Title is required');
+                isValid = false;
+            }
+            if (!data.category) {
+                showFieldError('courseCategory', 'Category is required');
+                isValid = false;
+            }
+            if (!data.instructor) {
+                showFieldError('courseInstructor', 'Instructor is required');
+                isValid = false;
+            }
+            if (!data.application_link) {
+                showFieldError('courseLink', 'Application link is required');
+                isValid = false;
+            }
+            if (!isValid) return;
+        }
+
+        // Jobs Validation
+        if (type === 'jobs') {
+            let isValid = true;
+            if (!data.title) {
+                showFieldError('jobTitle', 'Title is required');
+                isValid = false;
+            }
+            if (!data.company) {
+                showFieldError('jobCompany', 'Company is required');
+                isValid = false;
+            }
+            if (!data.location) {
+                showFieldError('jobLocation', 'Location is required');
+                isValid = false;
+            }
+            if (!data.application_link) {
+                showFieldError('jobLink', 'Application link is required');
+                isValid = false;
+            }
+            if (!isValid) return;
+        }
+
+        // Internships Validation
+        if (type === 'internships') {
+            let isValid = true;
+            if (!data.title) {
+                showFieldError('internshipTitle', 'Title is required');
+                isValid = false;
+            }
+            if (!data.company) {
+                showFieldError('internshipCompany', 'Company is required');
+                isValid = false;
+            }
+            if (!data.location) {
+                showFieldError('internshipLocation', 'Location is required');
+                isValid = false;
+            }
+            if (!data.application_link) {
+                showFieldError('internshipLink', 'Application link is required');
+                isValid = false;
+            }
+            if (!isValid) return;
+        }
+
+        // Blog Validation
+        if (type === 'blog') {
+            let isValid = true;
+            if (!data.title) {
+                showFieldError('blogTitle', 'Title is required');
+                isValid = false;
+            }
+            if (!data.author) {
+                showFieldError('blogAuthor', 'Author is required');
+                isValid = false;
+            }
+            if (!data.content) {
+                showFieldError('blogContent', 'Content is required');
+                isValid = false;
+            }
+            // Handle categories (stored as JSON string)
+            let categories = [];
+            try {
+                categories = data.categories ? JSON.parse(data.categories) : [];
+            } catch(e) {
+                categories = [];
+            }
+            if (categories.length === 0) {
+                showFieldError('blogCategory', 'Category is required');
+                isValid = false;
+            }
+            if (!isValid) return;
+        }
+
         // Convert checkbox values to boolean for ALL types first (like old file)
         Object.keys(data).forEach(key => {
             if (data[key] === 'on') {
@@ -2661,38 +2905,18 @@
         // IMPORTANT: When updating from expired section, DO NOT automatically reactivate
         // Keep is_active as false until manual reactivation
         if (id && currentSection === 'expired-content') {
-            // If we're editing from expired section, preserve the inactive state
-            // unless explicitly changing it
             if (typeof data.is_active === 'undefined') {
                 data.is_active = false;
             }
         } else {
-            // For normal edits, sync featured state with active state for new items
             if (['courses', 'jobs', 'internships', 'blog'].includes(type) && !id) {
                 data.is_featured = data.is_active;
             }
         }
 
-        // For new items, remove the ID field completely (CRITICAL FIX)
+        // For new items, remove the ID field completely
         if (!id || id === '' || id === 'null') {
             delete data.id;
-        }
-
-        // Validate required fields (exactly like old file)
-        const required_fields = {
-            'courses': ['title', 'category', 'instructor', 'application_link'],
-            'jobs': ['title', 'company', 'location', 'application_link'],
-            'internships': ['title', 'company', 'location', 'application_link'],
-            'blog': ['title', 'author', 'content', 'categories']
-        };
-
-        if (type in required_fields) {
-            for (const field of required_fields[type]) {
-                if (!data[field] || (field === 'categories' && data[field].length === 0)) {
-                    showNotification(`${field.replace('_', ' ')} is required`, 'error');
-                    return;
-                }
-            }
         }
 
         // Determine the correct endpoint and method
@@ -2701,7 +2925,6 @@
 
         console.log(`Sending ${method} request to ${url} with data:`, data);
 
-        // Set submitting flag to prevent duplicates
         isSubmitting = true;
         showLoading();
 
@@ -2714,31 +2937,51 @@
             },
             body: JSON.stringify(data)
         })
-        .then(response => {
+        .then(async response => {
             console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.json().then(errorData => {
-                    console.error('Error response:', errorData);
-                    throw new Error(errorData.message || errorData.error || `Failed to ${id ? 'update' : 'create'} ${type}`);
-                });
+
+            // Try to parse response body
+            let errorData = null;
+            let responseText = '';
+
+            try {
+                responseText = await response.text();
+                if (responseText) {
+                    errorData = JSON.parse(responseText);
+                }
+            } catch (e) {
+                console.log('Response is not JSON or empty');
             }
-            return response.json();
+
+            if (!response.ok) {
+                // Create error object with details
+                const error = new Error(errorData?.message || `HTTP ${response.status}`);
+                error.status = response.status;
+                error.data = errorData;
+                error.responseText = responseText;
+                throw error;
+            }
+
+            return errorData;
         })
         .then(result => {
             console.log('Success response:', result);
-            if (result.success) {
+            if (result && result.success) {
                 showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ${id ? 'updated' : 'created'} successfully`, 'success');
 
-                // Close modal and reset form
                 closeModal();
                 form.reset();
 
-                // Clear category if it's a blog form
+                if (fieldIdsMap[type]) {
+                    fieldIdsMap[type].forEach(fieldId => {
+                        clearFieldError(fieldId);
+                    });
+                }
+
                 if (type === 'blog' && blogCategoriesManager) {
                     blogCategoriesManager.clearSelections();
                 }
 
-                // Clear expiration date field specifically for new items
                 if (!id) {
                     const expirationDateInput = form.querySelector('input[name="expiration_date"]');
                     if (expirationDateInput) {
@@ -2746,22 +2989,79 @@
                     }
                 }
 
-                // Reload the appropriate section
                 if (currentSection === 'expired-content') {
                     loadExpiredContentData(currentExpiredPage);
                 } else {
                     loadSectionData(type, currentPage[type]);
                 }
-            } else {
+            } else if (result && !result.success) {
                 showNotification(result.message || result.error || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
             }
         })
         .catch(error => {
             console.error(`Error ${id ? 'updating' : 'creating'} ${type}:`, error);
-            showNotification(error.message || `Failed to ${id ? 'update' : 'create'} ${type}`, 'error');
+
+            // Check for duplicate key error in error message or response text
+            const errorMessage = error.message || '';
+            const responseText = error.responseText || '';
+            const errorData = error.data || {};
+
+            // Check for duplicate slug error (PostgreSQL error code 23505)
+            if (error.status === 500 || errorMessage.includes('duplicate') || responseText.includes('23505') || responseText.includes('duplicate key')) {
+                let fieldName = 'title';
+                let errorText = 'A record with this title already exists. Please use a different title.';
+
+                if (responseText.includes('slug') || errorData?.details?.includes('slug')) {
+                    errorText = 'A blog post with this title already exists. Please use a different title.';
+                } else if (responseText.includes('email') || errorData?.details?.includes('email')) {
+                    fieldName = 'email';
+                    errorText = 'This email is already registered. Please use a different email.';
+                } else if (responseText.includes('username') || errorData?.details?.includes('username')) {
+                    fieldName = 'username';
+                    errorText = 'This username is already taken. Please choose a different username.';
+                }
+
+                // Show field-specific error
+                if (type === 'blog') {
+                    showFieldError('blogTitle', errorText);
+                } else if (type === 'courses') {
+                    showFieldError('courseTitle', errorText);
+                } else if (type === 'jobs') {
+                    showFieldError('jobTitle', errorText);
+                } else if (type === 'internships') {
+                    showFieldError('internshipTitle', errorText);
+                } else if (type === 'admins' && fieldName === 'email') {
+                    showFieldError('adminEmail', errorText);
+                } else if (type === 'admins' && fieldName === 'username') {
+                    showFieldError('adminUsername', errorText);
+                }
+
+                // Show toast notification
+                showNotification(errorText, 'warning', 6000);
+            }
+            // Handle validation errors from server
+            else if (errorData?.field_errors) {
+                Object.keys(errorData.field_errors).forEach(field => {
+                    let fieldId = field;
+                    if (type === 'blog') {
+                        fieldId = `blog${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    } else if (type === 'courses') {
+                        fieldId = `course${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    } else if (type === 'jobs') {
+                        fieldId = `job${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    } else if (type === 'internships') {
+                        fieldId = `internship${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    }
+                    showFieldError(fieldId, errorData.field_errors[field]);
+                });
+                showNotification('Please fix the errors in the form', 'warning');
+            }
+            else {
+                const userMessage = error.data?.message || error.message || `Failed to ${id ? 'update' : 'create'} ${type}`;
+                showNotification(userMessage, 'error');
+            }
         })
         .finally(() => {
-            // Reset submitting flag after a short delay to prevent rapid successive submissions
             setTimeout(() => {
                 isSubmitting = false;
             }, 1000);

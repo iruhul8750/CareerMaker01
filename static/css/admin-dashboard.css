@@ -2222,6 +2222,150 @@
       justify-content: flex-end;
     }
 
+    /* ===== ERROR FIELD HIGHLIGHTING ===== */
+    .input-error {
+        border-color: var(--danger) !important;
+        background-color: rgba(239, 68, 68, 0.05) !important;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+        animation: errorShake 0.3s ease-in-out !important;
+    }
+
+    /* Error message styling */
+    .field-error {
+        display: block;
+        color: var(--danger);
+        font-size: 12px;
+        margin-top: 5px;
+        font-weight: 500;
+        animation: fadeInDown 0.3s ease;
+    }
+
+    .field-error i {
+        margin-right: 4px;
+        font-size: 11px;
+    }
+
+    /* Error highlight for select dropdowns */
+    select.input-error {
+        border-color: var(--danger) !important;
+        background-color: rgba(239, 68, 68, 0.05) !important;
+    }
+
+    /* Error highlight for textareas */
+    textarea.input-error {
+        border-color: var(--danger) !important;
+        background-color: rgba(239, 68, 68, 0.05) !important;
+    }
+
+    /* Error highlight for checkbox groups */
+    .checkbox-group.error {
+        border-left: 3px solid var(--danger);
+        padding-left: 12px;
+        background-color: rgba(239, 68, 68, 0.03);
+        border-radius: 6px;
+    }
+
+    /* Error highlight container */
+    .form-group.error-group {
+        position: relative;
+    }
+
+    .form-group.error-group::after {
+        position: absolute;
+        right: 12px;
+        top: 38px;
+        font-size: 14px;
+        opacity: 0.7;
+    }
+
+    /* Animations */
+    @keyframes errorShake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+        20%, 40%, 60%, 80% { transform: translateX(3px); }
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Error summary section at top of modal */
+    .error-summary {
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid var(--danger);
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideInDown 0.3s ease;
+    }
+
+    .error-summary i {
+        font-size: 20px;
+        color: var(--danger);
+    }
+
+    .error-summary .error-summary-content {
+        flex: 1;
+    }
+
+    .error-summary .error-summary-title {
+        font-weight: 600;
+        color: var(--danger);
+        margin-bottom: 4px;
+    }
+
+    .error-summary .error-summary-list {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .error-summary .error-summary-list li {
+        margin: 2px 0;
+    }
+
+    .error-summary .error-summary-list li a {
+        color: var(--danger);
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Dark mode support */
+    .dark-mode .input-error {
+        background-color: rgba(239, 68, 68, 0.1) !important;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3) !important;
+    }
+
+    .dark-mode .field-error {
+        color: #f87171;
+    }
+
+    .dark-mode .error-summary {
+        background: rgba(239, 68, 68, 0.15);
+    }
+
     /* Loading Overlay */
     .loading-overlay {
       display: none;
