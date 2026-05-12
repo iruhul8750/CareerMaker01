@@ -1,32 +1,33 @@
     /* admin-dashboard.css - Complete Rewrite */
     :root {
-      /* Light Theme Colors */
-      --primary: #6366f1;
-      --primary-dark: #4f46e5;
-      --primary-light: #818cf8;
-      --secondary: #8b5cf6;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --info: #06b6d4;
-      --purple: #a855f7;
-      --pink: #ec4899;
+        /* Light Theme Colors */
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --primary-light: #818cf8;
+        --secondary: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #06b6d4;
+        --purple: #a855f7;
+        --pink: #ec4899;
 
-      /* Light Theme Backgrounds */
-      --bg-primary: #f8fafc;
-      --bg-secondary: #ffffff;
-      --bg-sidebar: #1e293b;
-      --bg-card: #ffffff;
+        /* Light Theme Backgrounds */
+        --bg-primary: #f8fafc;
+        --bg-secondary: #ffffff;
+        --bg-sidebar: #ffffff;  /* Changed from #1e293b to white for light mode */
+        --bg-card: #ffffff;
 
-      /* Light Theme Text */
-      --text-primary: #1e293b;
-      --text-secondary: #475569;
-      --text-light: #64748b;
-      --text-inverse: #ffffff;
+        /* Light Theme Text */
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --text-light: #64748b;
+        --text-inverse: #1e293b;  /* Changed from white to dark for light mode */
 
-      /* Light Theme Borders */
-      --border-color: #e2e8f0;
-      --border-light: #f1f5f9;
+        /* Light Theme Borders */
+        --border-color: #e2e8f0;
+        --border-light: #f1f5f9;
+
 
       /* Shadows */
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -56,18 +57,18 @@
 
     /* Dark Theme Variables */
     .admin-dashboard.dark-mode {
-      --bg-primary: #0f172a;
-      --bg-secondary: #1e293b;
-      --bg-sidebar: #0f172a;
-      --bg-card: #1e293b;
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-sidebar: #1e293b;  /* Dark color for dark mode */
+        --bg-card: #1e293b;
 
-      --text-primary: #f1f5f9;
-      --text-secondary: #cbd5e1;
-      --text-light: #94a3b8;
-      --text-inverse: #f1f5f9;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --text-light: #94a3b8;
+        --text-inverse: #f1f5f9;  /* White text for dark mode */
 
-      --border-color: #334155;
-      --border-light: #1e293b;
+        --border-color: #334155;
+        --border-light: #1e293b;
     }
 
     /* Reset and Base Styles */
@@ -93,10 +94,10 @@
       transition: all var(--transition-normal);
     }
 
-    /* Sidebar Styles - Updated */
+    /* Sidebar Styles */
     .sidebar {
         width: 280px;
-        background: var(--bg-sidebar);
+        background: var(--bg-sidebar);  /* This will change with mode */
         color: var(--text-inverse);
         transition: all var(--transition-normal);
         position: fixed;
@@ -104,40 +105,103 @@
         z-index: 1000;
         box-shadow: var(--shadow-lg);
         display: flex;
-        flex-direction: column;  /* Added: Make sidebar a flex container */
+        flex-direction: column;
     }
 
-    /* ============================================
-       COMPACT SIDEBAR HEADER
-       ============================================ */
+    .sidebar-menu-container {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        margin: 0;
+        background: var(--bg-sidebar);  /* This will change with mode */
+    }
 
-    .sidebar-header {
-        padding: 0.9rem 1rem; /* smaller height */
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    /* Menu item text colors */
+    .menu-item a {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
+        padding: 0.875rem 1.25rem;
+        color: var(--text-inverse);  /* Will change between dark/light */
+        text-decoration: none;
+        transition: all var(--transition-fast);
+        border-left: 3px solid transparent;
+        margin: 0.25rem 0.75rem;
+        border-radius: var(--radius-md);
     }
 
+    /* ===== ACTIVE MENU ITEM HIGHLIGHT ===== */
+    .menu-item a.active {
+        background: linear-gradient(90deg,
+            rgba(99, 102, 241, 0.2) 0%,
+            rgba(139, 92, 246, 0.1) 100%);
+        color: var(--primary-light) !important;
+        border-left-color: var(--primary);
+        border-left-width: 4px;
+        font-weight: 600;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .menu-item a.active::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--primary), var(--secondary));
+        animation: glowPulse 2s ease infinite;
+    }
+
+    @keyframes glowPulse {
+        0%, 100% {
+            opacity: 0.5;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    /* For submenu active items */
+    .submenu .menu-item a.active {
+        background: rgba(99, 102, 241, 0.15);
+        border-left-color: var(--primary);
+        color: var(--primary-light) !important;
+        font-weight: 600;
+    }
+
+    /* Sidebar header */
     .sidebar-header h2 {
         margin: 0;
-        font-size: 1.05rem; /* smaller title */
+        font-size: 1.05rem;
         font-weight: 700;
         line-height: 1.2;
         color: var(--text-inverse);
-        background: var(--gradient-primary);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    }
+
+    /* Profile section */
+    .sidebar-user-strip .profile-name {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--text-inverse);
+    }
+
+    .sidebar-user-strip .profile-role {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--text-secondary);
     }
 
     /* NEW: Scrollable Menu Container */
     .sidebar-menu-container {
-        flex: 1;  /* Takes remaining space */
+        flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
         margin: 0;
+        background: var(--bg-sidebar);  /* This will toggle automatically */
+    }
+
+    .admin-dashboard.dark-mode {
+        --bg-sidebar: #0f172a;
     }
 
     /* Custom scrollbar for menu container */
@@ -176,142 +240,241 @@
         margin: 0;
     }
 
-    /* NEW: Sidebar Footer (Fixed at bottom) */
+    /* ===== SIDEBAR FOOTER ===== */
     .sidebar-footer {
-        flex-shrink: 0;  /* Prevent footer from shrinking */
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        flex-shrink: 0;
+        border-top: 1px solid var(--border-color);
         background: var(--bg-sidebar);
+        padding: 0.5rem;
+        margin-top: auto;
     }
 
-    /* NEW: Profile Section in Sidebar */
-    .sidebar-profile {
-        padding: 1rem 0.75rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    /* Light mode footer strip background */
+    .admin-dashboard:not(.dark-mode) .sidebar-footer {
+        background: #f1f5f9;
+        border-top-color: #e2e8f0;
     }
 
-    .profile-info {
+    /* Dark mode footer strip background */
+    .admin-dashboard.dark-mode .sidebar-footer {
+        background: #1e293b;
+        border-top-color: #334155;
+    }
+
+    /* Combined User Strip - One row containing everything */
+    .sidebar-user-strip {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 0.5rem;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.65rem 0.6rem;
         border-radius: var(--radius-md);
         transition: all var(--transition-fast);
     }
 
-    .profile-info:hover {
-        background: rgba(255, 255, 255, 0.08);
+    /* Light mode user strip */
+    .admin-dashboard:not(.dark-mode) .sidebar-user-strip {
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
     }
 
-    .profile-avatar {
-        position: relative;
+    /* Dark mode user strip */
+    .admin-dashboard.dark-mode .sidebar-user-strip {
+        background: #0f172a;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        border: 1px solid #334155;
+    }
+
+    /* Hover effect for user strip */
+    .sidebar-user-strip:hover {
+        transform: translateY(-1px);
+    }
+
+    .admin-dashboard:not(.dark-mode) .sidebar-user-strip:hover {
+        background: #f8fafc;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-dashboard.dark-mode .sidebar-user-strip:hover {
+        background: #1e293b;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Profile Section inside the strip */
+    .sidebar-user-strip .sidebar-profile {
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        border-bottom: none;
+        display: flex !important;
+    }
+
+    .sidebar-user-strip .profile-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        width: 100%;
+    }
+
+    .sidebar-user-strip .profile-avatar {
         width: 42px;
         height: 42px;
         flex-shrink: 0;
+        position: relative;
     }
 
-    .profile-avatar img {
+    .sidebar-user-strip .profile-avatar img {
         width: 100%;
         height: 100%;
-        border-radius: var(--radius-full);
+        border-radius: 50%;
         object-fit: cover;
         border: 2px solid var(--primary);
     }
 
-    .profile-status {
+    .sidebar-user-strip .profile-status {
         position: absolute;
         bottom: 2px;
         right: 2px;
         width: 10px;
         height: 10px;
-        border-radius: var(--radius-full);
+        border-radius: 50%;
         border: 2px solid var(--bg-sidebar);
-    }
-
-    .profile-status.online {
         background: #10b981;
     }
 
-    .profile-details {
+    .sidebar-user-strip .profile-details {
         flex: 1;
         min-width: 0;
     }
 
-    .profile-name {
+    /* Profile text colors */
+    .admin-dashboard:not(.dark-mode) .sidebar-user-strip .profile-name {
+        color: #1e293b;
+    }
+
+    .admin-dashboard.dark-mode .sidebar-user-strip .profile-name {
+        color: #f1f5f9;
+    }
+
+    .sidebar-user-strip .profile-name {
         font-weight: 600;
-        font-size: 0.875rem;
-        color: var(--text-inverse);
+        font-size: 0.85rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
     }
 
-    .profile-role {
+    /* Role badge colors */
+    .admin-dashboard:not(.dark-mode) .sidebar-user-strip .profile-role {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .admin-dashboard.dark-mode .sidebar-user-strip .profile-role {
+        background: rgba(255, 255, 255, 0.1);
+        color: #cbd5e1;
+    }
+
+    .sidebar-user-strip .profile-role {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         font-size: 0.65rem;
         padding: 2px 8px;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.8);
     }
 
-    .profile-role i {
-        font-size: 0.65rem;
-        margin-right: 2px;
+    .sidebar-user-strip .profile-role i {
+        font-size: 0.6rem;
     }
 
-    /* Dark Mode Toggle in Sidebar Footer */
-    .sidebar-dark-mode {
-        padding: 0.75rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .dark-mode-toggle {
+    /* Actions Container */
+    .user-actions-compact {
         display: flex;
         align-items: center;
-        padding: 0.75rem 1rem;
-        color: rgba(255, 255, 255, 0.8);
-        text-decoration: none;
-        transition: all var(--transition-fast);
-        border-radius: var(--radius-md);
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    /* Dark Mode Toggle - Compact version */
+    .admin-dashboard:not(.dark-mode) .user-actions-compact .dark-mode-toggle {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    .admin-dashboard.dark-mode .user-actions-compact .dark-mode-toggle {
+        background: rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+    }
+
+    .user-actions-compact .dark-mode-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.4rem 0.7rem;
+        border-radius: 40px;
         cursor: pointer;
-        justify-content: space-between;
+        transition: all var(--transition-fast);
     }
 
-    .dark-mode-toggle:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text-inverse);
+    .user-actions-compact .dark-mode-toggle:hover {
+        transform: scale(1.02);
     }
 
-    .dark-mode-toggle i {
-        margin-right: 0.75rem;
-        width: 20px;
-        text-align: center;
-        font-size: 1.125rem;
+    .admin-dashboard:not(.dark-mode) .user-actions-compact .dark-mode-toggle:hover {
+        background: #cbd5e1;
     }
 
-    .dark-mode-toggle span:not(.slider) {
-        flex: 1;
+    .admin-dashboard.dark-mode .user-actions-compact .dark-mode-toggle:hover {
+        background: rgba(255, 255, 255, 0.15);
     }
 
-    /* Dark Mode Switch */
-    .dark-mode-switch {
+    .user-actions-compact .dark-mode-toggle i {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    /* Show/hide icons based on mode */
+    .user-actions-compact .dark-mode-toggle .fa-sun {
+        display: none;
+    }
+
+    .user-actions-compact .dark-mode-toggle .fa-moon {
+        display: inline-block;
+    }
+
+    .admin-dashboard.dark-mode .user-actions-compact .dark-mode-toggle .fa-sun {
+        display: inline-block;
+    }
+
+    .admin-dashboard.dark-mode .user-actions-compact .dark-mode-toggle .fa-moon {
+        display: none;
+    }
+
+    .user-actions-compact .dark-mode-toggle span {
+        display: none;
+    }
+
+    /* Dark Mode Switch - Small */
+    .user-actions-compact .dark-mode-switch {
         position: relative;
         display: inline-block;
-        width: 44px;
-        height: 24px;
-        margin-left: 10px;
+        width: 34px;
+        height: 18px;
+        margin: 0;
     }
 
-    .dark-mode-switch input {
+    .user-actions-compact .dark-mode-switch input {
         opacity: 0;
         width: 0;
         height: 0;
     }
 
-    .dark-mode-switch .slider {
+    .user-actions-compact .dark-mode-switch .slider {
         position: absolute;
         cursor: pointer;
         top: 0;
@@ -319,65 +482,164 @@
         right: 0;
         bottom: 0;
         background-color: #4b5563;
-        transition: .4s;
-        border-radius: 24px;
+        transition: .3s;
+        border-radius: 18px;
     }
 
-    .dark-mode-switch .slider:before {
+    .user-actions-compact .dark-mode-switch .slider:before {
         position: absolute;
         content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
+        height: 14px;
+        width: 14px;
+        left: 2px;
+        bottom: 2px;
         background-color: white;
-        transition: .4s;
+        transition: .3s;
         border-radius: 50%;
     }
 
-    .dark-mode-switch input:checked + .slider {
+    .user-actions-compact .dark-mode-switch input:checked + .slider {
         background-color: var(--primary);
     }
 
-    .dark-mode-switch input:checked + .slider:before {
-        transform: translateX(20px);
+    .user-actions-compact .dark-mode-switch input:checked + .slider:before {
+        transform: translateX(16px);
     }
 
-    /* Logout Button in Sidebar Footer */
-    .sidebar-logout {
-        padding: 0.75rem;
+    /* Logout Button - Compact */
+    .admin-dashboard:not(.dark-mode) .user-actions-compact .logout-btn {
+        background: #fee2e2;
+        color: #dc2626;
     }
 
-    .logout-btn {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0.75rem 1rem;
-        background: rgba(239, 68, 68, 0.1);
-        border-radius: var(--radius-md);
-        color: #ef4444;
-        text-decoration: none;
-        transition: all var(--transition-fast);
+    .admin-dashboard:not(.dark-mode) .user-actions-compact .logout-btn:hover {
+        background: #dc2626;
+        color: white;
     }
 
-    .logout-btn i {
-        width: 20px;
-        text-align: center;
-        font-size: 1.125rem;
+    .admin-dashboard.dark-mode .user-actions-compact .logout-btn {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
     }
 
-    .logout-btn span {
-        flex: 1;
-    }
-
-    .logout-btn:hover {
+    .admin-dashboard.dark-mode .user-actions-compact .logout-btn:hover {
         background: #ef4444;
         color: white;
     }
 
-    /* Remove the old dark-mode-item class since we moved it to footer */
-    .dark-mode-item {
-        display: none;  /* Hide the old dark mode item */
+    .user-actions-compact .logout-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        transition: all var(--transition-fast);
+    }
+
+    .user-actions-compact .logout-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .user-actions-compact .logout-btn i {
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .user-actions-compact .logout-btn span {
+        display: none;
+    }
+
+    /* Hide ONLY the old standalone sections that are NOT inside sidebar-user-strip */
+    .sidebar > .sidebar-profile {
+        display: none !important;
+    }
+
+    .sidebar > .sidebar-dark-mode {
+        display: none !important;
+    }
+
+    .sidebar > .sidebar-logout {
+        display: none !important;
+    }
+
+    /* ===== MOBILE RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .sidebar-footer {
+            padding: 0.4rem;
+        }
+
+        .sidebar-user-strip {
+            padding: 0.5rem 0.4rem;
+        }
+
+        .sidebar-user-strip .profile-avatar {
+            width: 36px;
+            height: 36px;
+        }
+
+        .sidebar-user-strip .profile-name {
+            font-size: 0.75rem;
+        }
+
+        .sidebar-user-strip .profile-role {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+        }
+
+        .user-actions-compact .dark-mode-toggle {
+            padding: 0.35rem 0.55rem;
+        }
+
+        .user-actions-compact .dark-mode-toggle i {
+            font-size: 0.8rem;
+        }
+
+        .user-actions-compact .dark-mode-switch {
+            width: 30px;
+            height: 16px;
+        }
+
+        .user-actions-compact .dark-mode-switch .slider:before {
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 2px;
+        }
+
+        .user-actions-compact .dark-mode-switch input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+
+        .user-actions-compact .logout-btn {
+            width: 32px;
+            height: 32px;
+        }
+
+        .user-actions-compact .logout-btn i {
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .sidebar-user-strip .profile-name {
+            font-size: 0.7rem;
+        }
+
+        .sidebar-user-strip .profile-role {
+            font-size: 0.55rem;
+            padding: 1px 5px;
+        }
+
+        .sidebar-user-strip .profile-avatar {
+            width: 32px;
+            height: 32px;
+        }
+
+        .sidebar-user-strip .profile-role i {
+            font-size: 0.5rem;
+        }
     }
 
     /* Menu Item Styles (Keep as is, but remove margin adjustments) */
@@ -1214,20 +1476,86 @@
     }
 
     .admin-section.active {
-      display: block;
-      animation: fadeIn 0.3s ease;
+        display: block;
+        animation: fadeIn 0.3s ease;
+        position: relative;
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    /* Add a glowing border effect at the top of active section */
+    .admin-section.active::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary-light));
+        border-radius: 2px;
+        animation: slideIn 0.5s ease;
     }
+
+    /* Add subtle background gradient for active section */
+    .admin-section.active {
+        background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.02) 0%,
+            rgba(139, 92, 246, 0.02) 50%,
+            rgba(99, 102, 241, 0.01) 100%);
+        border-radius: var(--radius-lg);
+    }
+
+    /* Section header highlight when section is active */
+    .admin-section.active .section-header h2 {
+        color: var(--primary);
+        text-shadow: 0 0 1px rgba(99, 102, 241, 0.3);
+    }
+
+    .admin-section.active .section-header h2 i {
+        color: var(--primary);
+        animation: iconPulse 0.5s ease;
+    }
+
+    /* Add a subtle shadow to active section content */
+    .admin-section.active .content-table {
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    /* Animations */
+    @keyframes slideIn {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes iconPulse {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    /* Dark mode adjustments for active section */
+    .admin-dashboard.dark-mode .admin-section.active {
+        background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.05) 0%,
+            rgba(139, 92, 246, 0.03) 100%);
+    }
+
+    .admin-dashboard.dark-mode .admin-section.active .content-table {
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
 
     /* Stats Grid */
     .stats-grid {

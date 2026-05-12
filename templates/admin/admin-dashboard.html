@@ -70,47 +70,48 @@
 
         <!-- Fixed Bottom Section -->
         <div class="sidebar-footer">
-            <!-- Admin Profile -->
-            <div class="sidebar-profile">
-                <div class="profile-info">
-                    <div class="profile-avatar">
-                        <img src="{{ url_for('static', filename='images/admin.png') }}" alt="Admin"
-                             id="sidebarAdminAvatar">
-                        <div class="profile-status online"></div>
-                    </div>
-                    <div class="profile-details">
-                        <div class="profile-name" id="sidebarAdminName">{{ session.get('admin_full_name',
-                            session.get('admin_username', 'Admin')) }}
+            <div class="sidebar-user-strip">
+                <!-- Profile -->
+                <div class="sidebar-profile">
+                    <div class="profile-info">
+                        <div class="profile-avatar">
+                            <img src="{{ url_for('static', filename='images/admin.png') }}" alt="Admin"
+                                 id="sidebarAdminAvatar">
+                            <div class="profile-status online"></div>
                         </div>
-                        <div class="profile-role">
-                            {% if session.get('is_superadmin') %}
-                            <i class="fas fa-crown"></i> Super Admin
-                            {% else %}
-                            <i class="fas fa-user-shield"></i> Admin
-                            {% endif %}
+                        <div class="profile-details">
+                            <div class="profile-name" id="sidebarAdminName">{{ session.get('admin_full_name',
+                                session.get('admin_username', 'Admin')) }}
+                            </div>
+                            <div class="profile-role">
+                                {% if session.get('is_superadmin') %}
+                                <i class="fas fa-crown"></i> Super Admin
+                                {% else %}
+                                <i class="fas fa-user-shield"></i> Admin
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Dark Mode Toggle -->
-            <div class="sidebar-dark-mode">
-                <div class="dark-mode-toggle" id="darkModeToggle">
-                    <i class="fas fa-moon"></i>
-                    <span>Dark Mode</span>
-                    <div class="dark-mode-switch">
-                        <input type="checkbox" id="darkModeCheckbox">
-                        <span class="slider round"></span>
+                <!-- Actions -->
+                <div class="user-actions-compact">
+                    <!-- Dark Mode Toggle -->
+                    <div class="dark-mode-toggle" id="darkModeToggle">
+                        <i class="fas fa-moon"></i>
+                        <i class="fas fa-sun"></i>
+                        <div class="dark-mode-switch">
+                            <input type="checkbox" id="darkModeCheckbox">
+                            <span class="slider round"></span>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Logout Button -->
-            <div class="sidebar-logout">
-                <a href="/admin/logout" class="logout-btn" id="sidebarLogoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+                    <!-- Logout Button -->
+                    <a href="/admin/logout" class="logout-btn" id="sidebarLogoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

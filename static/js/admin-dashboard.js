@@ -3871,33 +3871,6 @@
     function setupExpiredContentSection() {
         console.log('🔄 Setting up expired content section...');
 
-        // Load expired content when section is activated - FIXED
-        const expiredContentSection = document.getElementById('expired-content');
-        if (expiredContentSection) {
-            console.log('✅ Found expired content section, setting up observer');
-
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                        if (expiredContentSection.classList.contains('active')) {
-                            console.log('🎯 Expired content section activated - loading data');
-                            currentExpiredPage = 1; // Reset to first page
-                            loadExpiredContentData(1);
-                        }
-                    }
-                });
-            });
-
-            observer.observe(expiredContentSection, { attributes: true });
-
-            // Also check if section is already active on page load
-            if (expiredContentSection.classList.contains('active')) {
-                console.log('📊 Expired content section already active, loading data...');
-                currentExpiredPage = 1;
-                loadExpiredContentData(1);
-            }
-        }
-
         // Navigation - FIXED
         const expiredContentLink = document.querySelector('a[href="#expired-content"]');
         if (expiredContentLink) {
@@ -4331,22 +4304,17 @@
             if (data.success) {
                 renderExpiredContentTable(data.data || data.expired_content || []);
 
-                // Store total count for pagination
                 const totalCount = data.count || data.total_count || 0;
                 expiredContentTotalCount = totalCount;
 
-                // Update pagination UI using the global function
                 if (typeof updatePaginationUI === 'function') {
                     updatePaginationUI('expired-content', page, totalCount, expiredItemsPerPage);
                 } else {
-                    // Fallback to original pagination
                     updateExpiredPaginationInfo(totalCount, page, expiredItemsPerPage);
                 }
 
-                // Update current page
                 currentExpiredPage = page;
 
-                // Update URL hash
                 const currentHash = window.location.hash.substring(1);
                 if (currentHash === 'expired-content') {
                     const state = {
@@ -4356,6 +4324,12 @@
                     };
                     history.replaceState(state, '', '#expired-content');
                 }
+
+                // ADD NOTIFICATION HERE
+                if (typeof showNotification === 'function') {
+                    const itemCount = data.data ? data.data.length : 0;
+                    showNotification(`Loaded ${itemCount} expired items`, 'info', 2000);
+                }
             } else {
                 throw new Error(data.error || 'Failed to load expired content');
             }
@@ -4363,7 +4337,9 @@
         })
         .catch(error => {
             console.error('❌ Error loading expired content:', error);
-            showNotification('Failed to load expired content', 'error');
+            if (typeof showNotification === 'function') {
+                showNotification('Failed to load expired content', 'error');
+            }
             throw error;
         })
         .finally(() => {
@@ -7119,7 +7095,7 @@
     // Enhanced navigation with back button handling - No logout on back button
     function setupNavigation() {
         // Select ALL logout links - both in sidebar-menu AND sidebar-footer
-        const logoutLinks = document.querySelectorAll('.sidebar-menu a[href="/admin/logout"], .sidebar-logout a');
+        const logoutLinks = document.querySelectorAll('.sidebar-menu a[href="/admin/logout"], .sidebar-logout a, .sidebar-user-strip .logout-btn');
 
         // Handle logout links separately (outside the menuItems loop)
         logoutLinks.forEach(link => {
@@ -8570,8 +8546,12 @@
         }
 
         bindEvents() {
-            // Handle toggle button click
+            // Handle toggle button click - THIS IS THE ONLY TRIGGER
             if (this.toggleButton) {
+                const newButton = this.toggleButton.cloneNode(true);
+                this.toggleButton.parentNode.replaceChild(newButton, this.toggleButton);
+                this.toggleButton = newButton;
+
                 this.toggleButton.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -8579,16 +8559,18 @@
                 });
             }
 
-            // Handle checkbox change
+            // Handle checkbox - JUST UPDATE CHECKBOX STATE, NO TOGGLE CALL
             if (this.checkbox) {
+                const newCheckbox = this.checkbox.cloneNode(true);
+                this.checkbox.parentNode.replaceChild(newCheckbox, this.checkbox);
+                this.checkbox = newCheckbox;
+
                 this.checkbox.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent triggering the parent click
+                    e.stopPropagation();
                 });
 
-                this.checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    this.toggle();
-                });
+                // Sync checkbox with state without triggering toggle
+                this.checkbox.checked = this.isDarkMode;
             }
 
             // Keyboard shortcut (Ctrl+Shift+D)
@@ -8611,19 +8593,14 @@
             localStorage.setItem('adminDarkMode', this.isDarkMode);
             this.applyDarkMode();
             this.updateCheckbox();
-            this.showToggleNotification();
-        }
 
-        showToggleNotification() {
-            const message = this.isDarkMode ?
-                'Dark mode enabled' : 'Light mode enabled';
+            // SINGLE NOTIFICATION - Only here, not in separate function
+            const message = this.isDarkMode ? 'Dark mode enabled' : 'Light mode enabled';
             const type = this.isDarkMode ? 'info' : 'success';
 
-            // Use your existing notification system
             if (typeof showNotification === 'function') {
                 showNotification(message, type);
             } else {
-                // Fallback notification
                 console.log(message);
             }
         }
@@ -8637,11 +8614,21 @@
             localStorage.setItem('adminDarkMode', this.isDarkMode);
             this.applyDarkMode();
             this.updateCheckbox();
+
+            // Single notification
+            const message = this.isDarkMode ? 'Dark mode enabled' : 'Light mode enabled';
+            const type = this.isDarkMode ? 'info' : 'success';
+
+            if (typeof showNotification === 'function') {
+                showNotification(message, type);
+            }
         }
     }
 
-    // Initialize dark mode
-    window.adminDarkMode = new DarkMode();
+    // Initialize dark mode - prevent duplicate
+    if (!window.adminDarkMode) {
+        window.adminDarkMode = new DarkMode();
+    }
 
     // ===== TESTIMONIAL MANAGER
     class TestimonialManager {
@@ -10055,11 +10042,26 @@
         setupSectionObserver() {
             const adminsSection = document.getElementById('admins');
             if (adminsSection) {
+                // Add a flag to prevent multiple loads
+                let isLoadingAdmins = false;
+                let lastLoadTime = 0;
+
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
                         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                             if (adminsSection.classList.contains('active')) {
-                                this.loadAdmins();
+                                // Debounce: only load if not already loading and 500ms passed since last load
+                                const now = Date.now();
+                                if (!isLoadingAdmins && (now - lastLoadTime > 500)) {
+                                    lastLoadTime = now;
+                                    isLoadingAdmins = true;
+                                    console.log('Admins section activated - loading data');
+                                    this.loadAdmins().finally(() => {
+                                        isLoadingAdmins = false;
+                                    });
+                                } else {
+                                    console.log('Admins load skipped (already loading or too soon)');
+                                }
                             }
                         }
                     });
@@ -10069,6 +10071,14 @@
         }
 
         loadAdmins() {
+            // Prevent multiple simultaneous loads
+            if (this.isLoading) {
+                console.log('⚠️ Admins already loading, skipping duplicate call');
+                return Promise.resolve();
+            }
+
+            this.isLoading = true;
+
             const tableBody = document.getElementById('adminsTableBody');
             if (tableBody) {
                 tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p>右侧</td></tr>';
@@ -10078,14 +10088,20 @@
             if (this.searchTerm) url += `&search=${encodeURIComponent(this.searchTerm)}`;
             if (this.statusFilter) url += `&status=${encodeURIComponent(this.statusFilter)}`;
 
-            fetch(url, { credentials: 'include', headers: { 'Accept': 'application/json' } })
+            return fetch(url, { credentials: 'include', headers: { 'Accept': 'application/json' } })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         this.admins = data.data || [];
-                        this.adminsCount = data.count || 0; // Store total count
+                        this.adminsCount = data.count || 0;
                         this.renderTable(this.admins, this.adminsCount);
                         this.updatePagination(this.adminsCount);
+
+                        // Single notification
+                        if (typeof showNotification === 'function') {
+                            const itemCount = this.admins.length;
+                            showNotification(`Loaded ${itemCount} admins`, 'success', 2000);
+                        }
                     } else {
                         throw new Error(data.message || 'Failed to load admins');
                     }
@@ -10095,6 +10111,12 @@
                     if (tableBody) {
                         tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}右侧</td></tr>`;
                     }
+                    if (typeof showNotification === 'function') {
+                        showNotification('Failed to load admins', 'error');
+                    }
+                })
+                .finally(() => {
+                    this.isLoading = false;
                 });
         }
 
