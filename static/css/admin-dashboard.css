@@ -4464,7 +4464,32 @@
 
     .dark-mode .modal-content {
         background: #2d3748;
-        color: #e2e8f0;
+        color: #f7fafc;
+    }
+    .dark-mode .modal-content h2,
+    .dark-mode .modal-content h3,
+    .dark-mode .modal-content .modal-title {
+        color: #f7fafc;
+    }
+
+    /* Update view content for dark mode */
+    .dark-mode .view-content {
+        background: #1a202c !important;
+        border-color: #4a5568 !important;
+        color: #f7fafc !important;
+    }
+
+    .dark-mode .view-field {
+        background: #2d3748 !important;
+        border-left-color: #667eea !important;
+    }
+
+    .dark-mode .view-field label {
+        color: #cbd5e1 !important;
+    }
+
+    .dark-mode .view-field span {
+        color: #f7fafc !important;
     }
 
     @keyframes modalSlideIn {
