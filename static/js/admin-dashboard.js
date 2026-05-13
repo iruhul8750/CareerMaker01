@@ -15,8 +15,7 @@
         'expired-content': 1,
         trash: 1  // Add this line
     };
-    let currentSection = sessionStorage.getItem('currentSection') || 'dashboard';
-    const itemsPerPage = 10;
+
     let selectedItems = {
         courses: [],
         jobs: [],
@@ -26,6 +25,13 @@
         messages: [],
         newsletter: []
     };
+
+    let currentSection = sessionStorage.getItem('currentSection') || 'dashboard';
+    const itemsPerPage = 10;
+
+    // Expired content page
+    let isLoadingExpiredContent = false;
+    let expiredContentTotalCount = 0;
 
     // Helper function for escaping HTML
     function escapeHTML(str) {
@@ -4171,40 +4177,55 @@
     function setupExpiredContentSection() {
         console.log('🔄 Setting up expired content section...');
 
-        // Navigation - FIXED
+        const expiredContentSection = document.getElementById('expired-content');
+        if (expiredContentSection) {
+            console.log('✅ Found expired content section, setting up observer');
+
+            // Remove existing observer if any
+            if (window.expiredContentObserver) {
+                window.expiredContentObserver.disconnect();
+            }
+
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (expiredContentSection.classList.contains('active')) {
+                            console.log('🎯 Expired content section activated - loading data');
+                            currentExpiredPage = 1;
+                            // Load data and stats
+                            loadExpiredContentData(1);
+                            loadExpiredContentStats();
+                        }
+                    }
+                });
+            });
+
+            observer.observe(expiredContentSection, { attributes: true });
+            window.expiredContentObserver = observer;
+
+            // Check if section is already active on page load (for direct refresh)
+            if (expiredContentSection.classList.contains('active')) {
+                console.log('📊 Expired content section already active, loading data...');
+                currentExpiredPage = 1;
+                // Load data and stats
+                loadExpiredContentData(1);
+                loadExpiredContentStats();
+            }
+        }
+
+        // Setup navigation link
         const expiredContentLink = document.querySelector('a[href="#expired-content"]');
         if (expiredContentLink) {
             console.log('✅ Found expired content navigation link');
-
-            // Clone to remove existing listeners
             const newLink = expiredContentLink.cloneNode(true);
             expiredContentLink.parentNode.replaceChild(newLink, expiredContentLink);
 
             newLink.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-
-                // Use global navigation function
+                console.log('🔗 Expired content link clicked');
                 if (typeof navigateToSection === 'function') {
                     navigateToSection('expired-content', this);
-                } else {
-                    // Fallback navigation
-                    console.log('🔄 Navigating to expired content via fallback');
-
-                    // Update active states
-                    document.querySelectorAll('.sidebar-menu a').forEach(item => item.classList.remove('active'));
-                    document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
-
-                    this.classList.add('active');
-                    const section = document.getElementById('expired-content');
-                    if (section) {
-                        section.classList.add('active');
-                        document.getElementById('pageTitle').textContent = 'Expired Content Management';
-
-                        // Load data
-                        currentExpiredPage = 1;
-                        loadExpiredContentData(1);
-                    }
                 }
             });
         }
@@ -4212,7 +4233,10 @@
         // Setup event listeners
         setupExpiredContentEvents();
 
-        // Always load stats
+        // Setup tabs
+        setupExpiredTabs();
+
+        // Always load stats (non-blocking)
         loadExpiredContentStats();
 
         console.log('✅ Expired content section setup complete');
@@ -4300,7 +4324,7 @@
             }
         }
 
-        // Filter functionality - FIXED
+        // Filter functionality - UPDATED to clear active tab when 'All Types' selected
         const filterSelect = document.getElementById('expiredContentTypeFilter');
         if (filterSelect) {
             console.log('✅ Setting up expired content filter');
@@ -4312,6 +4336,9 @@
                 console.log(`🎯 Filtering expired content by: ${filterValue}`);
                 currentExpiredPage = 1;
                 loadExpiredContentData(1, '', filterValue);
+
+                // Update active tab based on selected filter
+                updateActiveExpiredTab();
             });
         }
 
@@ -4495,73 +4522,125 @@
         });
     }
 
-    // Load expired content stats - Always show View All link
+    // Load expired content stats - Get counts from the expired content API
     function loadExpiredContentStats() {
-        return fetch('/api/admin/expired-content-stats', {
-            credentials: 'include'
+        console.log('📊 Loading expired content stats...');
+
+        const courseCountEl = document.getElementById('expiredCoursesCount');
+        const jobCountEl = document.getElementById('expiredJobsCount');
+        const internshipCountEl = document.getElementById('expiredInternshipsCount');
+
+        // Show loading state
+        if (courseCountEl) courseCountEl.classList.add('loading');
+        if (jobCountEl) jobCountEl.classList.add('loading');
+        if (internshipCountEl) internshipCountEl.classList.add('loading');
+
+        // Fetch the actual expired content data to get correct counts
+        return fetch('/api/admin/expired-content?per_page=1000', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                const expiredCount = data.total_expired || 0;
-                const expiredCountElement = document.getElementById('expiredContentCount');
-                const viewLink = document.getElementById('viewExpiredLink');
-                const expiredCard = document.getElementById('expiredContentCard');
+            if (data.success && data.data) {
+                let coursesCount = 0;
+                let jobsCount = 0;
+                let internshipsCount = 0;
 
-                if (expiredCountElement) {
-                    expiredCountElement.textContent = expiredCount;
+                data.data.forEach(item => {
+                    if (item.content_type === 'courses') coursesCount++;
+                    else if (item.content_type === 'jobs') jobsCount++;
+                    else if (item.content_type === 'internships') internshipsCount++;
+                });
+
+                if (courseCountEl) {
+                    courseCountEl.textContent = coursesCount;
+                    courseCountEl.classList.remove('loading');
+                }
+                if (jobCountEl) {
+                    jobCountEl.textContent = jobsCount;
+                    jobCountEl.classList.remove('loading');
+                }
+                if (internshipCountEl) {
+                    internshipCountEl.textContent = internshipsCount;
+                    internshipCountEl.classList.remove('loading');
                 }
 
-                // ALWAYS show the view link, regardless of count
-                if (viewLink) {
-                    viewLink.style.display = 'block';
-                    viewLink.style.pointerEvents = 'auto';
-                    viewLink.style.opacity = '1';
-
-                    // Make it more prominent when there are expired items
-                    if (expiredCount > 0) {
-                        viewLink.style.fontWeight = 'bold';
-                        viewLink.style.color = '#dc3545';
-                    } else {
-                        viewLink.style.fontWeight = 'normal';
-                        viewLink.style.color = '';
-                    }
+                // Update dashboard expired count
+                const dashboardExpiredCount = document.getElementById('expiredContentCount');
+                if (dashboardExpiredCount) {
+                    dashboardExpiredCount.textContent = coursesCount + jobsCount + internshipsCount;
                 }
 
-                // Update card appearance based on count
-                if (expiredCard) {
-                    if (expiredCount > 0) {
-                        expiredCard.classList.remove('stat-card', 'info');
-                        expiredCard.classList.add('stat-card', 'warning');
-                    } else {
-                        expiredCard.classList.remove('stat-card', 'warning');
-                        expiredCard.classList.add('stat-card', 'info');
-                    }
-                }
-            } else {
-                console.error('Failed to load expired content stats:', data.error);
-                // Still show the view link even on error
-                const viewLink = document.getElementById('viewExpiredLink');
-                if (viewLink) {
-                    viewLink.style.display = 'block';
-                }
+                console.log(`✅ Expired stats - Courses: ${coursesCount}, Jobs: ${jobsCount}, Internships: ${internshipsCount}`);
             }
+            return data;
         })
         .catch(error => {
-            console.error('Error loading expired content stats:', error);
-            const expiredCountElement = document.getElementById('expiredContentCount');
-            const viewLink = document.getElementById('viewExpiredLink');
-
-            if (expiredCountElement) {
-                expiredCountElement.textContent = '0';
-            }
-            // Still show the view link even on error
-            if (viewLink) {
-                viewLink.style.display = 'block';
-            }
-            throw error; // Re-throw to handle in Promise.all
+            console.error('Error loading expired stats:', error);
+            if (courseCountEl) courseCountEl.textContent = '0';
+            if (jobCountEl) jobCountEl.textContent = '0';
+            if (internshipCountEl) internshipCountEl.textContent = '0';
+            if (courseCountEl) courseCountEl.classList.remove('loading');
+            if (jobCountEl) jobCountEl.classList.remove('loading');
+            if (internshipCountEl) internshipCountEl.classList.remove('loading');
         });
     }
+
+    // Setup click handlers for expired stat tabs
+    function setupExpiredTabs() {
+        const tabs = document.querySelectorAll('.expired-stat-tab');
+
+        tabs.forEach(tab => {
+            // Remove existing listeners by cloning
+            const newTab = tab.cloneNode(true);
+            tab.parentNode.replaceChild(newTab, tab);
+
+            newTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const contentType = this.getAttribute('data-type');
+                const filterSelect = document.getElementById('expiredContentTypeFilter');
+
+                if (filterSelect) {
+                    // Set the filter value
+                    filterSelect.value = contentType;
+                    // Trigger change event to reload data
+                    filterSelect.dispatchEvent(new Event('change'));
+                }
+
+                // Update active tab styling
+                updateActiveExpiredTab();
+            });
+        });
+    }
+
+    // Update active tab based on current filter
+    function updateActiveExpiredTab() {
+        const filterSelect = document.getElementById('expiredContentTypeFilter');
+        const currentFilter = filterSelect ? filterSelect.value : '';
+
+        const tabs = document.querySelectorAll('.expired-stat-tab');
+        tabs.forEach(tab => {
+            const tabType = tab.getAttribute('data-type');
+            if (currentFilter === tabType) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        // Also update the dropdown to match (in case tab click changed it)
+        if (filterSelect && currentFilter === '') {
+            // If no filter, ensure no tab is active (this is already handled above)
+            console.log('All Types selected - no active tab');
+        }
+    }
+
     // Load expired content section
     function loadExpiredContentSection() {
         // Update active states
@@ -4580,6 +4659,13 @@
     function loadExpiredContentData(page = 1, search = '', typeFilter = '') {
         console.log(`📋 Loading expired content data: page=${page}, search="${search}", type="${typeFilter}"`);
 
+        // Prevent multiple simultaneous loads
+        if (isLoadingExpiredContent) {
+            console.log('⚠️ Expired content already loading, skipping...');
+            return Promise.resolve();
+        }
+
+        isLoadingExpiredContent = true;
         showLoading();
 
         const searchValue = search || document.getElementById('expiredContentSearch')?.value || '';
@@ -4588,6 +4674,8 @@
         let url = `/api/admin/expired-content?page=${page}&per_page=${expiredItemsPerPage}`;
         if (searchValue) url += `&search=${encodeURIComponent(searchValue)}`;
         if (filterValue) url += `&type=${encodeURIComponent(filterValue)}`;
+
+        console.log(`📡 Fetching from: ${url}`);
 
         return fetch(url, {
             credentials: 'include'
@@ -4602,19 +4690,19 @@
             console.log('📋 Expired content data received:', data);
 
             if (data.success) {
-                renderExpiredContentTable(data.data || data.expired_content || []);
+                renderExpiredContentTable(data.data || []);
 
-                const totalCount = data.count || data.total_count || 0;
-                expiredContentTotalCount = totalCount;
+                const totalCount = data.count || 0;
 
+                // Update pagination UI
                 if (typeof updatePaginationUI === 'function') {
                     updatePaginationUI('expired-content', page, totalCount, expiredItemsPerPage);
-                } else {
-                    updateExpiredPaginationInfo(totalCount, page, expiredItemsPerPage);
                 }
 
+                // Update current page
                 currentExpiredPage = page;
 
+                // Update URL hash with page info if needed
                 const currentHash = window.location.hash.substring(1);
                 if (currentHash === 'expired-content') {
                     const state = {
@@ -4624,27 +4712,47 @@
                     };
                     history.replaceState(state, '', '#expired-content');
                 }
-
-                // ADD NOTIFICATION HERE
-                if (typeof showNotification === 'function') {
-                    const itemCount = data.data ? data.data.length : 0;
-                    showNotification(`Loaded ${itemCount} expired items`, 'info', 2000);
-                }
             } else {
                 throw new Error(data.error || 'Failed to load expired content');
             }
+
+            // Sync UI: update active tab based on current filter
+           updateActiveExpiredTab();
+
             return data;
         })
         .catch(error => {
             console.error('❌ Error loading expired content:', error);
-            if (typeof showNotification === 'function') {
-                showNotification('Failed to load expired content', 'error');
+            showNotification('Failed to load expired content', 'error');
+            // Render empty table on error
+            const tableBody = document.getElementById('expiredContentTableBody');
+            if (tableBody) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--danger); font-size: 48px; margin-bottom: 15px;"></i>
+                            <h3 style="color: var(--text-primary); margin: 0;">Failed to Load Data</h3>
+                            <p style="color: var(--text-secondary); margin: 10px 0 0 0;">${error.message}</p>
+                            <button onclick="retryLoadExpiredContent()" class="btn btn-primary" style="margin-top: 20px;">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </td>
+                    </tr>
+                `;
             }
             throw error;
         })
         .finally(() => {
+            isLoadingExpiredContent = false;
             hideLoading();
         });
+    }
+
+    // Retry function for expired content
+    function retryLoadExpiredContent() {
+        console.log('🔄 Retrying expired content load...');
+        loadExpiredContentData(currentExpiredPage || 1);
+        loadExpiredContentStats();
     }
 
     // Render expired content table
@@ -7047,6 +7155,7 @@
     function restoreCurrentSection() {
         console.log('🔄 restoreCurrentSection() called');
 
+
         // Check if this is a fresh login (no previous session)
         const isFreshLogin = !sessionStorage.getItem('adminSessionStarted');
         console.log('Fresh login detected:', isFreshLogin);
@@ -7344,9 +7453,12 @@
                 break;
             case 'expired-content':
                 console.log('⏰ Loading expired content section...');
-                if (typeof loadExpiredContentData === 'function') {
-                    loadExpiredContentData(currentPage['expired-content']);
-                }
+                // Reset to page 1 and load
+                currentExpiredPage = 1;
+                setTimeout(() => {
+                    loadExpiredContentData(1);
+                    loadExpiredContentStats();
+                }, 50);
                 break;
             case 'testimonials':
                 console.log('💬 Loading testimonials section...');

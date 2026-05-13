@@ -4176,6 +4176,150 @@
         color: #b71c1c;
         font-weight: 600;
     }
+    /* ===== EXPIRED CONTENT STATS TABS ===== */
+    .expired-stats-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .expired-stat-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: var(--bg-card);
+        border-radius: 30px;
+        border: 1px solid var(--border-color);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .expired-stat-tab:hover {
+        background: var(--bg-primary);
+        border-color: var(--primary);
+        transform: translateY(-1px);
+    }
+
+    .expired-stat-tab .stat-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .expired-stat-tab .stat-count {
+        font-weight: 700;
+        color: var(--text-primary);
+        background: var(--bg-primary);
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        min-width: 30px;
+        text-align: center;
+    }
+
+    .expired-stat-tab.active {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .expired-stat-tab.active .stat-label {
+        color: white;
+    }
+
+    .expired-stat-tab.active .stat-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    /* Count badge variations */
+    .expired-stat-tab[data-type="courses"] .stat-count {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+
+    .expired-stat-tab[data-type="courses"].active .stat-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    .expired-stat-tab[data-type="jobs"] .stat-count {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .expired-stat-tab[data-type="jobs"].active .stat-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    .expired-stat-tab[data-type="internships"] .stat-count {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .expired-stat-tab[data-type="internships"].active .stat-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    /* Loading state */
+    .stat-count.loading {
+        position: relative;
+        color: transparent !important;
+        min-width: 30px;
+    }
+
+    .stat-count.loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e2e8f0;
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    /* Dark mode */
+    .dark-mode .expired-stat-tab {
+        background: var(--bg-card);
+        border-color: var(--border-color);
+    }
+
+    .dark-mode .expired-stat-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .dark-mode .expired-stat-tab .stat-count {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .expired-stats-tabs {
+            gap: 8px;
+        }
+
+        .expired-stat-tab {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .expired-stat-tab .stat-count {
+            padding: 1px 6px;
+            font-size: 11px;
+        }
+    }
+
     /* ===== ENHANCED CLOSE BUTTONS ===== */
     .close-modal {
         position: absolute;
@@ -6061,60 +6205,59 @@
         color: #d1d5db;
     }
     /* ===== SIDEBAR SCROLLBAR ===== */
-
     .sidebar {
-      overflow-y: auto;
-      overflow-x: hidden;
-      height: 100vh;
-      scrollbar-width: thin; /* Firefox */
-      scrollbar-color: var(--primary-light) transparent;
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: 100vh;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
     }
 
-    /* Custom scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+    /* Custom scrollbar for Webkit browsers - NO transitions */
     .sidebar::-webkit-scrollbar {
-      width: 6px;
+        width: 5px;
     }
 
     .sidebar::-webkit-scrollbar-track {
-      background: transparent;
-      margin: 5px 0;
+        background: transparent;
+        margin: 5px 0;
     }
 
     .sidebar::-webkit-scrollbar-thumb {
-      background: var(--primary-light);
-      border-radius: 10px;
-      opacity: 0.5;
-      transition: all 0.3s ease;
+        background: #cbd5e1;
+        border-radius: 10px;
     }
 
     .sidebar::-webkit-scrollbar-thumb:hover {
-      background: var(--primary);
-      opacity: 1;
+        background: #94a3b8;
     }
 
-    /* Hide scrollbar when not needed but keep functionality */
-    .sidebar {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: thin;     /* Firefox */
+    /* Dark mode scrollbar - instant change, no transition */
+    .admin-dashboard.dark-mode .sidebar {
+        scrollbar-color: #475569 transparent;
     }
 
-    .sidebar::-webkit-scrollbar {
-      width: 5px;
+    .admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb {
+        background: #475569;
+    }
+
+    .admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
     }
 
     /* Ensure all menu items are visible with scroll */
     .sidebar-menu {
-      padding-bottom: 80px; /* Space for dark mode toggle at bottom */
-      min-height: min-content;
+        padding-bottom: 80px;
+        min-height: min-content;
     }
 
-    /* Fix for dark mode scrollbar */
-    .admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .admin-dashboard.dark-mode .sidebar::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.4);
+    /* Remove ALL transitions from scrollbar elements */
+    .sidebar,
+    .sidebar *,
+    .sidebar::-webkit-scrollbar,
+    .sidebar::-webkit-scrollbar-track,
+    .sidebar::-webkit-scrollbar-thumb {
+        transition: none !important;
     }
 
     /* Mobile-specific scrollbar improvements */
