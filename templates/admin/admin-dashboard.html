@@ -34,8 +34,7 @@
                         class="fas fa-comments"></i><span>Testimonials</span></a></li>
                 <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a>
                 </li>
-                <li class="menu-item"><a href="#expired-content"><i
-                        class="fas fa-clock"></i><span>Expired Content</span></a></li>
+                <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
 
                 <!-- User Management with Submenu -->
                 <li class="menu-item has-submenu">
@@ -60,9 +59,10 @@
                     </ul>
                 </li>
 
-                <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
                 <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
                         class="menu-badge" id="trashMenuBadge"></span></a></li>
+                <li class="menu-item"><a href="#expired-content"><i
+                        class="fas fa-clock"></i><span>Expired Content</span></a></li>
                 <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
                 </li>
             </ul>
@@ -295,40 +295,15 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Recent Activity Section -->
-            <div class="recent-activity">
-                <div class="activity-header">
-                    <h3>Recent Activities</h3>
-                    <div class="activity-count">
-                        <span id="activityCount">0</span> activities
-                    </div>
-                </div>
-
-                <div class="activity-container">
-                    <div class="activity-list">
-                        <!-- Will be populated by JavaScript -->
-                        <div class="activity-item">
-                            <div class="activity-icon"><i class="fas fa-spinner fa-spin"></i></div>
-                            <div class="activity-content">
-                                <p>Loading activities...</p>
-                                <small>Please wait</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
 
         <!-- Courses Section -->
         <div class="admin-section" id="courses">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-book"></i> Course Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="courseBulkActionHeader" class="bulk-action-select"
@@ -358,10 +333,20 @@
                         <select id="courseCategoryFilter" class="filter-select" style="height: 38px;">
                             <option value="">All Categories</option>
                             <option value="Programming">Programming</option>
+                            <option value="Web Development">Web Development</option>
+                            <option value="Mobile Development">Mobile Development</option>
+                            <option value="Data Science">Data Science</option>
+                            <option value="AI & Machine Learning">AI & Machine Learning</option>
+                            <option value="Cloud Computing">Cloud Computing</option>
+                            <option value="Cybersecurity">Cybersecurity</option>
                             <option value="Design">Design</option>
                             <option value="Business">Business</option>
                             <option value="Marketing">Marketing</option>
-                            <option value="Data Science">Data Science</option>
+                            <option value="Marketing">MS Office</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Photography">Photography</option>
+                            <option value="Music">Music</option>
+                            <option value="Health & Fitness">Health & Fitness</option>
                         </select>
                     </div>
                     <!-- Add Button -->
@@ -390,23 +375,16 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevCoursePage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="coursePageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextCoursePage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="coursesPagination"></div>
             </div>
         </div>
 
         <!-- Jobs Section -->
         <div class="admin-section" id="jobs">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-briefcase"></i> Job Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="jobBulkActionHeader" class="bulk-action-select"
@@ -469,11 +447,7 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevJobPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="jobPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextJobPage"><i class="fas fa-chevron-right"></i></button>
-                </div>
+                <div class="pagination" id="jobsPagination"></div>
             </div>
         </div>
 
@@ -481,10 +455,8 @@
         <div class="admin-section" id="internships">
             <div class="section-header"
                  style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-user-graduate"></i> Internship Management
-                </h2>
-                <div style="display: flex; align-items: center; gap: 3px; flex-wrap: wrap;">
+                <!-- All controls in one row -->
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <select id="internshipBulkActionHeader" class="bulk-action-select"
@@ -544,23 +516,16 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevInternshipPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="internshipPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextInternshipPage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="internshipsPagination"></div>
             </div>
         </div>
 
         <!-- Blog Section -->
         <div class="admin-section" id="blog">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-blog"></i> Blog Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="blogBulkActionHeader" class="bulk-action-select"
@@ -622,22 +587,16 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevBlogPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="blogPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextBlogPage"><i class="fas fa-chevron-right"></i></button>
-                </div>
+                <div class="pagination" id="blogPagination"></div>
             </div>
         </div>
 
         <!-- Testimonials Section -->
         <div class="admin-section" id="testimonials">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-comments"></i> Testimonial Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 3px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="testimonialBulkActionHeader" class="bulk-action-select"
@@ -696,13 +655,7 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevTestimonialPage"><i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span class="page-info" id="testimonialPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextTestimonialPage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="testimonialsPagination"></div>
             </div>
         </div>
 
@@ -710,9 +663,7 @@
         <div class="admin-section" id="newsletter">
             <div class="section-header"
                  style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-newspaper"></i> Newsletter Management
-                </h2>
+                <!-- All controls in one row -->
                 <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -767,78 +718,49 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevNewsletterPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="newsletterPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextNewsletterPage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="newsletterPagination"></div>
             </div>
         </div>
 
-        <!-- Expired Content Section -->
-        <div class="admin-section" id="expired-content">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-clock"></i> Expired Content Management</h2>
-                </div>
-                <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <!-- Messages Section -->
+        <div class="admin-section" id="messages">
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
-                        <select id="expiredContentBulkActionHeader" class="bulk-action-select"
+                        <select id="messageBulkActionHeader" class="bulk-action-select"
                                 style="min-width: 130px; height: 38px;">
                             <option value="">Bulk Actions</option>
-                            <option value="reactivate">Reactivate (Set as Active & Featured)</option>
-                            <option value="delete">Delete Permanently</option>
+                            <option value="mark_read">Mark as Read</option>
+                            <option value="mark_unread">Mark as Unread</option>
+                            <option value="mark_replied">Mark as Replied</option>
+                            <option value="delete">Delete</option>
                         </select>
-                        <button class="btn btn-outline" id="applyExpiredContentBulkActionHeader"
+                        <button class="btn btn-outline" id="applyMessageBulkActionHeader"
                                 style="height: 38px; padding: 0 15px;">
                             <i class="fas fa-check"></i> Apply
                         </button>
-                        <span class="selected-count" id="expiredSelectedCountHeader"
+                        <span class="selected-count" id="messageSelectedCountHeader"
                               style="font-size: 13px; color: #666; min-width: 80px;">0 selected</span>
                     </div>
                     <!-- Search -->
                     <div class="search-box" style="display: flex; gap: 5px;">
-                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch"
-                               class="search-input" style="height: 38px;">
+                        <input type="text" placeholder="Search messages..." id="messageSearch" class="search-input"
+                               style="height: 38px;">
                         <button class="search-btn" type="button" style="height: 38px;">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
                     <!-- Filter -->
                     <div class="filter-wrapper">
-                        <select id="expiredContentTypeFilter" class="filter-select" style="height: 38px;">
-                            <option value="">All Types</option>
-                            <option value="courses">Courses</option>
-                            <option value="jobs">Jobs</option>
-                            <option value="internships">Internships</option>
+                        <select id="messageStatusFilter" class="filter-select" style="height: 38px;">
+                            <option value="">All Status</option>
+                            <option value="unread">Unread</option>
+                            <option value="read">Read</option>
+                            <option value="replied">Replied</option>
                         </select>
                     </div>
-                    <!-- Action Buttons -->
-                    <button class="btn btn-outline" id="refreshExpiredContentBtn" style="height: 38px;">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                    <button class="btn btn-success" id="reactivateAllExpiredBtn" style="height: 38px;">
-                        <i class="fas fa-play-circle"></i> Reactivate All
-                    </button>
-                </div>
-            </div>
-
-            <!-- Stats Tabs - Small and Compact -->
-            <div class="expired-stats-tabs">
-                <div class="expired-stat-tab" data-type="courses" id="expiredCoursesTab">
-                    <span class="stat-label">Expired Courses</span>
-                    <span class="stat-count" id="expiredCoursesCount">0</span>
-                </div>
-                <div class="expired-stat-tab" data-type="jobs" id="expiredJobsTab">
-                    <span class="stat-label">Expired Jobs</span>
-                    <span class="stat-count" id="expiredJobsCount">0</span>
-                </div>
-                <div class="expired-stat-tab" data-type="internships" id="expiredInternshipsTab">
-                    <span class="stat-label">Expired Internships</span>
-                    <span class="stat-count" id="expiredInternshipsCount">0</span>
                 </div>
             </div>
 
@@ -846,40 +768,31 @@
                 <table>
                     <thead>
                     <tr>
-                        <th><input type="checkbox" id="selectAllExpired"></th>
+                        <th><input type="checkbox" id="selectAllMessages"></th>
                         <th>S.No</th>
-                        <th>Type</th>
-                        <th>Title</th>
-                        <th>Company</th>
-                        <th>Expiration Date</th>
-                        <th>Created</th>
-                        <th>Current Status</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Subject</th>
+                        <th>Date</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                     </thead>
-                    <tbody id="expiredContentTableBody"></tbody>
+                    <tbody id="messagesTableBody"></tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevExpiredContentPage"><i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span class="page-info" id="expiredContentPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextExpiredContentPage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="messagesPagination"></div>
             </div>
         </div>
 
         <!-- Users Section -->
         <div class="admin-section" id="users">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-users"></i> User Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="userBulkActionHeader" class="bulk-action-select"
@@ -934,22 +847,16 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevUserPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="userPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextUserPage"><i class="fas fa-chevron-right"></i></button>
-                </div>
+                <div class="pagination" id="usersPagination"></div>
             </div>
         </div>
 
         <!-- Admins Section -->
         <div class="admin-section" id="admins">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-user-shield"></i> Admin Management</h2>
-                </div>
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
                         <select id="adminBulkActionHeader" class="bulk-action-select"
@@ -1010,134 +917,69 @@
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevAdminPage"><i class="fas fa-chevron-left"></i></button>
-                    <span class="page-info" id="adminPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextAdminPage"><i class="fas fa-chevron-right"></i></button>
-                </div>
+                <div class="pagination" id="adminsPagination"></div>
             </div>
         </div>
 
-        <!-- Admin Modal (Add/Edit) -->
-        <div id="adminModal" class="modal">
-            <div class="modal-content medium">
-                <span class="close-modal">&times;</span>
-                <h2 id="adminModalTitle">Add Admin</h2>
-                <div class="form-container">
-                    <form id="adminForm">
-                        <input type="hidden" id="adminId" name="id" value="">
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="adminFullName">Full Name *</label>
-                                <input type="text" id="adminFullName" name="full_name" required>
-                                <small id="fullNameError" class="field-error"
-                                       style="display: none; color: var(--danger);"></small>
-                            </div>
-                            <div class="form-group">
-                                <label for="adminUsername">Username *</label>
-                                <input type="text" id="adminUsername" name="username" required>
-                                <small id="usernameError" class="field-error"
-                                       style="display: none; color: var(--danger);"></small>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="adminEmail">Email *</label>
-                            <input type="email" id="adminEmail" name="email" required>
-                            <small id="emailError" class="field-error"
-                                   style="display: none; color: var(--danger);"></small>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="adminPassword">Password <span id="passwordRequired">*</span></label>
-                                <input type="password" id="adminPassword" name="password">
-                                <div id="passwordStrength" class="password-strength"></div>
-                                <small id="passwordError" class="field-error"
-                                       style="display: none; color: var(--danger);"></small>
-                                <small class="form-help" id="passwordHelp">Required for new admin. Must be at least
-                                    8
-                                    characters with uppercase, lowercase, number, and special character.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="adminConfirmPassword">Confirm Password</label>
-                                <input type="password" id="adminConfirmPassword" name="confirm_password">
-                                <small id="confirmPasswordError" class="field-error"
-                                       style="display: none; color: var(--danger);"></small>
-                            </div>
-                        </div>
-
-                        <div class="checkbox-group" id="superadminCheckboxGroup">
-                            <label>
-                                <input type="checkbox" name="is_superadmin" id="adminIsSuperadmin">
-                                <i class="fas fa-crown"></i> Super Admin
-                            </label>
-                            <small class="form-help">Super admins have full unrestricted access including creating
-                                other
-                                admins</small>
-                        </div>
-
-                        <div class="checkbox-group" id="adminStatusGroup">
-                            <label>
-                                <input type="checkbox" name="is_active" id="adminIsActive" checked>
-                                <i class="fas fa-check-circle"></i> Active Account
-                            </label>
-                            <small class="form-help">Inactive accounts cannot log in</small>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                            <button type="submit" class="btn btn-primary" id="saveAdminBtn">
-                                <i class="fas fa-save"></i> Save Admin
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Messages Section -->
-        <div class="admin-section" id="messages">
-            <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-envelope"></i> Message Management</h2>
-                </div>
+        <!-- Expired Content Section -->
+        <div class="admin-section" id="expired-content">
+            <div class="section-header"
+                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <!-- All controls in one row -->
-                <div class="header-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2px; flex-wrap: wrap;">
                     <!-- Bulk Action -->
                     <div class="bulk-action-wrapper" style="display: flex; align-items: center; gap: 8px;">
-                        <select id="messageBulkActionHeader" class="bulk-action-select"
+                        <select id="expiredContentBulkActionHeader" class="bulk-action-select"
                                 style="min-width: 130px; height: 38px;">
                             <option value="">Bulk Actions</option>
-                            <option value="mark_read">Mark as Read</option>
-                            <option value="mark_unread">Mark as Unread</option>
-                            <option value="mark_replied">Mark as Replied</option>
-                            <option value="delete">Delete</option>
+                            <option value="reactivate">Reactivate (Set as Active & Featured)</option>
+                            <option value="delete">Delete Permanently</option>
                         </select>
-                        <button class="btn btn-outline" id="applyMessageBulkActionHeader"
+                        <button class="btn btn-outline" id="applyExpiredContentBulkActionHeader"
                                 style="height: 38px; padding: 0 15px;">
                             <i class="fas fa-check"></i> Apply
                         </button>
-                        <span class="selected-count" id="messageSelectedCountHeader"
+                        <span class="selected-count" id="expiredSelectedCountHeader"
                               style="font-size: 13px; color: #666; min-width: 80px;">0 selected</span>
                     </div>
                     <!-- Search -->
                     <div class="search-box" style="display: flex; gap: 5px;">
-                        <input type="text" placeholder="Search messages..." id="messageSearch" class="search-input"
-                               style="height: 38px;">
+                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch"
+                               class="search-input" style="height: 38px;">
                         <button class="search-btn" type="button" style="height: 38px;">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
                     <!-- Filter -->
                     <div class="filter-wrapper">
-                        <select id="messageStatusFilter" class="filter-select" style="height: 38px;">
-                            <option value="">All Status</option>
-                            <option value="unread">Unread</option>
-                            <option value="read">Read</option>
-                            <option value="replied">Replied</option>
+                        <select id="expiredContentTypeFilter" class="filter-select" style="height: 38px;">
+                            <option value="">All Types</option>
+                            <option value="courses">Courses</option>
+                            <option value="jobs">Jobs</option>
+                            <option value="internships">Internships</option>
                         </select>
+                    </div>
+                    <!-- Action Buttons -->
+                    <button class="btn btn-outline" id="refreshExpiredContentBtn" style="height: 38px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-success" id="reactivateAllExpiredBtn" style="height: 38px;">
+                        <i class="fas fa-play-circle"></i> Reactivate All
+                    </button>
+                </div>
+                <!-- Stats Tabs - Small and Compact -->
+                <div class="expired-stats-tabs">
+                    <div class="expired-stat-tab" data-type="courses" id="expiredCoursesTab">
+                        <span class="stat-label">Courses</span>
+                        <span class="stat-count" id="expiredCoursesCount">0</span>
+                    </div>
+                    <div class="expired-stat-tab" data-type="jobs" id="expiredJobsTab">
+                        <span class="stat-label">Jobs</span>
+                        <span class="stat-count" id="expiredJobsCount">0</span>
+                    </div>
+                    <div class="expired-stat-tab" data-type="internships" id="expiredInternshipsTab">
+                        <span class="stat-label">Internships</span>
+                        <span class="stat-count" id="expiredInternshipsCount">0</span>
                     </div>
                 </div>
             </div>
@@ -1146,42 +988,29 @@
                 <table>
                     <thead>
                     <tr>
-                        <th><input type="checkbox" id="selectAllMessages"></th>
+                        <th><input type="checkbox" id="selectAllExpired"></th>
                         <th>S.No</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Subject</th>
-                        <th>Date</th>
-                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Title</th>
+                        <th>Company</th>
+                        <th>Expiration Date</th>
+                        <th>Created</th>
+                        <th>Current Status</th>
                         <th>Actions</th>
                     </tr>
                     </thead>
-                    <tbody id="messagesTableBody"></tbody>
+                    <tbody id="expiredContentTableBody"></tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevMessagePage"><i class="fas fa-chevron-left"></i>
-                    </button>
-                    <span class="page-info" id="messagePageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextMessagePage"><i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination" id="expiredContentPagination"></div>
             </div>
         </div>
 
         <!-- Trash Section -->
         <section id="trash" class="admin-section">
             <div class="section-header">
-                <div class="header-title-section"
-                     style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <h2><i class="fas fa-trash-alt"></i> Trash Management</h2>
-                    <!-- Empty Trash Button - on same row, right corner -->
-                    <button class="btn btn-danger" id="emptyTrashBtn" style="height: 38px;">
-                        <i class="fas fa-trash-alt"></i> Empty Trash
-                    </button>
-                </div>
                 <!-- All other controls in one row -->
                 <div class="header-controls"
                      style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 15px;">
@@ -1228,8 +1057,11 @@
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                     <!-- Clear Old Button -->
-                    <button class="btn btn-secondary" id="clearOldTrashBtn" style="height: 38px;">
-                        <i class="fas fa-clock"></i> Clear Old (30+ days)
+                    <!--                    <button class="btn btn-secondary" id="clearOldTrashBtn" style="height: 38px;">-->
+                    <!--                        <i class="fas fa-clock"></i> Clear Old (30+ days)-->
+                    <!--                    </button>-->
+                    <button class="btn btn-danger" id="emptyTrashBtn" style="height: 38px;">
+                        <i class="fas fa-trash-alt"></i> Empty Trash
                     </button>
                 </div>
             </div>
@@ -1255,14 +1087,8 @@
 
             <!-- Table Footer -->
             <div class="table-footer">
-                <div class="pagination">
-                    <button class="btn btn-outline" id="prevTrashPage" disabled>
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </button>
-                    <span class="page-info" id="trashPageInfo">Page 1 of 1</span>
-                    <button class="btn btn-outline" id="nextTrashPage">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
+                <div class="pagination" id="trashPagination">
+                    <!-- Pagination will be dynamically generated by JS -->
                 </div>
             </div>
         </section>
@@ -1270,10 +1096,6 @@
         <!-- Analytics Section - Simplified with timestamps in popular pages -->
         <div class="admin-section" id="analytics">
             <div class="section-header">
-                <div class="header-title-section">
-                    <h2><i class="fas fa-chart-line"></i> Website Analytics</h2>
-                </div>
-
                 <!-- Stats Cards and Refresh Button in same row -->
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                     <!-- Total Visitors Card -->
@@ -1946,6 +1768,85 @@
                         <button class="confirm-btn confirm" id="confirmAction">Confirm</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal (Add/Edit) -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content medium">
+            <span class="close-modal">&times;</span>
+            <h2 id="adminModalTitle">Add Admin</h2>
+            <div class="form-container">
+                <form id="adminForm">
+                    <input type="hidden" id="adminId" name="id" value="">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="adminFullName">Full Name *</label>
+                            <input type="text" id="adminFullName" name="full_name" required>
+                            <small id="fullNameError" class="field-error"
+                                   style="display: none; color: var(--danger);"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminUsername">Username *</label>
+                            <input type="text" id="adminUsername" name="username" required>
+                            <small id="usernameError" class="field-error"
+                                   style="display: none; color: var(--danger);"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adminEmail">Email *</label>
+                        <input type="email" id="adminEmail" name="email" required>
+                        <small id="emailError" class="field-error"
+                               style="display: none; color: var(--danger);"></small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="adminPassword">Password <span id="passwordRequired">*</span></label>
+                            <input type="password" id="adminPassword" name="password">
+                            <div id="passwordStrength" class="password-strength"></div>
+                            <small id="passwordError" class="field-error"
+                                   style="display: none; color: var(--danger);"></small>
+                            <small class="form-help" id="passwordHelp">Required for new admin. Must be at least
+                                8
+                                characters with uppercase, lowercase, number, and special character.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminConfirmPassword">Confirm Password</label>
+                            <input type="password" id="adminConfirmPassword" name="confirm_password">
+                            <small id="confirmPasswordError" class="field-error"
+                                   style="display: none; color: var(--danger);"></small>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group" id="superadminCheckboxGroup">
+                        <label>
+                            <input type="checkbox" name="is_superadmin" id="adminIsSuperadmin">
+                            <i class="fas fa-crown"></i> Super Admin
+                        </label>
+                        <small class="form-help">Super admins have full unrestricted access including creating
+                            other
+                            admins</small>
+                    </div>
+
+                    <div class="checkbox-group" id="adminStatusGroup">
+                        <label>
+                            <input type="checkbox" name="is_active" id="adminIsActive" checked>
+                            <i class="fas fa-check-circle"></i> Active Account
+                        </label>
+                        <small class="form-help">Inactive accounts cannot log in</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveAdminBtn">
+                            <i class="fas fa-save"></i> Save Admin
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

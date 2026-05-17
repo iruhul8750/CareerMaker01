@@ -717,111 +717,156 @@
         const paginationContainer = document.querySelector(`#${section} .pagination`);
         if (!paginationContainer) return;
 
-        // If no items or only one page, show simple info
-        if (totalItems === 0) {
-            paginationContainer.innerHTML = '';
-            const infoSpan = document.createElement('span');
-            infoSpan.style.fontSize = '14px';
-            infoSpan.style.color = '#666';
-            infoSpan.textContent = '0 items';
-            paginationContainer.appendChild(infoSpan);
-            return;
-        }
-
+        // Clear container
         paginationContainer.innerHTML = '';
 
-        const paginationWrapper = document.createElement('div');
-        paginationWrapper.style.display = 'flex';
-        paginationWrapper.style.alignItems = 'center';
-        paginationWrapper.style.justifyContent = 'center';
-        paginationWrapper.style.gap = '8px';
-        paginationWrapper.style.flexWrap = 'wrap';
+        // Check if mobile
+        const isMobile = window.innerWidth <= 768;
 
-        // Items info (e.g., "10 of 50 items")
-        const startItem = (currentPageNum - 1) * itemsPerPageNum + 1;
-        const endItem = Math.min(currentPageNum * itemsPerPageNum, totalItems);
+        // Items count info - Show on BOTH desktop and mobile now
+        const currentPageItems = Math.min(itemsPerPageNum, totalItems - (currentPageNum - 1) * itemsPerPageNum);
         const itemsInfo = document.createElement('span');
         itemsInfo.className = 'items-info';
-        itemsInfo.style.fontSize = '14px';
-        itemsInfo.style.color = '#666';
-        itemsInfo.style.marginRight = '15px';
-        itemsInfo.textContent = `${endItem - startItem + 1} of ${totalItems} items`;
-        paginationWrapper.appendChild(itemsInfo);
+        itemsInfo.textContent = totalItems === 0 ? '0/0' : `${currentPageItems}/${totalItems}`;
+        paginationContainer.appendChild(itemsInfo);
 
         // Previous button
         const prevBtn = document.createElement('button');
-        prevBtn.className = 'btn btn-outline';
-        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
-        prevBtn.disabled = currentPageNum === 1;
-        prevBtn.style.opacity = currentPageNum === 1 ? '0.5' : '1';
-        prevBtn.style.cursor = currentPageNum === 1 ? 'not-allowed' : 'pointer';
+        prevBtn.className = 'btn btn-outline prev-btn';
+        if (isMobile) {
+            prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            prevBtn.title = 'Previous';
+        } else {
+            prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i><span>Prev</span>';
+        }
+        prevBtn.disabled = currentPageNum === 1 || totalPages === 0;
         prevBtn.addEventListener('click', (e) => {
             e.preventDefault();
             if (currentPageNum > 1) {
-                loadPageForSection(section, currentPageNum - 1);
-            }
-        });
-        paginationWrapper.appendChild(prevBtn);
-
-        // Page number buttons - show dynamic pages
-        let startPage = 1;
-        let endPage = Math.min(5, totalPages);
-
-        // If current page is beyond page 3, adjust to show current page in middle
-        if (currentPageNum > 3) {
-            startPage = Math.max(1, currentPageNum - 2);
-            endPage = Math.min(totalPages, currentPageNum + 2);
-
-            // Add first page button with ellipsis if needed
-            if (startPage > 1) {
-                const firstBtn = createPageButtonForSection(section, 1, 1 === currentPageNum);
-                paginationWrapper.appendChild(firstBtn);
-
-                if (startPage > 2) {
-                    const dots = document.createElement('span');
-                    dots.textContent = '...';
-                    dots.style.padding = '0 5px';
-                    dots.style.color = '#666';
-                    paginationWrapper.appendChild(dots);
+                if (section === 'trash') {
+                    currentTrashPage = currentPageNum - 1;
+                    currentPage.trash = currentPageNum - 1;
+                    loadTrashItems(currentPageNum - 1);
+                } else {
+                    loadPageForSection(section, currentPageNum - 1);
                 }
             }
-        }
+        });
+        paginationContainer.appendChild(prevBtn);
 
-        // Add page buttons
-        for (let i = startPage; i <= endPage; i++) {
-            const pageBtn = createPageButtonForSection(section, i, i === currentPageNum);
-            paginationWrapper.appendChild(pageBtn);
-        }
+        if (isMobile) {
+            // MOBILE: Show ACTIVE PAGE NUMBER as a button
+            const activePageBtn = document.createElement('button');
+            activePageBtn.className = 'btn btn-primary active-page-number';
+            activePageBtn.textContent = currentPageNum;
+            activePageBtn.disabled = true;
+            activePageBtn.title = `Page ${currentPageNum}`;
+            paginationContainer.appendChild(activePageBtn);
+        } else {
+            // DESKTOP: Show full pagination with page numbers
+            const paginationWrapper = document.createElement('div');
+            paginationWrapper.className = 'pagination-wrapper';
+            paginationWrapper.style.display = 'flex';
+            paginationWrapper.style.alignItems = 'center';
+            paginationWrapper.style.gap = '6px';
 
-        // Add next ellipsis and last page if needed
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                const dots = document.createElement('span');
-                dots.textContent = '...';
-                dots.style.padding = '0 5px';
-                dots.style.color = '#666';
-                paginationWrapper.appendChild(dots);
+            // Generate page numbers for desktop
+            let pages = [];
+
+            if (totalPages === 0) {
+                pages = [1];
+            } else if (totalPages <= 5) {
+                // Show all pages if 5 or fewer
+                for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                // Show pages with ellipsis
+                pages.push(1);
+
+                if (currentPageNum > 3) {
+                    pages.push('...');
+                }
+
+                // Show pages around current page
+                let startPage = Math.max(2, currentPageNum - 1);
+                let endPage = Math.min(totalPages - 1, currentPageNum + 1);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i !== 1 && i !== totalPages) {
+                        pages.push(i);
+                    }
+                }
+
+                if (currentPageNum < totalPages - 2) {
+                    pages.push('...');
+                }
+
+                pages.push(totalPages);
             }
-            const lastBtn = createPageButtonForSection(section, totalPages, totalPages === currentPageNum);
-            paginationWrapper.appendChild(lastBtn);
+
+            // Add page number buttons
+            pages.forEach(page => {
+                if (page === '...') {
+                    const dots = document.createElement('span');
+                    dots.className = 'page-ellipsis';
+                    dots.textContent = '...';
+                    dots.style.padding = '0 4px';
+                    paginationWrapper.appendChild(dots);
+                } else {
+                    const pageBtn = document.createElement('button');
+                    const isActive = (page === currentPageNum);
+                    pageBtn.className = `btn ${isActive ? 'btn-primary' : 'btn-outline'} page-number`;
+                    pageBtn.textContent = page;
+                    pageBtn.style.minWidth = '36px';
+                    pageBtn.style.padding = '6px 12px';
+
+                    if (totalPages === 0) {
+                        pageBtn.disabled = true;
+                    }
+
+                    pageBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (page !== currentPageNum && totalPages > 0) {
+                            if (section === 'trash') {
+                                currentTrashPage = page;
+                                currentPage.trash = page;
+                                loadTrashItems(page);
+                            } else {
+                                loadPageForSection(section, page);
+                            }
+                        }
+                    });
+                    paginationWrapper.appendChild(pageBtn);
+                }
+            });
+
+            paginationContainer.appendChild(paginationWrapper);
         }
 
         // Next button
         const nextBtn = document.createElement('button');
-        nextBtn.className = 'btn btn-outline';
-        nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+        nextBtn.className = 'btn btn-outline next-btn';
+        if (isMobile) {
+            nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            nextBtn.title = 'Next';
+        } else {
+            nextBtn.innerHTML = '<span>Next</span><i class="fas fa-chevron-right"></i>';
+        }
         nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
-        nextBtn.style.opacity = (currentPageNum === totalPages || totalPages === 0) ? '0.5' : '1';
-        nextBtn.style.cursor = (currentPageNum === totalPages || totalPages === 0) ? 'not-allowed' : 'pointer';
         nextBtn.addEventListener('click', (e) => {
             e.preventDefault();
             if (currentPageNum < totalPages) {
-                loadPageForSection(section, currentPageNum + 1);
+                if (section === 'trash') {
+                    currentTrashPage = currentPageNum + 1;
+                    currentPage.trash = currentPageNum + 1;
+                    loadTrashItems(currentPageNum + 1);
+                } else {
+                    loadPageForSection(section, currentPageNum + 1);
+                }
             }
         });
-        paginationWrapper.appendChild(nextBtn);
-
-        paginationContainer.appendChild(paginationWrapper);
+        paginationContainer.appendChild(nextBtn);
     }
 
     // Helper to create page button
@@ -5363,7 +5408,6 @@
 
         console.log(`📡 Fetching from: ${url}`);
 
-        // Show loading indicator
         showLoading();
 
         return fetch(url, {
@@ -5384,30 +5428,25 @@
 
             if (data.success) {
                 renderTrashTable(data.data || []);
-                // Update pagination
-                if (typeof updateTrashPaginationInfo === 'function') {
-                    updateTrashPaginationInfo(data.count || 0, page, data.per_page || trashItemsPerPage);
-                } else if (typeof updatePaginationUI === 'function') {
-                    updatePaginationUI('trash', page, data.count || 0, data.per_page || trashItemsPerPage);
+
+                const totalCount = data.count || 0;
+                const currentPageNum = page;
+
+                // CRITICAL: Update current page variables
+                currentTrashPage = currentPageNum;
+                currentPage.trash = currentPageNum;
+
+                // CRITICAL: Call updatePaginationUI for trash section with correct parameters
+                if (typeof updatePaginationUI === 'function') {
+                    console.log(`Calling updatePaginationUI for trash with page: ${currentPageNum}, total: ${totalCount}`);
+                    updatePaginationUI('trash', currentPageNum, totalCount, trashItemsPerPage);
                 }
 
-                currentPage.trash = page;
-                currentTrashPage = page;
-
-                const currentHash = window.location.hash.substring(1);
-                if (currentHash === 'trash') {
-                    const state = {
-                        section: 'trash',
-                        page: page,
-                        timestamp: Date.now()
-                    };
-                    history.replaceState(state, '', '#trash');
-                }
-
-                updateTrashMenuBadge(data.count || 0);
+                // Update trash menu badge
+                updateTrashMenuBadge(totalCount);
 
                 if (data.data && data.data.length > 0) {
-                    showNotification(`Loaded ${data.data.length} trash items`, 'info', 2000);
+                    console.log(`Loaded ${data.data.length} trash items, total: ${totalCount}, page: ${currentPageNum}`);
                 }
             } else {
                 throw new Error(data.error || 'Failed to load trash items');
@@ -5435,7 +5474,7 @@
         })
         .finally(() => {
             isLoadingTrash = false;
-            hideLoading(); // Hide loading indicator
+            hideLoading();
         });
     }
 
@@ -5469,6 +5508,7 @@
                 </tr>
             `;
 
+            // Disable select all checkbox
             const selectAll = document.getElementById('selectAllTrash');
             if (selectAll) {
                 selectAll.checked = false;
@@ -5476,62 +5516,73 @@
                 selectAll.disabled = true;
             }
 
+            // Update selected count display
             const selectedCountEl = document.getElementById('selectedTrashCount');
             if (selectedCountEl) {
                 selectedCountEl.textContent = '0 selected';
             }
 
+            // Disable bulk action buttons
             const bulkActionBtn = document.getElementById('applyTrashBulkAction');
             if (bulkActionBtn) {
                 bulkActionBtn.disabled = true;
             }
 
-            // Also update header button
             const headerBulkBtn = document.getElementById('applyTrashBulkActionHeader');
             if (headerBulkBtn) {
                 headerBulkBtn.disabled = true;
             }
 
+            // Update header count
+            updateHeaderSelectedCount('trash', 0);
+
             return;
         }
 
+        // Enable select all checkbox
         const selectAll = document.getElementById('selectAllTrash');
         if (selectAll) {
             selectAll.disabled = false;
         }
 
+        // Icon mapping for different content types
+        const iconMap = {
+            'courses': 'fa-book',
+            'jobs': 'fa-briefcase',
+            'internships': 'fa-user-graduate',
+            'blog': 'fa-blog',
+            'testimonials': 'fa-comment',
+            'users': 'fa-user',
+            'messages': 'fa-envelope',
+            'newsletter': 'fa-newspaper',
+            'admins': 'fa-user-shield'
+        };
+
+        // Display name mapping
+        const displayNameMap = {
+            'courses': 'Course',
+            'jobs': 'Job',
+            'internships': 'Internship',
+            'blog': 'Blog Post',
+            'testimonials': 'Testimonial',
+            'users': 'User',
+            'messages': 'Message',
+            'newsletter': 'Newsletter',
+            'admins': 'Admin'
+        };
+
+        // Calculate serial number based on current page
+        const startSerial = (currentTrashPage - 1) * trashItemsPerPage;
+
         tableBody.innerHTML = items.map((item, index) => {
-            const serialNo = ((currentTrashPage - 1) * trashItemsPerPage) + index + 1;
-
-            const iconMap = {
-                'course': 'fa-book',
-                'job': 'fa-briefcase',
-                'internship': 'fa-user-graduate',
-                'blog': 'fa-blog',
-                'testimonial': 'fa-comment',
-                'user': 'fa-user',
-                'message': 'fa-envelope',
-                'newsletter': 'fa-newspaper',
-                'admin': 'fa-user-shield'
-            };
-
+            const serialNo = startSerial + index + 1;
             const icon = iconMap[item.content_type] || 'fa-file';
-
-            const displayName = {
-                'course': 'Course',
-                'job': 'Job',
-                'internship': 'Internship',
-                'blog': 'Blog Post',
-                'testimonial': 'Testimonial',
-                'user': 'User',
-                'message': 'Message',
-                'newsletter': 'Newsletter Subscriber',
-                'admin': 'Admin'
-            }[item.content_type] || item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1);
+            const displayName = displayNameMap[item.content_type] || item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1);
 
             const deletedDate = item.deleted_at ? formatDate(item.deleted_at, true) : 'Unknown';
             const createdDate = item.created_at ? formatDate(item.created_at) : 'Unknown';
 
+            // Get days ago text
             let daysAgoText = '';
             if (item.deleted_at) {
                 try {
@@ -5543,30 +5594,46 @@
             }
 
             return `
-                <tr>
-                    <td><input type="checkbox" class="trash-item-checkbox" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}"></td>
-                    <td class="serial-no">${serialNo}</td>
-                    <td>
+                <tr data-item-id="${item.id}" data-item-type="${item.content_type}">
+                    <td style="text-align: center; width: 40px;">
+                        <input type="checkbox" class="trash-item-checkbox"
+                               data-type="${item.content_type}"
+                               data-id="${item.id}"
+                               data-table="${item.table_name}">
+                    </td>
+                    <td class="serial-no" style="text-align: center; width: 60px;">${serialNo}</td>
+                    <td style="width: 120px;">
                         <span class="content-type-badge ${item.content_type}">
                             <i class="fas ${icon}"></i>
                             ${displayName}
                         </span>
-                     </td>
+                    </td>
                     <td><strong>${escapeHTML(item.title || 'Untitled')}</strong></td>
-                    <td>${escapeHTML(item.subtitle || 'N/A')}</td>
-                    <td class="text-danger" title="${deletedDate}">
+                    <td>${escapeHTML(item.subtitle || item.email || 'N/A')}</td>
+                    <td style="color: var(--danger);" title="${deletedDate}">
                         <i class="fas fa-clock"></i> ${daysAgoText || deletedDate}
                     </td>
                     <td>${createdDate}</td>
-                    <td>
+                    <td style="text-align: center;">
                         <div class="action-buttons">
-                            <button class="btn-icon restore-item" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}" title="Restore Item">
+                            <button class="btn-icon restore-item"
+                                    data-type="${item.content_type}"
+                                    data-id="${item.id}"
+                                    data-table="${item.table_name}"
+                                    title="Restore Item">
                                 <i class="fas fa-undo-alt"></i>
                             </button>
-                            <button class="btn-icon view-item" data-type="${item.content_type}" data-id="${item.id}" title="View Details">
+                            <button class="btn-icon view-item"
+                                    data-type="${item.content_type}"
+                                    data-id="${item.id}"
+                                    title="View Details">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="btn-icon permanent-delete-item" data-type="${item.content_type}" data-id="${item.id}" data-table="${item.table_name}" title="Delete Permanently">
+                            <button class="btn-icon permanent-delete-item"
+                                    data-type="${item.content_type}"
+                                    data-id="${item.id}"
+                                    data-table="${item.table_name}"
+                                    title="Delete Permanently">
                                 <i class="fas fa-trash-alt" style="color: var(--danger);"></i>
                             </button>
                         </div>
@@ -5575,10 +5642,16 @@
             `;
         }).join('');
 
+        // Add event listeners to the newly created buttons
         addTrashRowEventListeners();
+
+        // Update selected items and UI
         updateSelectedTrashItems();
         updateTrashBulkActionButton();
         updateSelectAllTrashCheckbox();
+
+        // Update header count
+        updateHeaderSelectedCount('trash', selectedTrashItems.length);
     }
 
     // event listeners to trash table rows
@@ -5800,7 +5873,7 @@
         }
     }
 
-    // Setup trash event listeners - FIXED to prevent duplicates
+    // Setup trash event listeners
     function setupTrashEvents() {
         console.log('Setting up trash events...');
 
@@ -5809,36 +5882,12 @@
         if (refreshBtn) {
             const newBtn = refreshBtn.cloneNode(true);
             refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
-
-            let isRefreshing = false;
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-
-                if (isRefreshing) return;
-
-                isRefreshing = true;
-                const originalHTML = this.innerHTML;
-
-                // Show spinner
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.disabled = true;
-
                 console.log('Refreshing trash...');
-
-                loadTrashItems(currentTrashPage)
-                    .finally(() => {
-                        // Restore button after a short delay
-                        setTimeout(() => {
-                            this.innerHTML = originalHTML;
-                            this.disabled = false;
-                            isRefreshing = false;
-                        }, 500);
-                    });
+                loadTrashItems(currentTrashPage);
             });
-
-            console.log('✅ Trash refresh button fixed');
         }
 
         // Empty trash button
@@ -5846,7 +5895,6 @@
         if (emptyTrashBtn) {
             const newBtn = emptyTrashBtn.cloneNode(true);
             emptyTrashBtn.parentNode.replaceChild(newBtn, emptyTrashBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5859,7 +5907,6 @@
         if (clearOldTrashBtn) {
             const newBtn = clearOldTrashBtn.cloneNode(true);
             clearOldTrashBtn.parentNode.replaceChild(newBtn, clearOldTrashBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5867,7 +5914,7 @@
             });
         }
 
-        // Search - WITH BUTTON CLICK ONLY
+        // Search functionality
         const searchInput = document.getElementById('trashSearch');
         if (searchInput) {
             const searchBtn = searchInput.parentElement?.querySelector('.search-btn') ||
@@ -5877,36 +5924,18 @@
                 const newBtn = searchBtn.cloneNode(true);
                 searchBtn.parentNode.replaceChild(newBtn, searchBtn);
 
-                let isSearching = false;
                 newBtn.addEventListener('click', function() {
-                    if (isSearching) return;
-                    isSearching = true;
-
-                    const originalHTML = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    this.disabled = true;
-
                     const searchTerm = searchInput.value.trim();
                     currentTrashPage = 1;
-
-                    loadTrashItems(1, searchTerm)
-                        .finally(() => {
-                            setTimeout(() => {
-                                this.innerHTML = originalHTML;
-                                this.disabled = false;
-                                isSearching = false;
-                            }, 500);
-                        });
+                    loadTrashItems(1, searchTerm);
                 });
 
-                // Enter key
                 searchInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         newBtn.click();
                     }
                 });
-                searchInput.removeEventListener('input', null);
             }
         }
 
@@ -5915,7 +5944,6 @@
         if (filterSelect) {
             const newSelect = filterSelect.cloneNode(true);
             filterSelect.parentNode.replaceChild(newSelect, filterSelect);
-
             newSelect.addEventListener('change', function() {
                 currentTrashPage = 1;
                 loadTrashItems(1, '', this.value);
@@ -5927,7 +5955,6 @@
         if (selectAll) {
             const newSelectAll = selectAll.cloneNode(true);
             selectAll.parentNode.replaceChild(newSelectAll, selectAll);
-
             newSelectAll.addEventListener('change', function() {
                 const checkboxes = document.querySelectorAll('#trashTableBody .trash-item-checkbox');
                 selectedTrashItems = [];
@@ -5943,13 +5970,7 @@
                 });
                 updateTrashBulkActionButton();
                 updateSelectAllTrashCheckbox();
-                // Update header count
                 updateHeaderSelectedCount('trash', selectedTrashItems.length);
-
-                const selectedCountEl = document.getElementById('selectedTrashCount');
-                if (selectedCountEl) {
-                    selectedCountEl.textContent = this.checked ? `${selectedTrashItems.length} selected` : '0 selected';
-                }
             });
         }
 
@@ -5958,7 +5979,6 @@
         if (bulkActionBtn) {
             const newBtn = bulkActionBtn.cloneNode(true);
             bulkActionBtn.parentNode.replaceChild(newBtn, bulkActionBtn);
-
             newBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5968,35 +5988,6 @@
                     return;
                 }
                 performTrashBulkAction(action);
-            });
-        }
-
-        // Pagination
-        const prevBtn = document.getElementById('prevTrashPage');
-        if (prevBtn) {
-            const newBtn = prevBtn.cloneNode(true);
-            prevBtn.parentNode.replaceChild(newBtn, prevBtn);
-
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (currentTrashPage > 1) {
-                    currentTrashPage--;
-                    loadTrashItems(currentTrashPage);
-                }
-            });
-        }
-
-        const nextBtn = document.getElementById('nextTrashPage');
-        if (nextBtn) {
-            const newBtn = nextBtn.cloneNode(true);
-            nextBtn.parentNode.replaceChild(newBtn, nextBtn);
-
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                currentTrashPage++;
-                loadTrashItems(currentTrashPage);
             });
         }
     }
@@ -6012,68 +6003,14 @@
         hasInitializedTrash = true;
 
         // Sync currentTrashPage with global currentPage.trash
-        if (currentPage.trash && !currentTrashPage) {
+        if (currentPage.trash && currentPage.trash > 0) {
             currentTrashPage = currentPage.trash;
+        } else if (!currentTrashPage) {
+            currentTrashPage = 1;
+            currentPage.trash = 1;
         }
 
-        // Load trash stats on dashboard with micro loader
-        const dashboardSection = document.getElementById('dashboard');
-        if (dashboardSection && dashboardSection.classList.contains('active')) {
-            loadTrashStats(true);
-        }
-
-        // Setup trash section navigation
-        const trashLink = document.querySelector('a[href="#trash"]');
-        if (trashLink) {
-            const newLink = trashLink.cloneNode(true);
-            trashLink.parentNode.replaceChild(newLink, trashLink);
-
-            newLink.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                // Close mobile menu if open
-                if (window.innerWidth <= 768) {
-                    const sidebar = document.querySelector('.sidebar');
-                    const mobileToggle = document.querySelector('.mobile-menu-toggle');
-                    const overlay = document.querySelector('.mobile-overlay');
-
-                    if (sidebar && sidebar.classList.contains('mobile-active')) {
-                        sidebar.classList.remove('mobile-active');
-                        if (mobileToggle) mobileToggle.classList.remove('active');
-                        if (overlay) overlay.classList.remove('active');
-                        document.body.style.overflow = '';
-                    }
-                }
-
-                // Use global navigation function
-                if (typeof navigateToSection === 'function') {
-                    navigateToSection('trash', this);
-                } else {
-                    // Fallback
-                    document.querySelectorAll('.sidebar-menu a').forEach(item => item.classList.remove('active'));
-                    this.classList.add('active');
-
-                    document.querySelectorAll('.admin-section').forEach(section => section.classList.remove('active'));
-                    const trashSection = document.getElementById('trash');
-                    if (trashSection) {
-                        trashSection.classList.add('active');
-                        document.getElementById('pageTitle').textContent = 'Trash Management';
-
-                        // Update current section
-                        currentSection = 'trash';
-                        sessionStorage.setItem('currentSection', 'trash');
-
-                        // Load trash items
-                        currentTrashPage = 1;
-                        currentPage.trash = 1;
-                        loadTrashItems(1);
-                        loadTrashStats(false);
-                    }
-                }
-            });
-
-            console.log('✅ Trash navigation fixed (closes mobile menu)');
-        }
+        console.log(`Trash initial page: ${currentTrashPage}`);
 
         // Setup trash section observer
         const trashSection = document.getElementById('trash');
@@ -6082,15 +6019,8 @@
                 mutations.forEach((mutation) => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         if (trashSection.classList.contains('active') && !isLoadingTrash) {
-                            console.log('Trash section activated via observer');
-
-                            // Sync page numbers
-                            if (!currentTrashPage || currentTrashPage !== currentPage.trash) {
-                                currentTrashPage = currentPage.trash || 1;
-                            }
-
+                            console.log('Trash section activated - loading data');
                             loadTrashItems(currentTrashPage);
-                            loadTrashStats(false);
                         }
                     }
                 });
@@ -6100,6 +6030,15 @@
 
         // Setup event listeners
         setupTrashEvents();
+
+        // Load trash stats
+        loadTrashStats(true);
+
+        // If trash section is already active, load data
+        if (trashSection && trashSection.classList.contains('active')) {
+            console.log('Trash section already active, loading data...');
+            loadTrashItems(currentTrashPage);
+        }
     }
 
     // Clear old trash items (older than 30 days) - UI only
@@ -8912,6 +8851,9 @@
             // Initialize analytics
             initAnalyticsSection();
 
+            // === Initialize header height observer ===
+            initHeaderHeightObserver();
+
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);
             showNotification('Dashboard initialization failed. Please refresh the page.', 'error');
@@ -10493,7 +10435,7 @@
 
             const tableBody = document.getElementById('adminsTableBody');
             if (tableBody) {
-                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p>右侧</td></tr>';
+                '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p></td></tr>'
             }
 
             let url = `/api/admin/admins/list?page=${this.currentPage}&per_page=${this.perPage}`;
@@ -11466,6 +11408,125 @@
     window.retryLoadTrash = function() {
         loadTrashItems(1);
     };
+
+    // Dynamic header height management
+    function updateHeaderHeights() {
+        const adminHeader = document.querySelector('.admin-header');
+        let adminHeight = adminHeader ? adminHeader.offsetHeight : 56;
+
+        const activeSection = document.querySelector('.admin-section.active');
+        let sectionHeight = 0;
+        let expiredTabsHeight = 0;
+
+        if (activeSection && activeSection.id !== 'dashboard' && activeSection.id !== 'analytics') {
+            const sectionHeader = activeSection.querySelector('.section-header');
+            if (sectionHeader) {
+                sectionHeight = sectionHeader.offsetHeight;
+            }
+
+            // Handle expired content tabs
+            if (activeSection.id === 'expired-content') {
+                const expiredTabs = document.querySelector('#expired-content .expired-stats-tabs');
+                if (expiredTabs) {
+                    expiredTabsHeight = expiredTabs.offsetHeight;
+                    expiredTabs.style.top = (adminHeight + sectionHeight) + 'px';
+                }
+            }
+        }
+
+        // Calculate total height for table positioning
+        const totalHeaderHeight = adminHeight + sectionHeight;
+
+        // Update admin header position (desktop only)
+        if (window.innerWidth > 992) {
+            adminHeader.style.top = '0';
+            adminHeader.style.left = '280px';
+        } else {
+            adminHeader.style.left = '0';
+        }
+
+        // Update section header position
+        const sectionHeaders = document.querySelectorAll('.admin-section:is(#courses, #jobs, #internships, #blog, #testimonials, #newsletter, #messages, #users, #admins, #expired-content, #trash) .section-header');
+        sectionHeaders.forEach(header => {
+            if (window.innerWidth > 992) {
+                header.style.top = adminHeight + 'px';
+                header.style.left = '280px';
+            } else {
+                header.style.top = adminHeight + 'px';
+                header.style.left = '0';
+            }
+        });
+
+        // Update table containers
+        const contentTables = document.querySelectorAll('.admin-section:is(#courses, #jobs, #internships, #blog, #testimonials, #newsletter, #messages, #users, #admins, #expired-content, #trash) .content-table');
+        contentTables.forEach(table => {
+            let topPosition = totalHeaderHeight;
+
+            // Adjust for expired content tabs
+            if (table.closest('#expired-content')) {
+                topPosition = totalHeaderHeight + expiredTabsHeight;
+            }
+
+            table.style.top = topPosition + 'px';
+
+            if (window.innerWidth > 992) {
+                table.style.left = '280px';
+            } else {
+                table.style.left = '0';
+            }
+        });
+
+        // Update dashboard and analytics position
+        const dashboard = document.getElementById('dashboard');
+        const analytics = document.getElementById('analytics');
+
+        if (dashboard) {
+            if (window.innerWidth > 992) {
+                dashboard.style.top = adminHeight + 'px';
+            } else {
+                dashboard.style.top = adminHeight + 'px';
+            }
+        }
+
+        if (analytics) {
+            if (window.innerWidth > 992) {
+                analytics.style.top = adminHeight + 'px';
+            } else {
+                analytics.style.top = adminHeight + 'px';
+            }
+        }
+
+        console.log(`📏 Header heights - Admin: ${adminHeight}px, Section: ${sectionHeight}px, Expired Tabs: ${expiredTabsHeight}px`);
+    }
+
+    // Initialize header height observer
+    function initHeaderHeightObserver() {
+        // Initial update
+        setTimeout(updateHeaderHeights, 100);
+
+        // Update on resize
+        window.addEventListener('resize', () => {
+            setTimeout(updateHeaderHeights, 100);
+        });
+
+        // Watch for section changes
+        const observer = new MutationObserver(() => {
+            setTimeout(updateHeaderHeights, 100);
+        });
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class'],
+            subtree: true
+        });
+
+        // Also update when sidebar toggles on mobile
+        const mobileToggle = document.querySelector('.mobile-menu-toggle');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', () => {
+                setTimeout(updateHeaderHeights, 300);
+            });
+        }
+    }
 
     // ===== SINGLE DOMContentLoaded LISTENER =====
     document.addEventListener('DOMContentLoaded', function() {
