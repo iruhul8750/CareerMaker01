@@ -7849,6 +7849,8 @@
         currentAnalyticsDays = days;
 
         const canvas = document.getElementById('visitorsChart');
+        const container = document.querySelector('#analytics .chart-container');
+
         if (canvas) {
             canvas.style.opacity = '0.5';
         }
@@ -7863,18 +7865,16 @@
         .then(response => response.json())
         .then(data => {
             if (data.success && data.daily_data && data.daily_data.length > 0) {
-                renderAnalyticsVisitorsChart(data.daily_data);
+                // USE REAL DATA ONLY
+                renderAnalyticsVisitorsChart(data.daily_data, days);
             } else {
-                // Generate sample data for demo when no real data exists
-                const sampleData = generateSampleDailyData(days);
-                renderAnalyticsVisitorsChart(sampleData);
+                // NO REAL DATA - Show message, don't generate fake data
+                showNoDataMessage();
             }
         })
         .catch(error => {
             console.error('Error loading daily chart:', error);
-            // Generate sample data on error
-            const sampleData = generateSampleDailyData(days);
-            renderAnalyticsVisitorsChart(sampleData);
+            showChartErrorMessage();
         })
         .finally(() => {
             if (canvas) {
@@ -7883,34 +7883,69 @@
         });
     }
 
-    // Generate sample daily data for demo
-    function generateSampleDailyData(days) {
+    // Generate dynamic sample data with real past dates
+    function generateDynamicSampleData(days) {
         const sampleData = [];
-        const today = new Date();
+        const endDate = new Date();
 
         for (let i = days - 1; i >= 0; i--) {
             const date = new Date();
-            date.setDate(today.getDate() - i);
+            date.setDate(endDate.getDate() - i);
+
+            // Generate realistic looking data with some variation
+            const dayOfWeek = date.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+            // Base visitors (more on weekdays, less on weekends)
+            let baseVisitors = isWeekend ? 30 : 50;
+            let baseViews = isWeekend ? 80 : 120;
+
+            // Add some random variation
+            const visitors = Math.floor(baseVisitors + (Math.random() * 30));
+            const views = Math.floor(baseViews + (Math.random() * 60));
+
             sampleData.push({
                 date: date.toISOString().split('T')[0],
-                unique_visitors: Math.floor(Math.random() * 100) + 20,
-                total_views: Math.floor(Math.random() * 300) + 100
+                unique_visitors: visitors,
+                total_views: views
             });
         }
+
         return sampleData;
     }
 
-    // Render visitors chart
-    function renderAnalyticsVisitorsChart(dailyData) {
+    // Render chart with horizontal scrollbar on container only
+    function renderAnalyticsVisitorsChart(dailyData, totalDays = 30) {
         const canvas = document.getElementById('visitorsChart');
         if (!canvas) {
             console.error('Visitors chart canvas not found');
             return;
         }
 
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
-        canvas.style.minHeight = '300px';
+        const container = document.querySelector('#analytics .chart-container');
+        if (!container) return;
+
+        // Create wrapper for horizontal scroll if needed
+        let wrapper = container.querySelector('.chart-wrapper');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            canvas.parentNode.insertBefore(wrapper, canvas);
+            wrapper.appendChild(canvas);
+        }
+
+        // Calculate dynamic width based on number of data points
+        const dataPoints = dailyData.length;
+        // Each data point takes about 60px width
+        let wrapperWidth = Math.max(dataPoints * 60, 800);
+        // Cap at 2000px max
+        wrapperWidth = Math.min(wrapperWidth, 2000);
+
+        wrapper.style.width = `${wrapperWidth}px`;
+        wrapper.style.minWidth = `${wrapperWidth}px`;
+        wrapper.style.display = 'block';
+
+        console.log(`Chart wrapper width: ${wrapperWidth}px for ${dataPoints} points`);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -7919,7 +7954,13 @@
         const dates = dailyData.map(d => {
             try {
                 const date = new Date(d.date);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (totalDays <= 7) {
+                    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                } else if (totalDays <= 30) {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } else {
+                    return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                }
             } catch (e) {
                 return d.date;
             }
@@ -7934,7 +7975,6 @@
             visitorsChartInstance = null;
         }
 
-        // Check if Chart.js is loaded
         if (typeof Chart === 'undefined') {
             console.error('Chart.js is not loaded!');
             return;
@@ -7952,10 +7992,10 @@
                             borderColor: '#4a6cf7',
                             backgroundColor: 'rgba(74, 108, 247, 0.1)',
                             borderWidth: 2,
-                            tension: 0.4,
+                            tension: 0.3,
                             fill: true,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
+                            pointRadius: dataPoints > 50 ? 1 : 3,
+                            pointHoverRadius: 5
                         },
                         {
                             label: 'Total Page Views',
@@ -7963,10 +8003,10 @@
                             borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                             borderWidth: 2,
-                            tension: 0.4,
+                            tension: 0.3,
                             fill: true,
-                            pointRadius: 3,
-                            pointHoverRadius: 6
+                            pointRadius: dataPoints > 50 ? 1 : 3,
+                            pointHoverRadius: 5
                         }
                     ]
                 },
@@ -7976,31 +8016,44 @@
                     plugins: {
                         legend: {
                             position: 'top',
-                            labels: { usePointStyle: true }
+                            labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } }
                         },
                         tooltip: {
                             mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${(context.raw || 0).toLocaleString()}`;
-                                }
-                            }
+                            intersect: false
                         }
                     },
                     scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 15,
+                                font: { size: 10 }
+                            }
+                        },
                         y: {
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
                                     return value.toLocaleString();
-                                }
+                                },
+                                font: { size: 10 }
                             }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 20,
+                            top: 20,
+                            bottom: 30
                         }
                     }
                 }
             });
-            console.log('✅ Visitors chart rendered');
+
+            console.log(`✅ Chart rendered`);
         } catch (error) {
             console.error('Error rendering chart:', error);
         }
@@ -8403,6 +8456,50 @@
                 setupAnalyticsEvents();
             }, 100);
         }
+    }
+
+    // Show message when no data available
+    function showNoDataMessage() {
+        const container = document.querySelector('#analytics .chart-container');
+        if (!container) return;
+
+        // Clear any existing canvas
+        const canvas = document.getElementById('visitorsChart');
+        if (canvas && canvas.parentNode) {
+            canvas.parentNode.removeChild(canvas);
+        }
+
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chart-empty-message';
+        messageDiv.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; text-align: center;">
+                <i class="fas fa-chart-line" style="font-size: 48px; color: #cbd5e1; margin-bottom: 15px;"></i>
+                <h4 style="color: #64748b; margin: 0 0 10px 0;">No Analytics Data Available</h4>
+                <p style="color: #94a3b8; margin: 0; font-size: 14px;">Data will appear once visitors start using the site.</p>
+            </div>
+        `;
+
+        container.innerHTML = '';
+        container.appendChild(messageDiv);
+    }
+
+    function showChartErrorMessage() {
+        const container = document.querySelector('#analytics .chart-container');
+        if (!container) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chart-error-message';
+        messageDiv.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ef4444; margin-bottom: 15px;"></i>
+                <h4 style="color: #64748b; margin: 0 0 10px 0;">Failed to Load Chart Data</h4>
+                <p style="color: #94a3b8; margin: 0; font-size: 14px;">Please try again later or contact support.</p>
+            </div>
+        `;
+
+        container.innerHTML = '';
+        container.appendChild(messageDiv);
     }
 
     // ============================================

@@ -4688,6 +4688,21 @@
         background: rgba(255, 255, 255, 0.08);
     }
 
+    /* Minimal dark mode fix for expired tabs */
+    .dark-mode .expired-stat-tab.active {
+        background: #4a6cf7 !important;
+        border-color: #4a6cf7 !important;
+    }
+
+    .dark-mode .expired-stat-tab.active .stat-label,
+    .dark-mode .expired-stat-tab.active .stat-count {
+        color: #ffffff !important;
+    }
+
+    .dark-mode .expired-stat-tab.active .stat-count {
+        background: rgba(255, 255, 255, 0.25) !important;
+    }
+
     @keyframes spin {
         to { transform: translate(-50%, -50%) rotate(360deg); }
     }
@@ -7628,6 +7643,27 @@
         background: rgba(239, 68, 68, 0.2);
     }
 
+    /* Minimal orange button for Clear Old Trash */
+    #clearOldTrashBtn {
+        background: #f39c12 !important;
+        border-color: #e67e22 !important;
+        color: #fff !important;
+    }
+
+    #clearOldTrashBtn:hover {
+        background: #e67e22 !important;
+        border-color: #d35400 !important;
+    }
+
+    #clearOldTrashBtn:active {
+        background: #d35400 !important;
+    }
+
+    #clearOldTrashBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
     /* Empty State */
     #trash .empty-state {
         text-align: center;
@@ -8341,11 +8377,8 @@
     #analytics .section-header h2 {
         font-size: 22px;
         font-weight: 600;
-
         color: var(--text-primary);
-
         margin: 0;
-
         display: flex;
         align-items: center;
         gap: 10px;
@@ -8386,7 +8419,7 @@
        ============================================ */
 
     #analytics {
-        padding-top: 75px !important;
+        padding-top: 128px !important;
     }
 
     /* Remove old margin hack */
@@ -8579,17 +8612,53 @@
     #analytics .chart-container {
         position: relative;
         width: 100%;
-        min-height: 400px;
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+        min-height: 450px;
     }
 
+    /* Custom scrollbar for the chart container only */
+    #analytics .chart-container::-webkit-scrollbar {
+        height: 8px !important;
+    }
+
+    #analytics .chart-container::-webkit-scrollbar-track {
+        background: #e2e8f0 !important;
+        border-radius: 10px !important;
+    }
+
+    #analytics .chart-container::-webkit-scrollbar-thumb {
+        background: #4a6cf7 !important;
+        border-radius: 10px !important;
+    }
+
+    #analytics .chart-container::-webkit-scrollbar-thumb:hover {
+        background: #3a5bd9 !important;
+    }
+
+    /* Firefox scrollbar for chart container only */
+    #analytics .chart-container {
+        scrollbar-width: thin !important;
+        scrollbar-color: #4a6cf7 #e2e8f0 !important;
+    }
+
+    /* Canvas wrapper - THIS NEEDS A FIXED WIDTH TO ENABLE SCROLLING */
+    #analytics .chart-container .chart-wrapper {
+        width: 1200px !important;
+        min-width: 1200px !important;
+        display: block !important;
+    }
+
+    /* Canvas styling */
     #analytics .chart-container canvas {
-        width: 100%;
-        max-height: 400px;
+        width: 100% !important;
+        max-height: 400px !important;
+        display: block !important;
     }
 
-        /* ============================================
-       SMALLER STATS CARDS OF CHARTS
-       ============================================ */
+    /* ============================================
+   SMALLER STATS CARDS OF CHARTS
+   ============================================ */
 
     #analytics .stat-card {
         background: var(--bg-secondary);
@@ -8708,104 +8777,162 @@
        POPULAR PAGES - COMPACT VERSION
        ============================================ */
 
+    /* Container for popular pages */
     #popularPagesList {
-        max-height: 440px;
+        max-height: 350px;
         overflow-y: auto;
         overflow-x: hidden;
-        padding-right: 6px;
-        scrollbar-width: thin;
-        scrollbar-color: var(--primary) var(--bg-secondary);
+        padding-right: 8px;
     }
 
-    /* Webkit scrollbar */
-
+    /* Custom scrollbar */
     #popularPagesList::-webkit-scrollbar {
         width: 5px;
     }
 
     #popularPagesList::-webkit-scrollbar-track {
-        background: var(--bg-secondary);
+        background: #e2e8f0;
         border-radius: 10px;
     }
 
     #popularPagesList::-webkit-scrollbar-thumb {
-        background: var(--primary);
+        background: #4a6cf7;
         border-radius: 10px;
     }
 
-    #popularPagesList::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-dark);
+    /* Firefox */
+    #popularPagesList {
+        scrollbar-width: thin;
+        scrollbar-color: #4a6cf7 #e2e8f0;
     }
 
-    /* Popular page item */
-
+    /* Popular page item - prevent overflow */
     #analytics .popular-page-item {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px;
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.2s ease;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
+        width: 100%;
+        box-sizing: border-box;
     }
 
-    #analytics .popular-page-item:hover {
-        background: var(--bg-hover);
-    }
-
+    /* Rank number */
     #analytics .popular-page-item .rank {
-        width: 26px;
-        height: 26px;
-        background: var(--bg-secondary);
-        border-radius: 6px;
-
+        width: 28px;
+        height: 28px;
+        background: var(--bg-secondary, #f1f5f9);
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-
         font-size: 12px;
         font-weight: 700;
-        color: var(--primary);
-
+        color: #4a6cf7;
         flex-shrink: 0;
     }
 
+    /* Page info container - takes remaining space */
     #analytics .popular-page-item .page-info {
         flex: 1;
         min-width: 0;
+        overflow: hidden;
     }
 
+    /* Page title - truncate with ellipsis */
     #analytics .popular-page-item .page-title {
         font-size: 13px;
         font-weight: 500;
-        color: var(--text-primary);
-
-        margin-bottom: 2px;
-
+        color: var(--text-primary, #1e293b);
+        margin-bottom: 4px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
+    /* Page URL - truncate */
     #analytics .popular-page-item .page-url {
         font-size: 11px;
-        color: var(--text-muted);
-
+        color: var(--text-muted, #64748b);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        margin-bottom: 4px;
     }
 
+    /* Meta info (views and time) */
+    #analytics .popular-page-item .page-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    /* Views badge */
     #analytics .popular-page-item .page-views {
         font-size: 11px;
         font-weight: 600;
-
-        color: var(--primary);
-        background: var(--bg-secondary);
-
-        padding: 3px 7px;
+        color: #4a6cf7;
+        background: var(--bg-secondary, #f1f5f9);
+        padding: 3px 8px;
         border-radius: 5px;
-
         white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Timestamp wrapper */
+    #analytics .popular-page-item .timestamp-wrapper {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--text-muted, #64748b);
+        cursor: pointer;
+    }
+
+    /* Mobile specific */
+    @media (max-width: 768px) {
+        #popularPagesList {
+            max-height: 280px;
+        }
+
+        #analytics .popular-page-item {
+            padding: 8px 6px;
+        }
+
+        #analytics .popular-page-item .rank {
+            width: 24px;
+            height: 24px;
+            font-size: 11px;
+        }
+
+        #analytics .popular-page-item .page-title {
+            font-size: 12px;
+        }
+
+        #analytics .popular-page-item .page-url {
+            font-size: 10px;
+        }
+
+        #analytics .popular-page-item .page-views {
+            font-size: 10px;
+            padding: 2px 6px;
+        }
+
+        #analytics .popular-page-item .page-meta {
+            gap: 8px;
+        }
+    }
+
+    /* Dark mode */
+    .dark-mode #popularPagesList::-webkit-scrollbar-track {
+        background: #1e293b;
+    }
+
+    .dark-mode #popularPagesList::-webkit-scrollbar-thumb {
+        background: #4a6cf7;
     }
 
     /* ============================================
@@ -9700,6 +9827,20 @@
 
     .dark-mode .click-timestamp-tooltip i {
         color: #818cf8;
+    }
+    /* ============================================ */
+    /* BLOCK TABLE-FOOTER AND PAGINATION STYLES ON ANALYTICS */
+    /* ============================================ */
+
+    /* Ensure analytics section doesn't inherit any footer positioning */
+    #analytics {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        padding-bottom: 20px !important;
+        margin-bottom: 0 !important;
     }
 
     /* End Analytical Styles */
