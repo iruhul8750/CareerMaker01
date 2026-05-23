@@ -245,7 +245,7 @@
         // Add error class and styling
         input.classList.add('input-error');
 
-        // Add error icon to input if it doesn't have one
+        // Add error icon
         if (!input.parentElement.querySelector('.input-error-icon')) {
             const errorIcon = document.createElement('i');
             errorIcon.className = 'fas fa-exclamation-circle input-error-icon';
@@ -272,9 +272,9 @@
             formGroup.classList.add('error-group');
         }
 
-        // Scroll to the error field
+        // Scroll to the error field within modal
         if (scrollToField) {
-            scrollToErrorField(input);
+            scrollToErrorFieldInModal(input);
         }
     }
 
@@ -282,47 +282,37 @@
      * Scroll to error field with smooth animation
      * @param {HTMLElement} element - The element to scroll to
      */
-    function scrollToErrorField(element) {
+    function scrollToErrorFieldInModal(element) {
         if (!element) return;
 
-        // Find the modal container
-        const modal = element.closest('.modal');
-        if (modal) {
-            // Get the modal content container
-            const modalContent = modal.querySelector('.modal-content');
-            if (modalContent) {
-                // Calculate position relative to modal content
-                const elementPosition = element.getBoundingClientRect().top;
-                const modalContentPosition = modalContent.getBoundingClientRect().top;
-                const offset = elementPosition - modalContentPosition - 100;
+        // Find the modal body container
+        const modalBody = element.closest('.modal-body');
+        if (modalBody) {
+            // Calculate position within modal body
+            const elementPosition = element.getBoundingClientRect().top;
+            const modalBodyPosition = modalBody.getBoundingClientRect().top;
+            const offset = elementPosition - modalBodyPosition - 80;
 
-                modalContent.scrollTo({
-                    top: modalContent.scrollTop + offset,
-                    behavior: 'smooth'
-                });
-            } else {
-                // Fallback: scroll to element
-                element.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-            }
+            modalBody.scrollTo({
+                top: modalBody.scrollTop + offset,
+                behavior: 'smooth'
+            });
+
+            // Add highlight animation after scroll
+            setTimeout(() => {
+                element.style.transition = 'all 0.3s ease';
+                element.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.4)';
+                setTimeout(() => {
+                    element.style.boxShadow = '';
+                }, 1500);
+            }, 300);
         } else {
-            // Not in modal, scroll normally
+            // Fallback: scroll to element
             element.scrollIntoView({
                 behavior: 'smooth',
                 block: 'center'
             });
         }
-
-        // Add highlight animation after scroll
-        setTimeout(() => {
-            element.style.transition = 'all 0.3s ease';
-            element.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.4)';
-            setTimeout(() => {
-                element.style.boxShadow = '';
-            }, 1500);
-        }, 300);
     }
 
     /**
@@ -2477,16 +2467,83 @@
 
     // Function to close modal
     function closeModal() {
-        document.querySelectorAll('.modal').forEach(modal => {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
             modal.style.display = 'none';
+
+            // Reset all forms inside the modal
+            const forms = modal.querySelectorAll('form');
+            forms.forEach(form => {
+                form.reset();
+                // Clear the ID field to reset add/edit mode
+                const idField = form.querySelector('input[name="id"]');
+                if (idField) idField.value = '';
+            });
+
+            // Clear ALL error indicators from the modal
+            const errorSpans = modal.querySelectorAll('.field-error');
+            errorSpans.forEach(span => span.remove());
+
+            const errorInputs = modal.querySelectorAll('.input-error');
+            errorInputs.forEach(input => input.classList.remove('input-error'));
+
+            const errorGroups = modal.querySelectorAll('.error-group');
+            errorGroups.forEach(group => group.classList.remove('error-group'));
+
+            const errorIcons = modal.querySelectorAll('.input-error-icon');
+            errorIcons.forEach(icon => icon.remove());
+
+            const errorSummary = modal.querySelector('.error-summary');
+            if (errorSummary) errorSummary.remove();
+
+            // CLEAR ALL LOGO PREVIEWS - This is critical
+            const logoPreviews = modal.querySelectorAll('.logo-preview');
+            logoPreviews.forEach(preview => preview.remove());
+
+            // Also clear any logo preview containers that might be attached to company inputs
+            const companyInputs = modal.querySelectorAll('input[name="company"]');
+            companyInputs.forEach(input => {
+                // Remove next sibling if it's a logo preview
+                const nextSibling = input.nextElementSibling;
+                if (nextSibling && nextSibling.classList && nextSibling.classList.contains('logo-preview')) {
+                    nextSibling.remove();
+                }
+                // Also check parent's children
+                const parent = input.parentElement;
+                if (parent) {
+                    const previews = parent.querySelectorAll('.logo-preview');
+                    previews.forEach(preview => preview.remove());
+                }
+            });
+
+            // Reset image preview if exists
+            const imagePreview = modal.querySelector('#courseImagePreviewContainer');
+            if (imagePreview) {
+                imagePreview.style.display = 'none';
+                const imageUrlInput = modal.querySelector('#courseImageUrl');
+                if (imageUrlInput) imageUrlInput.value = '';
+            }
+
+            // Reset password fields for admin modal
+            const passwordStrength = modal.querySelector('#passwordStrength');
+            if (passwordStrength) passwordStrength.innerHTML = '';
+
+            const confirmPassword = modal.querySelector('#adminConfirmPassword');
+            if (confirmPassword) confirmPassword.value = '';
+
+            const passwordField = modal.querySelector('#adminPassword');
+            if (passwordField) passwordField.value = '';
         });
 
-        // Reset any active forms
-        document.querySelectorAll('form').forEach(form => {
-            if (form.id !== 'messageReplyForm') { // Don't reset reply form completely
-                form.reset();
-            }
-        });
+        // Reset global form submission flag
+        isSubmitting = false;
+
+        // Reset blog categories if exists
+        if (blogCategoriesManager && typeof blogCategoriesManager.clearSelections === 'function') {
+            blogCategoriesManager.clearSelections();
+        }
+
+        console.log('Modal closed and all logo previews cleared');
     }
 
     // Update the openAddModal function to handle course modal specifically
@@ -2495,27 +2552,69 @@
         const modal = document.getElementById(modalId);
 
         if (modal) {
+            // CLEAR ALL ERRORS BEFORE OPENING MODAL
+            const errorSpans = modal.querySelectorAll('.field-error');
+            errorSpans.forEach(span => span.remove());
+
+            const errorInputs = modal.querySelectorAll('.input-error');
+            errorInputs.forEach(input => input.classList.remove('input-error'));
+
+            const errorGroups = modal.querySelectorAll('.error-group');
+            errorGroups.forEach(group => group.classList.remove('error-group'));
+
+            const errorIcons = modal.querySelectorAll('.input-error-icon');
+            errorIcons.forEach(icon => icon.remove());
+
+            const errorSummary = modal.querySelector('.error-summary');
+            if (errorSummary) errorSummary.remove();
+
+            // CLEAR ALL LOGO PREVIEWS - Critical for new form
+            const logoPreviews = modal.querySelectorAll('.logo-preview');
+            logoPreviews.forEach(preview => preview.remove());
+
+            // Also clear company input next siblings
+            const companyInputs = modal.querySelectorAll('input[name="company"]');
+            companyInputs.forEach(input => {
+                const nextSibling = input.nextElementSibling;
+                if (nextSibling && nextSibling.classList && nextSibling.classList.contains('logo-preview')) {
+                    nextSibling.remove();
+                }
+                // Clear the input value
+                input.value = '';
+            });
+
             // Reset form
             const form = modal.querySelector('form');
             if (form) {
                 form.reset();
-                form.querySelector('input[name="id"]').value = '';
+                const idField = form.querySelector('input[name="id"]');
+                if (idField) idField.value = '';
+            }
+
+            // Reset image preview for course modal
+            if (type === 'course') {
+                hideCourseImagePreview();
+                const imageUrlInput = document.getElementById('courseImageUrl');
+                if (imageUrlInput) imageUrlInput.value = '';
+                setTimeout(initCourseImageUpload, 100);
+            }
+
+            // Reset password fields for admin modal
+            if (type === 'admin') {
+                const passwordStrength = modal.querySelector('#passwordStrength');
+                if (passwordStrength) passwordStrength.innerHTML = '';
+                const confirmPassword = modal.querySelector('#adminConfirmPassword');
+                if (confirmPassword) confirmPassword.value = '';
+                const passwordField = modal.querySelector('#adminPassword');
+                if (passwordField) passwordField.value = '';
             }
 
             // Set modal title
-            const titleElement = modal.querySelector('h2');
+            const titleElement = modal.querySelector('h2 span') || modal.querySelector('h2');
             if (titleElement) {
                 titleElement.textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`;
             }
 
-            // Special handling for course modal
-            if (type === 'course') {
-                hideCourseImagePreview();
-                // Initialize course image upload after a short delay to ensure modal is visible
-                setTimeout(initCourseImageUpload, 100);
-            }
-
-            // Show modal
             modal.style.display = 'block';
         }
     }
@@ -2524,7 +2623,6 @@
     function openEditModal(section, id) {
         console.log(`Opening edit modal for ${section} with ID: ${id}`);
 
-        // Determine modal and form IDs
         const modalId = section === 'blog' ? 'blogModal' : `${section.slice(0, -1)}Modal`;
         const modal = document.getElementById(modalId);
 
@@ -2534,6 +2632,26 @@
             return;
         }
 
+        // CLEAR ALL ERRORS BEFORE OPENING MODAL
+        const errorSpans = modal.querySelectorAll('.field-error');
+        errorSpans.forEach(span => span.remove());
+
+        const errorInputs = modal.querySelectorAll('.input-error');
+        errorInputs.forEach(input => input.classList.remove('input-error'));
+
+        const errorGroups = modal.querySelectorAll('.error-group');
+        errorGroups.forEach(group => group.classList.remove('error-group'));
+
+        const errorIcons = modal.querySelectorAll('.input-error-icon');
+        errorIcons.forEach(icon => icon.remove());
+
+        const errorSummary = modal.querySelector('.error-summary');
+        if (errorSummary) errorSummary.remove();
+
+        // CLEAR ALL LOGO PREVIEWS FIRST
+        const logoPreviews = modal.querySelectorAll('.logo-preview');
+        logoPreviews.forEach(preview => preview.remove());
+
         const formId = section === 'blog' ? 'blogForm' : `${section.slice(0, -1)}Form`;
         const form = document.getElementById(formId);
 
@@ -2542,10 +2660,11 @@
             return;
         }
 
-        // Show loading
+        // Reset form before populating
+        form.reset();
+
         showLoading();
 
-        // Fetch the item data
         fetch(`/api/admin/${section}/${id}`, {
             credentials: 'include',
             headers: {
@@ -2562,15 +2681,13 @@
         .then(item => {
             console.log(`Received ${section} data:`, item);
 
-            // Set the ID field
             const idField = form.querySelector('input[name="id"]');
             if (idField) {
                 idField.value = item.id;
             }
 
-            // Handle blog section separately
             if (section === 'blog') {
-                // Set text fields directly
+                // Populate blog form
                 const titleField = document.getElementById('blogTitle');
                 if (titleField) titleField.value = item.title || '';
 
@@ -2583,7 +2700,6 @@
                 const imageField = document.getElementById('blogImage');
                 if (imageField) imageField.value = item.image || '';
 
-                // Set checkboxes
                 const isFeaturedCheckbox = form.querySelector('input[name="is_featured"]');
                 if (isFeaturedCheckbox) isFeaturedCheckbox.checked = item.is_featured === true;
 
@@ -2593,11 +2709,8 @@
                 const isActiveCheckbox = form.querySelector('input[name="is_active"]');
                 if (isActiveCheckbox) isActiveCheckbox.checked = item.is_active === true;
 
-                // Handle single category
                 if (item.categories) {
                     let categoryValue = '';
-
-                    // Extract category from different possible formats
                     if (Array.isArray(item.categories) && item.categories.length > 0) {
                         categoryValue = item.categories[0];
                     } else if (typeof item.categories === 'string') {
@@ -2613,8 +2726,6 @@
                         }
                     }
 
-                    console.log('Setting category to:', categoryValue);
-
                     const categorySelect = document.getElementById('blogCategory');
                     if (categorySelect && categoryValue) {
                         categorySelect.value = categoryValue;
@@ -2626,16 +2737,12 @@
                     }
                 }
 
-                // Set modal title
                 const titleElement = document.getElementById('blogModalTitle');
                 if (titleElement) {
                     titleElement.textContent = 'Edit Blog Post';
                 }
             } else {
-                // For all other sections, reset form first then populate
-                form.reset();
-
-                // Populate all form fields
+                // For other sections, populate form fields
                 Array.from(form.elements).forEach(element => {
                     if (element.name && element.name !== 'id') {
                         const value = item[element.name];
@@ -2663,11 +2770,32 @@
                         }
                     }
                 });
+
+                // AFTER populating form, show logo preview for existing company
+                const companyInput = form.querySelector('input[name="company"]');
+                if (companyInput && companyInput.value && companyInput.value.trim().length > 2) {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        previewCompanyLogo(companyInput.value.trim(), companyInput);
+                    }, 200);
+                }
             }
 
-            // Show the modal
             modal.style.display = 'block';
             hideLoading();
+
+            // Reset any remaining error states after population
+            setTimeout(() => {
+                const remainingErrors = modal.querySelectorAll('.input-error, .field-error, .error-group');
+                remainingErrors.forEach(el => {
+                    if (el.classList) {
+                        el.classList.remove('input-error', 'error-group');
+                    }
+                    if (el.tagName === 'SMALL' && el.classList.contains('field-error')) {
+                        el.remove();
+                    }
+                });
+            }, 100);
 
             console.log(`✅ Edit modal opened for ${section} ID: ${id}`);
         })
@@ -6752,34 +6880,49 @@
     // ========== 15. LOGO PREVIEW FUNCTIONS ==========
     // ============================================
 
-    // Add this function to handle logo previews
+    // Setup logo preview
     function setupLogoPreview() {
-        // Listen for input on company fields in all modals
+        // Use event delegation for company inputs
         document.addEventListener('input', function(e) {
-            if (e.target.name === 'company' || e.target.id.includes('Company')) {
+            // Only process if the target is a company field and the modal is open
+            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.closest('.modal[style*="display: block"]')) {
                 const companyName = e.target.value.trim();
-                if (companyName.length > 2) {
+                const inputField = e.target;
+
+                // Clear any existing preview for this specific input
+                clearLogoPreview(inputField);
+
+                // Only show preview if company name has at least 2 characters
+                if (companyName.length >= 2) {
+                    // Clear previous timeout
+                    if (inputField.logoPreviewTimeout) {
+                        clearTimeout(inputField.logoPreviewTimeout);
+                    }
                     // Add delay to avoid too many API calls
-                    clearTimeout(e.target.logoPreviewTimeout);
-                    e.target.logoPreviewTimeout = setTimeout(() => {
-                        previewCompanyLogo(companyName, e.target);
+                    inputField.logoPreviewTimeout = setTimeout(() => {
+                        previewCompanyLogo(companyName, inputField);
                     }, 500);
-                } else {
-                    // Clear preview if company name is too short
-                    clearLogoPreview(e.target);
                 }
             }
         });
 
-        // Also handle blur event for immediate response
+        // Also handle blur event for immediate preview
         document.addEventListener('blur', function(e) {
-            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
-                previewCompanyLogo(e.target.value.trim(), e.target);
+            if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.closest('.modal[style*="display: block"]')) {
+                const companyName = e.target.value.trim();
+                const inputField = e.target;
+
+                if (companyName.length >= 2) {
+                    clearLogoPreview(inputField);
+                    previewCompanyLogo(companyName, inputField);
+                }
             }
         }, true);
     }
 
     function clearLogoPreview(inputField) {
+        if (!inputField) return;
+
         const formGroup = inputField.closest('.form-group');
         if (!formGroup) return;
 
@@ -6790,6 +6933,12 @@
     }
 
     function previewCompanyLogo(companyName, inputField) {
+        // Don't show preview if company name is empty or too short
+        if (!companyName || companyName.length < 2) {
+            clearLogoPreview(inputField);
+            return;
+        }
+
         // Clear any existing preview first
         clearLogoPreview(inputField);
 
@@ -6803,10 +6952,10 @@
             <div class="logo-preview-content">
                 <div class="logo-loading">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <span>Searching logo for "${companyName}"...</span>
+                    <span>Searching logo for "${escapeHTML(companyName)}"...</span>
                 </div>
                 <div class="logo-result" style="display: none;">
-                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                    <img src="" alt="${escapeHTML(companyName)} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
                     <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
                 </div>
                 <div class="logo-error" style="display: none;">
@@ -6816,7 +6965,6 @@
             </div>
         `;
 
-        // Add some basic styles
         previewContainer.style.cssText = `
             margin-top: 8px;
             padding: 8px;
@@ -6825,8 +6973,8 @@
             border: 1px solid #e9ecef;
         `;
 
-        // Insert after the input field's parent container
-        inputField.parentNode.appendChild(previewContainer);
+        // Insert after the input field
+        inputField.insertAdjacentElement('afterend', previewContainer);
 
         // Fetch logo preview
         fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
@@ -6837,10 +6985,16 @@
                 return response.json();
             })
             .then(data => {
-                const loading = previewContainer.querySelector('.logo-loading');
-                const result = previewContainer.querySelector('.logo-result');
-                const error = previewContainer.querySelector('.logo-error');
-                const logoImage = previewContainer.querySelector('.logo-image');
+                // Check if the preview container still exists and is for the same company
+                const currentPreview = inputField.nextElementSibling;
+                if (!currentPreview || !currentPreview.classList || !currentPreview.classList.contains('logo-preview')) {
+                    return;
+                }
+
+                const loading = currentPreview.querySelector('.logo-loading');
+                const result = currentPreview.querySelector('.logo-result');
+                const error = currentPreview.querySelector('.logo-error');
+                const logoImage = currentPreview.querySelector('.logo-image');
 
                 if (loading) loading.style.display = 'none';
 
@@ -6861,8 +7015,12 @@
             })
             .catch(error => {
                 console.error('Error fetching logo preview:', error);
-                const loading = previewContainer.querySelector('.logo-loading');
-                const errorDiv = previewContainer.querySelector('.logo-error');
+                const currentPreview = inputField.nextElementSibling;
+                if (!currentPreview || !currentPreview.classList || !currentPreview.classList.contains('logo-preview')) {
+                    return;
+                }
+                const loading = currentPreview.querySelector('.logo-loading');
+                const errorDiv = currentPreview.querySelector('.logo-error');
                 if (loading) loading.style.display = 'none';
                 if (errorDiv) {
                     errorDiv.style.display = 'flex';
