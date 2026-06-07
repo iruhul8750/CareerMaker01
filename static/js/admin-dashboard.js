@@ -4885,6 +4885,11 @@
                     };
                     history.replaceState(state, '', '#expired-content');
                 }
+                // ✅ ADD THIS NOTIFICATION
+                if (typeof showNotification === 'function') {
+                    const loadedCount = data.data?.length || 0;
+                    showNotification(`Loaded ${loadedCount} expired items`, 'success', 2000);
+                }
             } else {
                 throw new Error(data.error || 'Failed to load expired content');
             }
@@ -5573,6 +5578,11 @@
                 // Update trash menu badge
                 updateTrashMenuBadge(totalCount);
 
+                // ✅ ADD THIS NOTIFICATION
+                if (typeof showNotification === 'function') {
+                    const loadedCount = data.data?.length || 0;
+                    showNotification(`Loaded ${loadedCount} trash items`, 'success', 2000);
+                }
                 if (data.data && data.data.length > 0) {
                     console.log(`Loaded ${data.data.length} trash items, total: ${totalCount}, page: ${currentPageNum}`);
                 }
@@ -10708,8 +10718,14 @@
 
                         // Single notification
                         if (typeof showNotification === 'function') {
-                            const itemCount = this.admins.length;
-                            showNotification(`Loaded ${itemCount} admins`, 'success', 2000);
+                            // Only show notification if admins section is currently active
+                            const adminsSection = document.getElementById('admins');
+                            const isAdminsActive = adminsSection && adminsSection.classList.contains('active');
+
+                            if (isAdminsActive) {
+                                const itemCount = this.admins.length;
+                                showNotification(`Loaded ${itemCount} admins`, 'success', 2000);
+                            }
                         }
                     } else {
                         throw new Error(data.message || 'Failed to load admins');
@@ -10718,7 +10734,7 @@
                 .catch(error => {
                     console.error('Error:', error);
                     if (tableBody) {
-                        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}右侧</td></tr>`;
+                        tableBody.innerHTML =  `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}</td></tr>`;
                     }
                     if (typeof showNotification === 'function') {
                         showNotification('Failed to load admins', 'error');

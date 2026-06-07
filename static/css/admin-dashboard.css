@@ -1319,6 +1319,352 @@
         color: white;
     }
 
+    /* ============================================
+       RECENT ACTIVITY SECTION
+       ============================================ */
+
+    .recent-activity {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 24px;
+        margin-top: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+    }
+
+    .recent-activity .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .recent-activity .activity-header h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .recent-activity .activity-header h3::before {
+        content: '\f0e7';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 600;
+        color: var(--primary);
+        font-size: 18px;
+    }
+
+    .recent-activity .activity-count {
+        background: var(--primary-light);
+        color: var(--primary);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .recent-activity .activity-count span {
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    /* Activity Container with Scrollbar */
+    .recent-activity .activity-container {
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+    }
+
+    /* Custom Scrollbar for Activity Container */
+    .recent-activity .activity-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .recent-activity .activity-container::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 10px;
+    }
+
+    .recent-activity .activity-container::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 10px;
+    }
+
+    .recent-activity .activity-container::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+    }
+
+    /* Activity List */
+    .recent-activity .activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Activity Item */
+    .recent-activity .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 15px;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+    }
+
+    .recent-activity .activity-item:hover {
+        background: var(--bg-hover);
+        transform: translateX(5px);
+        border-color: var(--primary-light);
+    }
+
+    /* Activity Icon */
+    .recent-activity .activity-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: var(--primary);
+        font-size: 18px;
+    }
+
+    /* Activity Content */
+    .recent-activity .activity-content {
+        flex: 1;
+    }
+
+    .recent-activity .activity-content p {
+        margin: 0 0 5px 0;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.4;
+    }
+
+    .recent-activity .activity-content small {
+        color: var(--text-secondary);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .recent-activity .activity-content small::before {
+        content: '\f017';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 400;
+        font-size: 11px;
+    }
+
+    /* Loading State */
+    .recent-activity .activity-item.loading {
+        opacity: 0.7;
+    }
+
+    .recent-activity .activity-item.loading .activity-icon {
+        background: var(--bg-tertiary);
+    }
+
+    /* Error State */
+    .recent-activity .activity-item.error {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: var(--danger);
+    }
+
+    .recent-activity .activity-item.error .activity-icon {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+    }
+
+    /* Placeholder Text Animation */
+    .recent-activity .placeholder-text {
+        background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+        background-size: 200% 100%;
+        animation: loading-pulse 1.5s infinite;
+        border-radius: 4px;
+        height: 14px;
+        margin: 5px 0;
+    }
+
+    .recent-activity .placeholder-text:first-child {
+        width: 80%;
+    }
+
+    .recent-activity .placeholder-text:last-child {
+        width: 60%;
+    }
+
+    /* Pulse Dot Animation */
+    .recent-activity .pulse-dot {
+        width: 12px;
+        height: 12px;
+        background: var(--primary);
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+        50% {
+            transform: scale(1.2);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+    }
+
+    @keyframes loading-pulse {
+        0% {
+            background-position: 200% 0;
+        }
+        100% {
+            background-position: -200% 0;
+        }
+    }
+
+    /* Dark Mode Styles */
+    .dark-mode .recent-activity {
+        background: var(--card-bg-dark);
+    }
+
+    .dark-mode .recent-activity .activity-item {
+        background: var(--bg-secondary-dark);
+    }
+
+    .dark-mode .recent-activity .activity-item:hover {
+        background: var(--bg-hover-dark);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .recent-activity {
+            padding: 16px;
+            margin-top: 20px;
+        }
+
+        .recent-activity .activity-header h3 {
+            font-size: 16px;
+        }
+
+        .recent-activity .activity-item {
+            padding: 12px;
+            gap: 12px;
+        }
+
+        .recent-activity .activity-icon {
+            width: 35px;
+            height: 35px;
+            min-width: 35px;
+            font-size: 14px;
+        }
+
+        .recent-activity .activity-content p {
+            font-size: 13px;
+        }
+
+        .recent-activity .activity-container {
+            max-height: 350px;
+        }
+    }
+
+    /* Desktop Hover Effects */
+    @media (min-width: 769px) {
+        .recent-activity .activity-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .recent-activity .activity-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(74, 108, 247, 0.05), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .recent-activity .activity-item:hover::before {
+            left: 100%;
+        }
+    }
+
+    /* Empty State */
+    .recent-activity .activity-list:empty::before {
+        content: 'No recent activities';
+        display: block;
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    /* Scroll Indicator */
+    .recent-activity .activity-container.scrollable::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 30px;
+        background: linear-gradient(to bottom, transparent, var(--card-bg));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .recent-activity .activity-container.scrollable.scrolled::after {
+        opacity: 1;
+    }
+
+    /* Activity Types Styling */
+    .recent-activity .activity-item[data-type="user"] .activity-icon {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .recent-activity .activity-item[data-type="job"] .activity-icon {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .recent-activity .activity-item[data-type="course"] .activity-icon {
+        background: rgba(74, 108, 247, 0.1);
+        color: #4a6cf7;
+    }
+
+    .recent-activity .activity-item[data-type="internship"] .activity-icon {
+        background: rgba(139, 92, 246, 0.1);
+        color: #8b5cf6;
+    }
+
+    .recent-activity .activity-item[data-type="message"] .activity-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .recent-activity .activity-item[data-type="blog"] .activity-icon {
+        background: rgba(236, 72, 153, 0.1);
+        color: #ec489a;
+    }
+
     /* ============================================ */
     /* MOBILE RESPONSIVE (max-width: 992px) */
     /* ============================================ */
@@ -7893,7 +8239,7 @@
 
       .notification-list {
         position: fixed;
-        top: calc(var(--mobile-header-height) + 3px);
+        top: calc(var(--mobile-header-height));
         left: 10px;
         right: 10px;
         width: auto;
