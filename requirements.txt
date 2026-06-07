@@ -5,42 +5,37 @@ Flask-Cors==4.0.0
 python-dotenv==1.0.1
 Werkzeug==2.3.7
 
-# --- Supabase SDK Stack (Compatible Versions) ---
-supabase==1.2.5
-gotrue==1.3.0
-postgrest==0.16.0
-storage3==0.7.0
-realtime==1.0.0
+# --- Supabase SDK Stack (Let pip resolve) ---
+supabase
 
 # --- HTTP Client ---
-httpx==0.25.2
-httpcore==1.0.9
+httpx
 
 # --- Scheduler / Background Tasks ---
 APScheduler==3.10.4
 
 # --- Utilities ---
-requests==2.32.3
-fuzzywuzzy==0.18.0
-python-Levenshtein==0.25.1
-Pillow==10.4.0
-itsdangerous==2.1.2
-blinker==1.9.0
+requests
+fuzzywuzzy
+python-Levenshtein
+Pillow
+itsdangerous
+blinker
 
 # --- User Agent Parsing ---
-user-agents==2.2.0
+user-agents
 
 # --- Email Support ---
-email-validator==2.1.0
+email-validator
 
 # --- Database & Date Handling ---
-python-dateutil==2.8.2
-pytz==2025.2
+python-dateutil
+pytz
 
 # --- Security ---
-cryptography==46.0.3
-passlib==1.7.4
-bcrypt==4.1.2
+cryptography
+passlib
+bcrypt
 
 # --- Retry Logic ---
-tenacity==9.1.4
+tenacity
