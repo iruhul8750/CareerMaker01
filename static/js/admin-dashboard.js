@@ -13,7 +13,8 @@
         newsletter: 1,
         testimonials: 1,
         'expired-content': 1,
-        trash: 1  // Add this line
+        trash: 1,
+        admins: 1
     };
 
     let selectedItems = {
@@ -23,7 +24,8 @@
         blog: [],
         users: [],
         messages: [],
-        newsletter: []
+        newsletter: [],
+        admins: []
     };
 
     let currentSection = sessionStorage.getItem('currentSection') || 'dashboard';
@@ -1848,19 +1850,34 @@
             return Promise.resolve();
         }
 
+        // Handle expired-content section separately
+        if (section === 'expired-content') {
+            console.log('⏰ Loading expired content section');
+            currentExpiredPage = page;
+            return loadExpiredContentData(page, search);
+        }
+
+        // Handle trash section separately
+        if (section === 'trash') {
+            console.log('🗑️ Loading trash section');
+            currentTrashPage = page;
+            return loadTrashItems(page, search);
+        }
+
         showLoading();
 
         let endpoint = '';
         let params = new URLSearchParams();
 
         params.append('page', page);
+        params.append('per_page', itemsPerPage);
 
         // Add search parameter if provided
         if (search && search.trim() !== '') {
             params.append('search', search.trim());
         }
 
-        // Add all filters to params - THIS IS THE KEY PART
+        // Add all filters to params
         Object.keys(filters).forEach(key => {
             if (filters[key] && filters[key] !== '') {
                 params.append(key, filters[key]);
@@ -1889,6 +1906,9 @@
                 break;
             case 'newsletter':
                 endpoint = '/api/admin/newsletter';
+                break;
+            case 'admins':
+                endpoint = '/api/admin/admins/list';
                 break;
             default:
                 console.warn(`❌ Unknown section: ${section}`);
@@ -1920,7 +1940,7 @@
                 updatePaginationInfo(section, data.count, page);
             }
 
-            // Show success notification
+            // Show success notification (optional - can be removed for silent loads)
             const itemCount = data.data ? data.data.length : 0;
             showNotification(`Loaded ${itemCount} ${section} items`, 'success');
         })
@@ -1955,16 +1975,13 @@
             const row = document.createElement('tr');
             row.innerHTML = generateTableRowHTML(section, item, index);
             tableBody.appendChild(row);
-            addRowEventListeners(section, item.id, row);
+            addRowEventListeners(section, item.id, row); // This ensures event listeners are added for EVERY row including search results
         });
 
         selectedItems[section] = [];
         updateSelectAllCheckbox(section);
         updateBulkButtonState(section, 0);
-
-        //  Reset header count when data reloads
         updateHeaderSelectedCount(section, 0);
-
     }
 
     function generateTableRowHTML(section, item, index) {
@@ -2103,6 +2120,46 @@
                 `;
                 break;
 
+            case 'admins':
+                const roleText = item.is_superadmin ? 'Super Admin' : 'Admin';
+                const roleIcon = item.is_superadmin ? '<i class="fas fa-crown"></i>' : '<i class="fas fa-user-shield"></i>';
+                const roleClass = item.is_superadmin ? 'superadmin-role' : 'admin-role';
+                const fullName = item.full_name || item.username || 'N/A';
+
+                html += `
+                    <td><strong>${escapeHTML(fullName)}</strong></td>
+                    <td>${escapeHTML(item.username || 'N/A')}</td>
+                    <td style="word-break: break-all;">${escapeHTML(item.email || 'N/A')}</td>
+                    <td><span class="role-badge ${roleClass}">${roleIcon} ${roleText}</span></td>
+                    <td>${formatDate(item.created_at)}</td>
+                    <td>${item.last_login ? formatDate(item.last_login, true) : 'Never'}</td>
+                    <td>
+                        <div class="status-toggle">
+                            <label class="switch">
+                                <input type="checkbox" class="status-toggle-checkbox"
+                                       ${item.is_active ? 'checked' : ''}
+                                       data-id="${item.id}">
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="status-text">${item.is_active ? 'Active' : 'Inactive'}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon view-item" data-id="${item.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon edit-item" data-id="${item.id}" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon delete-item" data-id="${item.id}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                break;
+
             case 'messages':
                 html += `
                     <td>${escapeHTML(item.name)}</td>
@@ -2185,6 +2242,7 @@
             viewBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log(`View button clicked for ${section} ${id}`);
                 openViewModal(section, id);
             });
         }
@@ -2223,6 +2281,7 @@
                 }
                 updateSelectAllCheckbox(section);
                 updateBulkButtonState(section, selectedItems[section].length);
+                updateHeaderSelectedCount(section, selectedItems[section].length);
             });
         }
 
@@ -2269,23 +2328,22 @@
     // ========== 6. SEARCH & FILTER FUNCTIONS ==========
     // ============================================
 
-    // Filter setup
+    // Filter setup with AUTO-SEARCH
     function setupSearchFilters() {
-        // Search functionality - ONLY on button click or Enter key
+        // Search functionality - WITH AUTO-SEARCH (debounced)
         document.querySelectorAll('.search-box').forEach(searchBox => {
             const searchInput = searchBox.querySelector('input');
             const searchBtn = searchBox.querySelector('.search-btn');
 
-            if (!searchInput || !searchBtn) return;
+            if (!searchInput) return;
 
-            // Remove any existing listeners by cloning
-            const newSearchBtn = searchBtn.cloneNode(true);
-            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+            // Store debounce timeout
+            let debounceTimeout = null;
+            let isSearching = false;
 
-            // Search button click handler
-            newSearchBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+            // Function to perform search
+            const performSearch = (shouldShowLoading = true) => {
+                if (isSearching) return;
 
                 const section = searchBox.closest('.admin-section');
                 if (!section) return;
@@ -2293,13 +2351,25 @@
                 const sectionId = section.id;
                 const searchTerm = searchInput.value.trim();
 
-                // Show loading state on button
-                const originalHTML = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                this.disabled = true;
+                console.log(`🔍 Auto-search in ${sectionId}: "${searchTerm}"`);
 
                 // Get current filters
                 const filters = getCurrentFilters(sectionId);
+
+                // Show loading state on search button if available
+                if (searchBtn && shouldShowLoading) {
+                    const originalHTML = searchBtn.innerHTML;
+                    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    searchBtn.disabled = true;
+
+                    // Restore button after delay
+                    setTimeout(() => {
+                        if (searchBtn) {
+                            searchBtn.innerHTML = originalHTML;
+                            searchBtn.disabled = false;
+                        }
+                    }, 500);
+                }
 
                 // Reset to page 1 and load data with search and filters
                 if (sectionId === 'testimonials') {
@@ -2320,24 +2390,101 @@
                     }
                     loadSectionData(sectionId, 1, searchTerm, filters);
                 }
+            };
 
-                // Restore button after delay
-                setTimeout(() => {
-                    this.innerHTML = originalHTML;
-                    this.disabled = false;
-                }, 1000);
+            // AUTO-SEARCH: Input event with debouncing
+            searchInput.addEventListener('input', function(e) {
+                e.preventDefault();
+
+                // Clear previous timeout
+                if (debounceTimeout) {
+                    clearTimeout(debounceTimeout);
+                }
+
+                // Set new timeout (300ms delay for better UX)
+                debounceTimeout = setTimeout(() => {
+                    performSearch(true);
+                }, 300);
             });
 
-            // Enter key also triggers search
+            // Keep the search button functionality (for manual search)
+            if (searchBtn) {
+                // Remove any existing listeners by cloning
+                const newSearchBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+
+                // Search button click handler (manual search - immediate)
+                newSearchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Clear any pending auto-search
+                    if (debounceTimeout) {
+                        clearTimeout(debounceTimeout);
+                    }
+
+                    performSearch(true);
+                });
+            }
+
+            // Keep Enter key support
             searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    newSearchBtn.click();
+
+                    // Clear any pending auto-search
+                    if (debounceTimeout) {
+                        clearTimeout(debounceTimeout);
+                    }
+
+                    performSearch(true);
                 }
             });
+
+            // Optional: Add clear button when search has content
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'search-clear-btn';
+            clearBtn.innerHTML = '<i class="fas fa-times"></i>';
+            clearBtn.style.cssText = `
+                position: absolute;
+                right: 40px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                color: #999;
+                cursor: pointer;
+                display: none;
+                padding: 5px;
+                font-size: 12px;
+            `;
+
+            // Add clear button to search box
+            if (!searchBox.querySelector('.search-clear-btn')) {
+                searchBox.style.position = 'relative';
+                searchBox.appendChild(clearBtn);
+
+                // Show/hide clear button based on input value
+                searchInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearBtn.style.display = 'block';
+                    } else {
+                        clearBtn.style.display = 'none';
+                    }
+                });
+
+                // Clear search on button click
+                clearBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchInput.value = '';
+                    clearBtn.style.display = 'none';
+                    performSearch(true);
+                });
+            }
         });
 
-        // DROP DOWN FILTER FUNCTIONALITY
+        // DROP DOWN FILTER FUNCTIONALITY (unchanged)
         document.querySelectorAll('.filter-select').forEach(select => {
             const newSelect = select.cloneNode(true);
             select.parentNode.replaceChild(newSelect, select);
@@ -2419,6 +2566,13 @@
                 const userStatusFilter = document.getElementById('userStatusFilter');
                 if (userStatusFilter && userStatusFilter.value) {
                     filters.status = userStatusFilter.value;
+                }
+                break;
+
+            case 'admins':  // ADDED: Admin status filter
+                const adminStatusFilter = document.getElementById('adminStatusFilter');
+                if (adminStatusFilter && adminStatusFilter.value) {
+                    filters.status = adminStatusFilter.value;
                 }
                 break;
 
@@ -3989,7 +4143,89 @@
             return;
         }
 
-        // Map section to API endpoint
+        // Handle admin section - Added without breaking existing functionality
+        if (section === 'admins') {
+            showLoading();
+
+            fetch(`/api/admin/admins/${id}`, {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch admin details`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideLoading();
+
+                if (data.success && data.admin) {
+                    const modal = document.getElementById('contentViewModal');
+                    if (!modal) return;
+
+                    const modalTitle = modal.querySelector('.modal-title');
+                    if (modalTitle) {
+                        modalTitle.textContent = 'Admin Details';
+                    }
+
+                    const contentBody = modal.querySelector('#contentViewBody');
+                    if (contentBody) {
+                        const roleText = data.admin.is_superadmin ? 'Super Admin' : 'Admin';
+                        const roleIcon = data.admin.is_superadmin ? '<i class="fas fa-crown"></i>' : '<i class="fas fa-user-shield"></i>';
+                        const roleClass = data.admin.is_superadmin ? 'superadmin-role' : 'admin-role';
+
+                        contentBody.innerHTML = `
+                            <div class="view-field">
+                                <label>Full Name:</label>
+                                <span>${escapeHTML(data.admin.full_name || data.admin.username)}</span>
+                            </div>
+                            <div class="view-field">
+                                <label>Username:</label>
+                                <span>${escapeHTML(data.admin.username)}</span>
+                            </div>
+                            <div class="view-field">
+                                <label>Email:</label>
+                                <span>${escapeHTML(data.admin.email)}</span>
+                            </div>
+                            <div class="view-field">
+                                <label>Role:</label>
+                                <span class="role-badge ${roleClass}">${roleIcon} ${roleText}</span>
+                            </div>
+                            <div class="view-field">
+                                <label>Status:</label>
+                                <span class="status-badge ${data.admin.is_active ? 'active' : 'inactive'}">
+                                    ${data.admin.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div class="view-field">
+                                <label>Joined:</label>
+                                <span>${formatDate(data.admin.created_at, true)}</span>
+                            </div>
+                            <div class="view-field">
+                                <label>Last Login:</label>
+                                <span>${data.admin.last_login ? formatDate(data.admin.last_login, true) : 'Never'}</span>
+                            </div>
+                        `;
+                    }
+
+                    modal.style.display = 'block';
+                } else {
+                    showNotification('Failed to load admin details', 'error');
+                }
+            })
+            .catch(error => {
+                console.error(`Error loading admin item:`, error);
+                showNotification(`Failed to load admin details`, 'error');
+                hideLoading();
+            });
+            return;
+        }
+
+        // Map section to API endpoint for OTHER sections (existing functionality unchanged)
         let apiSection = section;
         if (section === 'blog') apiSection = 'blog';
         if (section === 'users') apiSection = 'users';

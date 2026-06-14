@@ -6071,7 +6071,7 @@ def bulk_update_resource_status(resource):
 def get_admin_resources(resource):
     try:
         # Validate resource type
-        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials']
+        valid_resources = ['courses', 'jobs', 'internships', 'blog', 'users', 'messages', 'newsletter', 'testimonials', 'admins']
         if resource not in valid_resources:
             return jsonify({'error': 'Invalid resource type'}), 400
 
@@ -6090,7 +6090,8 @@ def get_admin_resources(resource):
             'blog': 'blog_posts',
             'messages': 'contact_messages',
             'newsletter': 'newsletter_subscribers',
-            'testimonials': 'testimonials'
+            'testimonials': 'testimonials',
+            'admins': 'admins'
         }
         table_name = table_map.get(resource, resource)
 
@@ -6126,6 +6127,11 @@ def get_admin_resources(resource):
             elif status_filter == 'inactive':
                 query = query.eq('is_active', False)
 
+        if resource == 'admins' and status_filter:
+            if status_filter == 'active':
+                query = query.eq('is_active', True)
+            elif status_filter == 'inactive':
+                query = query.eq('is_active', False)
         if resource == 'messages' and status_filter:
             query = query.eq('status', status_filter)
 
@@ -6150,9 +6156,11 @@ def get_admin_resources(resource):
             elif resource == 'internships':
                 query = query.or_(f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
             elif resource == 'blog':
-                query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
+                query = query.or_(f"title.ilike.%{search}%,author.ilike.%{search}%")
             elif resource == 'users':
                 query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
+            elif resource == 'admins':
+                query = query.or_(f"username.ilike.%{search}%,email.ilike.%{search}%,full_name.ilike.%{search}%")
             elif resource == 'messages':
                 query = query.or_(f"name.ilike.%{search}%,email.ilike.%{search}%,subject.ilike.%{search}%")
             elif resource == 'newsletter':
@@ -6244,7 +6252,7 @@ def get_admin_resources(resource):
                         f"title.ilike.%{search}%,company.ilike.%{search}%,location.ilike.%{search}%")
                 elif resource == 'blog':
                     count_query = count_query.or_(
-                        f"title.ilike.%{search}%,author.ilike.%{search}%,categories.ilike.%{search}%")
+                        f"title.ilike.%{search}%,author.ilike.%{search}%")
                 elif resource == 'users':
                     count_query = count_query.or_(
                         f"username.ilike.%{search}%,email.ilike.%{search}%,role.ilike.%{search}%")
@@ -7077,7 +7085,7 @@ def format_date_filter(value, format='%b %d, %Y'):
         return str(value)[:10] if value else 'Unknown date'
 
 
-# ===== TESTIMONIAL ADMIN ROUTES - FIXED =====
+# ===== TESTIMONIAL ADMIN ROUTES  =====
 
 @app.route('/api/admin/testimonials/stats')
 @admin_required
