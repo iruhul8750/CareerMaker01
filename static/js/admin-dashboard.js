@@ -1777,6 +1777,9 @@
             // Update all dashboard stats
             updateDashboardStats(data);
 
+            // Update messages menu badge with unread count
+            updateMessagesMenuBadge(data.unread_messages || 0);
+
             // Update activities if available
             if (data.activities && Array.isArray(data.activities)) {
                 console.log(`📝 Found ${data.activities.length} activities`);
@@ -1848,6 +1851,16 @@
                 }
             }
             return Promise.resolve();
+        }
+
+        if (section === 'messages') {
+            // After loading messages, update the badge
+            fetch('/api/admin/dashboard-stats', { credentials: 'include' })
+                .then(response => response.json())
+                .then(data => {
+                    updateMessagesMenuBadge(data.unread_messages || 0);
+                })
+                .catch(error => console.error('Error updating messages badge:', error));
         }
 
         // Handle expired-content section separately
@@ -3693,6 +3706,20 @@
             submitButton.disabled = false;
             submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
         });
+    }
+
+    // Update messages menu badge with unread count
+    function updateMessagesMenuBadge(count) {
+        const menuBadge = document.getElementById('messagesMenuBadge');
+        if (menuBadge) {
+            if (count > 0) {
+                menuBadge.textContent = count > 99 ? '99+' : count;
+                menuBadge.style.display = 'inline-block';
+                menuBadge.className = 'menu-badge danger';
+            } else {
+                menuBadge.style.display = 'none';
+            }
+        }
     }
 
     // ============================================
