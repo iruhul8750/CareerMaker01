@@ -4850,8 +4850,177 @@ def handle_404_error(error):
 
 # ===== ADMIN ROUTES =====
 
+# ===== ADMIN SETUP FUNCTIONS =====
+
+def check_admin_exists():
+    """Check if any admin exists in the database"""
+    try:
+        response = supabase_admin.table('admins') \
+            .select('id') \
+            .eq('is_deleted', False) \
+            .limit(1) \
+            .execute()
+        return len(response.data) > 0
+    except Exception as e:
+        logger.error(f"Error checking admin existence: {str(e)}")
+        return False
+
+
+def create_first_admin(email, username, full_name, password):
+    """Create the first admin user"""
+    try:
+        # Hash the password
+        hashed_password = hash_password(password)
+
+        # Create admin in database
+        admin_data = {
+            'email': email,
+            'username': username,
+            'full_name': full_name,
+            'password_hash': hashed_password,
+            'is_superadmin': True,  # First admin is always superadmin
+            'is_active': True,
+            'is_deleted': False,
+            'created_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').insert(admin_data).execute()
+
+        if response.data:
+            logger.info(f"✅ First admin created: {username} ({email})")
+            return True, "Admin created successfully!"
+        else:
+            return False, "Failed to create admin"
+
+    except Exception as e:
+        logger.error(f"Error creating first admin: {str(e)}")
+        return False, str(e)
+
+
+def is_setup_allowed():
+    """Check if setup is allowed (no admins exist)"""
+    return not check_admin_exists()
+
+
+# ===== ADMIN SETUP ROUTES =====
+
+@app.route('/admin/setup', methods=['GET'])
+def admin_setup():
+    """First-time admin setup page"""
+    # If admin already exists, redirect to login
+    if check_admin_exists():
+        flash('Admin account already exists. Please login.', 'info')
+        return redirect(url_for('admin_login'))
+
+    # Check if this is the first visit using a cookie
+    setup_completed = request.cookies.get('admin_setup_completed', 'false') == 'true'
+    if setup_completed and check_admin_exists():
+        return redirect(url_for('admin_login'))
+
+    return render_template('admin/admin-setup.html')
+
+
+@app.route('/api/admin/setup', methods=['POST'])
+def admin_setup_api():
+    """API endpoint to create the first admin"""
+    try:
+        # Check if admin already exists (security check)
+        if check_admin_exists():
+            return jsonify({
+                'success': False,
+                'error': 'Admin already exists. Setup is not allowed.'
+            }), 403
+
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ['email', 'username', 'full_name', 'password', 'confirm_password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'error': f'{field.replace("_", " ").title()} is required'
+                }), 400
+
+        email = data['email'].strip().lower()
+        username = data['username'].strip()
+        full_name = data['full_name'].strip()
+        password = data['password']
+        confirm_password = data['confirm_password']
+
+        # Validate password match
+        if password != confirm_password:
+            return jsonify({
+                'success': False,
+                'error': 'Passwords do not match'
+            }), 400
+
+        # Validate password strength
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+
+        # Validate email format
+        if '@' not in email or '.' not in email:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid email format'
+            }), 400
+
+        # Validate username format (letters, numbers, underscore)
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return jsonify({
+                'success': False,
+                'error': 'Username can only contain letters, numbers, and underscores'
+            }), 400
+
+        # Double-check no admin exists (race condition protection)
+        if check_admin_exists():
+            return jsonify({
+                'success': False,
+                'error': 'Admin already exists. Setup is not allowed.'
+            }), 403
+
+        # Create the admin
+        success, message = create_first_admin(email, username, full_name, password)
+
+        if success:
+            # Set a cookie to prevent showing setup page again
+            response = jsonify({
+                'success': True,
+                'message': message,
+                'redirect': '/admin/login'
+            })
+            response.set_cookie('admin_setup_completed', 'true', max_age=31536000)  # 1 year
+            return response
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Admin setup error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Setup failed. Please try again.'
+        }), 500
+
+
+# ===== MODIFIED ADMIN LOGIN ROUTE =====
+
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
+    # Check if any admin exists - if not, redirect to setup
+    if not check_admin_exists():
+        flash('No admin exists. Please set up your admin account first.', 'warning')
+        return redirect(url_for('admin_setup'))
+
     # Check for logout message
     message = request.args.get('message')
     if message == 'logout_success':
@@ -4860,9 +5029,12 @@ def admin_login():
     session.pop('admin_logout_initiated', None)
 
     if request.method == 'GET':
+        # If user is already logged in, redirect to dashboard
+        if session.get('admin_logged_in'):
+            return redirect(url_for('admin_dashboard'))
         return render_template('admin/admin-login.html')
 
-    # POST request handling
+    # POST request handling (existing code)
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
 
@@ -4891,8 +5063,6 @@ def admin_login():
             .maybe_single() \
             .execute()
 
-        # FIXED: Check if response is None or response.data is None/empty
-        # SINGLE VALIDATION for both wrong username AND wrong password
         admin = None
         password_valid = False
 
