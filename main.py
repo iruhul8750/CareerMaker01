@@ -4925,14 +4925,18 @@ def admin_setup():
 def admin_setup_api():
     """API endpoint to create the first admin"""
     try:
+        print("🔵 Admin setup API called")
+
         # Check if admin already exists (security check)
         if check_admin_exists():
+            print("❌ Admin already exists")
             return jsonify({
                 'success': False,
                 'error': 'Admin already exists. Setup is not allowed.'
             }), 403
 
         data = request.get_json()
+        print(f"📥 Received data: {data}")
 
         # Validate required fields
         required_fields = ['email', 'username', 'full_name', 'password', 'confirm_password']
@@ -4990,22 +4994,25 @@ def admin_setup_api():
         success, message = create_first_admin(email, username, full_name, password)
 
         if success:
-            # Set a cookie to prevent showing setup page again
+            print(f"✅ Admin created successfully: {username}")
             response = jsonify({
                 'success': True,
                 'message': message,
                 'redirect': '/admin/login'
             })
-            response.set_cookie('admin_setup_completed', 'true', max_age=31536000)  # 1 year
+            response.set_cookie('admin_setup_completed', 'true', max_age=31536000)
             return response
         else:
+            print(f"❌ Failed to create admin: {message}")
             return jsonify({
                 'success': False,
                 'error': message
             }), 500
 
     except Exception as e:
-        logger.error(f"Admin setup error: {str(e)}")
+        print(f"❌ Admin setup error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': 'Setup failed. Please try again.'
