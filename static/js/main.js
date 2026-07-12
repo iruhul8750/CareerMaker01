@@ -950,6 +950,7 @@
     // =============================================
     // OTP Verification System
     // =============================================
+
     function showOTPVerificationModal(email, username = null, password = null, purpose = 'registration') {
         document.querySelectorAll('.modal').forEach(m => m.remove());
 
@@ -968,7 +969,6 @@
                     ${password ? `<input type="hidden" name="password" value="${password}">` : ''}
                     <input type="hidden" name="purpose" value="${purpose}">
 
-                    <!-- Fixed OTP input without floating label -->
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="otpCode" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Please Enter The OTP Code To Verify</label>
                         <input type="text" id="otpCode" name="otp" maxlength="6" required
@@ -1310,6 +1310,7 @@
     // =============================================
     // Registration Form
     // =============================================
+
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         // Password validation UI
@@ -1320,26 +1321,38 @@
             requirementsContainer.innerHTML = `
                 <p class="requirements-title">Password must contain:</p>
                 <ul class="requirements-list">
-                    <li class="requirement" data-requirement="length">At least 8 characters</li>
-                    <li class="requirement" data-requirement="uppercase">At least one uppercase letter</li>
-                    <li class="requirement" data-requirement="number">At least one number</li>
-                    <li class="requirement" data-requirement="special">At least one special character</li>
+                    <li class="requirement" data-requirement="length">❌ At least 8 characters</li>
+                    <li class="requirement" data-requirement="uppercase">❌ At least one uppercase letter</li>
+                    <li class="requirement" data-requirement="lowercase">❌ At least one lowercase letter</li>
+                    <li class="requirement" data-requirement="number">❌ At least one number</li>
+                    <li class="requirement" data-requirement="special">❌ At least one special character</li>
                 </ul>`;
             passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
 
             const requirements = {
                 length: registerForm.querySelector('[data-requirement="length"]'),
                 uppercase: registerForm.querySelector('[data-requirement="uppercase"]'),
+                lowercase: registerForm.querySelector('[data-requirement="lowercase"]'),
                 number: registerForm.querySelector('[data-requirement="number"]'),
                 special: registerForm.querySelector('[data-requirement="special"]')
             };
 
             passwordInput.addEventListener('input', function() {
                 const value = this.value;
-                requirements.length.classList.toggle('valid', value.length >= 8);
-                requirements.uppercase.classList.toggle('valid', /[A-Z]/.test(value));
-                requirements.number.classList.toggle('valid', /\d/.test(value));
-                requirements.special.classList.toggle('valid', /[!@#$%^&*(),.?":{}|<>]/.test(value));
+                requirements.length.textContent = value.length >= 8 ? '✅ At least 8 characters' : '❌ At least 8 characters';
+                requirements.length.style.color = value.length >= 8 ? '#10b981' : '#dc3545';
+
+                requirements.uppercase.textContent = /[A-Z]/.test(value) ? '✅ At least one uppercase letter' : '❌ At least one uppercase letter';
+                requirements.uppercase.style.color = /[A-Z]/.test(value) ? '#10b981' : '#dc3545';
+
+                requirements.lowercase.textContent = /[a-z]/.test(value) ? '✅ At least one lowercase letter' : '❌ At least one lowercase letter';
+                requirements.lowercase.style.color = /[a-z]/.test(value) ? '#10b981' : '#dc3545';
+
+                requirements.number.textContent = /\d/.test(value) ? '✅ At least one number' : '❌ At least one number';
+                requirements.number.style.color = /\d/.test(value) ? '#10b981' : '#dc3545';
+
+                requirements.special.textContent = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '✅ At least one special character' : '❌ At least one special character';
+                requirements.special.style.color = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '#10b981' : '#dc3545';
             });
         }
 
@@ -1377,6 +1390,7 @@
                 return;
             }
 
+            // Enhanced password validation
             if (!isPasswordStrong(password)) {
                 showFormError(formResponse, 'Password must meet all requirements');
                 this.querySelector('#registerPassword').focus();
@@ -1400,7 +1414,6 @@
             showLoader('Creating your account...');
 
             try {
-                // Send as JSON
                 const requestData = {
                     username: username,
                     email: email,
@@ -1422,9 +1435,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    // Handle specific error types
                     if (response.status === 400) {
-                        // Check for specific error messages
                         if (data.message && data.message.includes('Email already registered')) {
                             showFieldError(emailInput, data.message);
                             hideLoader();
@@ -1479,7 +1490,6 @@
             element.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
             element.style.display = 'block';
 
-            // Auto-hide after 5 seconds
             setTimeout(() => {
                 if (element) element.style.display = 'none';
             }, 5000);
@@ -1518,10 +1528,11 @@
             });
         }
 
-        // Helper functions
+        // Enhanced password strength check
         function isPasswordStrong(password) {
             return password.length >= 8 &&
                    /[A-Z]/.test(password) &&
+                   /[a-z]/.test(password) &&
                    /\d/.test(password) &&
                    /[!@#$%^&*(),.?":{}|<>]/.test(password);
         }
@@ -1529,20 +1540,6 @@
         function validateEmail(email) {
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return re.test(email);
-        }
-
-        function showFieldError(inputElement, message) {
-            inputElement.classList.add('input-error');
-            const errorElement = inputElement.nextElementSibling;
-            if (errorElement && errorElement.classList.contains('error-message')) {
-                errorElement.textContent = message;
-            } else {
-                const errorMsg = document.createElement('div');
-                errorMsg.className = 'error-message';
-                errorMsg.textContent = message;
-                inputElement.parentNode.insertBefore(errorMsg, inputElement.nextSibling);
-            }
-            inputElement.focus();
         }
     }
 
@@ -1610,7 +1607,7 @@
             this.bindEvents();
         },
 
-        // NEW: Reset all modals and data
+        // Reset all modals and data
         resetAllModals() {
             // Reset Step 1 Modal (Request)
             const requestForm = document.getElementById('passwordResetRequestForm');
@@ -1702,7 +1699,6 @@
                 clearInterval(this.resendTimer);
                 this.resendTimer = null;
             }
-            // Reset resend button UI
             const resendBtn = document.getElementById('resendResetOtp');
             const timerSpan = document.getElementById('resendResetTimer');
             if (resendBtn) {
@@ -1722,7 +1718,7 @@
                 if (btn) {
                     btn.onclick = () => {
                         this.closeAllModals();
-                        this.resetAllModals(); // Reset when closing
+                        this.resetAllModals();
                     };
                 }
             });
@@ -1757,7 +1753,7 @@
                 loginLink.onclick = (e) => {
                     e.preventDefault();
                     this.closeAllModals();
-                    this.resetAllModals(); // Reset when switching to login
+                    this.resetAllModals();
                     if (typeof openLoginModal === 'function') openLoginModal();
                 };
             }
@@ -1934,7 +1930,7 @@
                 if (data.status === 'success') {
                     this.showToast('Password reset successfully!', 'success');
                     this.closeAllModals();
-                    this.resetAllModals(); // Reset all data after successful reset
+                    this.resetAllModals();
                     setTimeout(() => {
                         if (typeof openLoginModal === 'function') openLoginModal();
                     }, 1500);
@@ -1971,7 +1967,6 @@
                 this.showToast(data.message || 'New OTP sent', data.status === 'success' ? 'success' : 'error');
 
                 if (data.status === 'success') {
-                    // Focus on OTP input after resend
                     setTimeout(() => {
                         if (otpCode) otpCode.focus();
                     }, 100);
@@ -2053,7 +2048,7 @@
     document.querySelectorAll('.forgot-password, a[href="/reset-password"]').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
-            PasswordResetModal.resetAllModals(); // Reset before opening
+            PasswordResetModal.resetAllModals();
             document.getElementById('passwordResetRequestModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         });
@@ -2100,8 +2095,6 @@
                     console.warn('❌ Logout modal not found after click');
                 }
             });
-        } else {
-            console.warn('⚠️ Logout button not found');
         }
 
         console.log('✅ Logout setup complete');
@@ -2109,37 +2102,27 @@
 
     function setupLogoutModal() {
         const logoutModal = document.getElementById('logoutModal');
-        if (!logoutModal) {
-            console.warn('⚠️ Logout modal not found, skipping modal setup');
-            return;
-        }
+        if (!logoutModal) return;
 
         const cancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
         const confirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
         const closeBtn = logoutModal.querySelector('#closeLogoutModal');
 
-        // Remove any existing event listeners first to prevent duplicates
-        if (cancelBtn) {
-            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-        }
-        if (closeBtn) {
-            closeBtn.replaceWith(closeBtn.cloneNode(true));
-        }
-        if (confirmBtn) {
-            confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-        }
+        // Remove any existing event listeners first
+        if (cancelBtn) cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        if (closeBtn) closeBtn.replaceWith(closeBtn.cloneNode(true));
+        if (confirmBtn) confirmBtn.replaceWith(confirmBtn.cloneNode(true));
 
-        // Get fresh references after cloning
+        // Get fresh references
         const freshCancelBtn = logoutModal.querySelector('#cancelLogoutBtn');
         const freshConfirmBtn = logoutModal.querySelector('#confirmLogoutBtn');
         const freshCloseBtn = logoutModal.querySelector('#closeLogoutModal');
 
-        // Cancel logout - FIXED
+        // Cancel logout
         if (freshCancelBtn) {
             freshCancelBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('❌ Logout cancelled');
                 logoutModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
             });
@@ -2150,24 +2133,22 @@
             freshCloseBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('❌ Logout modal closed');
                 logoutModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
             });
         }
 
-        // Confirm logout - SIMPLIFIED AND FIXED
+        // Confirm logout
         if (freshConfirmBtn) {
             freshConfirmBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('✅ Logout confirmed, executing...');
 
                 // Show loader
-                const loader = showLoader('Logging you out...');
+                showLoader('Logging you out...');
 
                 try {
-                    // Clear local storage first
+                    // Clear local storage
                     localStorage.removeItem('profilePicUrl');
                     localStorage.removeItem('profilePicTimestamp');
                     localStorage.removeItem('profilePicCacheBust');
@@ -2178,7 +2159,7 @@
                     logoutModal.style.display = 'none';
                     document.body.style.overflow = 'auto';
 
-                    // Perform logout request
+                    // Perform logout
                     const response = await fetch('/logout', {
                         method: 'POST',
                         credentials: 'include',
@@ -2188,34 +2169,27 @@
                         }
                     });
 
-                    // Show success message
                     showToast('You have been logged out successfully', 'success');
-
-                    // Store logout message for next page
                     sessionStorage.setItem('logoutMessage', 'You have been successfully logged out');
 
-                    // Wait a moment to show the toast, then redirect
                     setTimeout(() => {
                         hideLoader();
                         window.location.href = '/';
                     }, 1500);
 
                 } catch (error) {
-                    console.error('❌ Logout error:', error);
+                    console.error('Logout error:', error);
                     hideLoader();
                     showToast('Logout failed. Please try again.', 'error');
-
-                    // Ensure modal is closed on error
                     logoutModal.style.display = 'none';
                     document.body.style.overflow = 'auto';
                 }
             });
         }
 
-        // Close on overlay click - FIXED
+        // Close on overlay click
         logoutModal.addEventListener('click', function(e) {
             if (e.target === logoutModal) {
-                console.log('❌ Logout cancelled (overlay click)');
                 logoutModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
             }
