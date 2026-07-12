@@ -54,13 +54,6 @@ UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Email Configuration
-OTP_EXPIRY_MINUTES = 5
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
-SMTP_EMAIL = os.getenv('SMTP_EMAIL')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-
 # Password Hashing Configuration
 PBKDF2_ITERATIONS = 100000
 HASH_NAME = "sha256"
@@ -87,6 +80,227 @@ try:
 except Exception as e:
     logger.error(f"Supabase connection failed: {str(e)}")
 
+# =============================================
+# BREVO EMAIL CONFIGURATION
+# =============================================
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', 'noreply@yourdomain.com')
+BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'CareerMaker')
+
+# SMTP Email Configuration
+OTP_EXPIRY_MINUTES = 5
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
+SMTP_EMAIL = os.getenv('SMTP_EMAIL')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+
+# =============================================
+# SINGLE UNIFIED EMAIL FUNCTION
+# =============================================
+
+def send_email(to_email, subject, html_content, plain_text=None):
+    """
+    Send email: Brevo Primary, SMTP Fallback
+    """
+
+    # ===== 1. TRY BREVO (PRIMARY) =====
+    if BREVO_API_KEY:
+        try:
+            email_data = {
+                "sender": {
+                    "email": BREVO_SENDER_EMAIL,
+                    "name": BREVO_SENDER_NAME
+                },
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html_content
+            }
+
+            if plain_text:
+                email_data["textContent"] = plain_text
+
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": BREVO_API_KEY,
+                    "Content-Type": "application/json"
+                },
+                json=email_data,
+                timeout=30
+            )
+
+            if response.status_code == 201:
+                logger.info(f"✅ Email sent via Brevo to {to_email}")
+                return True
+            else:
+                logger.warning(f"⚠️ Brevo failed ({response.status_code}), trying SMTP fallback")
+
+        except Exception as e:
+            logger.warning(f"⚠️ Brevo exception: {str(e)}, trying SMTP fallback")
+    else:
+        logger.info("ℹ️ BREVO_API_KEY not set, using SMTP directly")
+
+    # ===== 2. FALLBACK TO SMTP =====
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        logger.error("❌ SMTP credentials not set")
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"{BREVO_SENDER_NAME} <{SMTP_EMAIL}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg['Reply-To'] = SMTP_EMAIL
+
+        # Plain text part
+        if plain_text:
+            text_part = MIMEText(plain_text, 'plain', 'utf-8')
+            msg.attach(text_part)
+        else:
+            plain_text = re.sub(r'<[^>]+>', '', html_content)
+            text_part = MIMEText(plain_text, 'plain', 'utf-8')
+            msg.attach(text_part)
+
+        # HTML part
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(html_part)
+
+        # Try SSL first
+        try:
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_EMAIL, SMTP_PASSWORD)
+                server.send_message(msg)
+            logger.info(f"✅ Email sent via SMTP (SSL) to {to_email}")
+            return True
+        except:
+            # Fallback to TLS
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_EMAIL, SMTP_PASSWORD)
+                server.send_message(msg)
+            logger.info(f"✅ Email sent via SMTP (TLS) to {to_email}")
+            return True
+
+    except Exception as e:
+        logger.error(f"❌ Both Brevo and SMTP failed: {str(e)}")
+        return False
+
+
+# =============================================
+# OTP EMAIL HELPERS
+# =============================================
+
+def send_otp_email(user_email, user_name, otp):
+    """Send OTP verification email"""
+    subject = "Your CareerMaker Verification Code"
+
+    plain_text = f"""Hello {user_name},
+
+Your CareerMaker verification code is: {otp}
+
+This code will expire in {OTP_EXPIRY_MINUTES} minutes.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+CareerMaker Team
+"""
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>CareerMaker Verification</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%); padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0; }}
+            .content {{ padding: 20px; background: #f8f9fa; border-radius: 0 0 8px 8px; }}
+            .otp-code {{ background: #f0f4ff; padding: 15px; border-radius: 8px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #4361ee; margin: 15px 0; }}
+            .footer {{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🎓 CareerMaker</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {user_name},</h2>
+            <p>Your verification code is:</p>
+            <div class="otp-code">{otp}</div>
+            <p>This code will expire in <strong>{OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+            <p>If you didn't request this code, please ignore this email.</p>
+            <br>
+            <p>Best regards,<br><strong>CareerMaker Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; {datetime.now().year} CareerMaker. All rights reserved.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(user_email, subject, html_content, plain_text)
+
+
+def send_password_reset_email(user_email, user_name, otp):
+    """Send password reset OTP email"""
+    subject = "CareerMaker Password Reset Request"
+
+    plain_text = f"""Hello {user_name},
+
+You requested to reset your CareerMaker password.
+
+Your password reset OTP is: {otp}
+
+This code will expire in {OTP_EXPIRY_MINUTES} minutes.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+CareerMaker Team
+"""
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%); padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0; }}
+            .content {{ padding: 20px; background: #f8f9fa; border-radius: 0 0 8px 8px; }}
+            .otp-code {{ background: #fff3cd; padding: 15px; border-radius: 8px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #856404; margin: 15px 0; }}
+            .warning {{ background: #fff3cd; padding: 10px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 10px 0; font-size: 14px; }}
+            .footer {{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🔐 Password Reset</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {user_name},</h2>
+            <p>You requested to reset your CareerMaker password.</p>
+            <div class="otp-code">{otp}</div>
+            <div class="warning">
+                <strong>⚠️ Important:</strong> This code will expire in <strong>{OTP_EXPIRY_MINUTES} minutes</strong>.
+            </div>
+            <p>If you didn't request this, please ignore this email.</p>
+            <br>
+            <p>Best regards,<br><strong>CareerMaker Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; {datetime.now().year} CareerMaker. All rights reserved.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(user_email, subject, html_content, plain_text)
 
 # Helper Functions
 def get_current_utc_time():
@@ -230,62 +444,6 @@ def generate_reset_token():
     return secrets.token_urlsafe(32)
 
 
-def send_email_smtp(to_email, subject, plain_text, html_content=None):
-    """Send email with SSL/TLS fallback, Unicode support, and HTML capability"""
-    try:
-        # Create message with proper encoding
-        msg = MIMEMultipart('alternative')
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg['Reply-To'] = SMTP_EMAIL
-
-        # Add plain text part with UTF-8 encoding
-        text_part = MIMEText(plain_text, 'plain', 'utf-8')
-        msg.attach(text_part)
-
-        # Add HTML part if provided
-        if html_content:
-            html_part = MIMEText(html_content, 'html', 'utf-8')
-            msg.attach(html_part)
-
-        # First try SSL
-        try:
-            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-                server.login(SMTP_EMAIL, SMTP_PASSWORD)
-                server.send_message(msg)
-            logger.info(f"✅ Email sent via SSL to {to_email}")
-            return True
-        except (smtplib.SMTPException, ssl.SSLError) as ssl_error:
-            logger.warning(f"SSL failed, trying TLS: {str(ssl_error)}")
-
-            # Fallback to TLS
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_EMAIL, SMTP_PASSWORD)
-                server.send_message(msg)
-            logger.info(f"✅ Email sent via TLS to {to_email}")
-            return True
-
-    except Exception as e:
-        logger.error(f"❌ Email sending failed for {to_email}: {str(e)}")
-        return False
-
-
-def send_otp_email(user_email, user_name, otp):
-    """Send OTP email using SMTP with SSL/TLS fallback"""
-    subject = "Your CareerMaker Verification Code"
-    message = f"""Hello {user_name},
-
-Your verification code is: {otp}
-
-This code will expire in {OTP_EXPIRY_MINUTES} minutes.
-
-If you didn't request this, please ignore this email.
-"""
-    return send_email_smtp(user_email, subject, message)
-
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -315,14 +473,14 @@ def handle_otp_resend(data):
             if existing_user.data:
                 return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
 
-        # Delete any existing OTPs
+        # Delete existing OTPs
         supabase_admin.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
 
-        # ✅ Generate plain OTP and hash it
+        # Generate OTP and hash it
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
 
-        # ✅ Store hashed OTP
+        # Store hashed OTP
         supabase_admin.table('otp_verification').insert({
             'email': email,
             'otp': hashed_otp,
@@ -330,13 +488,14 @@ def handle_otp_resend(data):
             'purpose': purpose
         }).execute()
 
+        # ✅ Send OTP using unified function
         username = data.get('username', 'User')
         email_sent = send_otp_email(email, username, otp)
 
         return jsonify({
             'status': 'success',
             'message': 'New OTP sent successfully',
-            'otp': otp if not email_sent else None  # For development
+            'otp': otp if not email_sent else None
         })
 
     except Exception as e:
@@ -1901,7 +2060,7 @@ def register():
         if not otp_response.data:
             raise Exception('Failed to store OTP in database')
 
-        # Send plain OTP to user
+        # ✅ Send OTP using unified function
         email_sent = send_otp_email(email, username, otp)
 
         return jsonify({
@@ -1939,26 +2098,26 @@ def resend_otp():
         # Delete any existing OTPs
         supabase_admin.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
 
-        # ✅ Generate plain OTP and hash it
+        # Generate OTP and hash it
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
 
-        # ✅ Store hashed OTP
+        # Store hashed OTP
         supabase_admin.table('otp_verification').insert({
             'email': email,
-            'otp': hashed_otp,  # Store hashed OTP
+            'otp': hashed_otp,
             'expires_at': expires_at,
             'purpose': purpose
         }).execute()
 
-        # ✅ Send plain OTP to user
+        # ✅ Send OTP using unified function
         username = data.get('username', 'User')
         email_sent = send_otp_email(email, username, otp)
 
         return jsonify({
             'status': 'success',
             'message': 'New OTP sent successfully',
-            'otp': otp if not email_sent else None  # For development only
+            'otp': otp if not email_sent else None
         })
 
     except Exception as e:
@@ -2010,10 +2169,10 @@ def verify_otp_route():
             return jsonify({'status': 'error', 'message': 'Invalid OTP'}), 400
 
         if purpose == 'registration':
-            # Hash the password
+            # Hash password
             password_hash = hash_password(password)
 
-            # OTP is valid - create the user
+            # Create user
             user_data = {
                 'username': username,
                 'email': email,
@@ -2028,12 +2187,11 @@ def verify_otp_route():
             if not user_response.data:
                 raise Exception('Failed to create user account')
 
-            # ✅ Store password in history
+            # Store password history
             user_id = user_response.data[0]['id']
             store_password_history(user_id, password_hash)
-            logger.info(f"✅ User {username} created with password history stored")
 
-        # Delete the used OTP
+        # Delete used OTP
         supabase_admin.table('otp_verification').delete().eq('id', otp_record.data['id']).execute()
 
         return jsonify({
@@ -2142,41 +2300,33 @@ def reset_password_request():
         user = supabase_admin.table('users').select('username', 'id').eq('email', email).maybe_single().execute()
 
         if not user.data:
-            # Return success even if email doesn't exist (security best practice)
             return jsonify({
                 'status': 'success',
                 'message': 'If an account exists, an OTP has been sent'
             })
 
-        # Delete any existing OTPs for this email
-        delete_response = supabase_admin.table('password_reset_otp').delete().eq('email', email).execute()
-        logger.info(f"✅ Deleted existing OTPs for {email}")
+        # Delete existing OTPs
+        supabase_admin.table('password_reset_otp').delete().eq('email', email).execute()
 
         # Generate OTP
         otp, expires_at = generate_otp()
 
-        # Store OTP (plain text for password reset - same as registration)
-        insert_response = supabase_admin.table('password_reset_otp').insert({
+        # Store OTP
+        supabase_admin.table('password_reset_otp').insert({
             'email': email,
-            'otp': otp,  # Plain OTP (6 digits)
+            'otp': otp,
             'expires_at': expires_at
         }).execute()
 
-        if not insert_response.data:
-            logger.error(f"❌ Failed to store OTP for {email}")
-            return jsonify({'status': 'error', 'message': 'Failed to generate OTP'}), 500
-
-        logger.info(f"✅ OTP stored for {email}: {otp}")
-
-        # Send OTP email
+        # ✅ Send password reset OTP using unified function
         username = user.data.get('username', 'User')
-        email_sent = send_otp_email(email, username, otp)
+        email_sent = send_password_reset_email(email, username, otp)
 
         return jsonify({
             'status': 'success',
             'message': 'OTP sent successfully',
             'email': email,
-            'otp': otp if not email_sent else None  # For development
+            'otp': otp if not email_sent else None
         })
 
     except Exception as e:
@@ -2204,7 +2354,6 @@ def reset_password_verify():
             .execute()
 
         if not otp_record.data:
-            logger.warning(f"❌ No OTP found for {email}")
             return jsonify({'status': 'error', 'message': 'No OTP found. Please request a new one.'}), 404
 
         # Check expiration
@@ -2212,16 +2361,12 @@ def reset_password_verify():
         current_time = get_current_utc_time()
 
         if expires_at <= current_time:
-            logger.warning(f"❌ OTP expired for {email}")
             return jsonify({'status': 'error', 'message': 'OTP has expired. Please request a new one.'}), 400
 
         # Verify plain OTP
         stored_otp = otp_record.data['otp']
         if stored_otp != otp:
-            logger.warning(f"❌ Invalid OTP for {email}. Stored: {stored_otp}, Provided: {otp}")
             return jsonify({'status': 'error', 'message': 'Invalid OTP code'}), 400
-
-        logger.info(f"✅ OTP verified for {email}")
 
         # OTP is valid - delete it
         supabase_admin.table('password_reset_otp').delete().eq('id', otp_record.data['id']).execute()
@@ -2237,15 +2382,12 @@ def reset_password_verify():
         token_response = supabase_admin.table('password_reset_tokens').insert({
             'email': email,
             'hashed_token': hashed_token,
-            'token': reset_token,  # Keep for backward compatibility
+            'token': reset_token,
             'expires_at': (current_time + timedelta(minutes=15)).isoformat()
         }).execute()
 
         if not token_response.data:
-            logger.error(f"❌ Failed to store reset token for {email}")
             return jsonify({'status': 'error', 'message': 'Failed to generate reset token'}), 500
-
-        logger.info(f"✅ Reset token generated for {email}")
 
         return jsonify({
             'status': 'success',
@@ -2286,7 +2428,7 @@ def reset_password_confirm():
             .maybe_single() \
             .execute()
 
-        # Fallback to plain token (backward compatibility)
+        # Fallback to plain token
         if not token_record.data:
             token_record = supabase_admin.table('password_reset_tokens').select('*') \
                 .eq('token', reset_token) \
@@ -2304,7 +2446,7 @@ def reset_password_confirm():
 
         email = token_record.data['email']
 
-        # ✅ Get user ID for password history
+        # Get user ID for password history
         user_response = supabase_admin.table('users').select('id', 'password_hash').eq('email',
                                                                                        email).maybe_single().execute()
         if not user_response.data:
@@ -2313,21 +2455,21 @@ def reset_password_confirm():
         user_id = user_response.data['id']
         current_password_hash = user_response.data['password_hash']
 
-        # ✅ Check if new password is same as current password
+        # Check if new password is same as current password
         if verify_password(current_password_hash, new_password):
             return jsonify({
                 'status': 'error',
-                'message': 'New password cannot be previously used password. Please choose a different password.'
+                'message': 'New password cannot be the same as current password.'
             }), 400
 
-        # ✅ Check if password was used before (last 5 passwords)
+        # Check password history
         if not check_password_history(user_id, new_password):
             return jsonify({
                 'status': 'error',
                 'message': 'You have used this password before. Please choose a different password.'
             }), 400
 
-        # Hash the new password
+        # Hash new password
         new_password_hash = hash_password(new_password)
 
         # Delete used token
@@ -2342,10 +2484,8 @@ def reset_password_confirm():
         if not update_response.data:
             return jsonify({'status': 'error', 'message': 'Failed to update password'}), 500
 
-        # ✅ Store password in history
-        history_stored = store_password_history(user_id, new_password_hash)
-        if not history_stored:
-            logger.warning(f"⚠️ Password history not stored for user {user_id}, but password was updated")
+        # Store password history
+        store_password_history(user_id, new_password_hash)
 
         return jsonify({
             'status': 'success',
@@ -4817,7 +4957,7 @@ Terms of Service: {request.host_url.rstrip('/')}/terms
 </body>
 </html>"""
 
-        return send_email_smtp(email, subject, plain_text, html_content)
+        return send_email(email, subject, plain_text, html_content)
     except Exception as e:
         logger.error(f"❌ Failed to send welcome email to {email}: {str(e)}")
         return False
@@ -4886,7 +5026,7 @@ If you have any questions, please contact us at support@careermaker.tech
 </body>
 </html>"""
 
-        return send_email_smtp(email, subject, plain_text, html_content)
+        return send_email(email, subject, plain_text, html_content)
     except Exception as e:
         logger.error(f"❌ Failed to send goodbye email to {email}: {str(e)}")
         return False
@@ -7860,7 +8000,7 @@ def admin_message_reply():
             return jsonify({'success': False, 'message': 'All fields are required'}), 400
 
         # Send email
-        email_sent = send_email_smtp(
+        email_sent = send_email(
             data['email'],
             data['subject'],
             data['message']
@@ -10578,20 +10718,22 @@ def internal_server_error(e):
 
 
 if __name__ == '__main__':
-    # Verify SMTP config
-    logger.debug("SMTP Configuration Verification:")
-    logger.debug(f"SMTP_EMAIL: {os.getenv('SMTP_EMAIL')}")
-    logger.debug(f"SMTP_SERVER: {os.getenv('SMTP_SERVER')}")
-    logger.debug(f"SMTP_PORT: {os.getenv('SMTP_PORT')}")
+    # Required environment variables
+    required_env_vars = ['SUPABASE_URL', 'SUPABASE_KEY']
 
-    required_env_vars = ['SUPABASE_URL', 'SUPABASE_KEY', 'SMTP_PASSWORD']
+    # Check if at least one email service is configured
+    has_brevo = bool(os.getenv('BREVO_API_KEY'))
+    has_smtp = bool(os.getenv('SMTP_EMAIL') and os.getenv('SMTP_PASSWORD'))
+
+    if not has_brevo and not has_smtp:
+        logger.warning("⚠️ No email service configured! Add BREVO_API_KEY or SMTP credentials.")
+
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
 
     if missing_vars:
         raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-    # make sure upload folder exists
+    # Make sure upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    if __name__ == "__main__":
-        app.run()
+    app.run()
