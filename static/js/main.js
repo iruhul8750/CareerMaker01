@@ -1435,7 +1435,9 @@
                 const data = await response.json();
 
                 if (!response.ok) {
+                    // Handle specific error types
                     if (response.status === 400) {
+                        // Check for specific error messages
                         if (data.message && data.message.includes('Email already registered')) {
                             showFieldError(emailInput, data.message);
                             hideLoader();
@@ -1443,6 +1445,14 @@
                         }
                         if (data.message && data.message.includes('Username')) {
                             showFieldError(usernameInput, data.message);
+                            hideLoader();
+                            return;
+                        }
+                        // ✅ Check for password history error (if implemented on backend)
+                        if (data.message && data.message.includes('used this password before')) {
+                            showFormError(formResponse, '⚠️ You have used this password before. Please choose a different password.');
+                            this.querySelector('#registerPassword').classList.add('input-error');
+                            this.querySelector('#registerConfirmPassword').classList.add('input-error');
                             hideLoader();
                             return;
                         }
@@ -1490,6 +1500,7 @@
             element.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
             element.style.display = 'block';
 
+            // Auto-hide after 5 seconds
             setTimeout(() => {
                 if (element) element.style.display = 'none';
             }, 5000);
@@ -1925,6 +1936,7 @@
                         confirm_password: confirmPassword
                     })
                 });
+
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -1935,10 +1947,26 @@
                         if (typeof openLoginModal === 'function') openLoginModal();
                     }, 1500);
                 } else {
-                    throw new Error(data.message);
+                    // ✅ Handle specific error messages
+                    let errorMessage = data.message || 'Failed to reset password';
+
+                    // ✅ Check for password reuse error
+                    if (errorMessage.includes('used this password before')) {
+                        errorMessage = '⚠️ You have used this password before. Please choose a different password.';
+                        // Highlight password fields
+                        document.getElementById('newPassword').classList.add('error');
+                        document.getElementById('confirmNewPassword').classList.add('error');
+                    } else if (errorMessage.includes('cannot be the same as current password')) {
+                        errorMessage = '⚠️ New password cannot be the same as your current password.';
+                        document.getElementById('newPassword').classList.add('error');
+                        document.getElementById('confirmNewPassword').classList.add('error');
+                    }
+
+                    this.showError(errorMessage, 'newPasswordResponse');
                 }
             } catch (error) {
-                this.showError(error.message, 'newPasswordResponse');
+                console.error('Password reset error:', error);
+                this.showError('Network error. Please try again.', 'newPasswordResponse');
             } finally {
                 this.setLoading('resetPasswordNewForm', false);
             }
