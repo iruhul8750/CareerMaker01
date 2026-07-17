@@ -5210,7 +5210,9 @@ def handle_404_error(error):
 
 # ===== ADMIN ROUTES =====
 
-# ===== ADMIN SETUP FUNCTIONS =====
+# =============================================
+# ADMIN SETUP WITH OTP VERIFICATION
+# =============================================
 
 def check_admin_exists():
     """Check if any admin exists in the database"""
@@ -5226,92 +5228,39 @@ def check_admin_exists():
         return False
 
 
-def create_first_admin(email, username, full_name, password):
-    """Create the first admin user"""
-    try:
-        # Hash the password
-        hashed_password = hash_password(password)
-
-        # Create admin in database
-        admin_data = {
-            'email': email,
-            'username': username,
-            'full_name': full_name,
-            'password_hash': hashed_password,
-            'is_superadmin': True,  # First admin is always superadmin
-            'is_active': True,
-            'is_deleted': False,
-            'created_at': get_current_utc_time().isoformat(),
-            'updated_at': get_current_utc_time().isoformat()
-        }
-
-        response = supabase_admin.table('admins').insert(admin_data).execute()
-
-        if response.data:
-            logger.info(f"✅ First admin created: {username} ({email})")
-            return True, "Admin created successfully!"
-        else:
-            return False, "Failed to create admin"
-
-    except Exception as e:
-        logger.error(f"Error creating first admin: {str(e)}")
-        return False, str(e)
-
-
-def is_setup_allowed():
-    """Check if setup is allowed (no admins exist)"""
-    return not check_admin_exists()
-
-
-# ===== ADMIN SETUP ROUTES =====
-
 @app.route('/admin/setup', methods=['GET'])
 def admin_setup():
     """First-time admin setup page"""
-    # If admin already exists, redirect to login
     if check_admin_exists():
         flash('Admin account already exists. Please login.', 'info')
-        return redirect(url_for('admin_login'))
-
-    # Check if this is the first visit using a cookie
-    setup_completed = request.cookies.get('admin_setup_completed', 'false') == 'true'
-    if setup_completed and check_admin_exists():
         return redirect(url_for('admin_login'))
 
     return render_template('admin/admin-setup.html')
 
 
-@app.route('/api/admin/setup', methods=['POST'])
-def admin_setup_api():
-    """API endpoint to create the first admin"""
+@app.route('/api/admin/setup/request-otp', methods=['POST'])
+def admin_setup_request_otp():
+    """Step 1: Send OTP to admin email"""
     try:
-        print("🔵 Admin setup API called")
-
-        # Check if admin already exists (security check)
         if check_admin_exists():
-            print("❌ Admin already exists")
             return jsonify({
                 'success': False,
                 'error': 'Admin already exists. Setup is not allowed.'
             }), 403
 
         data = request.get_json()
-        print(f"📥 Received data: {data}")
+        email = data.get('email', '').strip().lower()
+        full_name = data.get('full_name', '').strip()
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        confirm_password = data.get('confirm_password', '')
 
         # Validate required fields
-        required_fields = ['email', 'username', 'full_name', 'password', 'confirm_password']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({
-                    'success': False,
-                    'error': f'{field.replace("_", " ").title()} is required'
-                }), 400
-
-        email = data['email'].strip().lower()
-        username = data['username'].strip()
-        full_name = data['full_name'].strip()
-        password = data['password']
-        confirm_password = data['confirm_password']
+        if not all([email, full_name, username, password, confirm_password]):
+            return jsonify({
+                'success': False,
+                'error': 'All fields are required'
+            }), 400
 
         # Validate password match
         if password != confirm_password:
@@ -5329,54 +5278,276 @@ def admin_setup_api():
             }), 400
 
         # Validate email format
-        if '@' not in email or '.' not in email:
+        if not validate_email_format(email):
             return jsonify({
                 'success': False,
-                'error': 'Invalid email format'
+                'error': 'Please enter a valid email address'
             }), 400
 
-        # Validate username format (letters, numbers, underscore)
-        import re
-        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+        # Check if email is already registered as admin
+        existing_admin = supabase_admin.table('admins') \
+            .select('email') \
+            .eq('email', email) \
+            .execute()
+
+        if existing_admin.data:
             return jsonify({
                 'success': False,
-                'error': 'Username can only contain letters, numbers, and underscores'
+                'error': 'This email is already registered as an admin'
             }), 400
 
-        # Double-check no admin exists (race condition protection)
+        # Check if username already exists
+        existing_username = supabase_admin.table('admins') \
+            .select('username') \
+            .eq('username', username) \
+            .execute()
+
+        if existing_username.data:
+            return jsonify({
+                'success': False,
+                'error': 'Username already taken. Please choose another.'
+            }), 400
+
+        # Generate OTP
+        otp, expires_at = generate_otp()
+        hashed_otp = hash_otp(otp)
+
+        # Store data in session
+        session['admin_setup_email'] = email
+        session['admin_setup_full_name'] = full_name
+        session['admin_setup_username'] = username
+        session['admin_setup_password'] = password
+        session['admin_setup_otp'] = hashed_otp
+        session['admin_setup_otp_expires'] = expires_at
+
+        # Send OTP email
+        email_sent = send_otp_email(email, full_name, otp)
+
+        if not email_sent:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send OTP. Please try again.'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'message': 'OTP sent to your email',
+            'requires_verification': True,
+            'email': email
+        })
+
+    except Exception as e:
+        logger.error(f"Admin setup OTP error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Failed to send OTP'}), 500
+
+
+@app.route('/api/admin/setup/resend-otp', methods=['POST'])
+def admin_setup_resend_otp():
+    """Resend OTP for admin setup"""
+    try:
         if check_admin_exists():
             return jsonify({
                 'success': False,
                 'error': 'Admin already exists. Setup is not allowed.'
             }), 403
 
-        # Create the admin
-        success, message = create_first_admin(email, username, full_name, password)
+        email = session.get('admin_setup_email')
 
-        if success:
-            print(f"✅ Admin created successfully: {username}")
-            response = jsonify({
-                'success': True,
-                'message': message,
-                'redirect': '/admin/login'
-            })
-            response.set_cookie('admin_setup_completed', 'true', max_age=31536000)
-            return response
-        else:
-            print(f"❌ Failed to create admin: {message}")
+        if not email:
             return jsonify({
                 'success': False,
-                'error': message
+                'error': 'Session expired. Please restart setup.'
+            }), 400
+
+        # Generate new OTP
+        otp, expires_at = generate_otp()
+        hashed_otp = hash_otp(otp)
+
+        # Update session
+        session['admin_setup_otp'] = hashed_otp
+        session['admin_setup_otp_expires'] = expires_at
+
+        # Send OTP email
+        full_name = session.get('admin_setup_full_name', 'Admin')
+        email_sent = send_otp_email(email, full_name, otp)
+
+        if not email_sent:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send OTP. Please try again.'
             }), 500
 
-    except Exception as e:
-        print(f"❌ Admin setup error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({
-            'success': False,
-            'error': 'Setup failed. Please try again.'
-        }), 500
+            'success': True,
+            'message': 'New OTP sent to your email'
+        })
+
+    except Exception as e:
+        logger.error(f"Admin setup resend OTP error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Failed to resend OTP'}), 500
+
+
+@app.route('/api/admin/setup/verify-otp', methods=['POST'])
+def admin_setup_verify_otp():
+    """Step 2: Verify OTP and create admin"""
+    try:
+        # Check if admin already exists
+        if check_admin_exists():
+            return jsonify({
+                'success': False,
+                'error': 'Admin already exists. Setup is not allowed.'
+            }), 403
+
+        data = request.get_json()
+        otp = data.get('otp', '').strip()
+
+        # Validate OTP
+        if not otp or len(otp) != 6:
+            return jsonify({
+                'success': False,
+                'error': 'Please enter a valid 6-digit OTP'
+            }), 400
+
+        # Check stored data
+        stored_otp = session.get('admin_setup_otp')
+        expires_at_str = session.get('admin_setup_otp_expires')
+        email = session.get('admin_setup_email')
+        full_name = session.get('admin_setup_full_name')
+        username = session.get('admin_setup_username')
+        password = session.get('admin_setup_password')
+
+        # Check if session data exists
+        if not all([stored_otp, expires_at_str, email, full_name, username, password]):
+            return jsonify({
+                'success': False,
+                'error': 'Session expired. Please restart setup.'
+            }), 400
+
+        # ✅ FIXED: Check expiration FIRST before any other validation
+        current_time = get_current_utc_time()
+        expires_at = parse_db_timestamp(expires_at_str)
+
+        if expires_at <= current_time:
+            # Clear expired OTP from session
+            session.pop('admin_setup_otp', None)
+            session.pop('admin_setup_otp_expires', None)
+
+            logger.warning(f"⚠️ Expired OTP attempt for {email}")
+            return jsonify({
+                'success': False,
+                'error': 'OTP has expired. Please request a new one.',
+                'expired': True  # ✅ Flag to tell frontend it's expired
+            }), 400
+
+        # ✅ Verify OTP (only if not expired)
+        is_valid = verify_otp(stored_otp, otp)
+
+        if not is_valid:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid OTP. Please try again.'
+            }), 400
+
+        # ✅ OTP is valid - continue with admin creation
+        # Hash password
+        password_hash = hash_password(password)
+
+        # Create admin
+        admin_data = {
+            'email': email,
+            'username': username,
+            'full_name': full_name,
+            'password_hash': password_hash,
+            'is_superadmin': True,
+            'is_active': True,
+            'is_deleted': False,
+            'created_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
+
+        response = supabase_admin.table('admins').insert(admin_data).execute()
+
+        if response.data:
+            # Clear session
+            session.pop('admin_setup_email', None)
+            session.pop('admin_setup_otp', None)
+            session.pop('admin_setup_otp_expires', None)
+            session.pop('admin_setup_full_name', None)
+            session.pop('admin_setup_username', None)
+            session.pop('admin_setup_password', None)
+
+            return jsonify({
+                'success': True,
+                'message': 'Admin created successfully!',
+                'redirect': '/admin/login'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to create admin'}), 500
+
+    except Exception as e:
+        logger.error(f"Admin setup verification error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Verification failed'}), 500
+
+
+@app.route('/api/check-email', methods=['POST'])
+def check_email_exists():
+    """Check if email already exists in admin or users table"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'exists': False})
+
+        # Check in admins table
+        admin_check = supabase_admin.table('admins') \
+            .select('email') \
+            .eq('email', email) \
+            .maybe_single() \
+            .execute()
+
+        if admin_check.data:
+            return jsonify({'exists': True, 'table': 'admins'})
+
+        # Check in users table
+        user_check = supabase_admin.table('users') \
+            .select('email') \
+            .eq('email', email) \
+            .maybe_single() \
+            .execute()
+
+        if user_check.data:
+            return jsonify({'exists': True, 'table': 'users'})
+
+        return jsonify({'exists': False})
+
+    except Exception as e:
+        logger.error(f"Email check error: {str(e)}")
+        return jsonify({'exists': False})
+
+
+def validate_email_format(email):
+    """Validate email format and check for disposable domains"""
+    import re
+
+    # Basic format
+    if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+        return False
+
+    # Disposable domains (blocked)
+    disposable_domains = [
+        'tempmail.com', 'guerrillamail.com', '10minutemail.com',
+        'throwawaymail.com', 'mailinator.com', 'temp-mail.org',
+        'fakeinbox.com', 'dispostable.com', 'trashmail.com',
+        'yopmail.com', 'spamgourmet.com', 'guerrillamail.org',
+        'getnada.com', 'mohmal.com', 'mailnesia.com'
+    ]
+
+    domain = email.split('@')[1].lower()
+    if domain in disposable_domains:
+        return False
+
+    return True
 
 
 # ===== MODIFIED ADMIN LOGIN ROUTE =====
