@@ -1313,51 +1313,56 @@
 
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
-        // Password validation UI
+        // Password validation UI - using HTML requirements
         const passwordInput = registerForm.querySelector('#registerPassword');
         if (passwordInput) {
-            const requirementsContainer = document.createElement('div');
-            requirementsContainer.className = 'password-requirements';
-            requirementsContainer.innerHTML = `
-                <p class="requirements-title">Password must contain:</p>
-                <ul class="requirements-list">
-                    <li class="requirement" data-requirement="length">❌ At least 8 characters</li>
-                    <li class="requirement" data-requirement="uppercase">❌ At least one uppercase letter</li>
-                    <li class="requirement" data-requirement="lowercase">❌ At least one lowercase letter</li>
-                    <li class="requirement" data-requirement="number">❌ At least one number</li>
-                    <li class="requirement" data-requirement="special">❌ At least one special character</li>
-                </ul>`;
-            passwordInput.parentNode.insertBefore(requirementsContainer, passwordInput.nextSibling);
-
+            // Get the existing requirement elements from the HTML
             const requirements = {
-                length: registerForm.querySelector('[data-requirement="length"]'),
-                uppercase: registerForm.querySelector('[data-requirement="uppercase"]'),
-                lowercase: registerForm.querySelector('[data-requirement="lowercase"]'),
-                number: registerForm.querySelector('[data-requirement="number"]'),
-                special: registerForm.querySelector('[data-requirement="special"]')
+                length: document.getElementById('regReqLength'),
+                uppercase: document.getElementById('regReqUppercase'),
+                lowercase: document.getElementById('regReqLowercase'),
+                number: document.getElementById('regReqNumber'),
+                special: document.getElementById('regReqSpecial')
             };
 
-            passwordInput.addEventListener('input', function() {
-                const value = this.value;
-                requirements.length.textContent = value.length >= 8 ? '✅ At least 8 characters' : '❌ At least 8 characters';
-                requirements.length.style.color = value.length >= 8 ? '#10b981' : '#dc3545';
+            // Only add listener if requirements exist in HTML
+            if (requirements.length && requirements.uppercase && requirements.lowercase &&
+                requirements.number && requirements.special) {
 
-                requirements.uppercase.textContent = /[A-Z]/.test(value) ? '✅ At least one uppercase letter' : '❌ At least one uppercase letter';
-                requirements.uppercase.style.color = /[A-Z]/.test(value) ? '#10b981' : '#dc3545';
+                passwordInput.addEventListener('input', function() {
+                    const value = this.value;
 
-                requirements.lowercase.textContent = /[a-z]/.test(value) ? '✅ At least one lowercase letter' : '❌ At least one lowercase letter';
-                requirements.lowercase.style.color = /[a-z]/.test(value) ? '#10b981' : '#dc3545';
+                    // Update each requirement
+                    if (requirements.length) {
+                        requirements.length.textContent = value.length >= 8 ? '✅ At least 8 characters' : '❌ At least 8 characters';
+                        requirements.length.style.color = value.length >= 8 ? '#10b981' : '#dc3545';
+                    }
 
-                requirements.number.textContent = /\d/.test(value) ? '✅ At least one number' : '❌ At least one number';
-                requirements.number.style.color = /\d/.test(value) ? '#10b981' : '#dc3545';
+                    if (requirements.uppercase) {
+                        requirements.uppercase.textContent = /[A-Z]/.test(value) ? '✅ At least one uppercase letter' : '❌ At least one uppercase letter';
+                        requirements.uppercase.style.color = /[A-Z]/.test(value) ? '#10b981' : '#dc3545';
+                    }
 
-                requirements.special.textContent = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '✅ At least one special character' : '❌ At least one special character';
-                requirements.special.style.color = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '#10b981' : '#dc3545';
-            });
+                    if (requirements.lowercase) {
+                        requirements.lowercase.textContent = /[a-z]/.test(value) ? '✅ At least one lowercase letter' : '❌ At least one lowercase letter';
+                        requirements.lowercase.style.color = /[a-z]/.test(value) ? '#10b981' : '#dc3545';
+                    }
+
+                    if (requirements.number) {
+                        requirements.number.textContent = /\d/.test(value) ? '✅ At least one number' : '❌ At least one number';
+                        requirements.number.style.color = /\d/.test(value) ? '#10b981' : '#dc3545';
+                    }
+
+                    if (requirements.special) {
+                        requirements.special.textContent = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '✅ At least one special character' : '❌ At least one special character';
+                        requirements.special.style.color = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '#10b981' : '#dc3545';
+                    }
+                });
+            }
         }
 
         // =============================================
-        // REGISTRATION FORM - UPDATED WITH RATE LIMITING
+        // REGISTRATION FORM SUBMIT - UPDATED WITH RATE LIMITING
         // =============================================
 
         registerForm.addEventListener('submit', async function(e) {
@@ -1438,7 +1443,7 @@
 
                 const data = await response.json();
 
-                // ✅ Handle rate limiting (429 status)
+                // Handle rate limiting (429 status)
                 if (response.status === 429) {
                     hideLoader();
                     const rateLimitMsg = data.message || 'Too many attempts. Please wait 30 minutes before trying again.';
@@ -1456,7 +1461,6 @@
                 if (!response.ok) {
                     // Handle specific error types
                     if (response.status === 400) {
-                        // Check for specific error messages
                         if (data.message && data.message.includes('Email already registered')) {
                             showFieldError(emailInput, data.message);
                             hideLoader();

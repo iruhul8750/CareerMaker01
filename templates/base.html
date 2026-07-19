@@ -211,24 +211,40 @@
         </div>
         <form id="registerForm" class="modal-form" method="POST" action="/register">
             <div id="registerResponse" class="form-response" style="display: none;"></div>
+
             <div class="form-group floating-label-group">
-                <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3"
-                       maxlength="30">
+                <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3" maxlength="30">
                 <label for="registerUsername">Username</label>
                 <div class="form-hint">3-30 characters, letters and numbers only</div>
             </div>
+
             <div class="form-group floating-label-group">
                 <input type="email" id="registerEmail" name="email" required placeholder=" ">
                 <label for="registerEmail">Email Address</label>
             </div>
+
             <div class="form-group floating-label-group">
                 <input type="password" id="registerPassword" name="password" required placeholder=" " minlength="8">
                 <label for="registerPassword">Password</label>
             </div>
+
+            <!-- Password Requirements - Added here -->
+            <div class="password-requirements" style="margin-bottom: 15px; margin-top: -5px;">
+                <p class="requirements-title" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #6b7280;">Password must contain:</p>
+                <ul class="requirements-list" style="list-style: none; padding-left: 0; margin: 0;">
+                    <li id="regReqLength" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least 8 characters</li>
+                    <li id="regReqUppercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one uppercase letter</li>
+                    <li id="regReqLowercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one lowercase letter</li>
+                    <li id="regReqNumber" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one number</li>
+                    <li id="regReqSpecial" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one special character</li>
+                </ul>
+            </div>
+
             <div class="form-group floating-label-group">
                 <input type="password" id="registerConfirmPassword" name="confirm_password" required placeholder=" ">
                 <label for="registerConfirmPassword">Confirm Password</label>
             </div>
+
             <div class="form-footer">
                 <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
                     <span class="btn-text">Register</span>
@@ -236,7 +252,7 @@
                 </button>
                 <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
             </div>
-            <!-- In the register modal -->
+
             <div class="form-terms">
                 <input type="checkbox" id="termsAgreement" name="terms" required>
                 <label for="termsAgreement">
