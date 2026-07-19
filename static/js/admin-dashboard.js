@@ -10962,7 +10962,10 @@
             }
         }
 
-        // ===== ADMIN CREATION WITH OTP =====
+        // =============================================
+        // ADMIN CREATION WITH OTP & RATE LIMITING
+        // =============================================
+
         handleAdminCreation() {
             const fullName = document.getElementById('adminFullName').value.trim();
             const username = document.getElementById('adminUsername').value.trim();
@@ -10995,7 +10998,15 @@
                     is_superadmin: isSuperadmin
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                // ✅ Check for rate limiting (429 status)
+                if (response.status === 429) {
+                    return response.json().then(data => {
+                        throw { status: 429, message: data.message || 'Too many attempts. Please wait 30 minutes.' };
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.requires_otp) {
                     this.showNotification(data.message || 'OTP sent to the admin email', 'success');
@@ -11030,9 +11041,24 @@
             })
             .catch(error => {
                 console.error('Error requesting OTP:', error);
-                this.showNotification('Network error. Please try again.', 'error');
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
+
+                // ✅ Handle rate limiting error
+                if (error.status === 429) {
+                    this.showNotification(error.message, 'warning', 8000);
+                    // Disable the button for 30 minutes
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-clock"></i> Try again later';
+
+                    // Enable after 30 minutes (1800000 ms)
+                    setTimeout(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }, 1800000);
+                } else {
+                    this.showNotification(error.message || 'Network error. Please try again.', 'error');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
             });
         }
 
@@ -11358,6 +11384,10 @@
             }
         }
 
+        // =============================================
+        // ADMIN RESEND OTP - WITH RATE LIMITING
+        // =============================================
+
         async resendAdminOTP() {
             const resendBtn = document.getElementById('adminOTPResendBtn');
             const timerEl = document.getElementById('adminOTPResendTimer');
@@ -11378,6 +11408,12 @@
                         'Accept': 'application/json'
                     }
                 });
+
+                // ✅ Check for rate limiting (429 status)
+                if (response.status === 429) {
+                    const data = await response.json();
+                    throw { status: 429, message: data.message || 'Too many attempts. Please wait 30 minutes.' };
+                }
 
                 const result = await response.json();
 
@@ -11409,10 +11445,26 @@
                 }
             } catch (error) {
                 console.error('Error resending OTP:', error);
-                this.showNotification('Network error. Please try again.', 'error');
-                resendBtn.disabled = false;
+
+                // ✅ Handle rate limiting error
+                if (error.status === 429) {
+                    this.showNotification(error.message, 'warning', 8000);
+                    resendBtn.disabled = true;
+                    resendBtn.innerHTML = '<i class="fas fa-clock"></i> Try again later';
+
+                    // Enable after 30 minutes
+                    setTimeout(() => {
+                        resendBtn.disabled = false;
+                        resendBtn.innerHTML = originalText;
+                    }, 1800000);
+                } else {
+                    this.showNotification('Network error. Please try again.', 'error');
+                    resendBtn.disabled = false;
+                }
             } finally {
-                resendBtn.innerHTML = originalText;
+                if (!resendBtn.innerHTML.includes('Try again later')) {
+                    resendBtn.innerHTML = originalText;
+                }
             }
         }
 

@@ -94,6 +94,188 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 SMTP_EMAIL = os.getenv('SMTP_EMAIL')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
+
+# =============================================
+# RATE LIMITER - SUPABASE TABLE (COMPLETELY REWRITTEN)
+# =============================================
+
+class SupabaseRateLimiter:
+    def __init__(self):
+        self.max_attempts = 5
+        self.window_minutes = 5
+        self.block_minutes = 30
+
+    def get_key(self, email, purpose, ip=None):
+        """Generate a unique key for rate limiting"""
+        email = email.lower().strip()
+        if ip:
+            if ':' in ip and not ip.startswith('['):
+                ip = ip.split(':')[0]
+            return f"{purpose}_{email}_{ip}"
+        return f"{purpose}_{email}"
+
+    def is_allowed(self, key):
+        """Check if request is allowed"""
+        try:
+            print(f"🔍 [is_allowed] Checking: {key}")
+
+            response = supabase_admin.table('rate_limits') \
+                .select('*') \
+                .eq('key_name', key) \
+                .execute()
+
+            current_time = get_current_utc_time()
+
+            if not response.data or len(response.data) == 0:
+                print(f"✅ [is_allowed] No record found - allowed")
+                return True, None
+
+            record = response.data[0]
+            attempt_count = record.get('attempt_count') or 0
+            is_blocked = record.get('is_blocked') or False
+            blocked_until = record.get('blocked_until')
+
+            print(f"📊 [is_allowed] attempts={attempt_count}, blocked={is_blocked}")
+
+            # Check if blocked
+            if is_blocked and blocked_until:
+                blocked_until_dt = parse_db_timestamp(blocked_until)
+                if blocked_until_dt > current_time:
+                    remaining = int((blocked_until_dt - current_time).total_seconds() / 60) + 1
+                    return False, f'Too many attempts. Please wait {remaining} minutes.'
+                else:
+                    # Delete expired block
+                    supabase_admin.table('rate_limits') \
+                        .delete() \
+                        .eq('key_name', key) \
+                        .execute()
+                    return True, None
+
+            # Check if within window
+            first_attempt = record.get('first_attempt')
+            if not first_attempt:
+                return True, None
+
+            first_attempt_dt = parse_db_timestamp(first_attempt)
+            window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+
+            if current_time < window_end:
+                if attempt_count >= self.max_attempts:
+                    # Block
+                    block_until = current_time + timedelta(minutes=self.block_minutes)
+                    supabase_admin.table('rate_limits') \
+                        .update({
+                        'is_blocked': True,
+                        'blocked_until': block_until.isoformat(),
+                        'updated_at': current_time.isoformat()
+                    }) \
+                        .eq('key_name', key) \
+                        .execute()
+                    return False, f'Too many attempts. Please wait {self.block_minutes} minutes.'
+                return True, None
+            else:
+                # Window expired - delete and start fresh
+                supabase_admin.table('rate_limits') \
+                    .delete() \
+                    .eq('key_name', key) \
+                    .execute()
+                return True, None
+
+        except Exception as e:
+            logger.error(f"Rate limit check error: {str(e)}", exc_info=True)
+            return True, None
+
+    def record_attempt(self, key):
+        """Record an attempt - FIXED VERSION"""
+        try:
+            current_time = get_current_utc_time()
+            print(f"📝 [record_attempt] Recording: {key}")
+
+            # ✅ FIX: Directly increment using a single query
+            # First, check if record exists
+            response = supabase_admin.table('rate_limits') \
+                .select('*') \
+                .eq('key_name', key) \
+                .execute()
+
+            if not response.data or len(response.data) == 0:
+                # Create new record
+                print(f"🆕 [record_attempt] Creating new record")
+                insert_data = {
+                    'key_name': key,
+                    'attempt_count': 1,
+                    'first_attempt': current_time.isoformat(),
+                    'last_attempt': current_time.isoformat(),
+                    'created_at': current_time.isoformat(),
+                    'updated_at': current_time.isoformat()
+                }
+                result = supabase_admin.table('rate_limits').insert(insert_data).execute()
+                print(f"✅ [record_attempt] Created with attempt_count=1")
+                return
+
+            record = response.data[0]
+            current_attempts = record.get('attempt_count') or 0
+            first_attempt = record.get('first_attempt')
+
+            print(f"📊 [record_attempt] Current attempts: {current_attempts}")
+
+            # ✅ FIX: Check if window expired
+            if first_attempt:
+                first_attempt_dt = parse_db_timestamp(first_attempt)
+                window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+
+                if current_time > window_end:
+                    # Window expired - reset to 1
+                    print(f"🔄 [record_attempt] Window expired, resetting to 1")
+                    update_data = {
+                        'attempt_count': 1,
+                        'first_attempt': current_time.isoformat(),
+                        'last_attempt': current_time.isoformat(),
+                        'updated_at': current_time.isoformat()
+                    }
+                    supabase_admin.table('rate_limits') \
+                        .update(update_data) \
+                        .eq('key_name', key) \
+                        .execute()
+                    print(f"✅ [record_attempt] Reset to 1")
+                    return
+
+            # ✅ FIX: Increment the count
+            new_count = current_attempts + 1
+            print(f"📈 [record_attempt] Incrementing to {new_count}")
+
+            update_data = {
+                'attempt_count': new_count,
+                'last_attempt': current_time.isoformat(),
+                'updated_at': current_time.isoformat()
+            }
+
+            result = supabase_admin.table('rate_limits') \
+                .update(update_data) \
+                .eq('key_name', key) \
+                .execute()
+
+            print(f"✅ [record_attempt] Updated to {new_count}")
+            print(f"📝 [record_attempt] Result: {result.data if result else 'None'}")
+
+        except Exception as e:
+            logger.error(f"Record attempt error: {str(e)}", exc_info=True)
+
+    def reset(self, key):
+        """Reset rate limit"""
+        try:
+            supabase_admin.table('rate_limits') \
+                .delete() \
+                .eq('key_name', key) \
+                .execute()
+            print(f"✅ Reset rate limit for: {key}")
+        except Exception as e:
+            logger.error(f"Reset error: {str(e)}", exc_info=True)
+
+
+# Initialize rate limiter
+rate_limiter = SupabaseRateLimiter()
+
 # =============================================
 # SINGLE UNIFIED EMAIL FUNCTION
 # =============================================
@@ -460,7 +642,7 @@ def login_required(f):
 
 
 def handle_otp_resend(data):
-    """Handle OTP resend requests"""
+    """Handle OTP resend requests - WITH PROPER RATE LIMITING"""
     try:
         email = data.get('email')
         purpose = data.get('purpose', 'registration')
@@ -468,19 +650,41 @@ def handle_otp_resend(data):
         if not email:
             return jsonify({'status': 'error', 'message': 'Email is required'}), 400
 
+        # Check if user exists
         if purpose == 'registration':
             existing_user = supabase_admin.table('users').select('email').eq('email', email).execute()
             if existing_user.data:
                 return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
 
+        # Get IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ Generate rate limit key (SAME key as registration)
+        rate_key = rate_limiter.get_key(email, 'register', ip)
+        print(f"🔑 [RESEND] Rate limit key: {rate_key}")
+
+        # ✅ CHECK RATE LIMIT FIRST
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            print(f"🚫 [RESEND] Rate limited: {error_msg}")
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
         # Delete existing OTPs
         supabase_admin.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
 
-        # Generate OTP and hash it
+        # Generate new OTP
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
 
-        # Store hashed OTP
+        # Store OTP
         supabase_admin.table('otp_verification').insert({
             'email': email,
             'otp': hashed_otp,
@@ -488,7 +692,11 @@ def handle_otp_resend(data):
             'purpose': purpose
         }).execute()
 
-        # ✅ Send OTP using unified function
+        # ✅ RECORD THE ATTEMPT
+        print(f"📝 [RESEND] Recording attempt for {rate_key}")
+        rate_limiter.record_attempt(rate_key)
+
+        # Send OTP
         username = data.get('username', 'User')
         email_sent = send_otp_email(email, username, otp)
 
@@ -499,7 +707,7 @@ def handle_otp_resend(data):
         })
 
     except Exception as e:
-        logger.error(f"OTP resend error: {str(e)}")
+        logger.error(f"OTP resend error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -2045,11 +2253,32 @@ def register():
                 'message': 'Username already taken. Please choose another username.'
             }), 400
 
-        # Generate OTP and hash it
+        # Get IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ Generate rate limit key
+        rate_key = rate_limiter.get_key(email, 'register', ip)
+        print(f"🔑 [REGISTER] Rate limit key: {rate_key}")
+
+        # ✅ Check rate limit
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            print(f"🚫 [REGISTER] Rate limit blocked for {rate_key}: {error_msg}")
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
+        # Generate OTP
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
 
-        # Store hashed OTP
+        # Store OTP
         otp_response = supabase_admin.table('otp_verification').insert({
             'email': email,
             'otp': hashed_otp,
@@ -2060,7 +2289,11 @@ def register():
         if not otp_response.data:
             raise Exception('Failed to store OTP in database')
 
-        # ✅ Send OTP using unified function
+        # ✅ Record the attempt AFTER OTP is stored
+        print(f"📝 [REGISTER] Recording attempt for {rate_key}")
+        rate_limiter.record_attempt(rate_key)
+
+        # Send OTP email
         email_sent = send_otp_email(email, username, otp)
 
         return jsonify({
@@ -2095,6 +2328,27 @@ def resend_otp():
             if existing_user.data:
                 return jsonify({'status': 'error', 'message': 'Email already registered'}), 400
 
+        # ✅ Get IP address for rate limiting
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ Generate rate limit key (SAME key as registration)
+        rate_key = rate_limiter.get_key(email, 'register', ip)
+        print(f"🔑 [RESEND] Rate limit key: {rate_key}")
+
+        # ✅ CHECK RATE LIMIT FIRST - BEFORE SENDING OTP
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            print(f"🚫 [RESEND] Rate limited: {error_msg}")
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
         # Delete any existing OTPs
         supabase_admin.table('otp_verification').delete().eq('email', email).eq('purpose', purpose).execute()
 
@@ -2110,7 +2364,11 @@ def resend_otp():
             'purpose': purpose
         }).execute()
 
-        # ✅ Send OTP using unified function
+        # ✅ RECORD THE ATTEMPT AFTER OTP IS STORED
+        print(f"📝 [RESEND] Recording attempt for {rate_key}")
+        rate_limiter.record_attempt(rate_key)
+
+        # Send OTP using unified function
         username = data.get('username', 'User')
         email_sent = send_otp_email(email, username, otp)
 
@@ -9196,9 +9454,8 @@ def get_admin_details(id):
 @app.route('/api/admin/admins', methods=['POST'])
 @admin_required
 def create_new_admin():
-    """Create a new admin user - WITH OTP VERIFICATION"""
+    """Create a new admin user - WITH OTP VERIFICATION & RATE LIMITING"""
     try:
-        # Log the received data for debugging
         data = request.get_json()
         logger.info(f"📝 Create admin request received: {data}")
 
@@ -9218,7 +9475,7 @@ def create_new_admin():
         is_superadmin = data.get('is_superadmin', False)
         otp = data.get('otp', '').strip()
 
-        # ✅ ISSUE 2: Check if trying to create superadmin when current user is not superadmin
+        # Check if trying to create superadmin when current user is not superadmin
         if is_superadmin and not session.get('is_superadmin', False):
             return jsonify({
                 'success': False,
@@ -9284,6 +9541,13 @@ def create_new_admin():
                 'field_errors': {'password': 'Password must contain at least one special character (!@#$%^&*)'}
             }), 400
 
+        # ✅ Get IP address for rate limiting
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
         # ✅ Check if username exists (including deleted records)
         existing_username = supabase_admin.table('admins').select('id').eq('username', username).execute()
         if existing_username.data and len(existing_username.data) > 0:
@@ -9310,6 +9574,10 @@ def create_new_admin():
                 'message': 'Email already exists in users',
                 'field_errors': {'email': 'This email is already registered as a user'}
             }), 409
+
+        # ✅ Generate rate limit key (SAME for both initial and resend - like user registration)
+        rate_key = rate_limiter.get_key(email, 'admin_creation', ip)
+        print(f"🔑 [ADMIN] Rate limit key: {rate_key}")
 
         # ✅ Handle OTP verification
         if otp:
@@ -9360,7 +9628,10 @@ def create_new_admin():
                     'requires_otp': True
                 }), 400
 
-            # OTP verified - DOUBLE CHECK username/email again (race condition)
+            # ✅ OTP verified - reset rate limit
+            rate_limiter.reset(rate_key)
+
+            # Double check username/email
             username_check = supabase_admin.table('admins').select('id').eq('username', username).execute()
             if username_check.data and len(username_check.data) > 0:
                 session.pop('admin_create_otp', None)
@@ -9369,7 +9640,7 @@ def create_new_admin():
                 session.pop('admin_create_full_name', None)
                 return jsonify({
                     'success': False,
-                    'message': 'Username was taken during verification. Please try again.',
+                    'message': 'Username was taken during verification.',
                     'field_errors': {'username': 'This username is already taken'}
                 }), 409
 
@@ -9381,7 +9652,7 @@ def create_new_admin():
                 session.pop('admin_create_full_name', None)
                 return jsonify({
                     'success': False,
-                    'message': 'Email was taken during verification. Please try again.',
+                    'message': 'Email was taken during verification.',
                     'field_errors': {'email': 'This email is already registered'}
                 }), 409
 
@@ -9402,30 +9673,33 @@ def create_new_admin():
             response = supabase_admin.table('admins').insert(admin_data).execute()
 
             if response.data and len(response.data) > 0:
-                # Clear session
                 session.pop('admin_create_otp', None)
                 session.pop('admin_create_otp_expires', None)
                 session.pop('admin_create_email', None)
                 session.pop('admin_create_full_name', None)
 
-                logger.info(f"✅ New admin created: {username} ({email}) - Superadmin: {is_superadmin}")
+                logger.info(f"✅ New admin created: {username} ({email})")
                 return jsonify({
                     'success': True,
                     'message': 'Admin created successfully',
-                    'admin': {
-                        'id': response.data[0]['id'],
-                        'full_name': full_name,
-                        'username': username,
-                        'email': email,
-                        'is_superadmin': is_superadmin,
-                        'created_at': now_iso
-                    }
+                    'admin': response.data[0]
                 })
             else:
                 return jsonify({'success': False, 'message': 'Failed to create admin'}), 500
 
         else:
-            # Step 1: Request OTP - Generate OTP
+            # ✅ Step 1: Request OTP - Check rate limit FIRST
+            allowed, error_msg = rate_limiter.is_allowed(rate_key)
+            if not allowed:
+                print(f"🚫 [ADMIN] Rate limited: {error_msg}")
+                return jsonify({
+                    'success': False,
+                    'message': error_msg,
+                    'rate_limited': True,
+                    'requires_otp': True
+                }), 429
+
+            # Generate OTP
             otp_code, expires_at = generate_otp()
             hashed_otp = hash_otp(otp_code)
 
@@ -9434,6 +9708,10 @@ def create_new_admin():
             session['admin_create_otp_expires'] = expires_at
             session['admin_create_email'] = email
             session['admin_create_full_name'] = full_name
+
+            # ✅ Record the attempt AFTER OTP is stored
+            rate_limiter.record_attempt(rate_key)
+            print(f"📝 [ADMIN] Recorded attempt for {rate_key}")
 
             # Send OTP email
             email_sent = send_otp_email(email, full_name, otp_code)
@@ -9445,12 +9723,12 @@ def create_new_admin():
                 session.pop('admin_create_full_name', None)
                 return jsonify({
                     'success': False,
-                    'message': 'Failed to send OTP. Please try again.',
+                    'message': 'Failed to send OTP.',
                     'requires_otp': True
                 }), 500
 
             return jsonify({
-                'success': False,  # Not a failure, but requires OTP verification
+                'success': False,
                 'message': 'OTP sent to the admin email. Please verify to complete creation.',
                 'requires_otp': True,
                 'email': email
@@ -9464,7 +9742,7 @@ def create_new_admin():
 @app.route('/api/admin/admins/resend-otp', methods=['POST'])
 @admin_required
 def admin_resend_otp():
-    """Resend OTP for admin creation"""
+    """Resend OTP for admin creation - SAME KEY as initial"""
     try:
         if not session.get('is_superadmin', False):
             return jsonify({
@@ -9481,6 +9759,27 @@ def admin_resend_otp():
                 'message': 'Session expired. Please restart the process.'
             }), 400
 
+        # ✅ Get IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ Use SAME key as initial request (like user registration)
+        rate_key = rate_limiter.get_key(email, 'admin_creation', ip)
+        print(f"🔑 [ADMIN RESEND] Rate limit key: {rate_key}")
+
+        # ✅ CHECK RATE LIMIT FIRST
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            print(f"🚫 [ADMIN RESEND] Rate limited: {error_msg}")
+            return jsonify({
+                'success': False,
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
         # Generate new OTP
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
@@ -9489,13 +9788,17 @@ def admin_resend_otp():
         session['admin_create_otp'] = hashed_otp
         session['admin_create_otp_expires'] = expires_at
 
+        # ✅ Record the attempt
+        rate_limiter.record_attempt(rate_key)
+        print(f"📝 [ADMIN RESEND] Recorded attempt for {rate_key}")
+
         # Send OTP email
         email_sent = send_otp_email(email, full_name or 'Admin', otp)
 
         if not email_sent:
             return jsonify({
                 'success': False,
-                'message': 'Failed to send OTP. Please try again.'
+                'message': 'Failed to send OTP.'
             }), 500
 
         return jsonify({

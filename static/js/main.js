@@ -1290,7 +1290,7 @@
     }
 
     function startResendTimer(button, timerElement, countElement) {
-      let seconds = 60;
+      let seconds = 30;
       timerElement.style.display = 'inline';
       button.style.display = 'none';
 
@@ -1355,6 +1355,10 @@
                 requirements.special.style.color = /[!@#$%^&*(),.?":{}|<>]/.test(value) ? '#10b981' : '#dc3545';
             });
         }
+
+        // =============================================
+        // REGISTRATION FORM - UPDATED WITH RATE LIMITING
+        // =============================================
 
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -1434,6 +1438,21 @@
 
                 const data = await response.json();
 
+                // ✅ Handle rate limiting (429 status)
+                if (response.status === 429) {
+                    hideLoader();
+                    const rateLimitMsg = data.message || 'Too many attempts. Please wait 30 minutes before trying again.';
+                    showFormError(formResponse, '⚠️ ' + rateLimitMsg);
+
+                    // Disable submit button for 30 minutes
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-clock"></i> Try again later';
+
+                    // Show toast notification
+                    showToast(rateLimitMsg, 'warning', 8000);
+                    return;
+                }
+
                 if (!response.ok) {
                     // Handle specific error types
                     if (response.status === 400) {
@@ -1448,7 +1467,6 @@
                             hideLoader();
                             return;
                         }
-                        // ✅ Check for password history error (if implemented on backend)
                         if (data.message && data.message.includes('used this password before')) {
                             showFormError(formResponse, '⚠️ You have used this password before. Please choose a different password.');
                             this.querySelector('#registerPassword').classList.add('input-error');
