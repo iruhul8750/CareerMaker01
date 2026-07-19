@@ -9189,15 +9189,26 @@ def get_admin_details(id):
         return jsonify({'success': False, 'message': 'Failed to fetch admin details'}), 500
 
 
+# =============================================
+# ADMIN CREATION WITH OTP
+# =============================================
+
 @app.route('/api/admin/admins', methods=['POST'])
 @admin_required
 def create_new_admin():
-    """Create a new admin user"""
+    """Create a new admin user - WITH OTP VERIFICATION"""
     try:
-        data = request.get_json()
-
         # Log the received data for debugging
+        data = request.get_json()
         logger.info(f"📝 Create admin request received: {data}")
+
+        # Check if current user is superadmin
+        if not session.get('is_superadmin', False):
+            return jsonify({
+                'success': False,
+                'message': 'Only super admins can create admin accounts',
+                'field_errors': {'is_superadmin': 'Only super admins can create admin accounts'}
+            }), 403
 
         # Validate required fields
         full_name = data.get('full_name', '').strip()
@@ -9205,10 +9216,10 @@ def create_new_admin():
         email = data.get('email', '').strip()
         password = data.get('password', '')
         is_superadmin = data.get('is_superadmin', False)
+        otp = data.get('otp', '').strip()
 
-        # Check if current user is superadmin to create superadmin
-        current_is_superadmin = session.get('is_superadmin', False)
-        if is_superadmin and not current_is_superadmin:
+        # ✅ ISSUE 2: Check if trying to create superadmin when current user is not superadmin
+        if is_superadmin and not session.get('is_superadmin', False):
             return jsonify({
                 'success': False,
                 'message': 'Only super admins can create super admin accounts',
@@ -9273,63 +9284,228 @@ def create_new_admin():
                 'field_errors': {'password': 'Password must contain at least one special character (!@#$%^&*)'}
             }), 400
 
-        # Check if email already exists
-        existing_email = supabase_admin.table('admins').select('id').eq('email', email).execute()
-        if existing_email.data:
-            return jsonify({
-                'success': False,
-                'message': 'Email already exists',
-                'field_errors': {'email': 'This email is already registered'}
-            }), 409
-
-        # Check if username already exists
+        # ✅ Check if username exists (including deleted records)
         existing_username = supabase_admin.table('admins').select('id').eq('username', username).execute()
-        if existing_username.data:
+        if existing_username.data and len(existing_username.data) > 0:
             return jsonify({
                 'success': False,
                 'message': 'Username already exists',
                 'field_errors': {'username': 'This username is already taken'}
             }), 409
 
-        # Create admin
-        now_iso = get_current_utc_time().isoformat()
-        admin_data = {
-            'full_name': full_name,
-            'username': username,
-            'email': email,
-            'password_hash': hash_password(password),
-            'is_superadmin': is_superadmin,
-            'is_active': True,
-            'is_deleted': False,
-            'created_at': now_iso,
-            'updated_at': now_iso
-        }
-
-        logger.info(f"📝 Inserting admin: {admin_data}")
-
-        response = supabase_admin.table('admins').insert(admin_data).execute()
-
-        if response.data:
-            logger.info(f"✅ New admin created: {username} ({email}) - Superadmin: {is_superadmin}")
+        # ✅ Check if email exists (including deleted records)
+        existing_email = supabase_admin.table('admins').select('id').eq('email', email).execute()
+        if existing_email.data and len(existing_email.data) > 0:
             return jsonify({
-                'success': True,
-                'message': 'Admin created successfully',
-                'admin': {
-                    'id': response.data[0]['id'],
-                    'full_name': full_name,
-                    'username': username,
-                    'email': email,
-                    'is_superadmin': is_superadmin,
-                    'created_at': now_iso
-                }
-            })
+                'success': False,
+                'message': 'Email already exists',
+                'field_errors': {'email': 'This email is already registered'}
+            }), 409
+
+        # ✅ Also check in users table for email (including deleted records)
+        existing_user = supabase_admin.table('users').select('id').eq('email', email).execute()
+        if existing_user.data and len(existing_user.data) > 0:
+            return jsonify({
+                'success': False,
+                'message': 'Email already exists in users',
+                'field_errors': {'email': 'This email is already registered as a user'}
+            }), 409
+
+        # ✅ Handle OTP verification
+        if otp:
+            # Step 2: Verify OTP and create admin
+            stored_otp = session.get('admin_create_otp')
+            expires_at = session.get('admin_create_otp_expires')
+            session_email = session.get('admin_create_email')
+
+            # Validate session data
+            if not stored_otp or not session_email:
+                return jsonify({
+                    'success': False,
+                    'message': 'Session expired. Please restart the process.',
+                    'requires_otp': True
+                }), 400
+
+            # Verify email matches
+            if session_email != email:
+                return jsonify({
+                    'success': False,
+                    'message': 'Email mismatch. Please restart the process.',
+                    'requires_otp': True
+                }), 400
+
+            # Check expiration
+            current_time = get_current_utc_time()
+            expires_at_dt = parse_db_timestamp(expires_at)
+
+            if expires_at_dt <= current_time:
+                session.pop('admin_create_otp', None)
+                session.pop('admin_create_otp_expires', None)
+                session.pop('admin_create_email', None)
+                session.pop('admin_create_full_name', None)
+                return jsonify({
+                    'success': False,
+                    'message': 'OTP has expired. Please request a new one.',
+                    'requires_otp': True,
+                    'expired': True
+                }), 400
+
+            # Verify OTP
+            is_valid = verify_otp(stored_otp, otp)
+
+            if not is_valid:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid OTP. Please try again.',
+                    'requires_otp': True
+                }), 400
+
+            # OTP verified - DOUBLE CHECK username/email again (race condition)
+            username_check = supabase_admin.table('admins').select('id').eq('username', username).execute()
+            if username_check.data and len(username_check.data) > 0:
+                session.pop('admin_create_otp', None)
+                session.pop('admin_create_otp_expires', None)
+                session.pop('admin_create_email', None)
+                session.pop('admin_create_full_name', None)
+                return jsonify({
+                    'success': False,
+                    'message': 'Username was taken during verification. Please try again.',
+                    'field_errors': {'username': 'This username is already taken'}
+                }), 409
+
+            email_check = supabase_admin.table('admins').select('id').eq('email', email).execute()
+            if email_check.data and len(email_check.data) > 0:
+                session.pop('admin_create_otp', None)
+                session.pop('admin_create_otp_expires', None)
+                session.pop('admin_create_email', None)
+                session.pop('admin_create_full_name', None)
+                return jsonify({
+                    'success': False,
+                    'message': 'Email was taken during verification. Please try again.',
+                    'field_errors': {'email': 'This email is already registered'}
+                }), 409
+
+            # Create admin
+            now_iso = get_current_utc_time().isoformat()
+            admin_data = {
+                'full_name': full_name,
+                'username': username,
+                'email': email,
+                'password_hash': hash_password(password),
+                'is_superadmin': is_superadmin,
+                'is_active': True,
+                'is_deleted': False,
+                'created_at': now_iso,
+                'updated_at': now_iso
+            }
+
+            response = supabase_admin.table('admins').insert(admin_data).execute()
+
+            if response.data and len(response.data) > 0:
+                # Clear session
+                session.pop('admin_create_otp', None)
+                session.pop('admin_create_otp_expires', None)
+                session.pop('admin_create_email', None)
+                session.pop('admin_create_full_name', None)
+
+                logger.info(f"✅ New admin created: {username} ({email}) - Superadmin: {is_superadmin}")
+                return jsonify({
+                    'success': True,
+                    'message': 'Admin created successfully',
+                    'admin': {
+                        'id': response.data[0]['id'],
+                        'full_name': full_name,
+                        'username': username,
+                        'email': email,
+                        'is_superadmin': is_superadmin,
+                        'created_at': now_iso
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Failed to create admin'}), 500
+
         else:
-            logger.error(f"❌ No data returned from insert: {response}")
-            return jsonify({'success': False, 'message': 'Failed to create admin'}), 500
+            # Step 1: Request OTP - Generate OTP
+            otp_code, expires_at = generate_otp()
+            hashed_otp = hash_otp(otp_code)
+
+            # Store in session
+            session['admin_create_otp'] = hashed_otp
+            session['admin_create_otp_expires'] = expires_at
+            session['admin_create_email'] = email
+            session['admin_create_full_name'] = full_name
+
+            # Send OTP email
+            email_sent = send_otp_email(email, full_name, otp_code)
+
+            if not email_sent:
+                session.pop('admin_create_otp', None)
+                session.pop('admin_create_otp_expires', None)
+                session.pop('admin_create_email', None)
+                session.pop('admin_create_full_name', None)
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to send OTP. Please try again.',
+                    'requires_otp': True
+                }), 500
+
+            return jsonify({
+                'success': False,  # Not a failure, but requires OTP verification
+                'message': 'OTP sent to the admin email. Please verify to complete creation.',
+                'requires_otp': True,
+                'email': email
+            }), 202
 
     except Exception as e:
         logger.error(f"❌ Error creating admin: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+
+
+@app.route('/api/admin/admins/resend-otp', methods=['POST'])
+@admin_required
+def admin_resend_otp():
+    """Resend OTP for admin creation"""
+    try:
+        if not session.get('is_superadmin', False):
+            return jsonify({
+                'success': False,
+                'message': 'Only super admins can create admin accounts'
+            }), 403
+
+        email = session.get('admin_create_email')
+        full_name = session.get('admin_create_full_name')
+
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'Session expired. Please restart the process.'
+            }), 400
+
+        # Generate new OTP
+        otp, expires_at = generate_otp()
+        hashed_otp = hash_otp(otp)
+
+        # Update session
+        session['admin_create_otp'] = hashed_otp
+        session['admin_create_otp_expires'] = expires_at
+
+        # Send OTP email
+        email_sent = send_otp_email(email, full_name or 'Admin', otp)
+
+        if not email_sent:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to send OTP. Please try again.'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'message': 'New OTP sent to the admin email'
+        })
+
+    except Exception as e:
+        logger.error(f"Admin resend OTP error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': 'Failed to resend OTP'}), 500
 
 
 @app.route('/api/admin/admins/<string:id>/status', methods=['PUT'])

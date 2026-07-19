@@ -10234,7 +10234,7 @@
         }
     }
 
-    /// ===== ADMIN MANAGER CLASS - WITH PROPER PASSWORD VALIDATION =====
+    // ===== ADMIN MANAGER CLASS  =====
     class AdminManager {
         constructor() {
             this.currentPage = 1;
@@ -10248,8 +10248,16 @@
             this.admins = [];
             this.isEditMode = false;
             this.editingAdminId = null;
+            // OTP related
+            this.otpStep = 'form'; // 'form' | 'otp'
+            this.otpEmail = '';
+            this.otpTimer = null;
+            this.otpTimeLeft = 300;
+            this.pendingAdminData = null;
+            this.isLoading = false;
         }
 
+        // ===== INITIALIZATION =====
         init() {
             if (this.isInitialized) return;
 
@@ -10286,12 +10294,36 @@
             this.setupAddAdminButton();
             this.setupBulkActions();
             this.setupSectionObserver();
+            this.setupFieldValidation();
 
             this.loadAdmins();
 
             console.log('✅ Admin Manager setup complete');
         }
 
+        // ===== DISABLE/ENABLE SAVE BUTTON =====
+        setSaveButtonState(disabled, message = '') {
+            const saveBtn = document.getElementById('saveAdminBtn');
+            if (saveBtn) {
+                saveBtn.disabled = disabled;
+                if (disabled) {
+                    saveBtn.innerHTML = message || '<i class="fas fa-spinner fa-spin"></i> Verifying OTP...';
+                    saveBtn.style.opacity = '0.7';
+                    saveBtn.style.cursor = 'not-allowed';
+                } else {
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Admin';
+                    saveBtn.style.opacity = '1';
+                    saveBtn.style.cursor = 'pointer';
+                }
+            }
+        }
+
+        // ===== CHECK SUPERADMIN PERMISSION =====
+        isSuperadminCreationAllowed() {
+            return this.isSuperAdmin === true;
+        }
+
+        // ===== SETUP METHODS =====
         setupSearchListener() {
             const searchInput = document.getElementById('adminSearch');
             const searchBtn = document.querySelector('#admins .search-btn');
@@ -10366,14 +10398,12 @@
 
             console.log('Setting up Admin Modal');
 
-            // Click outside to close - using the same pattern as other modals
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    closeModal(); // Use global closeModal function
+                    this.closeModalAndReset();
                 }
             });
 
-            // Password strength validation
             const passwordInput = document.getElementById('adminPassword');
             if (passwordInput) {
                 passwordInput.addEventListener('input', () => {
@@ -10381,7 +10411,6 @@
                 });
             }
 
-            // Confirm password validation
             const confirmInput = document.getElementById('adminConfirmPassword');
             if (confirmInput) {
                 confirmInput.addEventListener('input', () => {
@@ -10389,7 +10418,6 @@
                 });
             }
 
-            // Form submission
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
             newForm.addEventListener('submit', (e) => {
@@ -10400,8 +10428,153 @@
             console.log('Admin Modal setup complete');
         }
 
+        setupAddAdminButton() {
+            const addAdminBtn = document.getElementById('addAdminBtn');
+
+            if (!addAdminBtn) {
+                console.error('Add Admin button not found');
+                return;
+            }
+
+            const newBtn = addAdminBtn.cloneNode(true);
+            addAdminBtn.parentNode.replaceChild(newBtn, addAdminBtn);
+
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Add Admin button clicked');
+
+                this.cleanupOTP();
+
+                this.isEditMode = false;
+                this.editingAdminId = null;
+                this.resetForm();
+
+                const modalTitle = document.getElementById('adminModalTitle');
+                if (modalTitle) modalTitle.textContent = 'Add Admin';
+
+                const passwordRequired = document.getElementById('passwordRequired');
+                if (passwordRequired) passwordRequired.textContent = '*';
+
+                const passwordHelp = document.getElementById('passwordHelp');
+                if (passwordHelp) passwordHelp.textContent = 'Required for new admin. Must be at least 8 characters with uppercase, lowercase, number, and special character.';
+
+                const adminStatusGroup = document.getElementById('adminStatusGroup');
+                if (adminStatusGroup) adminStatusGroup.style.display = 'none';
+
+                const superadminGroup = document.getElementById('superadminCheckboxGroup');
+                if (superadminGroup) {
+                    if (this.isSuperadminCreationAllowed()) {
+                        superadminGroup.style.display = 'block';
+                        const disableMsg = superadminGroup.querySelector('.superadmin-disabled-msg');
+                        if (disableMsg) disableMsg.remove();
+                        const checkbox = superadminGroup.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.disabled = false;
+                        const helpText = superadminGroup.querySelector('.form-help');
+                        if (helpText) helpText.style.display = 'block';
+                    } else {
+                        superadminGroup.style.display = 'block';
+                        let disableMsg = superadminGroup.querySelector('.superadmin-disabled-msg');
+                        if (!disableMsg) {
+                            disableMsg = document.createElement('div');
+                            disableMsg.className = 'superadmin-disabled-msg';
+                            disableMsg.innerHTML = '<i class="fas fa-lock"></i> You cannot create super admin accounts. Please contact an existing super admin.';
+                            superadminGroup.appendChild(disableMsg);
+                        }
+                        const checkbox = superadminGroup.querySelector('input[type="checkbox"]');
+                        if (checkbox) {
+                            checkbox.disabled = true;
+                            checkbox.checked = false;
+                        }
+                        const helpText = superadminGroup.querySelector('.form-help');
+                        if (helpText) helpText.style.display = 'none';
+                    }
+                }
+
+                const modal = document.getElementById('adminModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('adminFullName')?.focus();
+                    }, 100);
+                }
+            });
+
+            if (this.isSuperAdmin) {
+                newBtn.style.display = 'inline-flex';
+            } else {
+                newBtn.style.display = 'none';
+            }
+        }
+
+        setupBulkActions() {
+            const applyBtn = document.getElementById('applyAdminBulkAction');
+            const bulkActionSelect = document.getElementById('adminBulkAction');
+
+            if (applyBtn && bulkActionSelect) {
+                const newBtn = applyBtn.cloneNode(true);
+                applyBtn.parentNode.replaceChild(newBtn, applyBtn);
+
+                newBtn.addEventListener('click', () => {
+                    const action = bulkActionSelect.value;
+                    if (!action) {
+                        this.showNotification('Please select a bulk action', 'warning');
+                        return;
+                    }
+                    if (this.selectedAdmins.length === 0) {
+                        this.showNotification('Please select at least one admin', 'warning');
+                        return;
+                    }
+                    if (action === 'activate' || action === 'deactivate') {
+                        const isActive = action === 'activate';
+                        this.showConfirmation('bulk_action',
+                            `Are you sure you want to ${action} ${this.selectedAdmins.length} admin(s)?`,
+                            () => this.bulkUpdateStatus(this.selectedAdmins, isActive)
+                        );
+                    } else if (action === 'delete') {
+                        this.showConfirmation('bulk_action',
+                            `Are you sure you want to delete ${this.selectedAdmins.length} admin(s)?`,
+                            () => this.bulkDelete(this.selectedAdmins)
+                        );
+                    }
+                });
+            }
+
+            if (!this.isSuperAdmin) {
+                const bulkDiv = document.querySelector('#admins .bulk-actions');
+                if (bulkDiv) bulkDiv.style.display = 'none';
+            }
+        }
+
+        setupSectionObserver() {
+            const adminsSection = document.getElementById('admins');
+            if (adminsSection) {
+                let isLoadingAdmins = false;
+                let lastLoadTime = 0;
+
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            if (adminsSection.classList.contains('active')) {
+                                const now = Date.now();
+                                if (!isLoadingAdmins && (now - lastLoadTime > 500)) {
+                                    lastLoadTime = now;
+                                    isLoadingAdmins = true;
+                                    console.log('Admins section activated - loading data');
+                                    this.loadAdmins().finally(() => {
+                                        isLoadingAdmins = false;
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+                observer.observe(adminsSection, { attributes: true });
+            }
+        }
+
+        // ===== FIELD VALIDATION =====
         setupFieldValidation() {
-            // Full Name validation
             const fullNameInput = document.getElementById('adminFullName');
             if (fullNameInput) {
                 fullNameInput.addEventListener('input', () => {
@@ -10412,7 +10585,6 @@
                 });
             }
 
-            // Username validation
             const usernameInput = document.getElementById('adminUsername');
             if (usernameInput) {
                 usernameInput.addEventListener('input', () => {
@@ -10423,7 +10595,6 @@
                 });
             }
 
-            // Email validation
             const emailInput = document.getElementById('adminEmail');
             if (emailInput) {
                 emailInput.addEventListener('input', () => {
@@ -10434,7 +10605,6 @@
                 });
             }
 
-            // Password validation
             const passwordInput = document.getElementById('adminPassword');
             if (passwordInput) {
                 passwordInput.addEventListener('input', () => {
@@ -10445,7 +10615,6 @@
                 });
             }
 
-            // Confirm password validation
             const confirmInput = document.getElementById('adminConfirmPassword');
             if (confirmInput) {
                 confirmInput.addEventListener('input', () => {
@@ -10509,7 +10678,6 @@
             const passwordInput = document.getElementById('adminPassword');
             const errorSpan = document.getElementById('passwordError');
 
-            // In edit mode, if password is empty, it's valid (keep existing)
             if (this.isEditMode && !password) {
                 this.clearFieldError(passwordInput, errorSpan);
                 return true;
@@ -10568,7 +10736,6 @@
             const confirmValue = confirmInput.value;
             const errorSpan = document.getElementById('confirmPasswordError');
 
-            // In edit mode, if password is empty and confirm is empty, it's valid
             if (this.isEditMode && !password && !confirmValue) {
                 this.clearFieldError(confirmInput, errorSpan);
                 return true;
@@ -10640,7 +10807,6 @@
                 errorSpan.textContent = message;
                 errorSpan.style.display = 'block';
             } else {
-                // Create error span if it doesn't exist
                 const newErrorSpan = document.createElement('small');
                 newErrorSpan.className = 'field-error';
                 newErrorSpan.style.color = 'var(--danger)';
@@ -10667,10 +10833,24 @@
             }
         }
 
+        clearAllFieldErrors() {
+            const fields = ['adminFullName', 'adminUsername', 'adminEmail', 'adminPassword', 'adminConfirmPassword'];
+            fields.forEach(fieldId => {
+                const input = document.getElementById(fieldId);
+                const errorSpan = document.getElementById(`${fieldId}Error`);
+                if (errorSpan) {
+                    errorSpan.textContent = '';
+                    errorSpan.style.display = 'none';
+                }
+                if (input) {
+                    input.classList.remove('input-error');
+                }
+            });
+        }
+
         validateForm() {
             let isValid = true;
 
-            // Validate Full Name
             const fullName = document.getElementById('adminFullName').value.trim();
             if (!fullName) {
                 this.showFieldError(document.getElementById('adminFullName'), document.getElementById('fullNameError'), 'Full name is required');
@@ -10682,7 +10862,6 @@
                 this.clearFieldError(document.getElementById('adminFullName'), document.getElementById('fullNameError'));
             }
 
-            // Validate Username
             const username = document.getElementById('adminUsername').value.trim();
             if (!username) {
                 this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), 'Username is required');
@@ -10697,7 +10876,6 @@
                 this.clearFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'));
             }
 
-            // Validate Email
             const email = document.getElementById('adminEmail').value.trim();
             const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
             if (!email) {
@@ -10710,7 +10888,6 @@
                 this.clearFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'));
             }
 
-            // Validate Password
             const password = document.getElementById('adminPassword').value;
             if (!this.isEditMode) {
                 if (!password) {
@@ -10735,7 +10912,6 @@
                     this.clearFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'));
                 }
             } else if (password) {
-                // In edit mode, if password is provided, validate it
                 if (password.length < 8) {
                     this.showFieldError(document.getElementById('adminPassword'), document.getElementById('passwordError'), 'Password must be at least 8 characters');
                     isValid = false;
@@ -10756,7 +10932,6 @@
                 }
             }
 
-            // Validate Confirm Password
             const confirmPassword = document.getElementById('adminConfirmPassword').value;
             if (password || (!this.isEditMode)) {
                 if (!confirmPassword) {
@@ -10773,187 +10948,594 @@
             return isValid;
         }
 
+        // ===== FORM SUBMISSION =====
         handleFormSubmit() {
-            // First validate all fields
             if (!this.validateForm()) {
                 this.showNotification('Please fix the errors in the form', 'warning');
                 return;
             }
 
-            // Check for existing username/email (async)
-            const username = document.getElementById('adminUsername').value.trim();
-            const email = document.getElementById('adminEmail').value.trim();
-
-            this.checkExistingUser(username, email, (isValid, message) => {
-                if (!isValid) {
-                    if (message.includes('username')) {
-                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), message);
-                    } else if (message.includes('email')) {
-                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), message);
-                    }
-                    this.showNotification(message, 'error');
-                    return;
-                }
-
-                if (this.isEditMode) {
-                    this.handleAdminUpdate();
-                } else {
-                    this.handleAdminCreation();
-                }
-            });
+            if (this.isEditMode) {
+                this.handleAdminUpdate();
+            } else {
+                this.handleAdminCreation();
+            }
         }
 
-        checkExistingUser(username, email, callback) {
-            // Check if username or email already exists (except current admin in edit mode)
-            fetch('/api/admin/admins/check-exists', {
+        // ===== ADMIN CREATION WITH OTP =====
+        handleAdminCreation() {
+            const fullName = document.getElementById('adminFullName').value.trim();
+            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const isSuperadmin = document.getElementById('adminIsSuperadmin')?.checked || false;
+
+            this.pendingAdminData = {
+                full_name: fullName,
+                username: username,
+                email: email,
+                password: password,
+                is_superadmin: isSuperadmin
+            };
+
+            const submitBtn = document.getElementById('saveAdminBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...';
+            submitBtn.disabled = true;
+
+            fetch('/api/admin/admins', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    full_name: fullName,
                     username: username,
                     email: email,
-                    exclude_id: this.isEditMode ? this.editingAdminId : null
+                    password: password,
+                    is_superadmin: isSuperadmin
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    callback(true, '');
+                if (data.requires_otp) {
+                    this.showNotification(data.message || 'OTP sent to the admin email', 'success');
+                    this.showOTPModal(email);
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                } else if (data.success) {
+                    this.showNotification('Admin created successfully!', 'success');
+                    this.closeModalAndReset();
+                    this.loadAdmins();
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 } else {
-                    callback(false, data.message);
+                    this.showNotification(data.message || 'Failed to create admin', 'error');
+                    if (data.field_errors) {
+                        Object.keys(data.field_errors).forEach(field => {
+                            const fieldMap = {
+                                'full_name': 'adminFullName',
+                                'username': 'adminUsername',
+                                'email': 'adminEmail',
+                                'password': 'adminPassword'
+                            };
+                            const inputId = fieldMap[field];
+                            if (inputId) {
+                                this.showFieldError(document.getElementById(inputId), null, data.field_errors[field]);
+                            }
+                        });
+                    }
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 }
             })
             .catch(error => {
-                console.error('Error checking existing user:', error);
-                callback(true, ''); // Proceed if check fails
+                console.error('Error requesting OTP:', error);
+                this.showNotification('Network error. Please try again.', 'error');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             });
         }
 
-        setupAddAdminButton() {
-            const addAdminBtn = document.getElementById('addAdminBtn');
+        // ===== ADMIN UPDATE =====
+        handleAdminUpdate() {
+            const adminId = document.getElementById('adminId').value;
+            const fullName = document.getElementById('adminFullName').value.trim();
+            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const isSuperadmin = document.getElementById('adminIsSuperadmin')?.checked || false;
+            const isActive = document.getElementById('adminIsActive')?.checked !== false;
 
-            if (!addAdminBtn) {
-                console.error('Add Admin button not found');
+            const updateData = { full_name: fullName, username, email };
+            if (password) updateData.password = password;
+
+            const isEditingSelf = adminId === this.currentAdminId;
+            if (this.isSuperAdmin && !isEditingSelf) {
+                updateData.is_superadmin = isSuperadmin;
+                updateData.is_active = isActive;
+            }
+
+            const submitBtn = document.getElementById('saveAdminBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+
+            fetch(`/api/admin/admins/${adminId}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.showNotification(isEditingSelf ? 'Profile updated successfully!' : 'Admin updated successfully!', 'success');
+                    document.getElementById('adminModal').style.display = 'none';
+                    this.resetForm();
+                    this.loadAdmins();
+                } else {
+                    this.showNotification(data.message || 'Failed to update', 'error');
+                    if (data.message && data.message.includes('username')) {
+                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), data.message);
+                    } else if (data.message && data.message.includes('email')) {
+                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), data.message);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.showNotification('Failed to update', 'error');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        // ===== OTP MODAL FUNCTIONS =====
+        showOTPModal(email) {
+            console.log('📧 Showing OTP modal for:', email);
+
+            const modal = document.getElementById('adminModal');
+            const modalTitle = document.getElementById('adminModalTitle');
+            const formContainer = document.querySelector('#adminModal .modal-body .form-container');
+            const otpContainer = document.getElementById('adminOTPContainer');
+
+            if (!modal || !formContainer) return;
+
+            // Disable save button when OTP modal opens
+            this.setSaveButtonState(true, '<i class="fas fa-spinner fa-spin"></i> Verifying OTP...');
+
+            formContainer.style.display = 'none';
+
+            if (!otpContainer) {
+                this.createOTPContainer(modal);
+            } else {
+                otpContainer.style.display = 'block';
+            }
+
+            const emailDisplay = document.getElementById('adminOTPEmail');
+            if (emailDisplay) emailDisplay.textContent = email;
+
+            if (modalTitle) modalTitle.textContent = 'Verify Admin Email';
+
+            const otpInput = document.getElementById('adminOTPCode');
+            if (otpInput) {
+                otpInput.value = '';
+                otpInput.focus();
+            }
+
+            const otpError = document.getElementById('adminOTPError');
+            if (otpError) {
+                otpError.style.display = 'none';
+                otpError.textContent = '';
+            }
+
+            const verifyBtn = document.getElementById('adminOTPVerifyBtn');
+            if (verifyBtn) verifyBtn.disabled = false;
+
+            this.startOTPTimer();
+
+            modal.style.display = 'block';
+            this.otpStep = 'otp';
+            this.otpEmail = email;
+        }
+
+        createOTPContainer(modal) {
+            const modalBody = modal.querySelector('.modal-body');
+            if (!modalBody) return;
+
+            const container = document.createElement('div');
+            container.id = 'adminOTPContainer';
+            container.className = 'admin-otp-container';
+            container.style.display = 'block';
+            container.innerHTML = `
+                <div class="otp-header">
+                    <i class="fas fa-envelope-open-text" style="font-size: 32px; color: #10b981; display: block; text-align: center; margin-bottom: 15px;"></i>
+                    <h3 style="text-align: center; margin-bottom: 5px;">Verify Email</h3>
+                    <p style="text-align: center; color: #64748b; font-size: 13px; margin-bottom: 5px;">We sent a verification code to</p>
+                    <p style="text-align: center; font-weight: 600; color: var(--primary-color);" id="adminOTPEmail">email@example.com</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminOTPCode">Enter 6-Digit Code</label>
+                    <div class="otp-input-wrapper">
+                        <input type="text" id="adminOTPCode" name="otp"
+                               maxlength="6" required
+                               autocomplete="off" inputmode="numeric"
+                               placeholder="• • • • • •">
+                    </div>
+                    <div class="error-message" id="adminOTPError" style="display: none;"></div>
+                    <div class="otp-timer" id="adminOTPTimer">
+                        <i class="fas fa-clock"></i>
+                        <span id="adminOTPTimerDisplay">05:00</span>
+                    </div>
+                </div>
+
+                <div class="otp-actions" style="display: flex; gap: 10px; margin-top: 5px;">
+                    <button type="button" class="btn btn-outline" id="adminOTPBackBtn" style="flex: 1;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button type="button" class="btn btn-primary" id="adminOTPVerifyBtn" style="flex: 2;">
+                        <i class="fas fa-check-circle"></i> Verify & Create
+                    </button>
+                </div>
+
+                <div class="otp-resend-section" style="text-align: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                    <p style="font-size: 12px; color: #64748b; margin: 0;">Didn't receive the code?</p>
+                    <button type="button" class="btn btn-link" id="adminOTPResendBtn" style="font-size: 12px; padding: 2px 10px;">
+                        <i class="fas fa-redo"></i> Resend Code
+                    </button>
+                    <span id="adminOTPResendTimer" style="font-size: 11px; color: #94a3b8; display: none;">(Wait <span id="adminOTPResendCount">30</span>s)</span>
+                </div>
+            `;
+
+            modalBody.appendChild(container);
+            this.setupOTPEvents();
+        }
+
+        setupOTPEvents() {
+            const otpInput = document.getElementById('adminOTPCode');
+            const verifyBtn = document.getElementById('adminOTPVerifyBtn');
+            const backBtn = document.getElementById('adminOTPBackBtn');
+            const resendBtn = document.getElementById('adminOTPResendBtn');
+
+            if (otpInput) {
+                otpInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/\D/g, '');
+                    if (this.value.length > 6) {
+                        this.value = this.value.substring(0, 6);
+                    }
+                    const error = document.getElementById('adminOTPError');
+                    if (error) {
+                        error.style.display = 'none';
+                    }
+                    if (this.value.length === 6) {
+                        verifyBtn?.click();
+                    }
+                });
+
+                otpInput.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                    const numbersOnly = pastedText.replace(/\D/g, '').substring(0, 6);
+                    this.value = numbersOnly;
+                    if (numbersOnly.length === 6) {
+                        verifyBtn?.click();
+                    }
+                });
+            }
+
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', () => {
+                    this.verifyOTPAndCreate();
+                });
+            }
+
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    this.goBackToForm();
+                });
+            }
+
+            if (resendBtn) {
+                resendBtn.addEventListener('click', () => {
+                    this.resendAdminOTP();
+                });
+            }
+
+            if (otpInput) {
+                otpInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        verifyBtn?.click();
+                    }
+                });
+            }
+        }
+
+        startOTPTimer() {
+            this.otpTimeLeft = 300;
+            const timerDisplay = document.getElementById('adminOTPTimerDisplay');
+            if (!timerDisplay) return;
+
+            if (this.otpTimer) {
+                clearInterval(this.otpTimer);
+            }
+
+            this.updateOTPTimerDisplay();
+
+            this.otpTimer = setInterval(() => {
+                this.otpTimeLeft--;
+                this.updateOTPTimerDisplay();
+
+                if (this.otpTimeLeft <= 0) {
+                    clearInterval(this.otpTimer);
+                    timerDisplay.textContent = 'Expired';
+                    timerDisplay.style.color = '#dc3545';
+                    const verifyBtnEl = document.getElementById('adminOTPVerifyBtn');
+                    if (verifyBtnEl) verifyBtnEl.disabled = true;
+                }
+            }, 1000);
+        }
+
+        updateOTPTimerDisplay() {
+            const timerDisplay = document.getElementById('adminOTPTimerDisplay');
+            if (!timerDisplay) return;
+
+            const minutes = Math.floor(this.otpTimeLeft / 60);
+            const seconds = this.otpTimeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timerDisplay.style.color = this.otpTimeLeft <= 60 ? '#dc3545' : '';
+        }
+
+        async verifyOTPAndCreate() {
+            const otpInput = document.getElementById('adminOTPCode');
+            const otpError = document.getElementById('adminOTPError');
+            const verifyBtn = document.getElementById('adminOTPVerifyBtn');
+
+            if (!otpInput || !otpError) return;
+
+            const otp = otpInput.value.trim();
+
+            if (!otp || otp.length !== 6) {
+                otpError.textContent = 'Please enter a valid 6-digit OTP';
+                otpError.style.display = 'block';
+                otpInput.classList.add('error');
                 return;
             }
 
-            const newBtn = addAdminBtn.cloneNode(true);
-            addAdminBtn.parentNode.replaceChild(newBtn, addAdminBtn);
+            const originalText = verifyBtn.innerHTML;
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
 
-            newBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Add Admin button clicked');
+            try {
+                const response = await fetch('/api/admin/admins', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        full_name: this.pendingAdminData.full_name,
+                        username: this.pendingAdminData.username,
+                        email: this.pendingAdminData.email,
+                        password: this.pendingAdminData.password,
+                        is_superadmin: this.pendingAdminData.is_superadmin,
+                        otp: otp
+                    })
+                });
 
-                this.isEditMode = false;
-                this.editingAdminId = null;
-                this.resetForm();
+                const result = await response.json();
 
-                const modalTitle = document.getElementById('adminModalTitle');
-                if (modalTitle) modalTitle.textContent = 'Add Admin';
-
-                const passwordRequired = document.getElementById('passwordRequired');
-                if (passwordRequired) passwordRequired.textContent = '*';
-
-                const passwordHelp = document.getElementById('passwordHelp');
-                if (passwordHelp) passwordHelp.textContent = 'Required for new admin. Must be at least 8 characters with uppercase, lowercase, number, and special character.';
-
-                const adminStatusGroup = document.getElementById('adminStatusGroup');
-                if (adminStatusGroup) adminStatusGroup.style.display = 'none';
-
-                const superadminGroup = document.getElementById('superadminCheckboxGroup');
-                if (superadminGroup) {
-                    superadminGroup.style.display = this.isSuperAdmin ? 'block' : 'none';
-                }
-
-                const modal = document.getElementById('adminModal');
-                if (modal) {
-                    console.log('Opening admin modal');
-                    modal.style.display = 'block';
+                if (result.success) {
+                    this.showNotification('Admin created successfully!', 'success');
+                    this.closeModalAndReset();
+                    this.loadAdmins();
                 } else {
-                    console.error('Admin modal not found');
+                    if (result.expired) {
+                        otpError.textContent = 'OTP has expired. Please request a new one.';
+                        otpError.style.display = 'block';
+                        otpInput.classList.add('error');
+                        const verifyBtnEl = document.getElementById('adminOTPVerifyBtn');
+                        if (verifyBtnEl) verifyBtnEl.disabled = true;
+                    } else {
+                        otpError.textContent = result.message || 'Invalid OTP. Please try again.';
+                        otpError.style.display = 'block';
+                        otpInput.classList.add('error');
+                        otpInput.value = '';
+                        otpInput.focus();
+                    }
                 }
-            });
-
-            if (this.isSuperAdmin) {
-                newBtn.style.display = 'inline-flex';
-            } else {
-                newBtn.style.display = 'none';
+            } catch (error) {
+                console.error('Error verifying OTP:', error);
+                otpError.textContent = 'Network error. Please try again.';
+                otpError.style.display = 'block';
+            } finally {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = originalText;
             }
         }
 
-        setupBulkActions() {
-            const applyBtn = document.getElementById('applyAdminBulkAction');
-            const bulkActionSelect = document.getElementById('adminBulkAction');
+        async resendAdminOTP() {
+            const resendBtn = document.getElementById('adminOTPResendBtn');
+            const timerEl = document.getElementById('adminOTPResendTimer');
+            const countEl = document.getElementById('adminOTPResendCount');
 
-            if (applyBtn && bulkActionSelect) {
-                const newBtn = applyBtn.cloneNode(true);
-                applyBtn.parentNode.replaceChild(newBtn, applyBtn);
+            if (!resendBtn) return;
 
-                newBtn.addEventListener('click', () => {
-                    const action = bulkActionSelect.value;
-                    if (!action) {
-                        this.showNotification('Please select a bulk action', 'warning');
-                        return;
-                    }
-                    if (this.selectedAdmins.length === 0) {
-                        this.showNotification('Please select at least one admin', 'warning');
-                        return;
-                    }
-                    if (action === 'activate' || action === 'deactivate') {
-                        const isActive = action === 'activate';
-                        this.showConfirmation('bulk_action',
-                            `Are you sure you want to ${action} ${this.selectedAdmins.length} admin(s)?`,
-                            () => this.bulkUpdateStatus(this.selectedAdmins, isActive)
-                        );
-                    } else if (action === 'delete') {
-                        this.showConfirmation('bulk_action',
-                            `Are you sure you want to delete ${this.selectedAdmins.length} admin(s)?`,
-                            () => this.bulkDelete(this.selectedAdmins)
-                        );
+            resendBtn.disabled = true;
+            const originalText = resendBtn.innerHTML;
+            resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                const response = await fetch('/api/admin/admins/resend-otp', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     }
                 });
-            }
 
-            if (!this.isSuperAdmin) {
-                const bulkDiv = document.querySelector('#admins .bulk-actions');
-                if (bulkDiv) bulkDiv.style.display = 'none';
+                const result = await response.json();
+
+                if (result.success) {
+                    this.showNotification('New OTP sent successfully', 'success');
+
+                    clearInterval(this.otpTimer);
+                    this.startOTPTimer();
+
+                    const verifyBtn = document.getElementById('adminOTPVerifyBtn');
+                    if (verifyBtn) verifyBtn.disabled = false;
+
+                    const otpInput = document.getElementById('adminOTPCode');
+                    if (otpInput) {
+                        otpInput.value = '';
+                        otpInput.classList.remove('error');
+                        otpInput.focus();
+                    }
+
+                    const otpError = document.getElementById('adminOTPError');
+                    if (otpError) {
+                        otpError.style.display = 'none';
+                    }
+
+                    this.startResendCooldown();
+                } else {
+                    this.showNotification(result.message || 'Failed to resend OTP', 'error');
+                    resendBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error resending OTP:', error);
+                this.showNotification('Network error. Please try again.', 'error');
+                resendBtn.disabled = false;
+            } finally {
+                resendBtn.innerHTML = originalText;
             }
         }
 
-        setupSectionObserver() {
-            const adminsSection = document.getElementById('admins');
-            if (adminsSection) {
-                // Add a flag to prevent multiple loads
-                let isLoadingAdmins = false;
-                let lastLoadTime = 0;
+        startResendCooldown() {
+            let timeLeft = 30;
+            const timerEl = document.getElementById('adminOTPResendTimer');
+            const countEl = document.getElementById('adminOTPResendCount');
+            const resendBtn = document.getElementById('adminOTPResendBtn');
 
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                            if (adminsSection.classList.contains('active')) {
-                                // Debounce: only load if not already loading and 500ms passed since last load
-                                const now = Date.now();
-                                if (!isLoadingAdmins && (now - lastLoadTime > 500)) {
-                                    lastLoadTime = now;
-                                    isLoadingAdmins = true;
-                                    console.log('Admins section activated - loading data');
-                                    this.loadAdmins().finally(() => {
-                                        isLoadingAdmins = false;
-                                    });
-                                } else {
-                                    console.log('Admins load skipped (already loading or too soon)');
-                                }
-                            }
-                        }
-                    });
-                });
-                observer.observe(adminsSection, { attributes: true });
-            }
+            if (!timerEl || !countEl || !resendBtn) return;
+
+            timerEl.style.display = 'inline';
+            countEl.textContent = timeLeft;
+            resendBtn.disabled = true;
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                countEl.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    timerEl.style.display = 'none';
+                    resendBtn.disabled = false;
+                }
+            }, 1000);
         }
 
+        goBackToForm() {
+            const modal = document.getElementById('adminModal');
+            const formContainer = document.querySelector('#adminModal .modal-body .form-container');
+            const otpContainer = document.getElementById('adminOTPContainer');
+
+            if (formContainer) formContainer.style.display = 'block';
+            if (otpContainer) otpContainer.style.display = 'none';
+
+            const modalTitle = document.getElementById('adminModalTitle');
+            if (modalTitle) {
+                modalTitle.textContent = this.isEditMode ? 'Edit Admin' : 'Add Admin';
+            }
+
+            if (this.otpTimer) {
+                clearInterval(this.otpTimer);
+            }
+
+            this.setSaveButtonState(false);
+
+            this.otpStep = 'form';
+        }
+
+        closeModalAndReset() {
+            const modal = document.getElementById('adminModal');
+            const formContainer = document.querySelector('#adminModal .modal-body .form-container');
+            const otpContainer = document.getElementById('adminOTPContainer');
+
+            if (formContainer) formContainer.style.display = 'block';
+            if (otpContainer) otpContainer.style.display = 'none';
+
+            if (this.otpTimer) {
+                clearInterval(this.otpTimer);
+            }
+
+            this.setSaveButtonState(false);
+
+            this.otpStep = 'form';
+            this.pendingAdminData = null;
+            this.resetForm();
+            closeModal();
+        }
+
+        cleanupOTP() {
+            if (this.otpTimer) {
+                clearInterval(this.otpTimer);
+            }
+            const otpContainer = document.getElementById('adminOTPContainer');
+            if (otpContainer) {
+                otpContainer.style.display = 'none';
+            }
+            const formContainer = document.querySelector('#adminModal .modal-body .form-container');
+            if (formContainer) {
+                formContainer.style.display = 'block';
+            }
+            this.setSaveButtonState(false);
+            this.otpStep = 'form';
+            this.pendingAdminData = null;
+        }
+
+        resetForm() {
+            console.log('Resetting admin form');
+
+            const form = document.getElementById('adminForm');
+            if (form) {
+                form.reset();
+            }
+
+            const adminId = document.getElementById('adminId');
+            if (adminId) adminId.value = '';
+
+            const adminPassword = document.getElementById('adminPassword');
+            if (adminPassword) adminPassword.value = '';
+
+            const adminConfirmPassword = document.getElementById('adminConfirmPassword');
+            if (adminConfirmPassword) adminConfirmPassword.value = '';
+
+            const adminIsSuperadmin = document.getElementById('adminIsSuperadmin');
+            if (adminIsSuperadmin) adminIsSuperadmin.checked = false;
+
+            const adminIsActive = document.getElementById('adminIsActive');
+            if (adminIsActive) adminIsActive.checked = true;
+
+            this.clearAllFieldErrors();
+
+            const strengthEl = document.getElementById('passwordStrength');
+            if (strengthEl) strengthEl.innerHTML = '';
+
+            this.passwordValid = false;
+            this.passwordMatch = false;
+            this.cleanupOTP();
+
+            console.log('Admin form reset complete');
+        }
+
+        // ===== LOAD ADMINS =====
         loadAdmins() {
-            // Prevent multiple simultaneous loads
             if (this.isLoading) {
                 console.log('⚠️ Admins already loading, skipping duplicate call');
                 return Promise.resolve();
@@ -10963,7 +11545,7 @@
 
             const tableBody = document.getElementById('adminsTableBody');
             if (tableBody) {
-                '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p></td></tr>'
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i><p>Loading admins...</p></td></tr>';
             }
 
             let url = `/api/admin/admins/list?page=${this.currentPage}&per_page=${this.perPage}`;
@@ -10979,16 +11561,11 @@
                         this.renderTable(this.admins, this.adminsCount);
                         this.updatePagination(this.adminsCount);
 
-                        // Single notification
-                        if (typeof showNotification === 'function') {
-                            // Only show notification if admins section is currently active
-                            const adminsSection = document.getElementById('admins');
-                            const isAdminsActive = adminsSection && adminsSection.classList.contains('active');
-
-                            if (isAdminsActive) {
-                                const itemCount = this.admins.length;
-                                showNotification(`Loaded ${itemCount} admins`, 'success', 2000);
-                            }
+                        const adminsSection = document.getElementById('admins');
+                        const isAdminsActive = adminsSection && adminsSection.classList.contains('active');
+                        if (isAdminsActive) {
+                            const itemCount = this.admins.length;
+                            showNotification(`Loaded ${itemCount} admins`, 'success', 2000);
                         }
                     } else {
                         throw new Error(data.message || 'Failed to load admins');
@@ -10997,11 +11574,9 @@
                 .catch(error => {
                     console.error('Error:', error);
                     if (tableBody) {
-                        tableBody.innerHTML =  `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}</td></tr>`;
+                        tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--danger);">Error: ${error.message}</td></tr>`;
                     }
-                    if (typeof showNotification === 'function') {
-                        showNotification('Failed to load admins', 'error');
-                    }
+                    showNotification('Failed to load admins', 'error');
                 })
                 .finally(() => {
                     this.isLoading = false;
@@ -11072,7 +11647,6 @@
         }
 
         addRowEventListeners() {
-            // View buttons
             document.querySelectorAll('.view-admin').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
@@ -11085,7 +11659,6 @@
                 });
             });
 
-            // Edit buttons
             document.querySelectorAll('.edit-admin').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
@@ -11095,7 +11668,6 @@
                 });
             });
 
-            // Delete buttons
             document.querySelectorAll('.delete-admin').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
@@ -11105,7 +11677,6 @@
                 });
             });
 
-            // Status toggle
             document.querySelectorAll('.admin-status-toggle').forEach(toggle => {
                 const newToggle = toggle.cloneNode(true);
                 toggle.parentNode.replaceChild(newToggle, toggle);
@@ -11123,7 +11694,6 @@
                 });
             });
 
-            // Checkboxes for bulk actions
             if (this.isSuperAdmin) {
                 document.querySelectorAll('.admin-checkbox').forEach(checkbox => {
                     const newCheckbox = checkbox.cloneNode(true);
@@ -11139,7 +11709,6 @@
                         }
                         this.updateBulkActionButton();
                         this.updateSelectAllCheckbox();
-                        // Update header count
                         updateHeaderSelectedCount('admins', this.selectedAdmins.length);
                     });
                 });
@@ -11159,7 +11728,6 @@
                             }
                         });
                         this.updateBulkActionButton();
-                        // Update header count
                         updateHeaderSelectedCount('admins', this.selectedAdmins.length);
                     });
                 }
@@ -11230,6 +11798,8 @@
                 return;
             }
 
+            this.cleanupOTP();
+
             const admin = this.admins.find(a => a.id === adminId);
             if (!admin) return;
 
@@ -11251,187 +11821,41 @@
             document.getElementById('passwordRequired').textContent = '';
             document.getElementById('passwordHelp').textContent = 'Leave blank to keep current password. If changing, must meet requirements.';
             document.getElementById('adminStatusGroup').style.display = (this.isSuperAdmin && adminId !== this.currentAdminId) ? 'block' : 'none';
-            document.getElementById('superadminCheckboxGroup').style.display = this.isSuperAdmin ? 'block' : 'none';
 
-            // Clear all field errors
+            const superadminGroup = document.getElementById('superadminCheckboxGroup');
+            if (superadminGroup) {
+                if (this.isSuperAdmin && adminId !== this.currentAdminId) {
+                    superadminGroup.style.display = 'block';
+                    const checkbox = superadminGroup.querySelector('input[type="checkbox"]');
+                    if (checkbox) checkbox.disabled = false;
+                    const disableMsg = superadminGroup.querySelector('.superadmin-disabled-msg');
+                    if (disableMsg) disableMsg.remove();
+                } else if (this.isSuperAdmin && adminId === this.currentAdminId) {
+                    superadminGroup.style.display = 'block';
+                    const checkbox = superadminGroup.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.disabled = true;
+                        checkbox.checked = admin.is_superadmin || false;
+                    }
+                    let disableMsg = superadminGroup.querySelector('.superadmin-disabled-msg');
+                    if (!disableMsg) {
+                        disableMsg = document.createElement('div');
+                        disableMsg.className = 'superadmin-disabled-msg';
+                        disableMsg.style.cssText = 'color: #6c757d; font-size: 12px; margin-top: 5px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #6c757d;';
+                        disableMsg.innerHTML = '<i class="fas fa-info-circle"></i> You cannot change your own super admin status.';
+                        superadminGroup.appendChild(disableMsg);
+                    }
+                } else {
+                    superadminGroup.style.display = 'none';
+                }
+            }
+
             this.clearAllFieldErrors();
 
             document.getElementById('adminModal').style.display = 'block';
         }
 
-        clearAllFieldErrors() {
-            const fields = ['adminFullName', 'adminUsername', 'adminEmail', 'adminPassword', 'adminConfirmPassword'];
-            fields.forEach(fieldId => {
-                const input = document.getElementById(fieldId);
-                const errorSpan = document.getElementById(`${fieldId}Error`);
-                if (errorSpan) errorSpan.remove();
-                if (input) input.classList.remove('input-error');
-            });
-        }
-
-        resetForm() {
-            console.log('Resetting admin form');
-
-            // Reset form fields
-            const form = document.getElementById('adminForm');
-            if (form) {
-                form.reset();
-            }
-
-            // Reset hidden fields
-            const adminId = document.getElementById('adminId');
-            if (adminId) adminId.value = '';
-
-            const adminPassword = document.getElementById('adminPassword');
-            if (adminPassword) adminPassword.value = '';
-
-            const adminConfirmPassword = document.getElementById('adminConfirmPassword');
-            if (adminConfirmPassword) adminConfirmPassword.value = '';
-
-            const adminIsSuperadmin = document.getElementById('adminIsSuperadmin');
-            if (adminIsSuperadmin) adminIsSuperadmin.checked = false;
-
-            const adminIsActive = document.getElementById('adminIsActive');
-            if (adminIsActive) adminIsActive.checked = true;
-
-            // Clear all field errors
-            this.clearAllFieldErrors();
-
-            // Clear password strength display
-            const strengthEl = document.getElementById('passwordStrength');
-            if (strengthEl) strengthEl.innerHTML = '';
-
-            // Clear any mismatch message
-            const mismatchMsg = document.getElementById('passwordMismatchMsg');
-            if (mismatchMsg) mismatchMsg.remove();
-
-            // Reset validation flags
-            this.passwordValid = false;
-            this.passwordMatch = false;
-
-            console.log('Admin form reset complete');
-        }
-
-        clearAllFieldErrors() {
-            const fields = ['adminFullName', 'adminUsername', 'adminEmail', 'adminPassword', 'adminConfirmPassword'];
-            fields.forEach(fieldId => {
-                const input = document.getElementById(fieldId);
-                const errorSpan = document.getElementById(`${fieldId}Error`);
-                if (errorSpan) {
-                    errorSpan.style.display = 'none';
-                    errorSpan.textContent = '';
-                }
-                if (input) {
-                    input.classList.remove('input-error');
-                }
-            });
-        }
-
-        handleAdminCreation() {
-            const fullName = document.getElementById('adminFullName').value.trim();
-            const username = document.getElementById('adminUsername').value.trim();
-            const email = document.getElementById('adminEmail').value.trim();
-            const password = document.getElementById('adminPassword').value;
-            const isSuperadmin = document.getElementById('adminIsSuperadmin').checked;
-
-            const submitBtn = document.getElementById('saveAdminBtn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-            submitBtn.disabled = true;
-
-            fetch('/api/admin/admins', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    full_name: fullName,
-                    username: username,
-                    email: email,
-                    password: password,
-                    is_superadmin: isSuperadmin
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    this.showNotification('Admin created successfully!', 'success');
-                    document.getElementById('adminModal').style.display = 'none';
-                    this.resetForm();
-                    this.loadAdmins();
-                } else {
-                    this.showNotification(data.message || 'Failed to create admin', 'error');
-                    if (data.message && data.message.includes('username')) {
-                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), data.message);
-                    } else if (data.message && data.message.includes('email')) {
-                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), data.message);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                this.showNotification('Failed to create admin', 'error');
-            })
-            .finally(() => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            });
-        }
-
-        handleAdminUpdate() {
-            const adminId = document.getElementById('adminId').value;
-            const fullName = document.getElementById('adminFullName').value.trim();
-            const username = document.getElementById('adminUsername').value.trim();
-            const email = document.getElementById('adminEmail').value.trim();
-            const password = document.getElementById('adminPassword').value;
-            const isSuperadmin = document.getElementById('adminIsSuperadmin').checked;
-            const isActive = document.getElementById('adminIsActive').checked;
-
-            const updateData = { full_name: fullName, username, email };
-            if (password) updateData.password = password;
-
-            const isEditingSelf = adminId === this.currentAdminId;
-            if (this.isSuperAdmin && !isEditingSelf) {
-                updateData.is_superadmin = isSuperadmin;
-                updateData.is_active = isActive;
-            }
-
-            const submitBtn = document.getElementById('saveAdminBtn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-            submitBtn.disabled = true;
-
-            fetch(`/api/admin/admins/${adminId}`, {
-                method: 'PUT',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updateData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    this.showNotification(isEditingSelf ? 'Profile updated successfully!' : 'Admin updated successfully!', 'success');
-                    document.getElementById('adminModal').style.display = 'none';
-                    this.resetForm();
-                    this.loadAdmins();
-                } else {
-                    this.showNotification(data.message || 'Failed to update', 'error');
-                    if (data.message && data.message.includes('username')) {
-                        this.showFieldError(document.getElementById('adminUsername'), document.getElementById('usernameError'), data.message);
-                    } else if (data.message && data.message.includes('email')) {
-                        this.showFieldError(document.getElementById('adminEmail'), document.getElementById('emailError'), data.message);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                this.showNotification('Failed to update', 'error');
-            })
-            .finally(() => {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            });
-        }
-
+        // ===== STATUS & DELETE =====
         toggleStatus(adminId, isActive) {
             if (!this.isSuperAdmin) {
                 this.showNotification('Only super admins can change admin status', 'warning');
@@ -11497,6 +11921,7 @@
             });
         }
 
+        // ===== BULK OPERATIONS =====
         bulkUpdateStatus(ids, isActive) {
             fetch('/api/admin/admins/bulk-status', {
                 method: 'POST',
@@ -11535,6 +11960,7 @@
             });
         }
 
+        // ===== PAGINATION & UI UPDATES =====
         updatePagination(totalCount) {
             const pageInfo = document.getElementById('adminPageInfo');
             const prevBtn = document.getElementById('prevAdminPage');
@@ -11544,7 +11970,6 @@
             if (prevBtn) prevBtn.disabled = this.currentPage === 1;
             if (nextBtn) nextBtn.disabled = this.currentPage === totalPages || totalPages === 0;
 
-            // Call the global pagination UI update
             if (typeof updatePaginationUI === 'function') {
                 updatePaginationUI('admins', this.currentPage, totalCount, this.perPage);
             }
@@ -11557,7 +11982,6 @@
             if (applyBtn) applyBtn.disabled = this.selectedAdmins.length === 0;
             if (headerButton) headerButton.disabled = this.selectedAdmins.length === 0;
 
-            // Update header count
             if (typeof updateHeaderSelectedCount === 'function') {
                 updateHeaderSelectedCount('admins', this.selectedAdmins.length);
             }
@@ -11577,6 +12001,7 @@
             }
         }
 
+        // ===== UTILITY FUNCTIONS =====
         showNotification(message, type) {
             if (typeof showNotification === 'function') {
                 showNotification(message, type);

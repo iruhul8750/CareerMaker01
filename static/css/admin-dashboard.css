@@ -9345,6 +9345,178 @@
         margin-right: 4px;
     }
 
+    /* ===== SUPERADMIN DISABLED MESSAGE ===== */
+    .superadmin-disabled-msg {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 5px;
+        padding: 8px 12px;
+        background: #fef2f2;
+        border-radius: 6px;
+        border-left: 3px solid #dc3545;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .superadmin-disabled-msg i {
+        font-size: 14px;
+    }
+
+    /* Dark mode support */
+    body.dark-mode .superadmin-disabled-msg {
+        background: #2d1b1b;
+        border-left-color: #dc3545;
+        color: #fca5a5;
+    }
+
+    /* ===== ADMIN OTP VERIFICATION ===== */
+    .admin-otp-container {
+        padding: 10px 0;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .admin-otp-container .otp-header {
+        margin-bottom: 20px;
+    }
+
+    .admin-otp-container .otp-input-wrapper {
+        position: relative;
+    }
+
+    .admin-otp-container .otp-input-wrapper input {
+        width: 100%;
+        padding: 12px;
+        font-size: 24px;
+        letter-spacing: 10px;
+        text-align: center;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        transition: var(--transition);
+        background: var(--light-color);
+        color: var(--dark-color);
+        font-weight: 600;
+        height: 52px;
+        box-sizing: border-box;
+    }
+
+    body.dark-mode .admin-otp-container .otp-input-wrapper input {
+        background: #1e293b;
+        border-color: #334155;
+        color: var(--dark-mode-text);
+    }
+
+    .admin-otp-container .otp-input-wrapper input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+    }
+
+    .admin-otp-container .otp-input-wrapper input.error {
+        border-color: var(--danger-color);
+    }
+
+    .admin-otp-container .otp-input-wrapper input::placeholder {
+        color: #cbd5e1;
+        font-size: 18px;
+        letter-spacing: 6px;
+        font-weight: 300;
+    }
+
+    body.dark-mode .admin-otp-container .otp-input-wrapper input::placeholder {
+        color: #475569;
+    }
+
+    .admin-otp-container .otp-timer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 8px;
+    }
+
+    body.dark-mode .admin-otp-container .otp-timer {
+        color: #94a3b8;
+    }
+
+    .admin-otp-container .otp-timer i {
+        font-size: 14px;
+    }
+
+    .admin-otp-container .otp-timer .expired {
+        color: var(--danger-color);
+        font-weight: 600;
+    }
+
+    .admin-otp-container .otp-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .admin-otp-container .otp-resend-section {
+        text-align: center;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    body.dark-mode .admin-otp-container .otp-resend-section {
+        border-color: #334155;
+    }
+
+    .admin-otp-container .otp-resend-section p {
+        font-size: 12px;
+        color: #64748b;
+        margin: 0 0 2px 0;
+    }
+
+    body.dark-mode .admin-otp-container .otp-resend-section p {
+        color: #94a3b8;
+    }
+
+    .admin-otp-container .otp-resend-section .btn-link {
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 2px 10px;
+        transition: var(--transition);
+    }
+
+    .admin-otp-container .otp-resend-section .btn-link:hover {
+        color: var(--secondary-color);
+        text-decoration: underline;
+    }
+
+    .admin-otp-container .otp-resend-section .btn-link:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .admin-otp-container .error-message {
+        color: var(--danger-color);
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .admin-otp-container .error-message.show {
+        display: flex;
+    }
+
     /* Add Admin styles End */
 
     /* ============================================
