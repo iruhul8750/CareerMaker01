@@ -2181,6 +2181,42 @@ def index():
                 logger.error(f"Error fetching user data for index: {str(e)}")
                 profile_pic_data = None
 
+        # ===== GET STATS FOR ABOUT SECTION =====
+        try:
+            # Get counts from database
+            courses_count = supabase_admin.table('courses') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+
+            jobs_count = supabase_admin.table('jobs') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+
+            internships_count = supabase_admin.table('internships') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+
+            users_count = supabase_admin.table('users') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
+
+            stats = {
+                'courses': courses_count.count or 0,
+                'jobs': jobs_count.count or 0,
+                'internships': internships_count.count or 0,
+                'users': users_count.count or 0
+            }
+        except Exception as e:
+            logger.error(f"Error getting stats for about section: {str(e)}")
+            stats = {'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0}
+
         # Log final counts
         logger.info(
             f"🏠 Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(blogs)}")
@@ -2195,6 +2231,7 @@ def index():
                                blogs=blogs,
                                testimonials=testimonials,
                                profile_pic_data=profile_pic_data,
+                               stats=stats,
                                now=now)
 
     except Exception as e:
@@ -5426,6 +5463,107 @@ def unsubscribe_page():
         flash('An error occurred. Please try again later.', 'error')
         return redirect(url_for('unsubscribe_page'))
 
+
+@app.route('/about')
+def about():
+    """Dedicated about page for Google AdSense and users"""
+    try:
+        # Get current time for template
+        now = datetime.now()
+
+        # Get stats from database
+        try:
+            courses_count = supabase_admin.table('courses') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+        except Exception as e:
+            logger.warning(f"Error getting courses count: {str(e)}")
+            courses_count = type('obj', (object,), {'count': 0})()
+
+        try:
+            jobs_count = supabase_admin.table('jobs') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+        except Exception as e:
+            logger.warning(f"Error getting jobs count: {str(e)}")
+            jobs_count = type('obj', (object,), {'count': 0})()
+
+        try:
+            internships_count = supabase_admin.table('internships') \
+                .select('id', count='exact') \
+                .eq('is_active', True) \
+                .eq('is_deleted', False) \
+                .execute()
+        except Exception as e:
+            logger.warning(f"Error getting internships count: {str(e)}")
+            internships_count = type('obj', (object,), {'count': 0})()
+
+        try:
+            users_count = supabase_admin.table('users') \
+                .select('id', count='exact') \
+                .eq('is_deleted', False) \
+                .execute()
+        except Exception as e:
+            logger.warning(f"Error getting users count: {str(e)}")
+            users_count = type('obj', (object,), {'count': 0})()
+
+        stats = {
+            'courses': courses_count.count or 0,
+            'jobs': jobs_count.count or 0,
+            'internships': internships_count.count or 0,
+            'users': users_count.count or 0
+        }
+
+        logger.info(
+            f"📊 About page stats - Courses: {stats['courses']}, Jobs: {stats['jobs']}, Internships: {stats['internships']}, Users: {stats['users']}")
+
+        # Check if user is logged in for profile picture
+        profile_pic_data = None
+        if 'user_id' in session:
+            try:
+                user_id = session['user_id']
+                user_response = supabase_admin.table('users').select('profile_pic, username, email').eq('id',
+                                                                                                        user_id).execute()
+                if user_response.data:
+                    user = user_response.data[0]
+                    if user.get('profile_pic'):
+                        project_ref = supabase_url.split('//')[1].split('.')[0]
+                        timestamp = int(datetime.now().timestamp())
+                        profile_pic_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={timestamp}"
+                        profile_pic_data = {
+                            'url': profile_pic_url,
+                            'username': user['username'],
+                            'email': user.get('email', ''),
+                            'has_picture': True
+                        }
+                    else:
+                        profile_pic_data = {
+                            'url': None,
+                            'username': user['username'],
+                            'email': user.get('email', ''),
+                            'has_picture': False
+                        }
+            except Exception as e:
+                logger.error(f"Error fetching user data for about page: {str(e)}")
+                profile_pic_data = None
+
+        return render_template('about.html',
+                               stats=stats,
+                               now=now,
+                               profile_pic_data=profile_pic_data)
+
+    except Exception as e:
+        logger.error(f"❌ Error loading about page: {str(e)}", exc_info=True)
+        # Return template with empty stats rather than crashing
+        now = datetime.now()
+        return render_template('about.html',
+                               stats={'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0},
+                               now=now,
+                               profile_pic_data=None)
 
 @app.after_request
 def after_request(response):

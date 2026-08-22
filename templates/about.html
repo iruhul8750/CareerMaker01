@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- About Page -->
+<section class="about-page">
+    <div class="container">
+        <!-- Page Header -->
+        <div class="about-page-header scroll-animate">
+            <h1>About CareerMaker</h1>
+            <p>Your trusted gateway to curated career opportunities and learning resources</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="about-page-content">
+            <!-- What We Do -->
+            <div class="about-section-block scroll-animate">
+                <div class="about-icon-wrapper">
+                    <i class="fas fa-hand-holding-heart"></i>
+                </div>
+                <div class="about-text-content">
+                    <h2>What We Do</h2>
+                    <p>CareerMaker is a comprehensive career development platform that connects professionals, students, and job seekers with the best <strong>third-party courses</strong>, <strong>internships</strong>, and <strong>job opportunities</strong> from around the web.</p>
+                    <p>We carefully curate and verify each opportunity before listing it on our platform. Every course, internship, and job posting includes detailed information to help you make informed decisions about your career journey.</p>
+                </div>
+            </div>
+
+            <!-- How It Works -->
+            <div class="about-section-block scroll-animate">
+                <div class="about-icon-wrapper">
+                    <i class="fas fa-link"></i>
+                </div>
+                <div class="about-text-content">
+                    <h2>How It Works</h2>
+                    <ul class="about-trust-list">
+                        <li><i class="fas fa-check-circle"></i> We curate third-party courses from leading platforms like Coursera, Udemy, LinkedIn Learning, and more</li>
+                        <li><i class="fas fa-check-circle"></i> Each listing includes comprehensive details about course content, instructor, duration, price, and skill level</li>
+                        <li><i class="fas fa-check-circle"></i> Click the <strong>"Enroll Now"</strong> or <strong>"Apply Now"</strong> button to be redirected directly to the original course or job listing page</li>
+                        <li><i class="fas fa-check-circle"></i> We provide direct external links - no unnecessary redirects or middlemen</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Why Choose Us -->
+            <div class="about-section-block scroll-animate">
+                <div class="about-icon-wrapper">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="about-text-content">
+                    <h2>Why Choose CareerMaker</h2>
+                    <ul class="about-trust-list">
+                        <li><i class="fas fa-check-circle"></i> <strong>Verified Content:</strong> All courses and opportunities are thoroughly vetted to ensure quality and relevance</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Direct External Links:</strong> One-click access to the original course or job page</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Transparent Information:</strong> Clear pricing, duration, level, and provider details</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Career Growth:</strong> Our programs are designed to help you advance in your current career or switch to a new one</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Regular Updates:</strong> New opportunities added daily with expiration dates for time-sensitive listings</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Stats Section -->
+            <div class="about-stats-section scroll-animate">
+                <h2>Our Impact</h2>
+                <div class="about-stats-grid">
+                    <div class="about-stat-card">
+                        <div class="about-stat-number" data-count="{{ stats.courses }}">0</div>
+                        <div class="about-stat-label">Curated Courses</div>
+                    </div>
+                    <div class="about-stat-card">
+                        <div class="about-stat-number" data-count="{{ stats.jobs }}">0</div>
+                        <div class="about-stat-label">Job Listings</div>
+                    </div>
+                    <div class="about-stat-card">
+                        <div class="about-stat-number" data-count="{{ stats.internships }}">0</div>
+                        <div class="about-stat-label">Internships</div>
+                    </div>
+                    <div class="about-stat-card">
+                        <div class="about-stat-number" data-count="{{ stats.users }}">0+</div>
+                        <div class="about-stat-label">Community Members</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What You Get -->
+            <div class="about-section-block scroll-animate">
+                <div class="about-icon-wrapper">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <div class="about-text-content">
+                    <h2>What You Get</h2>
+                    <ul class="about-trust-list">
+                        <li><i class="fas fa-check-circle"></i> <strong>Courses:</strong> Each course listing includes provider, instructor, duration, price, level, and enrollment count</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Jobs:</strong> Each job listing includes company, location, salary range, type, experience level, and required skills</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Internships:</strong> Each internship includes company, location, duration, stipend, type, and required skills</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Expiration Tracking:</strong> Time-sensitive opportunities show expiration dates with urgent warnings</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Bookmark System:</strong> Save your favorite courses, jobs, and internships for later</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Contact Section -->
+            <div class="about-section-block scroll-animate">
+                <div class="about-icon-wrapper">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="about-text-content">
+                    <h2>Get In Touch</h2>
+                    <p>Have questions or suggestions? We'd love to hear from you.</p>
+                    <div class="about-contact-info">
+                        <p><i class="fas fa-envelope"></i> Email: support@careermaker.tech</p>
+                        <p><i class="fas fa-globe"></i> Website: careermaker.tech</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
