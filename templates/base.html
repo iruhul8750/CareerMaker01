@@ -154,17 +154,10 @@
                     <li><a href="#jobs"><i class="fas fa-chevron-right"></i> Jobs</a></li>
                     <li><a href="#internships"><i class="fas fa-chevron-right"></i> Internships</a></li>
                     <li><a href="#lightweight-blog"><i class="fas fa-chevron-right"></i> Blog</a></li>
+
                 </ul>
             </div>
-            <!-- In the Support section of the footer -->
-            <div class="footer-col">
-                <h3>Support</h3>
-                <ul class="footer-links">
-                    <li><a href="/privacy"><i class="fas fa-chevron-right"></i> Privacy Policy</a></li>
-                    <li><a href="/terms"><i class="fas fa-chevron-right"></i> Terms of Service</a></li>
-                    <li><a href="#contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
-                </ul>
-            </div>
+
             <div class="footer-col footer-newsletter">
                 <h3>Newsletter</h3>
                 <p class="newsletter-desc">Subscribe for career tips and opportunities</p>
@@ -184,6 +177,7 @@
         <div class="footer-bottom">
             <p>&copy; <span id="currentYear"></span> CareerMaker. All rights reserved.</p>
             <div class="footer-links">
+                <a href="/about">About Us</a>
                 <a href="/privacy">Privacy Policy</a>
                 <a href="/terms">Terms of Service</a>
                 <!--                <a href="/sitemap">Sitemap</a>-->
@@ -213,7 +207,8 @@
             <div id="registerResponse" class="form-response" style="display: none;"></div>
 
             <div class="form-group floating-label-group">
-                <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3" maxlength="30">
+                <input type="text" id="registerUsername" name="username" required placeholder=" " minlength="3"
+                       maxlength="30">
                 <label for="registerUsername">Username</label>
                 <div class="form-hint">3-30 characters, letters and numbers only</div>
             </div>
@@ -230,13 +225,25 @@
 
             <!-- Password Requirements - Added here -->
             <div class="password-requirements" style="margin-bottom: 15px; margin-top: -5px;">
-                <p class="requirements-title" style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #6b7280;">Password must contain:</p>
+                <p class="requirements-title"
+                   style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #6b7280;">Password must
+                    contain:</p>
                 <ul class="requirements-list" style="list-style: none; padding-left: 0; margin: 0;">
-                    <li id="regReqLength" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least 8 characters</li>
-                    <li id="regReqUppercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one uppercase letter</li>
-                    <li id="regReqLowercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one lowercase letter</li>
-                    <li id="regReqNumber" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one number</li>
-                    <li id="regReqSpecial" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one special character</li>
+                    <li id="regReqLength" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least 8
+                        characters
+                    </li>
+                    <li id="regReqUppercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one
+                        uppercase letter
+                    </li>
+                    <li id="regReqLowercase" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one
+                        lowercase letter
+                    </li>
+                    <li id="regReqNumber" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one
+                        number
+                    </li>
+                    <li id="regReqSpecial" style="font-size: 12px; margin: 3px 0; color: #dc3545;">❌ At least one
+                        special character
+                    </li>
                 </ul>
             </div>
 
@@ -362,13 +369,16 @@
         <form id="passwordResetOtpForm" class="modal-form">
             <input type="hidden" id="otpResetEmail" name="email">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label for="resetOtpCode" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Enter OTP Code</label>
+                <label for="resetOtpCode"
+                       style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">Enter OTP
+                    Code</label>
                 <input type="text" id="resetOtpCode" name="otp" maxlength="6" required
                        autocomplete="off" inputmode="numeric"
                        style="width: 100%; padding: 12px; font-size: 18px; letter-spacing: 8px;
                               text-align: center; border: 2px solid #ddd; border-radius: 8px;
                               outline: none; box-sizing: border-box;">
-                <div class="form-error" id="resetOtpError" style="display:none; color: #dc3545; font-size: 12px; margin-top: 5px;"></div>
+                <div class="form-error" id="resetOtpError"
+                     style="display:none; color: #dc3545; font-size: 12px; margin-top: 5px;"></div>
             </div>
             <div class="form-footer">
                 <button type="submit" class="btn btn-primary" style="width: 100%;">
@@ -378,7 +388,9 @@
             </div>
             <div id="resetOtpResponse" class="form-response" style="display: none;"></div>
             <div class="resend-section" style="margin-top: 15px; text-align: center;">
-                <p>Didn't receive code? <a href="#" id="resendResetOtp">Resend</a> <span id="resendResetTimer" style="display:none">(Wait <span id="timerResetCount">60</span>s)</span></p>
+                <p>Didn't receive code? <a href="#" id="resendResetOtp">Resend</a> <span id="resendResetTimer"
+                                                                                         style="display:none">(Wait <span
+                        id="timerResetCount">60</span>s)</span></p>
             </div>
         </form>
     </div>

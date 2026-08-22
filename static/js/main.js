@@ -5221,6 +5221,9 @@
         // Setup network monitor
         setupNetworkMonitor();
 
+        // About page stats
+        animateAboutPageStats();
+
         // Initialize unsubscribe page
         if (window.location.pathname.includes('/unsubscribe')) {
             initializeUnsubscribePage();
@@ -6453,4 +6456,64 @@
             button.innerHTML = originalHTML;
             button.disabled = false;
         });
+    }
+
+    // =============================================
+    // ABOUT PAGE STATS ANIMATION
+    // =============================================
+
+    function animateAboutPageStats() {
+        const aboutPage = document.querySelector('.about-page');
+        if (!aboutPage) return;
+
+        const statNumbers = aboutPage.querySelectorAll('.about-stat-number');
+        let animated = false;
+
+        const animateCounter = (element) => {
+            const targetText = element.getAttribute('data-count') || element.textContent;
+            const target = parseInt(targetText.replace(/[^0-9]/g, ''));
+            const suffix = targetText.includes('+') ? '+' : '';
+
+            if (isNaN(target) || target === 0) {
+                element.textContent = '0' + suffix;
+                return;
+            }
+
+            const duration = 1500;
+            const startTime = performance.now();
+            const startValue = 0;
+            const endValue = target;
+
+            const updateCounter = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const currentValue = Math.floor(startValue + (endValue - startValue) * eased);
+
+                element.textContent = currentValue + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    element.textContent = endValue + suffix;
+                }
+            };
+
+            requestAnimationFrame(updateCounter);
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !animated) {
+                    animated = true;
+                    statNumbers.forEach((stat, index) => {
+                        setTimeout(() => {
+                            animateCounter(stat);
+                        }, index * 200);
+                    });
+                }
+            });
+        }, { threshold: 0.3 });
+
+        observer.observe(aboutPage);
     }
