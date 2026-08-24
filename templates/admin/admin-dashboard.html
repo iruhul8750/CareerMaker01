@@ -23,17 +23,13 @@
         <!-- Scrollable Menu Container -->
         <div class="sidebar-menu-container">
             <ul class="sidebar-menu">
-                <li class="menu-item"><a href="#dashboard"><i
-                        class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                <li class="menu-item"><a href="#dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
                 <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
                 <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-                <li class="menu-item"><a href="#internships"><i
-                        class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+                <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
                 <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
-                <li class="menu-item"><a href="#testimonials"><i
-                        class="fas fa-comments"></i><span>Testimonials</span></a></li>
-                <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a>
-                </li>
+                <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
+                <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
                 <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span><span class="menu-badge" id="messagesMenuBadge"></span></a></li>
 
                 <!-- User Management with Submenu -->
@@ -59,14 +55,10 @@
                     </ul>
                 </li>
 
-                <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
-                        class="menu-badge" id="trashMenuBadge"></span></a></li>
-                <li class="menu-item"><a href="#expired-content"><i
-                        class="fas fa-clock"></i><span>Expired Content</span></a></li>
-                <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
-                </li>
-            </ul>
-        </div>
+                <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
+                <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
+                <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
+                <li class="menu-item"><a href="#audit-logs"><i class="fas fa-history"></i><span>Audit & Settings</span><span class="menu-badge error-badge" id="errorMenuBadge"></span></a></li></ul></div>
 
         <!-- Fixed Bottom Section -->
         <div class="sidebar-footer">
@@ -495,7 +487,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search internships..." id="internshipSearch" class="search-input">
+                        <input type="text" placeholder="Search internships..." id="internshipSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -634,7 +627,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search testimonials..." id="testimonialSearch" class="search-input">
+                        <input type="text" placeholder="Search testimonials..." id="testimonialSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -700,7 +694,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search subscribers..." id="newsletterSearch" class="search-input">
+                        <input type="text" placeholder="Search subscribers..." id="newsletterSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -958,7 +953,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch" class="search-input">
+                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -1197,6 +1193,147 @@
                         <canvas id="browserChart"></canvas>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Audit Logs & Site Settings Section -->
+        <div class="admin-section" id="audit-logs">
+            <div class="section-header">
+                <div class="header-content"
+                     style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%;">
+                    <!-- Settings Toggles -->
+                    <div class="settings-toggle-item">
+                        <span class="toggle-label"><i class="fas fa-book"></i> Courses</span>
+                        <button class="toggle-btn" data-key="show_courses" id="toggle_show_courses">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item">
+                        <span class="toggle-label"><i class="fas fa-briefcase"></i> Jobs</span>
+                        <button class="toggle-btn" data-key="show_jobs" id="toggle_show_jobs">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item">
+                        <span class="toggle-label"><i class="fas fa-user-graduate"></i> Internships</span>
+                        <button class="toggle-btn" data-key="show_internships" id="toggle_show_internships">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item">
+                        <span class="toggle-label"><i class="fas fa-blog"></i> Blog</span>
+                        <button class="toggle-btn" data-key="show_blog" id="toggle_show_blog">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item">
+                        <span class="toggle-label"><i class="fas fa-quote-left"></i> Testimonials</span>
+                        <button class="toggle-btn" data-key="show_testimonials" id="toggle_show_testimonials">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+
+                    <!-- Stats Badges -->
+                    <div class="logs-stats-mini">
+                <span class="stat-mini audit">
+                    <span class="stat-mini-icon"><i class="fas fa-clipboard-list"></i></span>
+                    <span class="stat-mini-number" id="auditTotalCount">0</span>
+                </span>
+                        <span class="stat-mini error">
+                    <span class="stat-mini-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                    <span class="stat-mini-number" id="errorTotalCount">0</span>
+                </span>
+                        <span class="stat-mini unresolved">
+                    <span class="stat-mini-icon"><i class="fas fa-clock"></i></span>
+                    <span class="stat-mini-number" id="errorUnresolvedCount">0</span>
+                </span>
+                        <span class="stat-mini resolved">
+                    <span class="stat-mini-icon"><i class="fas fa-check-circle"></i></span>
+                    <span class="stat-mini-number" id="errorResolvedCount">0</span>
+                </span>
+                    </div>
+                </div>
+
+                <!-- Filters Row -->
+                <div class="filter-controls"
+                     style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 8px;">
+                    <div class="filter-wrapper">
+                        <select id="logTypeFilter" class="filter-select" style="height: 34px;"
+                                onchange="loadAuditLogs()">
+                            <option value="">All Logs</option>
+                            <option value="audit">Audit</option>
+                            <option value="error">Errors</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <select id="errorTypeFilter" class="filter-select" style="height: 34px;"
+                                onchange="loadAuditLogs()">
+                            <option value="">All Errors</option>
+                            <option value="404">404</option>
+                            <option value="500">500</option>
+                            <option value="EXCEPTION">Exception</option>
+                            <option value="SECURITY">Security</option>
+                            <option value="DB_ERROR">Database</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <select id="errorStatusFilter" class="filter-select" style="height: 34px;"
+                                onchange="loadAuditLogs()">
+                            <option value="">All Status</option>
+                            <option value="false">Unresolved</option>
+                            <option value="true">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="filter-wrapper">
+                        <input type="date" id="logDateFilter" class="filter-select" style="height: 34px; width: 140px;"
+                               onchange="loadAuditLogs()">
+                    </div>
+                    <button class="btn btn-outline" onclick="loadAuditLogs()" style="height: 34px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Table -->
+            <div class="content-table">
+                <table>
+                    <thead>
+                    <tr>
+                        <th style="width: 60px;">S.No</th>
+                        <th style="width: 100px;">Type</th>
+                        <th>User</th>
+                        <th>Action/Error</th>
+                        <th>Resource</th>
+                        <th>Details</th>
+                        <th style="width: 160px;">Time</th>
+                        <th style="width: 110px;">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody id="auditLogTableBody">
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-spinner fa-spin"
+                               style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                            <p>Loading logs...</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="table-footer">
+                <div class="pagination" id="auditLogPagination"></div>
             </div>
         </div>
 

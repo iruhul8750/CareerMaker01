@@ -11040,3 +11040,449 @@
     }
 
     /* End Analytical Styles */
+
+    /* =============================================
+       COMPLETE SECTION STYLES - AUDIT LOGS & SITE SETTINGS
+       ============================================= */
+
+    /* 1. Main Section Container */
+    #audit-logs {
+        display: none;
+        flex-direction: column;
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: var(--bg-primary);
+    }
+
+    #audit-logs.active {
+        display: flex;
+    }
+
+    /* 2. Section Header (Toggles & Filters) */
+    #audit-logs .section-header {
+        position: sticky;
+        top: 56px; /* Adjust to match your .admin-header height */
+        z-index: 100;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 20px;
+        margin: 0 !important;
+        flex-shrink: 0;
+        box-sizing: border-box;
+    }
+
+    #audit-logs .section-header .header-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    #audit-logs .section-header .filter-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    /* 3. Settings Toggle Items */
+    #audit-logs .settings-toggle-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        height: 32px;
+    }
+
+    #audit-logs .settings-toggle-item .toggle-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    #audit-logs .settings-toggle-item .toggle-label i {
+        color: #4a6cf7;
+        font-size: 12px;
+    }
+
+    /* Toggle Button */
+    #audit-logs .toggle-btn {
+        position: relative;
+        width: 40px;
+        height: 20px;
+        border: none;
+        border-radius: 10px;
+        background: #cbd5e1;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        padding: 0;
+        flex-shrink: 0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #audit-logs .toggle-btn.active {
+        background: #4a6cf7;
+    }
+
+    #audit-logs .toggle-btn .toggle-btn-slider {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    #audit-logs .toggle-btn.active .toggle-btn-slider {
+        left: 22px;
+    }
+
+    #audit-logs .toggle-btn .toggle-btn-status {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 7px;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        letter-spacing: 0.3px;
+    }
+
+    #audit-logs .toggle-btn .toggle-btn-status.on {
+        right: 4px;
+        opacity: 0;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    #audit-logs .toggle-btn .toggle-btn-status.off {
+        left: 4px;
+        opacity: 1;
+        color: rgba(71, 85, 105, 0.7);
+    }
+
+    #audit-logs .toggle-btn.active .toggle-btn-status.on {
+        opacity: 1;
+    }
+
+    #audit-logs .toggle-btn.active .toggle-btn-status.off {
+        opacity: 0;
+    }
+
+    #audit-logs .toggle-btn:hover {
+        transform: scale(1.03);
+    }
+
+    #audit-logs .toggle-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Dark Mode Toggles */
+    .admin-dashboard.dark-mode #audit-logs .toggle-btn {
+        background: #334155;
+    }
+
+    .admin-dashboard.dark-mode #audit-logs .toggle-btn.active {
+        background: #4a6cf7;
+    }
+
+    .admin-dashboard.dark-mode #audit-logs .toggle-btn .toggle-btn-slider {
+        background: #f1f5f9;
+    }
+
+    .admin-dashboard.dark-mode #audit-logs .toggle-btn .toggle-btn-status.off {
+        color: rgba(148, 163, 184, 0.7);
+    }
+
+    /* 4. Stats Mini Badges */
+    #audit-logs .logs-stats-mini {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+    }
+
+    #audit-logs .stat-mini {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 11px;
+        height: 28px;
+        transition: all 0.2s ease;
+    }
+
+    #audit-logs .stat-mini:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    #audit-logs .stat-mini .stat-mini-icon {
+        font-size: 11px;
+    }
+
+    #audit-logs .stat-mini.audit .stat-mini-icon { color: #3b82f6; }
+    #audit-logs .stat-mini.error .stat-mini-icon { color: #ef4444; }
+    #audit-logs .stat-mini.unresolved .stat-mini-icon { color: #f59e0b; }
+    #audit-logs .stat-mini.resolved .stat-mini-icon { color: #10b981; }
+
+    #audit-logs .stat-mini .stat-mini-number {
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-primary);
+        min-width: 18px;
+        text-align: center;
+    }
+
+    #audit-logs .stat-mini.audit .stat-mini-number { color: #3b82f6; }
+    #audit-logs .stat-mini.error .stat-mini-number { color: #ef4444; }
+    #audit-logs .stat-mini.unresolved .stat-mini-number { color: #f59e0b; }
+    #audit-logs .stat-mini.resolved .stat-mini-number { color: #10b981; }
+
+    /* 5. Filter Selects */
+    #audit-logs .filter-wrapper {
+        display: inline-block;
+    }
+
+    #audit-logs .filter-select {
+        height: 34px;
+        padding: 0 32px 0 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 13px;
+        min-width: 120px;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    #audit-logs .filter-select:focus {
+        outline: none;
+        border-color: #4a6cf7;
+        box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.15);
+    }
+
+    /* 6. Table Container (Scrollable) */
+    #audit-logs .content-table {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: var(--bg-card);
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* 7. Table Styling */
+    #audit-logs .content-table table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    #audit-logs .content-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    #audit-logs .content-table thead th {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 2px solid var(--border-color);
+        white-space: nowrap;
+        box-shadow: inset 0 -1px 0 var(--border-color);
+    }
+
+    .admin-dashboard.dark-mode #audit-logs .content-table thead th {
+        background: var(--bg-card);
+    }
+
+    #audit-logs .content-table tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    #audit-logs .content-table tbody tr:hover {
+        background: var(--bg-primary);
+    }
+
+    /* 8. Table Footer (Static, NOT Fixed) */
+    #audit-logs .table-footer {
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        top: auto !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 12px 20px !important;
+        background: var(--bg-primary) !important;
+        border-top: 1px solid var(--border-color) !important;
+        z-index: 100;
+        flex-shrink: 0;
+        box-sizing: border-box;
+    }
+
+    #audit-logs .table-footer .pagination {
+        margin: 0 !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+
+    /* 9. Pagination Buttons */
+    #audit-logs .pagination .page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    #audit-logs .pagination .page-btn:hover:not(.disabled):not(.active) {
+        background: var(--bg-primary);
+        border-color: #4a6cf7;
+        color: #4a6cf7;
+    }
+
+    #audit-logs .pagination .page-btn.active {
+        background: #4a6cf7;
+        border-color: #4a6cf7;
+        color: white;
+    }
+
+    #audit-logs .pagination .page-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    /* 10. Badges */
+    #audit-logs .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    #audit-logs .badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    #audit-logs .badge-info { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+    #audit-logs .badge-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    #audit-logs .badge-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    #audit-logs .badge-secondary { background: rgba(100, 116, 139, 0.15); color: #64748b; }
+
+    /* 11. Row Styles */
+    #audit-logs .log-row-error-unresolved { background: rgba(239, 68, 68, 0.04); }
+    #audit-logs .log-row-error-resolved { opacity: 0.6; }
+    #audit-logs .log-row-security { background: rgba(239, 68, 68, 0.08); }
+
+    /* 12. Mobile / Responsive Adjustments */
+    @media (max-width: 992px) {
+        #audit-logs .section-header {
+            top: 56px;
+            padding: 10px 12px;
+        }
+
+        #audit-logs .table-footer {
+            padding: 8px 12px !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #audit-logs .section-header {
+            padding: 8px 12px;
+        }
+
+        #audit-logs .settings-toggle-item {
+            height: 28px;
+            padding: 2px 8px;
+        }
+
+        #audit-logs .settings-toggle-item .toggle-label {
+            font-size: 11px;
+        }
+
+        #audit-logs .toggle-btn {
+            width: 36px;
+            height: 18px;
+        }
+
+        #audit-logs .toggle-btn .toggle-btn-slider {
+            width: 14px;
+            height: 14px;
+            top: 2px;
+            left: 2px;
+        }
+
+        #audit-logs .toggle-btn.active .toggle-btn-slider {
+            left: 20px;
+        }
+
+        #audit-logs .toggle-btn .toggle-btn-status {
+            font-size: 6px;
+        }
+
+        #audit-logs .stat-mini {
+            height: 24px;
+            font-size: 10px;
+            padding: 2px 8px;
+        }
+
+        #audit-logs .stat-mini .stat-mini-number {
+            font-size: 11px;
+            min-width: 16px;
+        }
+
+        #audit-logs .content-table thead th,
+        #audit-logs .content-table tbody td {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+
+        #audit-logs .filter-select {
+            min-width: 100px;
+            height: 30px;
+            font-size: 12px;
+        }
+    }

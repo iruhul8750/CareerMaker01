@@ -1920,6 +1920,14 @@ def index():
         current_time = get_current_utc_time().isoformat()
         logger.info(f"🕐 Current time for expiration check: {current_time}")
 
+        # ===== GET SITE SETTINGS =====
+        site_settings = get_site_settings()
+        show_courses = site_settings.get('show_courses', True)
+        show_jobs = site_settings.get('show_jobs', True)
+        show_internships = site_settings.get('show_internships', True)
+        show_blog = site_settings.get('show_blog', True)
+        show_testimonials = site_settings.get('show_testimonials', True)
+
         # Initialize empty lists for all sections
         enhanced_courses = []
         enhanced_jobs = []
@@ -1927,31 +1935,26 @@ def index():
         blogs = []
         testimonials = []
 
-        # ===== FETCH COURSES - Most recent first =====
-        try:
-            # Get active and featured courses that are NOT expired
-            courses_query = supabase.table('courses') \
-                .select('*') \
-                .eq('is_featured', True) \
-                .eq('is_active', True) \
-                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
-                .order('created_at', desc=True) \
-                .limit(4)
+        # ===== FETCH COURSES (only if enabled) =====
+        if show_courses:
+            try:
+                courses_query = supabase.table('courses') \
+                    .select('*') \
+                    .eq('is_featured', True) \
+                    .eq('is_active', True) \
+                    .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                    .order('created_at', desc=True) \
+                    .limit(4)
 
-            courses = courses_query.execute().data or []
+                courses = courses_query.execute().data or []
 
-            # Ensure views field exists
-            for course in courses:
-                if 'views' not in course:
-                    course['views'] = 0
-            logger.info(f"📚 Found {len(courses)} active featured courses for homepage")
+                # Ensure views field exists
+                for course in courses:
+                    if 'views' not in course:
+                        course['views'] = 0
 
-            # Enhance courses with logos
-            for course in courses:
-                try:
-                    # Simple enhancement without complex logo fetching that might fail
+                    # Enhance with company logo
                     if course.get('company'):
-                        # Try to get logo but don't fail if it doesn't work
                         try:
                             logo_url = get_or_fetch_logo_optimized(course['company'], 'course', course.get('id'))
                             if logo_url:
@@ -1964,32 +1967,26 @@ def index():
                         course['company_logo'] = '/static/images/default-course.png'
 
                     enhanced_courses.append(course)
-                except Exception as e:
-                    logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
-                    # Add course with default image rather than failing
-                    course['company_logo'] = '/static/images/default-course.png'
-                    enhanced_courses.append(course)
 
-        except Exception as e:
-            logger.error(f"Error loading courses for homepage: {str(e)}")
-            # Keep enhanced_courses as empty list
+                logger.info(f"📚 Loaded {len(enhanced_courses)} courses (enabled: {show_courses})")
+            except Exception as e:
+                logger.error(f"Error loading courses: {str(e)}")
 
-        # ===== FETCH JOBS - Most recent first =====
-        try:
-            jobs_query = supabase.table('jobs') \
-                .select('*') \
-                .eq('is_featured', True) \
-                .eq('is_active', True) \
-                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
-                .order('created_at', desc=True) \
-                .limit(4)
+        # ===== FETCH JOBS (only if enabled) =====
+        if show_jobs:
+            try:
+                jobs_query = supabase.table('jobs') \
+                    .select('*') \
+                    .eq('is_featured', True) \
+                    .eq('is_active', True) \
+                    .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                    .order('created_at', desc=True) \
+                    .limit(4)
 
-            jobs = jobs_query.execute().data or []
-            logger.info(f"💼 Found {len(jobs)} active featured jobs for homepage")
+                jobs = jobs_query.execute().data or []
 
-            for job in jobs:
-                try:
-                    # Simple enhancement for jobs
+                for job in jobs:
+                    # Enhance with company logo
                     if job.get('company'):
                         try:
                             logo_url = get_or_fetch_logo_optimized(job['company'], 'job', job.get('id'))
@@ -2009,32 +2006,26 @@ def index():
                     job.setdefault('type', 'Full-time')
 
                     enhanced_jobs.append(job)
-                except Exception as e:
-                    logger.error(f"Error enhancing job {job.get('id')}: {str(e)}")
-                    # Add job with defaults rather than failing
-                    job['company_logo'] = '/static/images/default-job.png'
-                    enhanced_jobs.append(job)
 
-        except Exception as e:
-            logger.error(f"Error loading jobs for homepage: {str(e)}")
-            # Keep enhanced_jobs as empty list
+                logger.info(f"💼 Loaded {len(enhanced_jobs)} jobs (enabled: {show_jobs})")
+            except Exception as e:
+                logger.error(f"Error loading jobs: {str(e)}")
 
-        # ===== FETCH INTERNSHIPS - Most recent first =====
-        try:
-            internships_query = supabase.table('internships') \
-                .select('*') \
-                .eq('is_featured', True) \
-                .eq('is_active', True) \
-                .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
-                .order('created_at', desc=True) \
-                .limit(4)
+        # ===== FETCH INTERNSHIPS (only if enabled) =====
+        if show_internships:
+            try:
+                internships_query = supabase.table('internships') \
+                    .select('*') \
+                    .eq('is_featured', True) \
+                    .eq('is_active', True) \
+                    .or_(f'expiration_date.is.null,expiration_date.gt.{current_time}') \
+                    .order('created_at', desc=True) \
+                    .limit(4)
 
-            internships = internships_query.execute().data or []
-            logger.info(f"🎓 Found {len(internships)} active featured internships for homepage")
+                internships = internships_query.execute().data or []
 
-            for internship in internships:
-                try:
-                    # Simple enhancement for internships
+                for internship in internships:
+                    # Enhance with company logo
                     if internship.get('company'):
                         try:
                             logo_url = get_or_fetch_logo_optimized(internship['company'], 'internship',
@@ -2056,65 +2047,61 @@ def index():
                     internship.setdefault('type', 'Internship')
 
                     enhanced_internships.append(internship)
-                except Exception as e:
-                    logger.error(f"Error enhancing internship {internship.get('id')}: {str(e)}")
-                    # Add internship with defaults rather than failing
-                    internship['company_logo'] = '/static/images/default-internship.png'
-                    enhanced_internships.append(internship)
 
-        except Exception as e:
-            logger.error(f"Error loading internships for homepage: {str(e)}")
+                logger.info(f"🎓 Loaded {len(enhanced_internships)} internships (enabled: {show_internships})")
+            except Exception as e:
+                logger.error(f"Error loading internships: {str(e)}")
 
-        # ===== FETCH BLOGS - Most recent first =====
-        try:
-            blogs_query = supabase.table('blog_posts') \
-                .select('*') \
-                .eq('is_featured', True) \
-                .eq('is_active', True) \
-                .order('created_at', desc=True) \
-                .limit(4)
+        # ===== FETCH BLOGS (only if enabled) =====
+        if show_blog:
+            try:
+                blogs_query = supabase.table('blog_posts') \
+                    .select('*') \
+                    .eq('is_featured', True) \
+                    .eq('is_active', True) \
+                    .order('created_at', desc=True) \
+                    .limit(4)
 
-            blogs = blogs_query.execute().data or []
+                blogs = blogs_query.execute().data or []
 
-            # Get view counts for each blog
-            if blogs:
-                blog_ids = [blog['id'] for blog in blogs]
+                # Get view counts for each blog
+                if blogs:
+                    blog_ids = [blog['id'] for blog in blogs]
 
-                # Fetch view counts from blog_views table
-                view_counts_response = supabase_admin.table('blog_views') \
-                    .select('blog_id, id') \
-                    .in_('blog_id', blog_ids) \
-                    .execute()
+                    # Fetch view counts from blog_views table
+                    view_counts_response = supabase_admin.table('blog_views') \
+                        .select('blog_id, id') \
+                        .in_('blog_id', blog_ids) \
+                        .execute()
 
-                # Count views per blog
-                view_counts = {}
-                for view in (view_counts_response.data or []):
-                    blog_id = view['blog_id']
-                    view_counts[blog_id] = view_counts.get(blog_id, 0) + 1
+                    # Count views per blog
+                    view_counts = {}
+                    for view in (view_counts_response.data or []):
+                        blog_id = view['blog_id']
+                        view_counts[blog_id] = view_counts.get(blog_id, 0) + 1
 
-                # Add view count to each blog
-                for blog in blogs:
-                    blog['views'] = view_counts.get(blog['id'], 0)
+                    # Add view count to each blog
+                    for blog in blogs:
+                        blog['views'] = view_counts.get(blog['id'], 0)
 
-            logger.info(f"📝 Found {len(blogs)} active featured blogs for homepage")
+                logger.info(f"📝 Loaded {len(blogs)} blogs (enabled: {show_blog})")
+            except Exception as e:
+                logger.error(f"Error loading blogs: {str(e)}")
 
-        except Exception as e:
-            logger.error(f"Error loading blogs for homepage: {str(e)}")
-            blogs = []
+        # ===== FETCH TESTIMONIALS (only if enabled) =====
+        if show_testimonials:
+            try:
+                testimonials_query = supabase.table('testimonials') \
+                    .select('*') \
+                    .eq('is_active', True) \
+                    .eq('is_deleted', False) \
+                    .order('created_at', desc=True) \
+                    .limit(3)
 
-        # ===== FETCH TESTIMONIALS =====
-        try:
-            testimonials_query = supabase.table('testimonials') \
-                .select('*') \
-                .eq('is_active', True) \
-                .order('created_at', desc=True) \
-                .limit(3)
-
-            testimonials = testimonials_query.execute().data or []
-            logger.info(f"💬 Found {len(testimonials)} testimonials for homepage")
-
-        except Exception as e:
-            logger.error(f"Error loading testimonials for homepage: {str(e)}")
+                testimonials = testimonials_query.execute().data or []
+                logger.info(f"💬 Loaded {len(testimonials)} testimonials (enabled: {show_testimonials})")
+            except Exception as e:
+                logger.error(f"Error loading testimonials: {str(e)}")
 
         # ===== ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
@@ -2146,9 +2133,8 @@ def index():
                     blog['is_bookmarked'] = bookmark_map.get(('blog', blog.get('id')), False)
 
                 logger.info(f"🔖 Added bookmark status for user {user_id}")
-
             except Exception as e:
-                logger.error(f"Error loading bookmarks for homepage: {str(e)}")
+                logger.error(f"Error loading bookmarks: {str(e)}")
 
         # ===== GET USER PROFILE PICTURE IF LOGGED IN =====
         profile_pic_data = None
@@ -2181,9 +2167,8 @@ def index():
                 logger.error(f"Error fetching user data for index: {str(e)}")
                 profile_pic_data = None
 
-        # ===== GET STATS FOR ABOUT SECTION =====
+        # ===== GET STATS FOR ABOUT PAGE (if needed) =====
         try:
-            # Get counts from database
             courses_count = supabase_admin.table('courses') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -2214,12 +2199,16 @@ def index():
                 'users': users_count.count or 0
             }
         except Exception as e:
-            logger.error(f"Error getting stats for about section: {str(e)}")
+            logger.error(f"Error getting stats: {str(e)}")
             stats = {'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0}
 
         # Log final counts
         logger.info(
-            f"🏠 Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(blogs)}")
+            f"🏠 Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, "
+            f"Internships: {len(enhanced_internships)}, Blogs: {len(blogs)}, "
+            f"Settings - Courses: {show_courses}, Jobs: {show_jobs}, Internships: {show_internships}, "
+            f"Blog: {show_blog}, Testimonials: {show_testimonials}"
+        )
 
         # Add current time to template for expiration badge comparison
         now = datetime.now()
@@ -2232,6 +2221,11 @@ def index():
                                testimonials=testimonials,
                                profile_pic_data=profile_pic_data,
                                stats=stats,
+                               show_courses=show_courses,
+                               show_jobs=show_jobs,
+                               show_internships=show_internships,
+                               show_blog=show_blog,
+                               show_testimonials=show_testimonials,
                                now=now)
 
     except Exception as e:
@@ -2245,6 +2239,12 @@ def index():
                                blogs=[],
                                testimonials=[],
                                profile_pic_data=None,
+                               stats={'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0},
+                               show_courses=True,
+                               show_jobs=True,
+                               show_internships=True,
+                               show_blog=True,
+                               show_testimonials=True,
                                now=now)
 
 
@@ -5582,29 +5582,544 @@ def after_request(response):
     return response
 
 
-@app.errorhandler(500)
-def handle_500_error(error):
-    """Handle 500 errors with JSON response for API routes"""
-    if request.path.startswith('/api/'):
-        return jsonify({
-            'status': 'error',
-            'message': 'Internal server error. Please try again later.'
-        }), 500
-    return error
+# =============================================
+# COMBINED AUDIT & ERROR LOGGING
+# =============================================
 
+def log_audit_entry(admin_id, action, resource_type, resource_id=None, details=None, request_obj=None):
+    """Log admin audit actions"""
+    try:
+        # Get admin name
+        admin = supabase_admin.table('admins').select('username, full_name').eq('id', admin_id).execute()
+        admin_name = admin.data[0].get('full_name') or admin.data[0].get('username') if admin.data else 'Unknown'
+
+        log_data = {
+            'log_type': 'audit',
+            'admin_id': admin_id,
+            'admin_name': admin_name,
+            'action': action,
+            'resource_type': resource_type,
+            'resource_id': resource_id,
+            'details': details or {},
+            'created_at': get_current_utc_time().isoformat()
+        }
+
+        if request_obj:
+            ip = request_obj.headers.get('X-Forwarded-For', request_obj.remote_addr)
+            if ip:
+                ip = ip.split(',')[0].strip()
+            log_data['ip_address'] = ip
+            log_data['user_agent'] = request_obj.headers.get('User-Agent', '')[:500]
+            log_data['method'] = request_obj.method
+            log_data['url'] = request_obj.url[:500]
+            log_data['referrer'] = request_obj.headers.get('Referer', '')[:500]
+
+        supabase_admin.table('audit_logs').insert(log_data).execute()
+        logger.info(f"📝 Audit: {admin_name} {action} {resource_type} {resource_id or ''}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to log audit: {str(e)}")
+        return False
+
+
+def log_error_entry(error_type, error_message, error_trace=None, request_obj=None, user_id=None, admin_id=None):
+    """Log website errors"""
+    try:
+        log_data = {
+            'log_type': 'error',
+            'error_type': error_type,
+            'error_message': str(error_message)[:1000],
+            'error_trace': str(error_trace)[:5000] if error_trace else None,
+            'is_resolved': False,
+            'created_at': get_current_utc_time().isoformat()
+        }
+
+        if request_obj:
+            ip = request_obj.headers.get('X-Forwarded-For', request_obj.remote_addr)
+            if ip:
+                ip = ip.split(',')[0].strip()
+            log_data['ip_address'] = ip
+            log_data['user_agent'] = request_obj.headers.get('User-Agent', '')[:500]
+            log_data['method'] = request_obj.method
+            log_data['url'] = request_obj.url[:500]
+            log_data['referrer'] = request_obj.headers.get('Referer', '')[:500]
+            log_data['session_id'] = request_obj.cookies.get('session_id', '')[:100]
+
+            # Get user/admin from session
+            if 'user_id' in session:
+                log_data['user_id'] = session.get('user_id')
+            if 'admin_id' in session:
+                log_data['admin_id'] = session.get('admin_id')
+
+            # Log request data (sanitized)
+            try:
+                if request_obj.is_json:
+                    log_data['request_data'] = request_obj.get_json(silent=True)
+                elif request_obj.form:
+                    form_data = dict(request_obj.form)
+                    if 'password' in form_data:
+                        form_data['password'] = '[REDACTED]'
+                    if 'confirm_password' in form_data:
+                        form_data['confirm_password'] = '[REDACTED]'
+                    log_data['request_data'] = form_data
+            except:
+                pass
+
+            # Log headers (sanitized)
+            try:
+                headers = dict(request_obj.headers)
+                if 'Authorization' in headers:
+                    headers['Authorization'] = '[REDACTED]'
+                if 'Cookie' in headers:
+                    headers['Cookie'] = '[REDACTED]'
+                log_data['headers'] = headers
+            except:
+                pass
+
+        if user_id:
+            log_data['user_id'] = user_id
+        if admin_id:
+            log_data['admin_id'] = admin_id
+
+        supabase_admin.table('audit_logs').insert(log_data).execute()
+        logger.error(f"🔴 ERROR [{error_type}]: {error_message[:200]}")
+
+        # Send email alert for critical errors
+        if error_type in ['SECURITY', 'DB_ERROR', '500']:
+            send_error_alert(error_type, error_message, log_data)
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to log error: {str(e)}")
+        return False
+
+
+def send_error_alert(error_type, error_message, error_data):
+    """Send email alert for critical errors"""
+    try:
+        if not SMTP_EMAIL and not BREVO_API_KEY:
+            return
+
+        subject = f"⚠️ Critical Error on CareerMaker: {error_type}"
+
+        html_content = f"""
+        <html>
+        <head><style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+            .error-box {{ background: #fee; border: 1px solid #f00; padding: 15px; border-radius: 5px; }}
+            .error-type {{ color: #c00; font-weight: bold; }}
+        </style></head>
+        <body>
+            <h2>⚠️ Critical Error Detected</h2>
+            <div class="error-box">
+                <p class="error-type">Type: {error_type}</p>
+                <p><strong>Message:</strong> {error_message[:500]}</p>
+                <p><strong>URL:</strong> {error_data.get('url', 'N/A')}</p>
+                <p><strong>IP:</strong> {error_data.get('ip_address', 'N/A')}</p>
+                <p><strong>Time:</strong> {get_current_utc_time().isoformat()}</p>
+            </div>
+            <p>View logs: <a href="{request.host_url}/admin#audit-logs">Audit Logs</a></p>
+        </body>
+        </html>
+        """
+
+        send_email(
+            to_email=SMTP_EMAIL or 'admin@careermaker.tech',
+            subject=subject,
+            html_content=html_content,
+            plain_text=f"Critical Error: {error_type}\n\nMessage: {error_message}\nURL: {error_data.get('url', 'N/A')}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to send error alert: {str(e)}")
+
+# =============================================
+# ERROR HANDLERS
+# =============================================
 
 @app.errorhandler(404)
-def handle_404_error(error):
-    """Handle 404 errors with JSON response for API routes"""
-    if request.path.startswith('/api/'):
-        return jsonify({
-            'status': 'error',
-            'message': 'Endpoint not found.'
-        }), 404
-    return error
+def page_not_found(e):
+    log_error_entry('404', f"Page not found: {request.path}", request_obj=request)
+    return render_template('404.html'), 404
 
+@app.errorhandler(403)
+def forbidden(e):
+    log_error_entry('SECURITY', f"Forbidden access attempt: {request.path}", request_obj=request)
+    return render_template('403.html'), 403
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    import traceback
+    log_error_entry('500', str(e), traceback.format_exc(), request_obj=request)
+    return render_template('500.html'), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    log_error_entry('EXCEPTION', str(e), traceback.format_exc(), request_obj=request)
+    return render_template('500.html'), 500
+
+
+# =============================================
+# SECURITY MONITORING
+# =============================================
+
+@app.before_request
+def security_monitor():
+    try:
+        if request.path.startswith('/static/') or request.path == '/favicon.ico':
+            return
+
+        # Check for suspicious patterns
+        suspicious_patterns = [
+            '../', '..\\', '/etc/passwd', '/proc/self/environ',
+            'SELECT * FROM', 'UNION SELECT', 'DROP TABLE',
+            '<script>', 'javascript:', 'onerror=', 'onload=',
+            'eval(', 'document.cookie', 'localStorage',
+            '__import__', 'exec(', 'system('
+        ]
+
+        url_lower = request.url.lower()
+        for pattern in suspicious_patterns:
+            if pattern.lower() in url_lower:
+                log_error_entry('SECURITY', f"Suspicious URL pattern: {pattern}", request_obj=request)
+                return jsonify({'error': 'Security violation detected'}), 403
+
+        # Check request data
+        if request.is_json:
+            try:
+                data = request.get_json(silent=True)
+                if data:
+                    import json
+                    data_str = json.dumps(data).lower()
+                    for pattern in suspicious_patterns:
+                        if pattern.lower() in data_str:
+                            log_error_entry('SECURITY', f"Suspicious data pattern: {pattern}", request_obj=request)
+                            return jsonify({'error': 'Security violation detected'}), 403
+            except:
+                pass
+    except Exception as e:
+        logger.error(f"Security monitor error: {str(e)}")
 
 # ===== ADMIN ROUTES =====
+
+# =============================================
+# ADMIN ACTION LOGGING DECORATOR
+# =============================================
+
+def log_admin_action(action, resource_type):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            try:
+                result = f(*args, **kwargs)
+
+                if 'admin_id' in session:
+                    admin_id = session.get('admin_id')
+                    resource_id = kwargs.get('id') or kwargs.get('resource_id')
+
+                    log_audit_entry(
+                        admin_id=admin_id,
+                        action=action,
+                        resource_type=resource_type,
+                        resource_id=resource_id,
+                        request_obj=request
+                    )
+
+                return result
+            except Exception as e:
+                import traceback
+                log_error_entry('ADMIN_ERROR', f"Admin action failed: {str(e)}", traceback.format_exc(),
+                                request_obj=request)
+                raise
+
+        return decorated_function
+
+    return decorator
+
+
+# =============================================
+# SITE SETTINGS FUNCTIONS
+# =============================================
+
+def get_site_settings():
+    try:
+        response = supabase_admin.table('site_settings').select('*').execute()
+        settings = {}
+        for setting in (response.data or []):
+            settings[setting['setting_key']] = setting['setting_value']
+        return settings
+    except Exception as e:
+        logger.error(f"Error getting site settings: {str(e)}")
+        return {}
+
+
+def update_setting(key, value, admin_id):
+    try:
+        response = supabase_admin.table('site_settings') \
+            .update({
+            'setting_value': value,
+            'updated_at': get_current_utc_time().isoformat(),
+            'updated_by': admin_id
+        }) \
+            .eq('setting_key', key) \
+            .execute()
+
+        if response.data:
+            log_audit_entry(
+                admin_id=admin_id,
+                action='UPDATE',
+                resource_type='setting',
+                resource_id=key,
+                details={'setting_key': key, 'new_value': value},
+                request_obj=request
+            )
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error updating setting {key}: {str(e)}")
+        return False
+
+
+# =============================================
+# SITE SETTINGS API
+# =============================================
+
+@app.route('/api/admin/site-settings', methods=['GET'])
+@admin_required
+def get_site_settings_api():
+    try:
+        response = supabase_admin.table('site_settings').select('*').order('setting_key').execute()
+        settings = {}
+        for setting in (response.data or []):
+            settings[setting['setting_key']] = setting['setting_value']
+
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        logger.error(f"Error getting site settings: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/site-settings', methods=['POST'])
+@admin_required
+def update_site_setting_api():
+    try:
+        data = request.get_json()
+        key = data.get('key')
+        value = data.get('value')
+
+        if not key:
+            return jsonify({'success': False, 'message': 'Setting key is required'}), 400
+
+        allowed_keys = ['show_courses', 'show_jobs', 'show_internships', 'show_blog', 'show_testimonials']
+        if key not in allowed_keys:
+            return jsonify({'success': False, 'message': 'Invalid setting key'}), 400
+
+        admin_id = session.get('admin_id')
+
+        if update_setting(key, value, admin_id):
+            return jsonify({'success': True, 'message': 'Setting updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update setting'}), 500
+    except Exception as e:
+        logger.error(f"Error updating site setting: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# =============================================
+# COMBINED AUDIT LOGS API
+# =============================================
+
+@app.route('/api/admin/audit-logs')
+@admin_required
+def get_audit_logs():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '')
+        log_type = request.args.get('log_type', '')  # 'audit', 'error', or '' for all
+        action = request.args.get('action', '')
+        error_type = request.args.get('error_type', '')
+        is_resolved = request.args.get('is_resolved', '')
+        resource = request.args.get('resource', '')
+        start_date = request.args.get('start_date', '')
+        end_date = request.args.get('end_date', '')
+
+        # Build query
+        query = supabase_admin.table('audit_logs').select('*')
+
+        # Apply filters
+        if log_type:
+            query = query.eq('log_type', log_type)
+        if action:
+            query = query.eq('action', action)
+        if error_type:
+            query = query.eq('error_type', error_type)
+        if is_resolved != '':
+            query = query.eq('is_resolved', is_resolved.lower() == 'true')
+        if resource:
+            query = query.eq('resource_type', resource)
+        if start_date:
+            query = query.gte('created_at', start_date)
+        if end_date:
+            query = query.lte('created_at', end_date)
+        if search:
+            query = query.or_(
+                f"admin_name.ilike.%{search}%,"
+                f"resource_type.ilike.%{search}%,"
+                f"action.ilike.%{search}%,"
+                f"error_message.ilike.%{search}%,"
+                f"url.ilike.%{search}%,"
+                f"ip_address.ilike.%{search}%"
+            )
+
+        # Get total count
+        count_response = query.execute()
+        total_count = len(count_response.data) if count_response.data else 0
+
+        # Paginate
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+        data_response = query.order('created_at', desc=True).range(start, end).execute()
+
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+
+        return jsonify({
+            'success': True,
+            'logs': data_response.data or [],
+            'pagination': {
+                'current_page': page,
+                'total_pages': total_pages,
+                'total_count': total_count,
+                'per_page': per_page,
+                'start_index': start
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting logs: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/audit-logs/<log_id>/resolve', methods=['POST'])
+@admin_required
+def resolve_error_log(log_id):
+    try:
+        admin_id = session.get('admin_id')
+
+        response = supabase_admin.table('audit_logs') \
+            .update({
+            'is_resolved': True,
+            'resolved_by': admin_id,
+            'resolved_at': get_current_utc_time().isoformat()
+        }) \
+            .eq('id', log_id) \
+            .eq('log_type', 'error') \
+            .execute()
+
+        if response.data:
+            log_audit_entry(
+                admin_id=admin_id,
+                action='UPDATE',
+                resource_type='error_log',
+                resource_id=log_id,
+                details={'status': 'resolved'},
+                request_obj=request
+            )
+            return jsonify({'success': True, 'message': 'Error marked as resolved'})
+        else:
+            return jsonify({'success': False, 'message': 'Error not found'}), 404
+    except Exception as e:
+        logger.error(f"Error resolving: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/audit-logs/stats')
+@admin_required
+def get_audit_logs_stats():
+    try:
+        stats = {
+            'audit': {'total': 0, 'by_action': {}},
+            'error': {'total': 0, 'unresolved': 0, 'by_type': {}, 'last_24h': 0}
+        }
+
+        # Audit stats
+        audit_response = supabase_admin.table('audit_logs') \
+            .select('id', count='exact') \
+            .eq('log_type', 'audit') \
+            .execute()
+        stats['audit']['total'] = audit_response.count or 0
+
+        # Error stats
+        error_response = supabase_admin.table('audit_logs') \
+            .select('id', count='exact') \
+            .eq('log_type', 'error') \
+            .execute()
+        stats['error']['total'] = error_response.count or 0
+
+        # Unresolved errors
+        unresolved_response = supabase_admin.table('audit_logs') \
+            .select('id', count='exact') \
+            .eq('log_type', 'error') \
+            .eq('is_resolved', False) \
+            .execute()
+        stats['error']['unresolved'] = unresolved_response.count or 0
+
+        # Errors by type
+        error_types = ['404', '500', 'EXCEPTION', 'SECURITY', 'DB_ERROR', 'RATE_LIMIT', 'ADMIN_ERROR']
+        for error_type in error_types:
+            type_response = supabase_admin.table('audit_logs') \
+                .select('id', count='exact') \
+                .eq('log_type', 'error') \
+                .eq('error_type', error_type) \
+                .execute()
+            stats['error']['by_type'][error_type] = type_response.count or 0
+
+        # Errors in last 24 hours
+        day_ago = (get_current_utc_time() - timedelta(days=1)).isoformat()
+        day_response = supabase_admin.table('audit_logs') \
+            .select('id', count='exact') \
+            .eq('log_type', 'error') \
+            .gte('created_at', day_ago) \
+            .execute()
+        stats['error']['last_24h'] = day_response.count or 0
+
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Error getting stats: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/audit-logs/clear', methods=['POST'])
+@admin_required
+def clear_audit_logs():
+    try:
+        if not session.get('is_superadmin', False):
+            return jsonify({'success': False, 'message': 'Only super admins can clear logs'}), 403
+
+        admin_id = session.get('admin_id')
+        cutoff_date = (get_current_utc_time() - timedelta(days=90)).isoformat()
+
+        result = supabase_admin.table('audit_logs') \
+            .delete() \
+            .lt('created_at', cutoff_date) \
+            .execute()
+
+        deleted_count = len(result.data) if result.data else 0
+
+        log_audit_entry(
+            admin_id=admin_id,
+            action='DELETE',
+            resource_type='audit_log',
+            details={'deleted_count': deleted_count, 'cutoff_days': 90},
+            request_obj=request
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'Cleared {deleted_count} logs older than 90 days'
+        })
+    except Exception as e:
+        logger.error(f"Error clearing logs: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # =============================================
 # ADMIN SETUP WITH OTP VERIFICATION

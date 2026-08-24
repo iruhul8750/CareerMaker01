@@ -7534,7 +7534,7 @@
         const validSections = [
             'dashboard', 'courses', 'jobs', 'internships',
             'blog', 'newsletter', 'testimonials',
-            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics'
+            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics', 'audit-logs'
         ];
 
         console.log('Valid sections:', validSections);
@@ -7770,7 +7770,8 @@
                 'messages': 'Messages',
                 'trash': 'Trash',
                 'admins': 'Admin Management',
-                'analytics': 'Website Analytics'  // ADD THIS LINE
+                'analytics': 'Website Analytics',
+                'audit-logs': 'Audit & Settings'
             };
             return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
         }
@@ -9381,6 +9382,29 @@
 
             // === Initialize header height observer ===
             initHeaderHeightObserver();
+
+            // Add after other setup calls
+            initToggleButtons();
+            loadSiteSettings();
+
+            // Add audit logs section observer
+            const auditLogsSection = document.getElementById('audit-logs');
+            if (auditLogsSection) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            if (auditLogsSection.classList.contains('active')) {
+                                console.log('🎯 Audit logs section activated - loading data');
+                                loadAuditLogs();
+                                loadLogStats();
+                                loadSiteSettings();
+                                initToggleButtons();
+                            }
+                        }
+                    });
+                });
+                observer.observe(auditLogsSection, { attributes: true });
+            }
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);
@@ -12537,6 +12561,393 @@
                 setTimeout(updateHeaderHeights, 300);
             });
         }
+    }
+
+    // Site Setting and Audit Logs
+    // =============================================
+    // TOGGLE BUTTON HANDLERS
+    // =============================================
+
+    function initToggleButtons() {
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            // Remove existing listeners
+            btn.removeEventListener('click', handleToggleClick);
+            btn.addEventListener('click', handleToggleClick);
+        });
+    }
+
+    function handleToggleClick(e) {
+        const btn = e.currentTarget;
+        const key = btn.getAttribute('data-key');
+        const isActive = btn.classList.contains('active');
+        const newValue = !isActive;
+
+        // Show loading state
+        btn.style.opacity = '0.6';
+        btn.style.pointerEvents = 'none';
+
+        fetch('/api/admin/site-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ key, value: newValue })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update button state
+                btn.classList.toggle('active', newValue);
+
+                // Update status text
+                const statusSpan = btn.querySelector('.toggle-btn-status');
+                if (statusSpan) {
+                    statusSpan.textContent = newValue ? 'ON' : 'OFF';
+                    statusSpan.className = 'toggle-btn-status ' + (newValue ? 'on' : 'off');
+                }
+
+                showNotification(`Section ${newValue ? 'enabled' : 'disabled'} successfully`, 'success');
+            } else {
+                showNotification(data.message || 'Failed to update setting', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating setting:', error);
+            showNotification('Failed to update setting', 'error');
+        })
+        .finally(() => {
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+        });
+    }
+
+    // =============================================
+    // LOAD SITE SETTINGS
+    // =============================================
+
+    function loadSiteSettings() {
+        fetch('/api/admin/site-settings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const settings = data.settings;
+
+                    // Update all toggle buttons
+                    document.querySelectorAll('.toggle-btn').forEach(btn => {
+                        const key = btn.getAttribute('data-key');
+                        if (settings[key] !== undefined) {
+                            const isActive = settings[key];
+                            btn.classList.toggle('active', isActive);
+
+                            // Update status text
+                            const statusSpan = btn.querySelector('.toggle-btn-status');
+                            if (statusSpan) {
+                                statusSpan.textContent = isActive ? 'ON' : 'OFF';
+                                statusSpan.className = 'toggle-btn-status ' + (isActive ? 'on' : 'off');
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Error loading settings:', error));
+    }
+
+    // =============================================
+    // LOAD AUDIT LOGS
+    // =============================================
+
+    function loadAuditLogs(page = 1) {
+        const logType = document.getElementById('logTypeFilter')?.value || '';
+        const errorType = document.getElementById('errorTypeFilter')?.value || '';
+        const isResolved = document.getElementById('errorStatusFilter')?.value || '';
+        const date = document.getElementById('logDateFilter')?.value || '';
+
+        const tableBody = document.getElementById('auditLogTableBody');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                        <p>Loading logs...</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        const params = new URLSearchParams({
+            page,
+            log_type: logType,
+            error_type: errorType,
+            is_resolved: isResolved,
+            start_date: date,
+            end_date: date,
+            per_page: 20
+        });
+
+        // Load stats
+        loadLogStats();
+
+        fetch(`/api/admin/audit-logs?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderAuditLogs(data.logs, data.pagination);
+                } else {
+                    if (tableBody) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: var(--danger);">
+                                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                                    <p>Failed to load logs</p>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading logs:', error);
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--danger);">
+                                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                                <p>Error loading logs</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+    }
+
+    // =============================================
+    // LOAD LOG STATS
+    // =============================================
+
+    function loadLogStats() {
+        fetch('/api/admin/audit-logs/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const stats = data.stats;
+                    const auditTotal = document.getElementById('auditTotalCount');
+                    const errorTotal = document.getElementById('errorTotalCount');
+                    const errorUnresolved = document.getElementById('errorUnresolvedCount');
+                    const errorResolved = document.getElementById('errorResolvedCount');
+
+                    if (auditTotal) auditTotal.textContent = stats.audit?.total || 0;
+                    if (errorTotal) errorTotal.textContent = stats.error?.total || 0;
+                    if (errorUnresolved) errorUnresolved.textContent = stats.error?.unresolved || 0;
+                    if (errorResolved) errorResolved.textContent = (stats.error?.total || 0) - (stats.error?.unresolved || 0);
+
+                    // Update menu badge
+                    const badge = document.getElementById('errorMenuBadge');
+                    if (badge) {
+                        const unresolved = stats.error?.unresolved || 0;
+                        badge.textContent = unresolved > 0 ? unresolved : '';
+                        badge.style.display = unresolved > 0 ? 'inline-block' : 'none';
+                    }
+                }
+            })
+            .catch(error => console.error('Error loading stats:', error));
+    }
+
+    // =============================================
+    // RENDER AUDIT LOGS
+    // =============================================
+
+    function renderAuditLogs(logs, pagination) {
+        const tableBody = document.getElementById('auditLogTableBody');
+        if (!tableBody) return;
+
+        if (!logs || logs.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--success);">
+                        <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                        <p>No logs found</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = '';
+        logs.forEach((log, index) => {
+            const logType = log.log_type || 'audit';
+            const isError = logType === 'error';
+            const isResolved = log.is_resolved || false;
+            const actionClass = isError ? getErrorTypeClass(log.error_type) : getActionClass(log.action);
+            const displayName = log.admin_name || log.admin_id?.substring(0, 8) ||
+                               (log.user_id ? `User: ${log.user_id.substring(0, 8)}...` : 'Guest');
+            const time = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
+            const details = log.details ? JSON.stringify(log.details) : '';
+            const message = isError ? (log.error_message || '') : '';
+
+            let rowClass = '';
+            if (isError) {
+                rowClass = isResolved ? 'log-row-error-resolved' : 'log-row-error-unresolved';
+                if (log.error_type === 'SECURITY') {
+                    rowClass += ' log-row-security';
+                }
+            }
+
+            const serialNo = pagination?.start_index + index + 1 || index + 1;
+
+            html += `
+                <tr class="${rowClass}">
+                    <td style="text-align: center;">${serialNo}</td>
+                    <td>
+                        ${isError ?
+                            `<span class="badge badge-${actionClass}">🚨 Error</span>` :
+                            `<span class="badge badge-info">📋 Audit</span>`
+                        }
+                    </td>
+                    <td title="${displayName}">${displayName}</td>
+                    <td>
+                        ${isError ?
+                            `<span class="badge badge-${actionClass}">${log.error_type}</span>` :
+                            `<span class="badge badge-${actionClass}">${log.action}</span>`
+                        }
+                    </td>
+                    <td>${isError ? 'Error' : (log.resource_type || '-')}</td>
+                    <td title="${isError ? message : details}" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${isError ?
+                            (message ? message.substring(0, 40) + (message.length > 40 ? '...' : '') : '-') :
+                            (details ? details.substring(0, 40) + (details.length > 40 ? '...' : '') : '-')
+                        }
+                    </td>
+                    <td>${time}</td>
+                    <td>
+                        ${isError ?
+                            (isResolved ?
+                                '<span class="badge badge-success">✅ Resolved</span>' :
+                                `<button class="btn btn-sm btn-success" onclick="resolveError('${log.id}')" title="Mark resolved">
+                                    <i class="fas fa-check"></i>
+                                </button>`
+                            ) :
+                            `<span class="badge badge-secondary">${log.action || 'View'}</span>`
+                        }
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+
+        if (pagination) {
+            renderPagination('auditLogPagination', pagination.total_pages, pagination.current_page, loadAuditLogs);
+        }
+    }
+
+    // =============================================
+    // RESOLVE ERROR
+    // =============================================
+
+    function resolveError(logId) {
+        if (!confirm('Mark this error as resolved?')) return;
+
+        fetch(`/api/admin/audit-logs/${logId}/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Error marked as resolved', 'success');
+                loadAuditLogs();
+            } else {
+                showNotification(data.message || 'Failed to resolve error', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error resolving:', error);
+            showNotification('Failed to resolve error', 'error');
+        });
+    }
+
+    // =============================================
+    // HELPER FUNCTIONS
+    // =============================================
+
+    function getActionClass(action) {
+        const map = {
+            'CREATE': 'success',
+            'UPDATE': 'info',
+            'DELETE': 'danger',
+            'LOGIN': 'success',
+            'LOGOUT': 'warning',
+            'STATUS_CHANGE': 'warning'
+        };
+        return map[action] || 'secondary';
+    }
+
+    function getErrorTypeClass(errorType) {
+        const map = {
+            '404': 'warning',
+            '500': 'danger',
+            'EXCEPTION': 'danger',
+            'SECURITY': 'danger',
+            'DB_ERROR': 'danger'
+        };
+        return map[errorType] || 'secondary';
+    }
+
+    function renderPagination(containerId, totalPages, currentPage, callback) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+
+        // Previous button
+        if (currentPage > 1) {
+            html += `<button class="page-btn" onclick="${callback.name}(${currentPage - 1})" title="Previous page">
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+        }
+
+        // Page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<button class="page-btn" onclick="${callback.name}(1)">1</button>`;
+            if (startPage > 2) {
+                html += `<button class="page-btn disabled">…</button>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="${callback.name}(${i})">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<button class="page-btn disabled">…</button>`;
+            }
+            html += `<button class="page-btn" onclick="${callback.name}(${totalPages})">${totalPages}</button>`;
+        }
+
+        // Next button
+        if (currentPage < totalPages) {
+            html += `<button class="page-btn" onclick="${callback.name}(${currentPage + 1})" title="Next page">
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+        }
+
+        container.innerHTML = html;
     }
 
     // ===== SINGLE DOMContentLoaded LISTENER =====
