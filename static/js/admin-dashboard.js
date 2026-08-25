@@ -14,7 +14,8 @@
         testimonials: 1,
         'expired-content': 1,
         trash: 1,
-        admins: 1
+        admins: 1,
+        'audit-logs': 1
     };
 
     let selectedItems = {
@@ -887,6 +888,14 @@
         // Show loading indicator for all sections
         showLoading();
 
+        // ✅ HANDLE AUDIT LOGS SPECIFICALLY
+        if (section === 'audit-logs') {
+            currentPage['audit-logs'] = pageNum;
+            loadAuditLogs(pageNum);
+            return;
+        }
+        // ✅ END OF AUDIT LOGS HANDLING
+
         if (section === 'testimonials') {
             if (window.testimonialManager) {
                 window.testimonialManager.currentPage = pageNum;
@@ -972,6 +981,14 @@
                 }
             };
         }
+
+        // ✅ ADD THIS BLOCK
+        window.updateAuditLogsPaginationInfo = function(totalItems, currentPage, perPage) {
+            if (typeof updatePaginationUI === 'function') {
+                updatePaginationUI('audit-logs', currentPage, totalItems, perPage || itemsPerPage);
+            }
+        };
+        // ✅ END OF BLOCK
 
         console.log('✅ Pagination setup complete');
     }
@@ -1839,6 +1856,13 @@
 
     function loadSectionData(section, page = 1, search = '', filters = {}) {
         console.log(`🔄 Loading section: ${section}, page: ${page}, search: "${search}", filters:`, filters);
+
+        // ✅ ADD THIS BLOCK FOR AUDIT LOGS
+        if (section === 'audit-logs') {
+            currentPage['audit-logs'] = page;
+            return loadAuditLogs(page);
+        }
+        // ✅ END OF BLOCK
 
         // Handle testimonials section separately
         if (section === 'testimonials') {
@@ -4979,7 +5003,12 @@
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Failed to fetch expired content stats`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.data) {
                 let coursesCount = 0;
@@ -5017,12 +5046,25 @@
         })
         .catch(error => {
             console.error('Error loading expired stats:', error);
-            if (courseCountEl) courseCountEl.textContent = '0';
-            if (jobCountEl) jobCountEl.textContent = '0';
-            if (internshipCountEl) internshipCountEl.textContent = '0';
-            if (courseCountEl) courseCountEl.classList.remove('loading');
-            if (jobCountEl) jobCountEl.classList.remove('loading');
-            if (internshipCountEl) internshipCountEl.classList.remove('loading');
+
+            // Fallback: Set all to 0 to prevent breaking UI
+            if (courseCountEl) {
+                courseCountEl.textContent = '0';
+                courseCountEl.classList.remove('loading');
+            }
+            if (jobCountEl) {
+                jobCountEl.textContent = '0';
+                jobCountEl.classList.remove('loading');
+            }
+            if (internshipCountEl) {
+                internshipCountEl.textContent = '0';
+                internshipCountEl.classList.remove('loading');
+            }
+
+            const dashboardExpiredCount = document.getElementById('expiredContentCount');
+            if (dashboardExpiredCount) {
+                dashboardExpiredCount.textContent = '0';
+            }
         });
     }
 
@@ -7534,7 +7576,7 @@
         const validSections = [
             'dashboard', 'courses', 'jobs', 'internships',
             'blog', 'newsletter', 'testimonials',
-            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics', 'audit-logs'
+            'expired-content', 'users', 'messages', 'trash', 'admins', 'analytics', 'system-health', 'audit-logs'
         ];
 
         console.log('Valid sections:', validSections);
@@ -7755,7 +7797,7 @@
         // Show target section
         sectionElement.classList.add('active');
 
-        // Helper function to get proper section name - ADD analytics here
+        // Helper function to get proper section name
         function getSectionDisplayName(section) {
             const names = {
                 'dashboard': 'Dashboard',
@@ -7771,14 +7813,21 @@
                 'trash': 'Trash',
                 'admins': 'Admin Management',
                 'analytics': 'Website Analytics',
-                'audit-logs': 'Audit & Settings'
+                'audit-logs': 'Audit Logs',
+                'system-health': 'System Health'
             };
             return names[section] || section.charAt(0).toUpperCase() + section.slice(1);
         }
 
-        // Update page title
+        // Update page title - Handle special cases without adding 'Management'
         const sectionName = getSectionDisplayName(targetSection);
-        document.getElementById('pageTitle').textContent = sectionName + ' Management';
+        const specialSections = ['analytics', 'audit-logs', 'system-health'];
+
+        if (specialSections.includes(targetSection)) {
+            document.getElementById('pageTitle').textContent = sectionName;
+        } else {
+            document.getElementById('pageTitle').textContent = sectionName + ' Management';
+        }
 
         // Update current section and session storage
         currentSection = targetSection;
@@ -9383,28 +9432,8 @@
             // === Initialize header height observer ===
             initHeaderHeightObserver();
 
-            // Add after other setup calls
-            initToggleButtons();
-            loadSiteSettings();
-
-            // Add audit logs section observer
-            const auditLogsSection = document.getElementById('audit-logs');
-            if (auditLogsSection) {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                            if (auditLogsSection.classList.contains('active')) {
-                                console.log('🎯 Audit logs section activated - loading data');
-                                loadAuditLogs();
-                                loadLogStats();
-                                loadSiteSettings();
-                                initToggleButtons();
-                            }
-                        }
-                    });
-                });
-                observer.observe(auditLogsSection, { attributes: true });
-            }
+            initAuditLogsSection();
+            initSystemHealthSection();
 
         } catch (error) {
             console.error('❌❌❌ Dashboard initialization failed:', error);
@@ -12563,14 +12592,259 @@
         }
     }
 
-    // Site Setting and Audit Logs
+    // =============================================
+    // SYSTEM HEALTH FUNCTIONS
+    // =============================================
+
+    function loadSystemHealth() {
+        console.log('🩺 Loading system health data...');
+
+        fetch('/api/admin/system-health', {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSystemHealthUI(data.health);
+                // ✅ CRITICAL: ALWAYS call loadErrorLogs after health is loaded!
+                loadErrorLogs();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading system health:', error);
+            // ✅ Even if health fails, still try to load error logs
+            loadErrorLogs();
+        });
+    }
+
+    function updateSystemHealthUI(health) {
+        // Backend
+        if (health.backend) {
+            updateHealthCard('backend', health.backend);
+        }
+        // Database
+        if (health.database) {
+            updateHealthCard('db', health.database);
+        }
+        // Frontend
+        if (health.frontend) {
+            updateHealthCard('frontend', health.frontend);
+        }
+        // Security
+        if (health.security) {
+            updateHealthCard('security', health.security);
+        }
+    }
+
+    function updateHealthCard(type, data) {
+        const statusMap = {
+            'backend': {
+                statusEl: 'backendStatus',
+                responseEl: 'backendResponseTime',
+                uptimeEl: 'backendUptime',
+                requestsEl: 'backendRequests'
+            },
+            'db': {
+                statusEl: 'dbStatus',
+                responseEl: 'dbQueryTime',
+                uptimeEl: 'dbConnections',
+                requestsEl: 'dbQueries'
+            },
+            'frontend': {
+                statusEl: 'frontendStatus',
+                responseEl: 'frontendLoadTime',
+                uptimeEl: 'frontendAssets',
+                requestsEl: 'frontendApiCalls'
+            },
+            'security': {
+                statusEl: 'securityStatus',
+                responseEl: 'securityFailedLogins',
+                uptimeEl: 'securitySuspiciousIPs',
+                requestsEl: 'securityEvents'
+            }
+        };
+
+        const mapping = statusMap[type];
+        if (!mapping) return;
+
+        // Update status badge
+        const statusEl = document.getElementById(mapping.statusEl);
+        if (statusEl) {
+            const statusText = data.status === 'online' ? '● Online' :
+                              data.status === 'warning' ? '● Warning' : '● Offline';
+            statusEl.textContent = statusText;
+            statusEl.className = `health-status-badge ${data.status || 'success'}`;
+
+            // Update card class
+            const card = statusEl.closest('.health-card');
+            if (card) {
+                card.className = 'health-card ' + (data.status || 'success');
+            }
+        }
+
+        // Update metrics
+        const responseEl = document.getElementById(mapping.responseEl);
+        if (responseEl && data.response_time !== undefined) {
+            responseEl.textContent = data.response_time;
+        }
+
+        const uptimeEl = document.getElementById(mapping.uptimeEl);
+        if (uptimeEl && data.uptime !== undefined) {
+            uptimeEl.textContent = data.uptime;
+        }
+
+        const requestsEl = document.getElementById(mapping.requestsEl);
+        if (requestsEl && data.requests !== undefined) {
+            requestsEl.textContent = data.requests;
+        }
+    }
+
+    function refreshSystemHealth() {
+        const btn = document.querySelector('#system-health .section-header .btn');
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            btn.disabled = true;
+
+            loadSystemHealth();
+            loadErrorLogs();
+            loadSiteSettings();
+            initToggleButtons();
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 2000);
+        }
+    }
+
+    // =============================================
+    // ERROR LOGS FUNCTIONS
+    // =============================================
+
+    function loadErrorLogs() {
+        console.log('📋 Loading error logs...');
+
+        const filter = document.getElementById('errorLogTypeFilter')?.value || 'all';
+
+        // Show loading state
+        const tableBody = document.getElementById('errorLogsTableBody');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        <p style="font-size: 13px;">Loading error logs...</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        fetch(`/api/admin/error-logs?limit=50&source=${filter}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderErrorLogs(data.logs || []);
+            } else {
+                renderErrorLogs([]);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading error logs:', error);
+            renderErrorLogs([]);
+        });
+    }
+
+    function renderErrorLogs(logs) {
+        const tableBody = document.getElementById('errorLogsTableBody');
+        if (!tableBody) return;
+
+        if (!logs || logs.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 15px; color: var(--success);"></i>
+                        <h3 style="color: var(--text-primary); margin: 0;">No Errors Detected</h3>
+                        <p style="color: var(--text-secondary); margin: 10px 0 0 0;">System is healthy!</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = '';
+        logs.forEach((log, index) => {
+            const typeClass = log.severity || 'info';
+            const typeIcon = {
+                'critical': 'fa-times-circle',
+                'error': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle'
+            }[typeClass] || 'fa-info-circle';
+
+            const typeColor = {
+                'critical': 'danger',
+                'error': 'danger',
+                'warning': 'warning',
+                'info': 'info'
+            }[typeClass] || 'secondary';
+
+            html += `
+                <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td>
+                        <span class="badge badge-${typeColor}">
+                            <i class="fas ${typeIcon}"></i> ${log.severity || 'Info'}
+                        </span>
+                    </td>
+                    <td>${escapeHTML(log.message || '')}</td>
+                    <td>${escapeHTML(log.source || 'Unknown')}</td>
+                    <td>${formatDate(log.created_at, true)}</td>
+                    <td>
+                        ${log.resolved ?
+                            '<span class="badge badge-success">Resolved</span>' :
+                            '<span class="badge badge-warning">Pending</span>'
+                        }
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+    }
+
+    function refreshErrorLogs() {
+        const btn = document.querySelector('.error-logs-header .btn');
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            loadErrorLogs();
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }, 1000);
+        }
+    }
+
     // =============================================
     // TOGGLE BUTTON HANDLERS
     // =============================================
 
     function initToggleButtons() {
-        document.querySelectorAll('.toggle-btn').forEach(btn => {
-            // Remove existing listeners
+        document.querySelectorAll('#system-health .toggle-btn').forEach(btn => {
             btn.removeEventListener('click', handleToggleClick);
             btn.addEventListener('click', handleToggleClick);
         });
@@ -12582,7 +12856,6 @@
         const isActive = btn.classList.contains('active');
         const newValue = !isActive;
 
-        // Show loading state
         btn.style.opacity = '0.6';
         btn.style.pointerEvents = 'none';
 
@@ -12596,16 +12869,12 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update button state
                 btn.classList.toggle('active', newValue);
-
-                // Update status text
                 const statusSpan = btn.querySelector('.toggle-btn-status');
                 if (statusSpan) {
                     statusSpan.textContent = newValue ? 'ON' : 'OFF';
                     statusSpan.className = 'toggle-btn-status ' + (newValue ? 'on' : 'off');
                 }
-
                 showNotification(`Section ${newValue ? 'enabled' : 'disabled'} successfully`, 'success');
             } else {
                 showNotification(data.message || 'Failed to update setting', 'error');
@@ -12631,15 +12900,11 @@
             .then(data => {
                 if (data.success) {
                     const settings = data.settings;
-
-                    // Update all toggle buttons
-                    document.querySelectorAll('.toggle-btn').forEach(btn => {
+                    document.querySelectorAll('#system-health .toggle-btn').forEach(btn => {
                         const key = btn.getAttribute('data-key');
                         if (settings[key] !== undefined) {
                             const isActive = settings[key];
                             btn.classList.toggle('active', isActive);
-
-                            // Update status text
                             const statusSpan = btn.querySelector('.toggle-btn-status');
                             if (statusSpan) {
                                 statusSpan.textContent = isActive ? 'ON' : 'OFF';
@@ -12653,235 +12918,142 @@
     }
 
     // =============================================
-    // LOAD AUDIT LOGS
+    // INITIALIZE SECTIONS
     // =============================================
+    function initAuditLogsSection() {
+        console.log('🔍 Initializing audit logs section...');
 
-    function loadAuditLogs(page = 1) {
-        const logType = document.getElementById('logTypeFilter')?.value || '';
-        const errorType = document.getElementById('errorTypeFilter')?.value || '';
-        const isResolved = document.getElementById('errorStatusFilter')?.value || '';
-        const date = document.getElementById('logDateFilter')?.value || '';
+        // ===== 1. Setup Navigation Link =====
+        const auditLogsLink = document.querySelector('.sidebar-menu a[href="#audit-logs"]');
+        if (auditLogsLink) {
+            const newLink = auditLogsLink.cloneNode(true);
+            auditLogsLink.parentNode.replaceChild(newLink, auditLogsLink);
 
-        const tableBody = document.getElementById('auditLogTableBody');
-        if (tableBody) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px;">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
-                        <p>Loading logs...</p>
-                    </td>
-                </tr>
-            `;
-        }
-
-        const params = new URLSearchParams({
-            page,
-            log_type: logType,
-            error_type: errorType,
-            is_resolved: isResolved,
-            start_date: date,
-            end_date: date,
-            per_page: 20
-        });
-
-        // Load stats
-        loadLogStats();
-
-        fetch(`/api/admin/audit-logs?${params}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    renderAuditLogs(data.logs, data.pagination);
-                } else {
-                    if (tableBody) {
-                        tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px; color: var(--danger);">
-                                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
-                                    <p>Failed to load logs</p>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error loading logs:', error);
-                if (tableBody) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--danger);">
-                                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
-                                <p>Error loading logs</p>
-                            </td>
-                        </tr>
-                    `;
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('audit-logs', this);
                 }
             });
-    }
+        }
 
-    // =============================================
-    // LOAD LOG STATS
-    // =============================================
-
-    function loadLogStats() {
-        fetch('/api/admin/audit-logs/stats')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const stats = data.stats;
-                    const auditTotal = document.getElementById('auditTotalCount');
-                    const errorTotal = document.getElementById('errorTotalCount');
-                    const errorUnresolved = document.getElementById('errorUnresolvedCount');
-                    const errorResolved = document.getElementById('errorResolvedCount');
-
-                    if (auditTotal) auditTotal.textContent = stats.audit?.total || 0;
-                    if (errorTotal) errorTotal.textContent = stats.error?.total || 0;
-                    if (errorUnresolved) errorUnresolved.textContent = stats.error?.unresolved || 0;
-                    if (errorResolved) errorResolved.textContent = (stats.error?.total || 0) - (stats.error?.unresolved || 0);
-
-                    // Update menu badge
-                    const badge = document.getElementById('errorMenuBadge');
-                    if (badge) {
-                        const unresolved = stats.error?.unresolved || 0;
-                        badge.textContent = unresolved > 0 ? unresolved : '';
-                        badge.style.display = unresolved > 0 ? 'inline-block' : 'none';
+        // ===== 2. Setup Section Observer =====
+        const auditLogsSection = document.getElementById('audit-logs');
+        if (auditLogsSection) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (auditLogsSection.classList.contains('active')) {
+                            console.log('🎯 Audit logs section activated - loading data');
+                            loadAuditLogs();
+                            loadLogStats();
+                        }
                     }
-                }
-            })
-            .catch(error => console.error('Error loading stats:', error));
-    }
-
-    // =============================================
-    // RENDER AUDIT LOGS
-    // =============================================
-
-    function renderAuditLogs(logs, pagination) {
-        const tableBody = document.getElementById('auditLogTableBody');
-        if (!tableBody) return;
-
-        if (!logs || logs.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--success);">
-                        <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
-                        <p>No logs found</p>
-                    </td>
-                </tr>
-            `;
-            return;
+                });
+            });
+            observer.observe(auditLogsSection, { attributes: true });
         }
 
-        let html = '';
-        logs.forEach((log, index) => {
-            const logType = log.log_type || 'audit';
-            const isError = logType === 'error';
-            const isResolved = log.is_resolved || false;
-            const actionClass = isError ? getErrorTypeClass(log.error_type) : getActionClass(log.action);
-            const displayName = log.admin_name || log.admin_id?.substring(0, 8) ||
-                               (log.user_id ? `User: ${log.user_id.substring(0, 8)}...` : 'Guest');
-            const time = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
-            const details = log.details ? JSON.stringify(log.details) : '';
-            const message = isError ? (log.error_message || '') : '';
-
-            let rowClass = '';
-            if (isError) {
-                rowClass = isResolved ? 'log-row-error-resolved' : 'log-row-error-unresolved';
-                if (log.error_type === 'SECURITY') {
-                    rowClass += ' log-row-security';
-                }
-            }
-
-            const serialNo = pagination?.start_index + index + 1 || index + 1;
-
-            html += `
-                <tr class="${rowClass}">
-                    <td style="text-align: center;">${serialNo}</td>
-                    <td>
-                        ${isError ?
-                            `<span class="badge badge-${actionClass}">🚨 Error</span>` :
-                            `<span class="badge badge-info">📋 Audit</span>`
-                        }
-                    </td>
-                    <td title="${displayName}">${displayName}</td>
-                    <td>
-                        ${isError ?
-                            `<span class="badge badge-${actionClass}">${log.error_type}</span>` :
-                            `<span class="badge badge-${actionClass}">${log.action}</span>`
-                        }
-                    </td>
-                    <td>${isError ? 'Error' : (log.resource_type || '-')}</td>
-                    <td title="${isError ? message : details}" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${isError ?
-                            (message ? message.substring(0, 40) + (message.length > 40 ? '...' : '') : '-') :
-                            (details ? details.substring(0, 40) + (details.length > 40 ? '...' : '') : '-')
-                        }
-                    </td>
-                    <td>${time}</td>
-                    <td>
-                        ${isError ?
-                            (isResolved ?
-                                '<span class="badge badge-success">✅ Resolved</span>' :
-                                `<button class="btn btn-sm btn-success" onclick="resolveError('${log.id}')" title="Mark resolved">
-                                    <i class="fas fa-check"></i>
-                                </button>`
-                            ) :
-                            `<span class="badge badge-secondary">${log.action || 'View'}</span>`
-                        }
-                    </td>
-                </tr>
-            `;
-        });
-
-        tableBody.innerHTML = html;
-
-        if (pagination) {
-            renderPagination('auditLogPagination', pagination.total_pages, pagination.current_page, loadAuditLogs);
+        // ===== 3. Load Data if Section is Already Active on Page Load =====
+        if (auditLogsSection && auditLogsSection.classList.contains('active')) {
+            loadAuditLogs();
+            loadLogStats();
         }
+
+        // ===== 4. Setup Filter Event Listeners (Reset to Page 1) =====
+        const logTypeFilter = document.getElementById('logTypeFilter');
+        const resourceTypeFilter = document.getElementById('resourceTypeFilter');
+        const logDateFilter = document.getElementById('logDateFilter');
+
+        if (logTypeFilter) {
+            logTypeFilter.addEventListener('change', () => {
+                currentPage['audit-logs'] = 1; // Reset to page 1
+                loadAuditLogs(1);
+            });
+        }
+
+        if (resourceTypeFilter) {
+            resourceTypeFilter.addEventListener('change', () => {
+                currentPage['audit-logs'] = 1; // Reset to page 1
+                loadAuditLogs(1);
+            });
+        }
+
+        // ===== 5. Date Picker - Make Entire Input Clickable to Open Calendar =====
+        if (logDateFilter) {
+            // Ensure the title (tooltip) doesn't block clicks
+            logDateFilter.title = '';
+
+            // ✅ DO NOT CLONE! Add the click listener directly to the element
+            logDateFilter.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Trick to force open the native date picker in modern browsers
+                try {
+                    this.focus();
+                    // Chrome, Edge, Safari 16+, Firefox 101+
+                    if (typeof this.showPicker === 'function') {
+                        this.showPicker();
+                    } else {
+                        // Fallback: simulate pressing F4 (or Space) to open the picker
+                        this.dispatchEvent(new KeyboardEvent('keydown', {key: 'F4', code: 'F4', keyCode: 115, which: 115, bubbles: true}));
+                    }
+                } catch (error) {
+                    // If all else fails, just focus
+                    this.focus();
+                }
+            });
+
+            // ✅ ADD CHANGE LISTENER DIRECTLY
+            logDateFilter.addEventListener('change', () => {
+                currentPage['audit-logs'] = 1; // Reset to page 1
+                loadAuditLogs(1);
+            });
+        }
+
+        console.log('✅ Audit logs section initialization complete');
     }
 
-    // =============================================
-    // RESOLVE ERROR
-    // =============================================
+    function initSystemHealthSection() {
+        console.log('🩺 Initializing system health section...');
 
-    function resolveError(logId) {
-        if (!confirm('Mark this error as resolved?')) return;
+        const systemHealthLink = document.querySelector('.sidebar-menu a[href="#system-health"]');
+        if (systemHealthLink) {
+            const newLink = systemHealthLink.cloneNode(true);
+            systemHealthLink.parentNode.replaceChild(newLink, systemHealthLink);
 
-        fetch(`/api/admin/audit-logs/${logId}/resolve`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Error marked as resolved', 'success');
-                loadAuditLogs();
-            } else {
-                showNotification(data.message || 'Failed to resolve error', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error resolving:', error);
-            showNotification('Failed to resolve error', 'error');
-        });
-    }
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof navigateToSection === 'function') {
+                    navigateToSection('system-health', this);
+                }
+            });
+        }
 
-    // =============================================
-    // HELPER FUNCTIONS
-    // =============================================
+        const systemHealthSection = document.getElementById('system-health');
+        if (systemHealthSection) {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (systemHealthSection.classList.contains('active')) {
+                            console.log('🎯 System health section activated - loading data');
+                            loadSystemHealth();  // This will internally call loadErrorLogs
+                            loadSiteSettings();
+                            initToggleButtons();
+                        }
+                    }
+                });
+            });
+            observer.observe(systemHealthSection, { attributes: true });
+        }
 
-    function getActionClass(action) {
-        const map = {
-            'CREATE': 'success',
-            'UPDATE': 'info',
-            'DELETE': 'danger',
-            'LOGIN': 'success',
-            'LOGOUT': 'warning',
-            'STATUS_CHANGE': 'warning'
-        };
-        return map[action] || 'secondary';
+        if (systemHealthSection && systemHealthSection.classList.contains('active')) {
+            loadSystemHealth();  // This will internally call loadErrorLogs
+            loadSiteSettings();
+            initToggleButtons();
+        }
     }
 
     function getErrorTypeClass(errorType) {
@@ -12906,14 +13078,12 @@
 
         let html = '';
 
-        // Previous button
         if (currentPage > 1) {
             html += `<button class="page-btn" onclick="${callback.name}(${currentPage - 1})" title="Previous page">
                 <i class="fas fa-chevron-left"></i>
             </button>`;
         }
 
-        // Page numbers
         const maxVisible = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
         let endPage = Math.min(totalPages, startPage + maxVisible - 1);
@@ -12940,7 +13110,6 @@
             html += `<button class="page-btn" onclick="${callback.name}(${totalPages})">${totalPages}</button>`;
         }
 
-        // Next button
         if (currentPage < totalPages) {
             html += `<button class="page-btn" onclick="${callback.name}(${currentPage + 1})" title="Next page">
                 <i class="fas fa-chevron-right"></i>
@@ -12948,6 +13117,212 @@
         }
 
         container.innerHTML = html;
+    }
+
+    // =============================================
+    // AUDIT LOGS FUNCTIONS - UPDATED
+    // =============================================
+
+    function loadAuditLogs(page = 1) {
+        const logType = document.getElementById('logTypeFilter')?.value || '';
+        const resourceType = document.getElementById('resourceTypeFilter')?.value || '';
+        const date = document.getElementById('logDateFilter')?.value || '';
+
+        const tableBody = document.getElementById('auditLogTableBody');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                        <p>Loading logs...</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // ✅ CRITICAL FIX: Format as full datetime to match database timestamps
+        let formattedStartDate = '';
+        let formattedEndDate = '';
+
+        if (date) {
+            const dateObj = new Date(date + 'T00:00:00');
+            if (!isNaN(dateObj.getTime())) {
+                // Start of day: 2026-08-25T00:00:00
+                formattedStartDate = dateObj.toISOString();
+                // End of day: 2026-08-25T23:59:59
+                const endDateObj = new Date(date + 'T23:59:59');
+                formattedEndDate = endDateObj.toISOString();
+            }
+        }
+
+        const params = new URLSearchParams({
+            page,
+            action: logType,
+            resource: resourceType,
+            start_date: formattedStartDate,
+            end_date: formattedEndDate,
+            per_page: itemsPerPage
+        });
+
+        loadLogStats();
+
+        fetch(`/api/admin/audit-logs?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Failed to fetch audit logs`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentPage['audit-logs'] = page;
+                    renderAuditLogs(data.logs, data.pagination);
+                } else {
+                    if (tableBody) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">
+                                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                                    <p>Failed to load logs</p>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading logs:', error);
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">
+                                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                                <p>Error loading logs</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .finally(() => {
+                hideLoading();
+            });
+    }
+
+
+    function renderAuditLogs(logs, pagination) {
+        const tableBody = document.getElementById('auditLogTableBody');
+        if (!tableBody) return;
+
+        // Safe extraction of pagination data
+        const currentPageNum = pagination?.current_page || 1;
+        const totalCount = pagination?.total_count || 0; // Reads total_count from backend
+        const totalPages = pagination?.total_pages || Math.ceil(totalCount / itemsPerPage) || 1;
+
+        // Update global current page
+        currentPage['audit-logs'] = currentPageNum;
+
+        if (!logs || logs.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 15px; color: var(--success);"></i>
+                        <h3 style="color: var(--text-primary); margin: 0 0 8px 0;">No Activity Logs Found</h3>
+                        <p style="color: var(--text-secondary); margin: 0;">Admin activities will appear here</p>
+                    </td>
+                </tr>
+            `;
+        } else {
+            let html = '';
+            logs.forEach((log, index) => {
+                // Calculate serial number based on current page
+                const serialNo = ((currentPageNum - 1) * itemsPerPage) + index + 1;
+                const time = log.created_at ? formatDate(log.created_at, true) : 'N/A';
+                const details = log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : '-';
+                const adminName = log.admin_name || 'Unknown';
+                const action = log.action || 'Unknown';
+                const resource = log.resource_type || '-';
+
+                const actionClass = getActionClass(action);
+
+                let displayDetails = details;
+                if (details.length > 80) {
+                    displayDetails = details.substring(0, 80) + '...';
+                }
+
+                html += `
+                    <tr>
+                        <td style="text-align: center;">${serialNo}</td>
+                        <td><strong>${escapeHTML(adminName)}</strong></td>
+                        <td><span class="badge badge-${actionClass}">${escapeHTML(action)}</span></td>
+                        <td>${escapeHTML(resource)}</td>
+                        <td>
+                            <span class="details-text" title="${escapeHTML(details)}">
+                                ${escapeHTML(displayDetails)}
+                            </span>
+                        </td>
+                        <td style="white-space: nowrap;">${time}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+        }
+
+        // ✅ CRITICAL: Call the global pagination UI update with CORRECT arguments
+        if (typeof updatePaginationUI === 'function') {
+            updatePaginationUI('audit-logs', currentPageNum, totalCount, itemsPerPage);
+        }
+    }
+
+    function loadLogStats() {
+        // Don't throw errors if endpoint doesn't exist. Just set stats to 0.
+        fetch('/api/admin/audit-logs/stats')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Stats endpoint not found');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const stats = data.stats;
+                    document.getElementById('auditTotalCount').textContent = stats.audit?.total || 0;
+                    document.getElementById('errorTotalCount').textContent = stats.error?.total || 0;
+                    document.getElementById('errorUnresolvedCount').textContent = stats.error?.unresolved || 0;
+                    document.getElementById('errorResolvedCount').textContent = (stats.error?.total || 0) - (stats.error?.unresolved || 0);
+
+                    const badge = document.getElementById('errorMenuBadge');
+                    if (badge) {
+                        const unresolved = stats.error?.unresolved || 0;
+                        badge.textContent = unresolved > 0 ? unresolved : '';
+                        badge.style.display = unresolved > 0 ? 'inline-block' : 'none';
+                    }
+                }
+            })
+            .catch(error => {
+                console.warn('Could not load log stats:', error.message);
+                // Set fallback UI to 0
+                document.getElementById('auditTotalCount').textContent = '0';
+                document.getElementById('errorTotalCount').textContent = '0';
+                document.getElementById('errorUnresolvedCount').textContent = '0';
+                document.getElementById('errorResolvedCount').textContent = '0';
+                // Hide badge
+                const badge = document.getElementById('errorMenuBadge');
+                if (badge) badge.style.display = 'none';
+            });
+    }
+
+    function getActionClass(action) {
+        const map = {
+            'CREATE': 'success',
+            'UPDATE': 'info',
+            'DELETE': 'danger',
+            'LOGIN': 'success',
+            'LOGOUT': 'warning',
+            'LOGIN_FAILED': 'danger',
+            'STATUS_CHANGE': 'info'
+        };
+        return map[action] || 'secondary';
     }
 
     // ===== SINGLE DOMContentLoaded LISTENER =====
