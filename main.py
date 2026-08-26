@@ -42,7 +42,14 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS properly for all origins
+CORS(app,
+     origins=["*"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Cache-Control"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     supports_credentials=True)
+
 app.secret_key = os.getenv('SECRET_KEY') or secrets.token_hex(32)
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -94,9 +101,34 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 SMTP_EMAIL = os.getenv('SMTP_EMAIL')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
+# =============================================
+# STANDARDIZED RESPONSE HELPERS
+# =============================================
+
+def error_response(message, status_code=400, extra=None):
+    """Standardized error response for all APIs"""
+    response = {
+        'success': False,
+        'error': message
+    }
+    if extra and isinstance(extra, dict):
+        response.update(extra)
+    return jsonify(response), status_code
+
+def success_response(message, data=None, status_code=200, extra=None):
+    """Standardized success response for all APIs"""
+    response = {
+        'success': True,
+        'message': message
+    }
+    if data is not None:
+        response['data'] = data
+    if extra and isinstance(extra, dict):
+        response.update(extra)
+    return jsonify(response), status_code
 
 # =============================================
-# RATE LIMITER - SUPABASE TABLE (COMPLETELY REWRITTEN)
+# RATE LIMITER - SUPABASE TABLE
 # =============================================
 
 class SupabaseRateLimiter:
@@ -109,72 +141,81 @@ class SupabaseRateLimiter:
         """Generate a unique key for rate limiting"""
         email = email.lower().strip()
         if ip:
+            # Handle IPv6
             if ':' in ip and not ip.startswith('['):
                 ip = ip.split(':')[0]
             return f"{purpose}_{email}_{ip}"
         return f"{purpose}_{email}"
 
     def is_allowed(self, key):
-        """Check if request is allowed"""
+        """Check if request is allowed - FIXED VERSION"""
         try:
             print(f"🔍 [is_allowed] Checking: {key}")
 
+            # Get current time
+            current_time = get_current_utc_time()
+            current_time_iso = current_time.isoformat()
+
+            # Get record from database
             response = supabase_admin.table('rate_limits') \
                 .select('*') \
                 .eq('key_name', key) \
                 .execute()
 
-            current_time = get_current_utc_time()
-
+            # No record found - allowed
             if not response.data or len(response.data) == 0:
                 print(f"✅ [is_allowed] No record found - allowed")
                 return True, None
 
             record = response.data[0]
-            attempt_count = record.get('attempt_count') or 0
-            is_blocked = record.get('is_blocked') or False
+            attempt_count = record.get('attempt_count', 0)
+            is_blocked = record.get('is_blocked', False)
             blocked_until = record.get('blocked_until')
+            first_attempt = record.get('first_attempt')
 
             print(f"📊 [is_allowed] attempts={attempt_count}, blocked={is_blocked}")
 
-            # Check if blocked
+            # ✅ FIX: Check if blocked
             if is_blocked and blocked_until:
                 blocked_until_dt = parse_db_timestamp(blocked_until)
-                if blocked_until_dt > current_time:
+                if blocked_until_dt and blocked_until_dt > current_time:
                     remaining = int((blocked_until_dt - current_time).total_seconds() / 60) + 1
                     return False, f'Too many attempts. Please wait {remaining} minutes.'
                 else:
-                    # Delete expired block
+                    # Block expired - delete record and allow
                     supabase_admin.table('rate_limits') \
                         .delete() \
                         .eq('key_name', key) \
                         .execute()
                     return True, None
 
-            # Check if within window
-            first_attempt = record.get('first_attempt')
+            # ✅ FIX: Check if within window
             if not first_attempt:
                 return True, None
 
             first_attempt_dt = parse_db_timestamp(first_attempt)
+            if not first_attempt_dt:
+                return True, None
+
             window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
 
             if current_time < window_end:
+                # Within window - check attempts
                 if attempt_count >= self.max_attempts:
-                    # Block
+                    # Block the user
                     block_until = current_time + timedelta(minutes=self.block_minutes)
                     supabase_admin.table('rate_limits') \
                         .update({
-                        'is_blocked': True,
-                        'blocked_until': block_until.isoformat(),
-                        'updated_at': current_time.isoformat()
-                    }) \
+                            'is_blocked': True,
+                            'blocked_until': block_until.isoformat(),
+                            'updated_at': current_time_iso
+                        }) \
                         .eq('key_name', key) \
                         .execute()
                     return False, f'Too many attempts. Please wait {self.block_minutes} minutes.'
                 return True, None
             else:
-                # Window expired - delete and start fresh
+                # Window expired - reset
                 supabase_admin.table('rate_limits') \
                     .delete() \
                     .eq('key_name', key) \
@@ -183,16 +224,17 @@ class SupabaseRateLimiter:
 
         except Exception as e:
             logger.error(f"Rate limit check error: {str(e)}", exc_info=True)
+            # ✅ Fail open on error - don't block users
             return True, None
 
     def record_attempt(self, key):
         """Record an attempt - FIXED VERSION"""
         try:
             current_time = get_current_utc_time()
+            current_time_iso = current_time.isoformat()
             print(f"📝 [record_attempt] Recording: {key}")
 
-            # ✅ FIX: Directly increment using a single query
-            # First, check if record exists
+            # Check if record exists
             response = supabase_admin.table('rate_limits') \
                 .select('*') \
                 .eq('key_name', key) \
@@ -204,50 +246,50 @@ class SupabaseRateLimiter:
                 insert_data = {
                     'key_name': key,
                     'attempt_count': 1,
-                    'first_attempt': current_time.isoformat(),
-                    'last_attempt': current_time.isoformat(),
-                    'created_at': current_time.isoformat(),
-                    'updated_at': current_time.isoformat()
+                    'first_attempt': current_time_iso,
+                    'last_attempt': current_time_iso,
+                    'created_at': current_time_iso,
+                    'updated_at': current_time_iso
                 }
                 result = supabase_admin.table('rate_limits').insert(insert_data).execute()
                 print(f"✅ [record_attempt] Created with attempt_count=1")
                 return
 
             record = response.data[0]
-            current_attempts = record.get('attempt_count') or 0
+            current_attempts = record.get('attempt_count', 0)
             first_attempt = record.get('first_attempt')
 
             print(f"📊 [record_attempt] Current attempts: {current_attempts}")
 
-            # ✅ FIX: Check if window expired
+            # ✅ FIX: Check if window expired before incrementing
             if first_attempt:
                 first_attempt_dt = parse_db_timestamp(first_attempt)
-                window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+                if first_attempt_dt:
+                    window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+                    if current_time > window_end:
+                        # Window expired - reset to 1
+                        print(f"🔄 [record_attempt] Window expired, resetting to 1")
+                        update_data = {
+                            'attempt_count': 1,
+                            'first_attempt': current_time_iso,
+                            'last_attempt': current_time_iso,
+                            'updated_at': current_time_iso
+                        }
+                        supabase_admin.table('rate_limits') \
+                            .update(update_data) \
+                            .eq('key_name', key) \
+                            .execute()
+                        print(f"✅ [record_attempt] Reset to 1")
+                        return
 
-                if current_time > window_end:
-                    # Window expired - reset to 1
-                    print(f"🔄 [record_attempt] Window expired, resetting to 1")
-                    update_data = {
-                        'attempt_count': 1,
-                        'first_attempt': current_time.isoformat(),
-                        'last_attempt': current_time.isoformat(),
-                        'updated_at': current_time.isoformat()
-                    }
-                    supabase_admin.table('rate_limits') \
-                        .update(update_data) \
-                        .eq('key_name', key) \
-                        .execute()
-                    print(f"✅ [record_attempt] Reset to 1")
-                    return
-
-            # ✅ FIX: Increment the count
+            # ✅ Increment the count
             new_count = current_attempts + 1
             print(f"📈 [record_attempt] Incrementing to {new_count}")
 
             update_data = {
                 'attempt_count': new_count,
-                'last_attempt': current_time.isoformat(),
-                'updated_at': current_time.isoformat()
+                'last_attempt': current_time_iso,
+                'updated_at': current_time_iso
             }
 
             result = supabase_admin.table('rate_limits') \
@@ -256,22 +298,91 @@ class SupabaseRateLimiter:
                 .execute()
 
             print(f"✅ [record_attempt] Updated to {new_count}")
-            print(f"📝 [record_attempt] Result: {result.data if result else 'None'}")
 
         except Exception as e:
             logger.error(f"Record attempt error: {str(e)}", exc_info=True)
 
     def reset(self, key):
-        """Reset rate limit"""
+        """Reset rate limit for a key"""
         try:
             supabase_admin.table('rate_limits') \
                 .delete() \
                 .eq('key_name', key) \
                 .execute()
             print(f"✅ Reset rate limit for: {key}")
+            return True
         except Exception as e:
             logger.error(f"Reset error: {str(e)}", exc_info=True)
+            return False
 
+    def get_remaining_attempts(self, key):
+        """Get remaining attempts before block - NEW HELPER METHOD"""
+        try:
+            current_time = get_current_utc_time()
+
+            response = supabase_admin.table('rate_limits') \
+                .select('*') \
+                .eq('key_name', key) \
+                .execute()
+
+            if not response.data or len(response.data) == 0:
+                return self.max_attempts
+
+            record = response.data[0]
+            attempt_count = record.get('attempt_count', 0)
+            first_attempt = record.get('first_attempt')
+
+            if first_attempt:
+                first_attempt_dt = parse_db_timestamp(first_attempt)
+                if first_attempt_dt:
+                    window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+                    if current_time > window_end:
+                        return self.max_attempts
+
+            remaining = self.max_attempts - attempt_count
+            return max(0, remaining)
+
+        except Exception as e:
+            logger.error(f"Get remaining attempts error: {str(e)}")
+            return self.max_attempts
+
+    def get_blocked_until(self, key):
+        """Get when the user will be unblocked - NEW HELPER METHOD"""
+        try:
+            response = supabase_admin.table('rate_limits') \
+                .select('blocked_until') \
+                .eq('key_name', key) \
+                .execute()
+
+            if response.data and len(response.data) > 0:
+                blocked_until = response.data[0].get('blocked_until')
+                if blocked_until:
+                    return parse_db_timestamp(blocked_until)
+            return None
+
+        except Exception as e:
+            logger.error(f"Get blocked until error: {str(e)}")
+            return None
+
+    def cleanup_expired_records(self):
+        """Clean up expired rate limit records - NEW HELPER METHOD"""
+        try:
+            current_time = get_current_utc_time()
+            cutoff_time = current_time - timedelta(minutes=self.window_minutes + self.block_minutes + 5)
+
+            result = supabase_admin.table('rate_limits') \
+                .delete() \
+                .lt('created_at', cutoff_time.isoformat()) \
+                .execute()
+
+            deleted_count = len(result.data) if result.data else 0
+            if deleted_count > 0:
+                logger.info(f"🧹 Cleaned up {deleted_count} expired rate limit records")
+            return deleted_count
+
+        except Exception as e:
+            logger.error(f"Cleanup expired records error: {str(e)}")
+            return 0
 
 # Initialize rate limiter
 rate_limiter = SupabaseRateLimiter()
@@ -296,6 +407,63 @@ def initialize_audit_logs_table():
 
 # Call this during app initialization
 initialize_audit_logs_table()
+
+# =============================================
+# FAKE/DISPOSABLE EMAIL DOMAINS - BLOCKLIST
+# =============================================
+
+FAKE_EMAIL_DOMAINS = [
+    'tempmail.com', 'guerrillamail.com', '10minutemail.com',
+    'throwawaymail.com', 'mailinator.com', 'temp-mail.org',
+    'fakeinbox.com', 'dispostable.com', 'trashmail.com',
+    'yopmail.com', 'spamgourmet.com', 'guerrillamail.org',
+    'getnada.com', 'mohmal.com', 'mailnesia.com',
+    'temp-mail.com', 'maildrop.cc', 'spambox.us',
+    'throwaway.email', 'mailnator.com', 'guerrillamail.biz',
+    'guerrillamail.net', 'guerrillamail.com', 'guerrillamail.de',
+    'mailcatch.com', 'mailexpire.com', 'spamfree24.com',
+    'spam.la', 'spam.su', 'spam.com', 'spam.org',
+    'mailinator.net', 'mailinator.org', 'mailinator.com',
+    '10minute-mail.com', '10minutemail.co.uk', '10minutemail.co.za',
+    '10minutemail.net', '10minutemail.org', '10minutemail.eu',
+    '10minutemail.info', '10minutemail.de', '10minutemail.fr',
+    '10minutemail.nl', '10minutemail.se', '10minutemail.dk',
+    '10minutemail.fi', '10minutemail.it', '10minutemail.es',
+    '10minutemail.pt', '10minutemail.pl', '10minutemail.cz',
+    '10minutemail.hu', '10minutemail.ro', '10minutemail.bg',
+    '10minutemail.gr', '10minutemail.at', '10minutemail.ch',
+    'temp-mail.de', 'temp-mail.net', 'temp-mail.org',
+    'temp-mail.com', 'temp-mail.co.uk', 'temp-mail.fr',
+    'temp-mail.es', 'temp-mail.it', 'temp-mail.nl',
+    'temp-mail.se', 'temp-mail.dk', 'temp-mail.fi',
+    'temp-mail.no', 'temp-mail.pt', 'temp-mail.pl',
+    'temp-mail.cz', 'temp-mail.hu', 'temp-mail.ro',
+    'temp-mail.bg', 'temp-mail.gr', 'temp-mail.at',
+    'temp-mail.ch',
+    # Additional common disposable domains
+    'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.net',
+    'guerrillamail.org', 'guerrillamail.com', 'guerrillamail.de',
+    'spam4.me', 'spam.la', 'spam.su', 'spam.com', 'spam.org',
+    'spamfree24.com', 'spamfree24.net', 'spamfree24.org',
+    'spamfree24.de', 'spamfree24.eu', 'spamfree24.info',
+    'spamfree24.biz', 'spamfree24.us', 'spamfree24.co.uk',
+    'spamfree24.fr', 'spamfree24.es', 'spamfree24.it',
+    'spamfree24.nl', 'spamfree24.se', 'spamfree24.dk',
+    'spamfree24.fi', 'spamfree24.no', 'spamfree24.pt',
+    'spamfree24.pl', 'spamfree24.cz', 'spamfree24.hu',
+    'spamfree24.ro', 'spamfree24.bg', 'spamfree24.gr',
+    'spamfree24.at', 'spamfree24.ch'
+]
+
+def is_fake_email(email):
+    """Check if email is from a fake/disposable domain"""
+    if not email or "@" not in email:
+        return False
+    try:
+        domain = email.split('@')[1].lower().strip()
+        return domain in FAKE_EMAIL_DOMAINS
+    except:
+        return False
 
 # =============================================
 # SINGLE UNIFIED EMAIL FUNCTION
@@ -1942,7 +2110,12 @@ def index():
         logger.info(f"🕐 Current time for expiration check: {current_time}")
 
         # ===== GET SITE SETTINGS FROM DATABASE =====
-        site_settings = get_site_settings_from_db()
+        try:
+            site_settings = get_site_settings_from_db()
+        except Exception as e:
+            logger.warning(f"Error loading site settings, using defaults: {str(e)}")
+            site_settings = {}
+
         show_courses = site_settings.get('show_courses', True)
         show_jobs = site_settings.get('show_jobs', True)
         show_internships = site_settings.get('show_internships', True)
@@ -2188,41 +2361,6 @@ def index():
                 logger.error(f"Error fetching user data for index: {str(e)}")
                 profile_pic_data = None
 
-        # ===== GET STATS FOR ABOUT PAGE (if needed) =====
-        try:
-            courses_count = supabase_admin.table('courses') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-
-            jobs_count = supabase_admin.table('jobs') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-
-            internships_count = supabase_admin.table('internships') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-
-            users_count = supabase_admin.table('users') \
-                .select('id', count='exact') \
-                .eq('is_deleted', False) \
-                .execute()
-
-            stats = {
-                'courses': courses_count.count or 0,
-                'jobs': jobs_count.count or 0,
-                'internships': internships_count.count or 0,
-                'users': users_count.count or 0
-            }
-        except Exception as e:
-            logger.error(f"Error getting stats: {str(e)}")
-            stats = {'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0}
-
         # Log final counts
         logger.info(
             f"🏠 Homepage loaded - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, "
@@ -2241,7 +2379,6 @@ def index():
                                blogs=blogs,
                                testimonials=testimonials,
                                profile_pic_data=profile_pic_data,
-                               stats=stats,
                                show_courses=show_courses,
                                show_jobs=show_jobs,
                                show_internships=show_internships,
@@ -2260,7 +2397,6 @@ def index():
                                blogs=[],
                                testimonials=[],
                                profile_pic_data=None,
-                               stats={'courses': 0, 'jobs': 0, 'internships': 0, 'users': 0},
                                show_courses=True,
                                show_jobs=True,
                                show_internships=True,
@@ -5056,7 +5192,7 @@ def get_application_link(content_type, content_id):
     try:
         # Validate content type
         if content_type not in ['course', 'job', 'internship']:
-            return jsonify({'error': 'Invalid content type'}), 400
+            return error_response('Invalid content type', 400)
 
         # Validate content ID
         if not content_id or content_id == 'null':
@@ -5096,6 +5232,7 @@ def get_application_link(content_type, content_id):
 # Contact and newsletter subscribe routes
 @app.route('/api/contact', methods=['POST'])
 def contact():
+    """Contact form - USING EXISTING RATE LIMITER & FAKE EMAIL BLOCKING"""
     try:
         # Get form data
         data = request.form.to_dict()
@@ -5104,32 +5241,77 @@ def contact():
         if not all(data.get(field) for field in required_fields):
             return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
 
-        # Save message to database USING ADMIN CLIENT (bypasses RLS)
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip().lower()
+        subject = data.get('subject', '').strip()
+        message = data.get('message', '').strip()
+
+        # ✅ VALIDATE EMAIL FORMAT
+        if not email or "@" not in email:
+            return jsonify({'status': 'error', 'message': 'Please provide a valid email address'}), 400
+
+        # ✅ BLOCK FAKE/DISPOSABLE EMAIL DOMAINS
+        if is_fake_email(email):
+            logger.warning(f"🚫 Fake email blocked in contact form: {email}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Please use a permanent email address (no temporary/disposable emails)'
+            }), 400
+
+        # ✅ Get IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ USE EXISTING RATE LIMITER - Check rate limit
+        rate_key = rate_limiter.get_key(email, 'contact', ip)
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+
+        if not allowed:
+            logger.warning(f"🚫 Contact rate limit exceeded for {email} ({ip})")
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
+        # ✅ SAVE MESSAGE TO DATABASE
         message_data = {
-            'name': data['name'],
-            'email': data['email'],
-            'subject': data['subject'],
-            'message': data['message'],
+            'name': name[:100],
+            'email': email[:100],
+            'subject': subject[:200],
+            'message': message[:5000],
             'created_at': get_current_utc_time().isoformat(),
-            'updated_at': get_current_utc_time().isoformat()
+            'updated_at': get_current_utc_time().isoformat(),
+            'ip_address': ip[:50] if ip else None,
+            'user_agent': request.headers.get('User-Agent', '')[:200]
         }
 
-        # Use admin client for both operations
         response = supabase_admin.table('contact_messages').insert(message_data).execute()
 
         if not response.data:
             raise Exception('Failed to save message')
 
-        # Create notification using ADMIN CLIENT
+        # ✅ Record rate limit attempt using existing rate limiter
+        rate_limiter.record_attempt(rate_key)
+
+        # ✅ CREATE ADMIN NOTIFICATION
         notification_data = {
             'type': 'message',
             'title': 'New Contact Message',
-            'message': f'New message from {data["name"]} ({data["email"]}) about {data["subject"]}',
+            'message': f'New message from {name} ({email}) about {subject}',
             'related_id': response.data[0]['id'],
             'created_at': get_current_utc_time().isoformat()
         }
 
-        supabase_admin.table('admin_notifications').insert(notification_data).execute()
+        try:
+            supabase_admin.table('admin_notifications').insert(notification_data).execute()
+        except Exception as e:
+            logger.warning(f"Could not create notification: {str(e)}")
+
+        logger.info(f"✅ Contact message received from {name} ({email})")
 
         return jsonify({
             'status': 'success',
@@ -5137,7 +5319,7 @@ def contact():
         })
 
     except Exception as e:
-        logger.error(f"Contact form error: {str(e)}")
+        logger.error(f"Contact form error: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
             'message': 'Failed to send message. Please try again.'
@@ -5352,6 +5534,7 @@ If you have any questions, please contact us at support@careermaker.tech
 
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe_newsletter():
+    """Subscribe to newsletter - USING EXISTING RATE LIMITER & FAKE EMAIL BLOCKING"""
     email = None
     try:
         # Extract email
@@ -5364,6 +5547,35 @@ def subscribe_newsletter():
         # Validate email
         if not email or "@" not in email:
             return jsonify({"status": "error", "message": "Please provide a valid email address"}), 400
+
+        email = email.lower().strip()
+
+        # ✅ BLOCK FAKE/DISPOSABLE EMAIL DOMAINS
+        if is_fake_email(email):
+            logger.warning(f"🚫 Fake email blocked: {email}")
+            return jsonify({
+                "status": "error",
+                "message": "Please use a permanent email address (no temporary/disposable emails)"
+            }), 400
+
+        # ✅ Get IP address
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = 'unknown'
+
+        # ✅ USE EXISTING RATE LIMITER - Check rate limit
+        rate_key = rate_limiter.get_key(email, 'newsletter', ip)
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+
+        if not allowed:
+            logger.warning(f"🚫 Rate limit exceeded for {email} ({ip})")
+            return jsonify({
+                "status": "error",
+                "message": error_msg,
+                "rate_limited": True
+            }), 429
 
         # Check if subscriber exists
         existing = supabase_admin.table("newsletter_subscribers") \
@@ -5381,6 +5593,10 @@ def subscribe_newsletter():
                     .eq("email", email).execute()
 
                 send_newsletter_welcome(email)
+
+                # ✅ Reset rate limit on successful subscription
+                rate_limiter.reset(rate_key)
+
                 return jsonify({"status": "success", "message": "Welcome back! Subscription reactivated."})
 
         # Insert new subscriber
@@ -5390,6 +5606,9 @@ def subscribe_newsletter():
             "is_active": True
         }
         supabase_admin.table("newsletter_subscribers").insert(subscriber_data).execute()
+
+        # ✅ Record rate limit attempt using existing rate limiter
+        rate_limiter.record_attempt(rate_key)
 
         send_newsletter_welcome(email)
         return jsonify({"status": "success", "message": "Thank you for subscribing to our newsletter!"})
@@ -5586,19 +5805,21 @@ def about():
                                now=now,
                                profile_pic_data=None)
 
+
 @app.after_request
 def after_request(response):
-    """Ensure API endpoints return JSON with proper headers"""
-    # Only apply to API routes
+    """Add CORS headers and ensure proper content type for API responses"""
+    # Add CORS headers for all responses
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers',
+                         'Content-Type,Authorization,X-Requested-With,Accept,Cache-Control')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+
+    # Ensure API endpoints return JSON with proper headers
     if request.path.startswith('/api/'):
-        # Ensure content type is JSON
         if 'application/json' not in response.headers.get('Content-Type', ''):
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
-
-        # Add CORS headers for mobile
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
 
     return response
 
@@ -6298,23 +6519,43 @@ Time: {get_current_utc_time().isoformat()}
 # =============================================
 
 def get_site_settings_from_db():
-    """Get site settings from database"""
+    """Get site settings from database with proper defaults"""
+    defaults = {
+        'show_courses': True,
+        'show_jobs': True,
+        'show_internships': True,
+        'show_blog': True,
+        'show_testimonials': True
+    }
+
     try:
         response = supabase_admin.table('site_settings').select('*').execute()
         settings = {}
-        for setting in (response.data or []):
-            settings[setting['setting_key']] = setting['setting_value']
+
+        if response.data:
+            for setting in response.data:
+                key = setting.get('setting_key')
+                value = setting.get('setting_value')
+
+                # Convert string values to boolean
+                if isinstance(value, str):
+                    if value.lower() == 'true':
+                        value = True
+                    elif value.lower() == 'false':
+                        value = False
+
+                settings[key] = value
+
+        # ✅ Merge with defaults - ensures all keys exist
+        for key, default_value in defaults.items():
+            if key not in settings:
+                settings[key] = default_value
+
         return settings
+
     except Exception as e:
-        logger.error(f"Error getting site settings from DB: {str(e)}")
-        # Return defaults on error
-        return {
-            'show_courses': True,
-            'show_jobs': True,
-            'show_internships': True,
-            'show_blog': True,
-            'show_testimonials': True
-        }
+        logger.error(f"Error getting site settings: {str(e)}")
+        return defaults  # ✅ Return defaults on error
 
 @app.route('/api/admin/site-settings', methods=['GET'])
 @admin_required
@@ -6338,9 +6579,12 @@ def get_site_settings_api():
 @app.route('/api/admin/site-settings', methods=['POST'])
 @admin_required
 def update_site_setting_api():
-    """Update a site setting"""
+    """Update a site setting - only updates existing settings"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
         key = data.get('key')
         value = data.get('value')
 
@@ -6352,33 +6596,33 @@ def update_site_setting_api():
             return jsonify({'success': False, 'message': 'Invalid setting key'}), 400
 
         admin_id = session.get('admin_id')
+        if not admin_id:
+            return jsonify({'success': False, 'message': 'Admin ID not found in session'}), 401
 
-        # Check if setting exists
-        existing = supabase_admin.table('site_settings') \
-            .select('*') \
+        # Convert value to boolean
+        if isinstance(value, str):
+            if value.lower() == 'true':
+                value = True
+            elif value.lower() == 'false':
+                value = False
+            else:
+                try:
+                    value = bool(int(value))
+                except (ValueError, TypeError):
+                    pass
+
+        value = bool(value)
+        current_time = get_current_utc_time().isoformat()
+
+        # ✅ ONLY UPDATE - no INSERT needed (settings should already exist)
+        response = supabase_admin.table('site_settings') \
+            .update({
+            'setting_value': value,
+            'updated_at': current_time,
+            'updated_by': admin_id
+        }) \
             .eq('setting_key', key) \
             .execute()
-
-        if existing.data:
-            # Update existing
-            response = supabase_admin.table('site_settings') \
-                .update({
-                'setting_value': value,
-                'updated_at': get_current_utc_time().isoformat(),
-                'updated_by': admin_id
-            }) \
-                .eq('setting_key', key) \
-                .execute()
-        else:
-            # Insert new
-            response = supabase_admin.table('site_settings') \
-                .insert({
-                'setting_key': key,
-                'setting_value': value,
-                'updated_at': get_current_utc_time().isoformat(),
-                'updated_by': admin_id
-            }) \
-                .execute()
 
         if response.data:
             # Log the action
@@ -6392,13 +6636,36 @@ def update_site_setting_api():
             )
             return jsonify({
                 'success': True,
-                'message': f'Setting {key} updated successfully'
+                'message': f'Setting {key} updated successfully',
+                'data': {'key': key, 'value': value}
             })
         else:
-            return jsonify({'success': False, 'message': 'Failed to update setting'}), 500
+            # If no record was updated, the setting might not exist
+            # Try to create it without created_at
+            try:
+                insert_response = supabase_admin.table('site_settings') \
+                    .insert({
+                    'setting_key': key,
+                    'setting_value': value,
+                    'updated_at': current_time,
+                    'updated_by': admin_id
+                }) \
+                    .execute()
+
+                if insert_response.data:
+                    return jsonify({
+                        'success': True,
+                        'message': f'Setting {key} created and updated successfully',
+                        'data': {'key': key, 'value': value}
+                    })
+                else:
+                    return jsonify({'success': False, 'message': 'Failed to create/update setting'}), 500
+            except Exception as insert_error:
+                logger.error(f"Error creating setting: {str(insert_error)}")
+                return jsonify({'success': False, 'message': 'Setting not found and could not be created'}), 404
 
     except Exception as e:
-        logger.error(f"Error updating site setting: {str(e)}")
+        logger.error(f"Error updating site setting: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -7511,7 +7778,7 @@ def admin_dashboard():
 @app.route('/api/admin/dashboard-stats')
 @admin_required
 def admin_dashboard_stats():
-    """Get dashboard statistics with activities - SIMPLIFIED"""
+    """Get dashboard statistics with activities - SIMPLIFIED WITH FALLBACKS"""
     try:
         stats = {
             'users': 0,
@@ -7523,7 +7790,8 @@ def admin_dashboard_stats():
             'subscribers': 0,
             'testimonials': 0,
             'blog_posts': 0,
-            'total_expired': 0
+            'total_expired': 0,
+            'activities': []
         }
 
         # Test database connection first
@@ -7532,12 +7800,17 @@ def admin_dashboard_stats():
             logger.info("✅ Database connection test successful")
         except Exception as db_error:
             logger.error(f"❌ Database connection failed: {str(db_error)}")
+            # Return stats with default activities
+            stats['activities'] = [{
+                'type': 'info',
+                'icon': 'info-circle',
+                'message': 'Database connection issue. Please try again.',
+                'time': get_current_utc_time().isoformat()
+            }]
             return jsonify(stats)
 
         # Get all stats with individual error handling
         try:
-            # USERS COUNT - Only regular users from users table, NOT admins
-            # Exclude soft-deleted users
             users_response = supabase_admin.table('users') \
                 .select('id', count='exact') \
                 .eq('is_deleted', False) \
@@ -7548,7 +7821,6 @@ def admin_dashboard_stats():
             logger.warning(f"⚠️ Error getting users count: {str(e)}")
             stats['users'] = 0
 
-        # Get admins count separately (for admin management, not for dashboard card)
         try:
             admins_response = supabase_admin.table('admins') \
                 .select('id', count='exact') \
@@ -7561,7 +7833,6 @@ def admin_dashboard_stats():
             stats['admins'] = 0
 
         try:
-            # Active courses count (not deleted)
             courses_response = supabase_admin.table('courses') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -7574,7 +7845,6 @@ def admin_dashboard_stats():
             stats['courses'] = 0
 
         try:
-            # Active jobs count (not deleted)
             jobs_response = supabase_admin.table('jobs') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -7587,7 +7857,6 @@ def admin_dashboard_stats():
             stats['jobs'] = 0
 
         try:
-            # Active internships count (not deleted)
             internships_response = supabase_admin.table('internships') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -7600,7 +7869,6 @@ def admin_dashboard_stats():
             stats['internships'] = 0
 
         try:
-            # Total messages count (not deleted)
             messages_response = supabase_admin.table('contact_messages') \
                 .select('id', count='exact') \
                 .eq('is_deleted', False) \
@@ -7612,7 +7880,6 @@ def admin_dashboard_stats():
             stats['messages'] = 0
 
         try:
-            # Unread messages count (not deleted)
             unread_response = supabase_admin.table('contact_messages') \
                 .select('id', count='exact') \
                 .eq('status', 'unread') \
@@ -7625,7 +7892,6 @@ def admin_dashboard_stats():
             stats['unread_messages'] = 0
 
         try:
-            # Active subscribers count (not deleted)
             subscribers_response = supabase_admin.table('newsletter_subscribers') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -7638,7 +7904,6 @@ def admin_dashboard_stats():
             stats['subscribers'] = 0
 
         try:
-            # Active testimonials count (not deleted)
             testimonials_response = supabase_admin.table('testimonials') \
                 .select('id', count='exact') \
                 .eq('is_active', True) \
@@ -7651,7 +7916,6 @@ def admin_dashboard_stats():
             stats['testimonials'] = 0
 
         try:
-            # Blog posts count (not deleted)
             blog_posts_response = supabase_admin.table('blog_posts') \
                 .select('id', count='exact') \
                 .eq('is_deleted', False) \
@@ -7663,7 +7927,6 @@ def admin_dashboard_stats():
             stats['blog_posts'] = 0
 
         try:
-            # Expired content count (content that is inactive but not deleted)
             expired_courses = supabase_admin.table('courses') \
                 .select('id', count='exact') \
                 .eq('is_active', False) \
@@ -7680,23 +7943,18 @@ def admin_dashboard_stats():
                 .eq('is_deleted', False) \
                 .execute()
 
-            expired_courses_count = getattr(expired_courses, 'count', 0) or 0
-            expired_jobs_count = getattr(expired_jobs, 'count', 0) or 0
-            expired_internships_count = getattr(expired_internships, 'count', 0) or 0
-
-            stats['total_expired'] = expired_courses_count + expired_jobs_count + expired_internships_count
-            logger.info(f"✅ Expired content: {stats['total_expired']} (Courses: {expired_courses_count}, Jobs: {expired_jobs_count}, Internships: {expired_internships_count})")
+            stats['total_expired'] = (getattr(expired_courses, 'count', 0) or 0) + \
+                                    (getattr(expired_jobs, 'count', 0) or 0) + \
+                                    (getattr(expired_internships, 'count', 0) or 0)
+            logger.info(f"✅ Expired content: {stats['total_expired']}")
         except Exception as e:
             logger.warning(f"⚠️ Error getting expired content count: {str(e)}")
             stats['total_expired'] = 0
 
-        logger.info(f"🎯 Final dashboard stats: {stats}")
-
-        # ========== SIMPLE ACTIVITIES FETCHING ==========
+        # ========== ACTIVITIES WITH FALLBACKS ==========
         activities = []
 
         try:
-            # 1. Get 3 most recent regular users (not admins)
             recent_users = supabase_admin.table('users') \
                 .select('id, username, email, created_at') \
                 .eq('is_deleted', False) \
@@ -7712,10 +7970,9 @@ def admin_dashboard_stats():
                     'time': user.get('created_at', '')
                 })
         except Exception as e:
-            print(f"Error getting users for activities: {str(e)}")
+            logger.warning(f"Error fetching users for activities: {str(e)}")
 
         try:
-            # 2. Get 3 most recent jobs (active, not deleted)
             recent_jobs = supabase_admin.table('jobs') \
                 .select('id, title, company, created_at, is_active') \
                 .eq('is_deleted', False) \
@@ -7732,10 +7989,9 @@ def admin_dashboard_stats():
                         'time': job.get('created_at', '')
                     })
         except Exception as e:
-            print(f"Error getting jobs for activities: {str(e)}")
+            logger.warning(f"Error fetching jobs for activities: {str(e)}")
 
         try:
-            # 3. Get 3 most recent messages (not deleted)
             recent_messages = supabase_admin.table('contact_messages') \
                 .select('id, name, email, created_at, status') \
                 .eq('is_deleted', False) \
@@ -7751,17 +8007,22 @@ def admin_dashboard_stats():
                     'time': msg.get('created_at', '')
                 })
         except Exception as e:
-            print(f"Error getting messages for activities: {str(e)}")
+            logger.warning(f"Error fetching messages for activities: {str(e)}")
 
-        # Sort activities by time (newest first)
+        # ✅ Ensure activities is never empty
+        if not activities:
+            activities.append({
+                'type': 'info',
+                'icon': 'info-circle',
+                'message': 'No recent activities',
+                'time': get_current_utc_time().isoformat()
+            })
+
+        # Sort and limit activities
         activities.sort(key=lambda x: x.get('time', ''), reverse=True)
-
-        # Keep only last 5 activities
         stats['activities'] = activities[:5]
-        # ========== END ACTIVITIES ==========
 
-        print(f"✅ Dashboard stats with {len(stats.get('activities', []))} activities")
-
+        logger.info(f"✅ Dashboard stats with {len(stats['activities'])} activities")
         return jsonify(stats)
 
     except Exception as e:
@@ -7778,7 +8039,12 @@ def admin_dashboard_stats():
             'testimonials': 0,
             'blog_posts': 0,
             'total_expired': 0,
-            'activities': []
+            'activities': [{
+                'type': 'error',
+                'icon': 'exclamation-triangle',
+                'message': 'Error loading activities. Please refresh.',
+                'time': get_current_utc_time().isoformat()
+            }]
         })
 
 
@@ -10326,8 +10592,10 @@ def get_expired_content_route():
         return jsonify({
             'success': True,
             'data': paginated_items,
-            'count': total_count,
-            'pagination': {
+            'count': total_count,           # ✅ Add root-level count
+            'per_page': per_page,           # ✅ Add root-level per_page
+            'page': page,                   # ✅ Add root-level page
+            'pagination': {                 # Keep for backward compatibility
                 'total_count': total_count,
                 'total_pages': (total_count + per_page - 1) // per_page if total_count > 0 else 1,
                 'current_page': page,
@@ -12298,46 +12566,59 @@ def get_geo_location(ip):
 
 
 def is_bot(user_agent):
-    """Check if visitor is a bot - more comprehensive"""
+    """Check if visitor is a bot - more lenient for mobile"""
     if not user_agent:
-        return True
+        # Don't assume empty user agent is a bot (mobile browsers sometimes send empty)
+        return False
 
+    # Expanded bot keywords - only obvious bots
     bot_keywords = [
-        'bot', 'crawler', 'spider', 'scraper', 'headless',
-        'selenium', 'puppeteer', 'googlebot', 'bingbot',
-        'yandex', 'baidu', 'facebookexternalhit', 'twitterbot',
-        'linkedinbot', 'slackbot', 'discordbot', 'telegrambot',
-        'whatsapp', 'curl', 'wget', 'python-requests', 'java',
-        'php', 'perl', 'ruby', 'go-http-client', 'okhttp',
-        'axios', 'node-fetch', 'scrapy', 'apache-httpclient'
+        'googlebot', 'bingbot', 'yandex', 'baidu', 'facebookexternalhit',
+        'twitterbot', 'linkedinbot', 'slackbot', 'discordbot', 'telegrambot',
+        'whatsapp', 'curl', 'wget', 'python-requests', 'java', 'php',
+        'perl', 'ruby', 'go-http-client', 'okhttp', 'axios', 'node-fetch',
+        'scrapy', 'apache-httpclient', 'puppeteer', 'headless', 'selenium',
+        'crawler', 'spider', 'scraper', 'bot', 'crawl'
     ]
+
     user_agent_lower = user_agent.lower()
 
-    # Check for bot keywords
-    if any(keyword in user_agent_lower for keyword in bot_keywords):
-        return True
+    # Check for bot keywords (must be exact word or common bot patterns)
+    for keyword in bot_keywords:
+        if keyword in user_agent_lower:
+            return True
 
-    # Check for common bot patterns
-    if user_agent_lower.startswith('mozilla') and len(user_agent) < 50:
-        # Too short, likely a bot
-        return True
+    # Check for very short user agents (but only if they don't contain common browser names)
+    if len(user_agent) < 20:
+        common_browsers = ['chrome', 'firefox', 'safari', 'edge', 'opera', 'mozilla']
+        if not any(browser in user_agent_lower for browser in common_browsers):
+            return True
 
     return False
 
 
 def track_visitor(page_url, page_title):
-    """Simple tracking function"""
+    """Simple tracking function - improved error handling for mobile"""
     try:
         # Get basic info
         user_agent_string = request.headers.get('User-Agent', '')
+
+        # If no user agent, skip silently (don't crash)
+        if not user_agent_string:
+            return
+
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip:
             ip = ip.split(',')[0].strip()
         referrer = request.headers.get('Referer', '')
 
-        # Basic bot check (only most obvious bots)
+        # Only skip obvious bots
         bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'headless',
-                        'selenium', 'puppeteer', 'curl', 'wget']
+                        'selenium', 'puppeteer', 'googlebot', 'bingbot',
+                        'yandex', 'baidu', 'facebookexternalhit', 'twitterbot',
+                        'linkedinbot', 'slackbot', 'discordbot', 'telegrambot',
+                        'whatsapp', 'curl', 'wget', 'python-requests',
+                        'java', 'php', 'perl', 'ruby', 'go-http-client']
 
         user_agent_lower = user_agent_string.lower()
 
@@ -12375,8 +12656,8 @@ def track_visitor(page_url, page_title):
                 .update({
                 'last_visit': current_time.isoformat(),
                 'visit_count': visitor['visit_count'] + 1,
-                'user_agent': user_agent_string,
-                'referrer': referrer
+                'user_agent': user_agent_string[:500],
+                'referrer': referrer[:500] if referrer else None
             }) \
                 .eq('visitor_id', visitor_id) \
                 .execute()
@@ -12391,17 +12672,17 @@ def track_visitor(page_url, page_title):
         else:
             supabase_track.table('visitors').insert({
                 'visitor_id': visitor_id,
-                'ip_address': ip,
-                'user_agent': user_agent_string,
-                'referrer': referrer,
+                'ip_address': ip[:50] if ip else None,
+                'user_agent': user_agent_string[:500],
+                'referrer': referrer[:500] if referrer else None,
                 'first_visit': current_time.isoformat(),
                 'last_visit': current_time.isoformat(),
                 'visit_count': 1,
-                'device_type': ua_info['device_type'],
-                'browser': ua_info['browser'],
-                'os': ua_info['os'],
-                'country': location.get('country'),
-                'city': location.get('city')
+                'device_type': ua_info.get('device_type', 'desktop'),
+                'browser': ua_info.get('browser', 'Unknown')[:50],
+                'os': ua_info.get('os', 'Unknown')[:50],
+                'country': location.get('country')[:50] if location.get('country') else None,
+                'city': location.get('city')[:50] if location.get('city') else None
             }).execute()
 
         # Track page view
@@ -12414,24 +12695,24 @@ def track_visitor(page_url, page_title):
         }).execute()
 
         # Update daily analytics
-        update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor_today, ua_info['device_type'])
+        update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor_today,
+                               ua_info.get('device_type', 'desktop'))
 
         logger.info(f"Tracked: {page_url} from {ip}")
 
     except Exception as e:
+        # Log but don't raise - tracking should never break the page
         logger.error(f"Error tracking visitor: {str(e)}", exc_info=True)
 
 
 def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, device_type):
-    """Update aggregated daily analytics"""
+    """Update aggregated daily analytics - with error handling"""
     try:
         date_str = today_date.isoformat()
         supabase_track = supabase_admin
 
-        # CRITICAL: Don't skip real users - remove bot check or make it lenient
-        # Only skip if explicitly 'bot'
+        # Skip bots
         if device_type == 'bot':
-            logger.info(f"Skipping daily analytics for bot")
             return
 
         # Get existing daily stats
@@ -12439,8 +12720,6 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
             .select('*') \
             .eq('date', date_str) \
             .execute()
-
-        logger.info(f"Updating daily analytics for {date_str}, existing: {bool(existing.data)}")
 
         if existing.data:
             stats = existing.data[0]
@@ -12453,32 +12732,27 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
             # Update device stats (only for valid device types)
             if device_type in ['desktop', 'mobile', 'tablet']:
                 devices[device_type] = devices.get(device_type, 0) + 1
-                logger.info(f"Updated device {device_type}: {devices[device_type]}")
 
             # Prepare update data
             update_data = {
-                'total_views': stats['total_views'] + 1,
+                'total_views': (stats.get('total_views', 0) or 0) + 1,
                 'page_views': page_views,
                 'devices': devices,
-                'updated_at': get_current_utc_time().isoformat()  # Add this
+                'updated_at': get_current_utc_time().isoformat()
             }
 
             # Update unique visitors if this is a new visitor today
             if is_new_visitor:
-                update_data['unique_visitors'] = stats['unique_visitors'] + 1
-                logger.info(f"New unique visitor! Total: {update_data['unique_visitors']}")
+                update_data['unique_visitors'] = (stats.get('unique_visitors', 0) or 0) + 1
 
             # Perform the update
-            result = supabase_track.table('daily_analytics') \
+            supabase_track.table('daily_analytics') \
                 .update(update_data) \
                 .eq('date', date_str) \
                 .execute()
 
-            logger.info(f"Daily analytics updated successfully for {date_str}")
-
         else:
             # Create new daily stats
-            logger.info(f"Creating new daily analytics for {date_str}")
             insert_data = {
                 'date': date_str,
                 'unique_visitors': 1,
@@ -12487,20 +12761,10 @@ def update_daily_analytics(today_date, page_url, visitor_id, is_new_visitor, dev
                 'devices': {device_type: 1} if device_type in ['desktop', 'mobile', 'tablet'] else {'desktop': 1}
             }
 
-            result = supabase_track.table('daily_analytics').insert(insert_data).execute()
-            logger.info(f"New daily analytics created")
-
-        # Verify the update
-        verify = supabase_track.table('daily_analytics') \
-            .select('*') \
-            .eq('date', date_str) \
-            .execute()
-
-        if verify.data:
-            logger.info(
-                f"Verified daily stats: total_views={verify.data[0].get('total_views')}, devices={verify.data[0].get('devices')}")
+            supabase_track.table('daily_analytics').insert(insert_data).execute()
 
     except Exception as e:
+        # Log but don't crash - analytics should never break the page
         logger.error(f"Error updating daily analytics: {str(e)}", exc_info=True)
 
 def format_datetime_display(datetime_str):
@@ -12517,9 +12781,9 @@ def format_datetime_display(datetime_str):
 
 @app.before_request
 def track_page_views():
-    """Simple tracking - just track everything except static/admin"""
+    """Simple tracking - never breaks the page"""
     try:
-        # Only skip these
+        # Skip tracking for certain paths
         if request.path.startswith('/admin') or request.path.startswith('/api/admin'):
             return
         if request.path.startswith('/static/'):
@@ -12527,17 +12791,23 @@ def track_page_views():
         if request.path == '/favicon.ico':
             return
 
-        # Don't check Accept headers or anything else
-        # Just track all remaining requests
+        # Skip if no user agent
+        if not request.headers.get('User-Agent'):
+            return
+
         page_url = request.path if request.path != '/' else '/'
         page_title = request.endpoint or page_url
 
-        # Track it
-        track_visitor(page_url, page_title)
+        # ✅ Wrap in try-catch to prevent breaking the request
+        try:
+            track_visitor(page_url, page_title)
+        except Exception as e:
+            # Log but never fail the request
+            logger.warning(f"Tracking failed but continuing: {str(e)}")
 
     except Exception as e:
-        logger.error(f"Tracking error: {str(e)}")
-
+        logger.error(f"Tracking middleware error: {str(e)}")
+        # Never fail the request
 
 
 # ===== ANALYTICS API ENDPOINTS =====

@@ -1,29 +1,40 @@
+   // =============================================
+    // 1. GLOBAL DECLARATIONS - ONCE AT THE TOP
     // =============================================
-    // Unified Notification System
+
+    // Bookmark state - declared ONCE
+    let bookmarkState = new Map();
+
+    // Other global variables
+    let currentUserId = null;
+    let isLoggedIn = false;
+
     // =============================================
+    // 2. TOAST NOTIFICATION SYSTEM
+    // =============================================
+
     function showToast(message, type = 'success', duration = 3000) {
-      const existingToasts = document.querySelectorAll('.toast');
-      existingToasts.forEach(toast => toast.remove());
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
 
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
 
-      void toast.offsetWidth;
-      toast.classList.add('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
 
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, duration);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
     }
 
     // =============================================
-    // UNIVERSAL LOADER MANAGEMENT
+    // 3. UNIVERSAL LOADER SYSTEM
     // =============================================
 
-    // Only create LoaderManager if it doesn't exist
     if (typeof LoaderManager === 'undefined') {
         window.LoaderManager = {
             config: {
@@ -39,7 +50,6 @@
 
             show: function(message = 'Loading...', options = {}) {
                 this.activeLoaders++;
-
                 let overlay = document.getElementById('universalLoadingOverlay');
 
                 if (!overlay) {
@@ -54,12 +64,10 @@
                 }
 
                 this.applyOptions(overlay, options);
-
                 overlay.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
 
                 console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
-
                 return overlay;
             },
 
@@ -84,8 +92,6 @@
                         }, 300);
                     }
                     this.activeLoaders = 0;
-                } else {
-                    console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
                 }
             },
 
@@ -103,7 +109,6 @@
 
                 this.applyStyles(overlay);
                 document.body.appendChild(overlay);
-
                 return overlay;
             },
 
@@ -165,11 +170,9 @@
                 if (options.backgroundColor) {
                     overlay.style.backgroundColor = options.backgroundColor;
                 }
-
                 if (options.zIndex) {
                     overlay.style.zIndex = options.zIndex;
                 }
-
                 if (options.message) {
                     const messageElement = overlay.querySelector('.loading-message');
                     if (messageElement) {
@@ -207,54 +210,40 @@
         }
     }
 
-    // Convenience functions - Only define if they don't exist
-    if (typeof showLoader === 'undefined') {
-        window.showLoader = function(message = 'Loading...', options = {}) {
-            return LoaderManager.show(message, options);
-        };
-    }
+    // Convenience functions
+    window.showLoader = function(message = 'Loading...', options = {}) {
+        return LoaderManager.show(message, options);
+    };
 
-    if (typeof hideLoader === 'undefined') {
-        window.hideLoader = function(force = false) {
-            return LoaderManager.hide(force);
-        };
-    }
+    window.hideLoader = function(force = false) {
+        return LoaderManager.hide(force);
+    };
 
-    if (typeof resetLoader === 'undefined') {
-        window.resetLoader = function() {
-            return LoaderManager.reset();
-        };
-    }
+    window.resetLoader = function() {
+        return LoaderManager.reset();
+    };
 
-    if (typeof withLoader === 'undefined') {
-        window.withLoader = async function(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
-            showLoader(loadingMessage);
-
-            try {
-                const result = await promise;
-
-                if (successMessage) {
-                    showToast(successMessage, 'success');
-                }
-
-                return result;
-            } catch (error) {
-                console.error('Operation failed:', error);
-
-                if (errorMessage) {
-                    showToast(errorMessage, 'error');
-                } else {
-                    showToast(error.message || 'Operation failed', 'error');
-                }
-
-                throw error;
-            } finally {
-                hideLoader();
+    window.withLoader = async function(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
+        showLoader(loadingMessage);
+        try {
+            const result = await promise;
+            if (successMessage) {
+                showToast(successMessage, 'success');
             }
-        };
-    }
+            return result;
+        } catch (error) {
+            console.error('Operation failed:', error);
+            if (errorMessage) {
+                showToast(errorMessage, 'error');
+            } else {
+                showToast(error.message || 'Operation failed', 'error');
+            }
+            throw error;
+        } finally {
+            hideLoader();
+        }
+    };
 
-    // Update existing loading functions to use universal loader
     function showLoading() {
         return showLoader('Loading...');
     }
@@ -262,6 +251,28 @@
     function hideLoading() {
         return hideLoader();
     }
+
+    // =============================================
+    // 4. EMAIL VALIDATION HELPER
+    // =============================================
+
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // =============================================
+    // 5. EXPOSE FUNCTIONS GLOBALLY
+    // =============================================
+
+    // Make functions available globally
+    window.initializeBookmarkButtons = initializeBookmarkButtons;
+    window.handleModalBookmark = handleModalBookmark;
+    window.updateBookmarkIcon = updateBookmarkIcon;
+    window.showToast = showToast;
+    window.showLoader = showLoader;
+    window.hideLoader = hideLoader;
+    window.validateEmail = validateEmail;
 
     // =============================================
     // Logo Preview System
@@ -480,7 +491,10 @@
 
         // Check if user is logged in
         fetch('/api/check-session', {
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
         })
         .then(response => response.json())
         .then(sessionData => {
@@ -500,10 +514,23 @@
             // Set initials first
             initialsElement.textContent = userInitial;
 
-            // Check for recent update timestamp
-            const cacheBust = localStorage.getItem('profilePicCacheBust') || Date.now();
+            // ✅ ALWAYS use fresh timestamp for cache busting
+            const cacheBust = Date.now();
 
-            // Fetch profile picture with aggressive cache busting
+            // ✅ Check if we have a recent picture in session storage (within last 5 seconds)
+            const storedUrl = sessionStorage.getItem('navProfilePicUrl');
+            const storedTimestamp = sessionStorage.getItem('navProfilePicTimestamp');
+            const fiveSecondsAgo = Date.now() - 5000;
+
+            if (storedUrl && storedTimestamp && parseInt(storedTimestamp) > fiveSecondsAgo) {
+                // Use cached URL if it's recent
+                profilePicElement.src = storedUrl;
+                profilePicElement.style.display = 'block';
+                initialsElement.style.display = 'none';
+                return;
+            }
+
+            // Fetch fresh profile picture
             fetch(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
                 credentials: 'include',
                 headers: {
@@ -524,18 +551,27 @@
 
                         // Store in session for quick access
                         sessionStorage.setItem('navProfilePicUrl', data.image_url);
-                        sessionStorage.setItem('navProfilePicTimestamp', Date.now());
+                        sessionStorage.setItem('navProfilePicTimestamp', Date.now().toString());
+
+                        // Update localStorage cache bust
+                        localStorage.setItem('profilePicCacheBust', Date.now().toString());
                     };
                     testImage.onerror = function() {
                         // Image failed to load, show initials
                         profilePicElement.style.display = 'none';
                         initialsElement.style.display = 'flex';
+
+                        // Clear invalid cache
+                        sessionStorage.removeItem('navProfilePicUrl');
                     };
                     testImage.src = data.image_url;
                 } else {
                     // No profile picture, show initials
                     profilePicElement.style.display = 'none';
                     initialsElement.style.display = 'flex';
+
+                    // Clear invalid cache
+                    sessionStorage.removeItem('navProfilePicUrl');
                 }
             })
             .catch(error => {
@@ -546,6 +582,11 @@
         })
         .catch(error => {
             console.error('Error checking session:', error);
+            // Hide profile on error
+            const userProfileNav = document.querySelector('.user-profile-nav');
+            if (userProfileNav) {
+                userProfileNav.style.display = 'none';
+            }
         });
     }
 
@@ -554,10 +595,23 @@
         // Clear cached data
         sessionStorage.removeItem('navProfilePicUrl');
         sessionStorage.removeItem('navProfilePicTimestamp');
+        localStorage.removeItem('profilePicCacheBust');
 
         // Reload with fresh cache busting
         loadNavigationProfilePicture();
     }
+
+    // ✅ Auto-refresh when coming back to page
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            // Page became visible again - refresh profile pic
+            const profilePicElement = document.getElementById('navProfilePic');
+            if (profilePicElement && profilePicElement.style.display === 'block') {
+                // Only refresh if it was showing (user is logged in)
+                loadNavigationProfilePicture();
+            }
+        }
+    });
 
     // =============================================
     // Modal Management
@@ -667,9 +721,6 @@
     // Enhanced Bookmark Functionality - INSTANT UI UPDATES
     // =============================================
 
-    // Store bookmark state for quick access
-    let bookmarkState = new Map();
-
     function initializeBookmarkButtons() {
         // Initialize from server-side data first
         initializeBookmarkStatesFromServer();
@@ -686,19 +737,17 @@
     }
 
     function initializeBookmarkStatesFromServer() {
-        // Initialize from server-side rendered data
+        // ✅ REMOVED the recursive call that was causing infinite loop
         const bookmarkButtons = document.querySelectorAll('.bookmark-btn');
         bookmarkButtons.forEach(button => {
             const itemId = button.dataset.id;
             const itemType = button.dataset.type;
             const isBookmarked = button.classList.contains('bookmarked');
 
-            // Store in memory for quick access
             if (itemId && itemType) {
                 bookmarkState.set(`${itemType}-${itemId}`, isBookmarked);
             }
 
-            // Ensure correct icon is displayed
             updateBookmarkIcon(button, isBookmarked);
         });
     }
@@ -707,8 +756,6 @@
         for (let i = 0; i < maxRetries; i++) {
             try {
                 const response = await fetch(url, options);
-
-                // If response is 503 (service unavailable) with retry flag, retry
                 if (response.status === 503) {
                     const data = await response.json();
                     if (data.retry && i < maxRetries - 1) {
@@ -717,7 +764,6 @@
                         continue;
                     }
                 }
-
                 return response;
             } catch (error) {
                 console.error(`Attempt ${i + 1} failed:`, error);
@@ -728,7 +774,6 @@
     }
 
     async function handleBookmarkAction(bookmarkBtn) {
-        // Prevent multiple clicks
         if (bookmarkBtn.disabled) {
             console.log('Bookmark button already processing');
             return;
@@ -738,21 +783,17 @@
         const itemType = bookmarkBtn.dataset.type;
         const currentState = bookmarkBtn.classList.contains('bookmarked');
         const newState = !currentState;
-
-        // Store original state for rollback
         const previousState = currentState;
 
         // INSTANT UI UPDATE - Optimistic update
         bookmarkBtn.classList.toggle('bookmarked', newState);
         updateBookmarkIcon(bookmarkBtn, newState);
 
-        // Show loading state
         const originalHTML = bookmarkBtn.innerHTML;
         bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         bookmarkBtn.disabled = true;
 
         try {
-            // Use fetch with retry
             const response = await fetchWithRetry(`/api/bookmark/${itemType}/${itemId}`, {
                 method: 'POST',
                 credentials: 'include',
@@ -761,7 +802,6 @@
                 }
             });
 
-            // Check if response is JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 throw new Error('Server returned invalid response');
@@ -769,7 +809,6 @@
 
             const data = await response.json();
 
-            // Handle unauthorized
             if (response.status === 401) {
                 bookmarkBtn.classList.toggle('bookmarked', previousState);
                 updateBookmarkIcon(bookmarkBtn, previousState);
@@ -791,8 +830,6 @@
 
         } catch (error) {
             console.error('Bookmark error:', error);
-
-            // REVERT UI UPDATE on error
             bookmarkBtn.classList.toggle('bookmarked', previousState);
             updateBookmarkIcon(bookmarkBtn, previousState);
 
@@ -800,11 +837,8 @@
             if (errorMessage.includes('Network') || errorMessage.includes('disconnected')) {
                 errorMessage = 'Connection issue. Please try again.';
             }
-
             showToast(errorMessage, 'error');
-
         } finally {
-            // Restore button state
             bookmarkBtn.disabled = false;
             bookmarkBtn.innerHTML = originalHTML;
             const finalState = bookmarkBtn.classList.contains('bookmarked');
@@ -812,7 +846,6 @@
         }
     }
 
-    // Bookmark sync function for modal and card
     async function handleModalBookmark(courseId) {
         const modalBookmark = document.getElementById('horizontalModalBookmarkBtn');
         if (!modalBookmark) return;
@@ -820,14 +853,12 @@
         const isCurrentlyBookmarked = modalBookmark.classList.contains('bookmarked');
         const willBeBookmarked = !isCurrentlyBookmarked;
 
-        // Update modal button
         modalBookmark.classList.toggle('bookmarked', willBeBookmarked);
         const icon = modalBookmark.querySelector('i');
         const text = modalBookmark.querySelector('.bookmark-text');
         if (icon) icon.className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
         if (text) text.textContent = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
 
-        // Update card button (sync)
         const cardBtn = document.querySelector(`.bookmark-btn[data-id="${courseId}"][data-type="course"]`);
         if (cardBtn) {
             cardBtn.classList.toggle('bookmarked', willBeBookmarked);
@@ -838,12 +869,10 @@
         }
 
         try {
-            // Check session
             const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
             const session = await sessionCheck.json();
 
             if (!session.logged_in) {
-                // Revert both
                 modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
                 if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
                 if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
@@ -859,7 +888,6 @@
                 return;
             }
 
-            // API call
             const response = await fetch(`/api/bookmark/course/${courseId}`, {
                 method: 'POST',
                 credentials: 'include',
@@ -873,8 +901,6 @@
 
         } catch (error) {
             console.error('Modal bookmark error:', error);
-
-            // Revert both on error
             modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
             if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
             if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
@@ -885,7 +911,6 @@
                 if (cardIcon) cardIcon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
                 if (cardText) cardText.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
             }
-
             showToast(error.message || 'Bookmark failed', 'error');
         }
     }
@@ -906,7 +931,6 @@
             }
         }
 
-        // Also update the button's class for CSS styling
         if (isBookmarked) {
             element.classList.add('bookmarked');
         } else {
@@ -2594,25 +2618,62 @@
     // =============================================
     // Contact Form Handling
     // =============================================
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
+
+    function initializeContactForm() {
+        const contactForm = document.getElementById('contactForm');
+        if (!contactForm) return;
+
+        // ✅ Character counter for message
+        const messageTextarea = document.getElementById('contactMessage');
+        const charCountDisplay = document.getElementById('messageCharCount');
+
+        if (messageTextarea && charCountDisplay) {
+            messageTextarea.addEventListener('input', function() {
+                const length = this.value.length;
+                const maxLength = this.maxLength || 5000;
+                charCountDisplay.textContent = `${length} / ${maxLength} characters`;
+
+                // Color coding
+                if (length > maxLength * 0.9) {
+                    charCountDisplay.style.color = '#dc3545';
+                } else if (length > maxLength * 0.7) {
+                    charCountDisplay.style.color = '#ffc107';
+                } else {
+                    charCountDisplay.style.color = '#6c757d';
+                }
+            });
+
+            // Trigger on load if there's pre-filled content
+            if (messageTextarea.value) {
+                messageTextarea.dispatchEvent(new Event('input'));
+            }
+        }
+
         contactForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const submitBtn = contactForm.querySelector('button[type="submit"]');
-            const btnText = submitBtn.querySelector('.btn-text');
+
+            const submitBtn = contactForm.querySelector('#contactSubmitBtn') || contactForm.querySelector('button[type="submit"]');
+            const btnText = submitBtn?.querySelector('.btn-text');
             const formResponse = document.getElementById('formResponse');
 
-            btnText.style.display = 'none';
-            submitBtn.disabled = true;
-            formResponse.style.display = 'none';
+            if (btnText) btnText.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = true;
+            if (formResponse) formResponse.style.display = 'none';
 
             // Show loader
             const loader = showLoader('Sending message...');
 
             try {
                 const formData = new FormData(contactForm);
+
+                // Get CSRF token
+                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
                 const response = await fetch('/api/contact', {
                     method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
                     body: formData
                 });
 
@@ -2622,24 +2683,45 @@
                     throw new Error(data.message || 'Failed to send message');
                 }
 
-                hideLoader(); // Hide loader first
-                formResponse.className = 'form-response success';
-                formResponse.textContent = data.message;
-                formResponse.style.display = 'block';
+                hideLoader();
+
+                if (formResponse) {
+                    formResponse.className = 'form-response success';
+                    formResponse.textContent = data.message;
+                    formResponse.style.display = 'block';
+                }
+
                 contactForm.reset();
 
-                // Show success toast
+                // Reset character counter
+                if (charCountDisplay) {
+                    charCountDisplay.textContent = '0 / 5000 characters';
+                    charCountDisplay.style.color = '#6c757d';
+                }
+
                 showToast('Message sent successfully!', 'success');
 
+                // Auto-hide success message after 5 seconds
+                if (formResponse) {
+                    setTimeout(() => {
+                        formResponse.style.display = 'none';
+                    }, 5000);
+                }
+
             } catch (error) {
-                hideLoader(); // Hide loader first
-                formResponse.className = 'form-response error';
-                formResponse.textContent = error.message || 'An error occurred. Please try again.';
-                formResponse.style.display = 'block';
+                hideLoader();
+
+                if (formResponse) {
+                    formResponse.className = 'form-response error';
+                    formResponse.textContent = error.message || 'An error occurred. Please try again.';
+                    formResponse.style.display = 'block';
+                }
+
                 showToast('Failed to send message', 'error');
+
             } finally {
-                btnText.style.display = 'inline-block';
-                submitBtn.disabled = false;
+                if (btnText) btnText.style.display = 'inline-block';
+                if (submitBtn) submitBtn.disabled = false;
             }
         });
     }
@@ -4346,12 +4428,82 @@
     };
 
     // =============================================
-    // NEWSLETTER SUBSCRIPTION SYSTEM - FIXED FOR MOBILE
+    // NEWSLETTER SUBSCRIPTION SYSTEM - WITH BACKEND RATE LIMITING
     // =============================================
 
     function initializeNewsletter() {
         const newsletterForm = document.getElementById('newsletterForm');
         if (!newsletterForm) return;
+
+        // ✅ FRONTEND RATE LIMITING (UX only - backend is the source of truth)
+        function checkFrontendRateLimit() {
+            try {
+                const key = 'newsletter_attempts';
+                const data = localStorage.getItem(key);
+
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    const now = Date.now();
+                    const windowMs = 5 * 60 * 1000; // 5 minutes
+
+                    if (now - parsed.timestamp > windowMs) {
+                        localStorage.removeItem(key);
+                        return { allowed: true, attempts: 0, remaining: 0 };
+                    }
+
+                    if (parsed.attempts >= 3) {
+                        const remaining = Math.ceil((windowMs - (now - parsed.timestamp)) / 1000 / 60);
+                        return { allowed: false, remaining: remaining, attempts: parsed.attempts };
+                    }
+
+                    return { allowed: true, attempts: parsed.attempts, remaining: 0 };
+                }
+            } catch (e) {
+                console.warn('Frontend rate limit check failed:', e);
+            }
+            return { allowed: true, attempts: 0, remaining: 0 };
+        }
+
+        function recordFrontendAttempt() {
+            try {
+                const key = 'newsletter_attempts';
+                const data = localStorage.getItem(key);
+
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    parsed.attempts += 1;
+                    parsed.timestamp = Date.now();
+                    localStorage.setItem(key, JSON.stringify(parsed));
+                } else {
+                    localStorage.setItem(key, JSON.stringify({
+                        attempts: 1,
+                        timestamp: Date.now()
+                    }));
+                }
+            } catch (e) {
+                console.warn('Could not record frontend rate limit:', e);
+            }
+        }
+
+        function resetFrontendRateLimit() {
+            try {
+                localStorage.removeItem('newsletter_attempts');
+            } catch (e) {}
+        }
+
+        function showRateLimitMessage(remainingMinutes) {
+            const submitBtn = newsletterForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalHTML = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i class="fas fa-clock"></i> Try again in ${remainingMinutes}m`;
+
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHTML;
+                }, remainingMinutes * 60 * 1000);
+            }
+        }
 
         newsletterForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -4362,25 +4514,29 @@
 
             if (!emailInput || !submitBtn) return;
 
-            const email = emailInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
 
-            // Validate email
             if (!validateEmail(email)) {
                 showToast('Please enter a valid email address', 'error');
                 emailInput.focus();
                 return;
             }
 
-            // Get button text and loading icon
+            // ✅ Frontend rate limit check (UX only)
+            const frontendLimit = checkFrontendRateLimit();
+            if (!frontendLimit.allowed) {
+                showToast(`Too many attempts. Please wait ${frontendLimit.remaining} minutes.`, 'warning');
+                showRateLimitMessage(frontendLimit.remaining);
+                return;
+            }
+
             const btnText = submitBtn.querySelector('.btn-text');
             const loadingIcon = submitBtn.querySelector('.loading-icon');
 
-            // Show loading state
             if (btnText) btnText.style.display = 'none';
             if (loadingIcon) loadingIcon.style.display = 'inline-block';
             submitBtn.disabled = true;
 
-            // Hide any previous response
             if (responseDiv) {
                 responseDiv.style.display = 'none';
                 responseDiv.textContent = '';
@@ -4388,14 +4544,14 @@
             }
 
             try {
-                // Add timeout for mobile networks
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
 
                 const response = await fetch('/api/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ email: email }),
                     signal: controller.signal
@@ -4403,64 +4559,59 @@
 
                 clearTimeout(timeoutId);
 
-                // Check if response is okay
+                // ✅ Handle rate limit response from backend (429)
+                if (response.status === 429) {
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                    } catch {
+                        errorData = { message: 'Too many attempts. Please wait a few minutes.' };
+                    }
+
+                    recordFrontendAttempt();
+                    showRateLimitMessage(5);
+                    showToast(errorData.message || 'Too many attempts. Please wait.', 'warning');
+
+                    if (btnText) btnText.style.display = 'inline-block';
+                    if (loadingIcon) loadingIcon.style.display = 'none';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
                 if (!response.ok) {
-                    // Try to get error message from response
-                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    let errorMessage = `HTTP ${response.status}`;
                     try {
                         const errorData = await response.json();
                         errorMessage = errorData.message || errorMessage;
-                    } catch (e) {
-                        // If can't parse JSON, try to get text
-                        try {
-                            const text = await response.text();
-                            if (text && text.length < 100) { // Only use if it's short text
-                                errorMessage = text;
-                            }
-                        } catch (textError) {
-                            // Ignore text parsing errors
-                        }
-                    }
+                    } catch (e) {}
                     throw new Error(errorMessage);
                 }
 
-                // Try to parse JSON response
-                let data;
-                try {
-                    data = await response.json();
-                } catch (jsonError) {
-                    console.error('JSON parsing error:', jsonError);
-                    throw new Error('Server returned invalid response. Please try again.');
-                }
+                const data = await response.json();
 
                 if (data.status === 'success') {
-                    // Success - show message
                     if (responseDiv) {
                         responseDiv.className = 'form-response success';
                         responseDiv.textContent = data.message;
                         responseDiv.style.display = 'block';
                     }
 
-                    // Show toast notification
                     showToast(data.message, 'success');
-
-                    // Clear form
                     emailInput.value = '';
 
-                    // Reset form state
                     const formGroup = emailInput.closest('.form-group');
                     if (formGroup) {
                         formGroup.classList.remove('has-value');
                     }
 
-                    // Auto-hide success message after 5 seconds
+                    resetFrontendRateLimit();
+
                     if (responseDiv) {
                         setTimeout(() => {
                             responseDiv.style.display = 'none';
                         }, 5000);
                     }
                 } else {
-                    // Error from backend
                     throw new Error(data.message || 'Subscription failed');
                 }
 
@@ -4469,18 +4620,14 @@
 
                 let userErrorMessage = 'Failed to subscribe. Please try again.';
 
-                // Handle specific error types
                 if (error.name === 'AbortError') {
-                    userErrorMessage = 'Request timeout. Please check your connection and try again.';
+                    userErrorMessage = 'Request timeout. Please check your connection.';
                 } else if (error.message.includes('Failed to fetch')) {
                     userErrorMessage = 'Network error. Please check your internet connection.';
-                } else if (error.message.includes('HTTP')) {
-                    userErrorMessage = error.message;
                 } else {
                     userErrorMessage = error.message || userErrorMessage;
                 }
 
-                // Show error message
                 if (responseDiv) {
                     responseDiv.className = 'form-response error';
                     responseDiv.textContent = userErrorMessage;
@@ -4488,13 +4635,10 @@
                 }
 
                 showToast(userErrorMessage, 'error');
-
-                // Focus on email field for correction
                 emailInput.focus();
                 emailInput.select();
 
             } finally {
-                // Always reset button state
                 if (btnText) btnText.style.display = 'inline-block';
                 if (loadingIcon) loadingIcon.style.display = 'none';
                 submitBtn.disabled = false;
@@ -4737,15 +4881,6 @@
             // Remove confetti after animation
             animation.onfinish = () => confetti.remove();
         }
-    }
-
-    // =============================================
-    // EMAIL VALIDATION HELPER
-    // =============================================
-
-    function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
     }
 
     // =============================================
@@ -5214,6 +5349,9 @@
         if (typeof testimonialSystem !== 'undefined' && testimonialSystem.init) {
             testimonialSystem.init();
         }
+
+        // ✅ Initialize contact form
+        initializeContactForm();
 
         // Initialize newsletter subscription
         initializeNewsletter();
@@ -6469,6 +6607,8 @@
         const statNumbers = aboutPage.querySelectorAll('.about-stat-number');
         let animated = false;
 
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
         const animateCounter = (element) => {
             const targetText = element.getAttribute('data-count') || element.textContent;
             const target = parseInt(targetText.replace(/[^0-9]/g, ''));
@@ -6502,18 +6642,36 @@
             requestAnimationFrame(updateCounter);
         };
 
+        const animateStatsImmediately = () => {
+            statNumbers.forEach((stat, index) => {
+                setTimeout(() => {
+                    animateCounter(stat);
+                }, index * 200);
+            });
+        };
+
+        // On mobile, animate immediately
+        if (isMobile) {
+            setTimeout(animateStatsImmediately, 500);
+            return;
+        }
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && !animated) {
                     animated = true;
-                    statNumbers.forEach((stat, index) => {
-                        setTimeout(() => {
-                            animateCounter(stat);
-                        }, index * 200);
-                    });
+                    animateStatsImmediately();
                 }
             });
-        }, { threshold: 0.3 });
+        }, { threshold: 0.1 });
 
         observer.observe(aboutPage);
+
+        // Fallback: if not triggered after 3 seconds, force animate
+        setTimeout(() => {
+            if (!animated) {
+                animateStatsImmediately();
+                animated = true;
+            }
+        }, 3000);
     }

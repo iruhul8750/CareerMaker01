@@ -75,7 +75,7 @@
                 <!-- Image Section -->
                 <div class="course-image-section">
                     {% if course.image %}
-                    <img src="{{ course.image }}" alt="{{ course.title }}" class="course-image"
+                    <img src="{{ course.image }}" alt="{{ course.title }}" class="course-image" loading="lazy"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% elif course.company_logo and course.company_logo != '/static/images/default-course.png' %}
                     <img src="{{ course.company_logo }}" alt="{{ course.company }} logo" class="course-image"
@@ -195,11 +195,13 @@
                         <button class="btn btn-icon bookmark-btn {% if course.is_bookmarked %}bookmarked{% endif %}"
                                 data-id="{{ course.id }}"
                                 data-type="course"
-                                title="Bookmark">
+                                title="Bookmark"
+                                aria-label="Bookmark course">
                             <i class="{% if course.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
                         </button>
                         <button class="btn btn-primary apply-btn" data-type="course" data-id="{{ course.id }}"
-                                {% if not course.application_link %}disabled{% endif %}>
+                                {% if not course.application_link %}disabled{% endif %}
+                                aria-label="Enroll in course">
                             Enroll Now
                         </button>
                     </div>
@@ -236,6 +238,7 @@
                 <div class="preview-image-container">
                     {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}
                     <img src="{{ internship.company_logo }}" alt="{{ internship.company }} logo" class="company-logo"
+                         loading="lazy"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% endif %}
                     <div class="default-logo internship-logo" {% if internship.company_logo and internship.company_logo != '/static/images/default-internship.png' %}style="display: none;" {% endif %}>
@@ -314,11 +317,13 @@
                     <button class="btn btn-icon bookmark-btn {% if internship.is_bookmarked %}bookmarked{% endif %}"
                             data-id="{{ internship.id }}"
                             data-type="internship"
-                            title="Bookmark">
+                            title="Bookmark"
+                            aria-label="Bookmark internship">
                         <i class="{% if internship.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
                     </button>
                     <button class="btn btn-primary apply-btn" data-type="internship" data-id="{{ internship.id }}"
-                            {% if not internship.application_link %}disabled{% endif %}>
+                            {% if not internship.application_link %}disabled{% endif %}
+                            aria-label="Apply for internship">
                         Apply Now
                     </button>
                 </div>
@@ -353,7 +358,7 @@
             <div class="preview-card animated-card" data-id="{{ job.id }}" data-type="job">
                 <div class="preview-image-container">
                     {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}
-                    <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo"
+                    <img src="{{ job.company_logo }}" alt="{{ job.company }} logo" class="company-logo" loading="lazy"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     {% endif %}
                     <div class="default-logo job-logo" {% if job.company_logo and job.company_logo != '/static/images/default-job.png' %}style="display: none;" {% endif %}>
@@ -431,11 +436,13 @@
                     <button class="btn btn-icon bookmark-btn {% if job.is_bookmarked %}bookmarked{% endif %}"
                             data-id="{{ job.id }}"
                             data-type="job"
-                            title="Bookmark">
+                            title="Bookmark"
+                            aria-label="Bookmark job">
                         <i class="{% if job.is_bookmarked %}fas fa-bookmark{% else %}far fa-bookmark{% endif %}"></i>
                     </button>
                     <button class="btn btn-primary apply-btn" data-type="job" data-id="{{ job.id }}"
-                            {% if not job.application_link %}disabled{% endif %}>
+                            {% if not job.application_link %}disabled{% endif %}
+                            aria-label="Apply for job">
                         Apply Now
                     </button>
                 </div>
@@ -499,7 +506,7 @@
                     <div class="lightweight-blog-author-row">
                         <div class="lightweight-author-info">
                             {% if post.author_avatar %}
-                            <img class="lightweight-author-avatar" src="{{ post.author_avatar }}"
+                            <img class="lightweight-author-avatar" src="{{ post.author_avatar }}" loading="lazy"
                                  alt="{{ post.author }}">
                             {% else %}
                             <img class="lightweight-author-avatar"
@@ -510,15 +517,18 @@
                         </div>
                         <div class="lightweight-blog-actions">
                             <button class="lightweight-like-btn {% if post.is_liked %}liked{% endif %}"
-                                    data-id="{{ post.id }}">
+                                    data-id="{{ post.id }}"
+                                    aria-label="Like article">
                                 <i class="{% if post.is_liked %}fas{% else %}far{% endif %} fa-heart"></i>
                                 <span class="like-count">{{ post.like_count or 0 }}</span>
                             </button>
                             <button class="lightweight-bookmark-btn {% if post.is_bookmarked %}bookmarked{% endif %}"
-                                    data-id="{{ post.id }}">
+                                    data-id="{{ post.id }}"
+                                    aria-label="Bookmark article">
                                 <i class="{% if post.is_bookmarked %}fas{% else %}far{% endif %} fa-bookmark"></i>
                             </button>
-                            <button class="lightweight-read-more" data-id="{{ post.id }}">
+                            <button class="lightweight-read-more" data-id="{{ post.id }}"
+                                    aria-label="Read full article">
                                 Read <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
@@ -600,7 +610,7 @@
             <p>Have questions? We're here to help you with your career journey</p>
         </div>
         <div class="contact-container scroll-animate stagger-scroll">
-            <!--   <div class="contact-info">
+              <div class="contact-info">
                    <h2 class="box-heading scroll-animate-left">Contact Info</h2>
                    <div class="info-card scroll-animate-left">
                        <div class="info-icon">
@@ -608,7 +618,7 @@
                        </div>
                        <div class="info-content">
                            <h3>Our Location</h3>
-                           <p>123 Career Street, Tech City, TC 12345</p>
+                           <p>Sector 50, Gurgaon, 122001</p>
                        </div>
                    </div>
                    <div class="info-card scroll-animate-left">
@@ -617,7 +627,7 @@
                        </div>
                        <div class="info-content">
                            <h3>Email Us</h3>
-                           <p>info@CareerMaker.com<br>support@CareerMaker.com</p>
+                           <p>support@careermaker.com</p>
                        </div>
                    </div>
                    <div class="info-card scroll-animate-left">
@@ -626,31 +636,46 @@
                        </div>
                        <div class="info-content">
                            <h3>Call Us</h3>
-                           <p>+1 (123) 456-7890<br>Mon-Fri, 9am-6pm</p>
+                           <p>8750856165<br>Mon-Fri, 9am-6pm</p>
                        </div>
                    </div>
-               </div> -->
+               </div>
 
             <div class="contact-form scroll-animate-right">
                 <h2 class="box-heading">Send a Message</h2>
-                <form id="contactForm" action="/api/contact" method="POST">
+                <!-- ✅ FIX: Added novalidate and CSRF token -->
+                <form id="contactForm" action="/api/contact" method="POST" novalidate>
+                    <!-- ✅ FIX: Added CSRF token hidden input -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+
+                    <!-- ✅ FIX: Added minlength, maxlength, autocomplete -->
                     <div class="form-group floating-label-group">
-                        <input type="text" id="name" name="name" required placeholder=" ">
-                        <label for="name">Your Name</label>
+                        <input type="text" id="contactName" name="name" required placeholder=" " minlength="2" maxlength="100" autocomplete="name">
+                        <label for="contactName">Your Name</label>
                     </div>
+
+                    <!-- ✅ FIX: Added maxlength, autocomplete, pattern -->
                     <div class="form-group floating-label-group">
-                        <input type="email" id="email" name="email" required placeholder=" ">
-                        <label for="email">Your Email</label>
+                        <input type="email" id="contactEmail" name="email" required placeholder=" " maxlength="100" autocomplete="email" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}">
+                        <label for="contactEmail">Your Email</label>
                     </div>
+
+                    <!-- ✅ FIX: Added minlength, maxlength, autocomplete -->
                     <div class="form-group floating-label-group">
-                        <input type="text" id="subject" name="subject" required placeholder=" ">
-                        <label for="subject">Subject</label>
+                        <input type="text" id="contactSubject" name="subject" required placeholder=" " minlength="3" maxlength="200" autocomplete="off">
+                        <label for="contactSubject">Subject</label>
                     </div>
+
+                    <!-- ✅ FIX: Added minlength, maxlength, and character counter -->
                     <div class="form-group floating-label-group">
-                        <textarea id="message" name="message" rows="4" required placeholder=" "></textarea>
-                        <label for="message">Your Message</label>
+                        <textarea id="contactMessage" name="message" rows="5" required placeholder=" " minlength="10" maxlength="5000"></textarea>
+                        <label for="contactMessage">Your Message</label>
+                        <!-- ✅ FIX: Added character counter -->
+                        <div class="form-hint" id="messageCharCount">0 / 5000 characters</div>
                     </div>
-                    <button type="submit" class="btn btn-primary">
+
+                    <!-- ✅ FIX: Added id for button -->
+                    <button type="submit" class="btn btn-primary" id="contactSubmitBtn">
                         <span class="btn-text">Send Message</span>
                         <i class="fas fa-spinner fa-spin loading-icon" style="display: none;"></i>
                     </button>
