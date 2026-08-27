@@ -2207,7 +2207,15 @@
                     <td>
                         <div class="action-buttons">
                             <button class="btn-icon view-item" data-id="${item.id}" title="View Message"><i class="fas fa-eye"></i></button>
-                            <button class="btn-icon reply-message" data-id="${item.id}" data-email="${escapeHTML(item.email)}" data-subject="${escapeHTML(item.subject)}" title="Reply"><i class="fas fa-reply"></i></button>
+                            <button class="btn-icon reply-message"
+                                data-id="${item.id}"
+                                data-email="${escapeHTML(item.email)}"
+                                data-subject="${escapeHTML(item.subject)}"
+                                data-name="${escapeHTML(item.name)}"
+                                data-message="${escapeHTML(item.message)}"
+                                title="Reply">
+                                <i class="fas fa-reply"></i>
+                            </button>
                             <button class="btn-icon delete-item" data-id="${item.id}" title="Delete"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
@@ -2286,15 +2294,22 @@
 
         const replyMessageBtn = row.querySelector('.reply-message');
         if (replyMessageBtn) {
-            replyMessageBtn.addEventListener('click', (e) => {
+            replyMessageBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const id = replyMessageBtn.getAttribute('data-id');
-                const email = replyMessageBtn.getAttribute('data-email');
-                const subject = replyMessageBtn.getAttribute('data-subject');
-                console.log('Reply from table:', { id, email, subject });
+                const id = this.getAttribute('data-id');
+                const email = this.getAttribute('data-email');
+                const subject = this.getAttribute('data-subject');
+                const name = this.getAttribute('data-name');
+                const message = this.getAttribute('data-message');
+
+                console.log('Reply from table:', { id, email, subject, name, message });
+
+                // Pass all data to openReplyModal
+                // The function will use the row data directly instead of fetching
                 openReplyModal(id, email, subject);
             });
+
         }
 
         const statusToggle = row.querySelector('.status-toggle-checkbox');
@@ -3493,6 +3508,16 @@
     function openReplyModal(id, email, subject = '') {
         console.log('Opening reply modal for:', { id, email, subject });
 
+        // ✅ FIX: Check if we have valid data from the row
+        // If the function was called from the table row with data attributes
+        // we can use the data directly without fetching
+        if (id && id !== 'null' && id !== 'undefined' && email && email !== 'null' && email !== 'undefined') {
+            // We have complete data from the row - use it directly
+            populateReplyModalDirectly(id, email, subject);
+            return;
+        }
+
+        // Otherwise, try to fetch the message
         const modal = document.getElementById('messageReplyModal');
         if (!modal) {
             console.error('Reply modal not found');
@@ -3500,14 +3525,14 @@
         }
 
         // Reset and set basic form values
-        document.getElementById('messageId').value = id;
-        document.getElementById('recipientEmail').value = email;
+        document.getElementById('messageId').value = id || '';
+        document.getElementById('recipientEmail').value = email || '';
 
-        const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+        const replySubject = subject && subject.startsWith('Re:') ? subject : `Re: ${subject || 'No subject'}`;
         document.getElementById('replySubject').value = replySubject;
 
         // Update display fields
-        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email || 'Unknown';
         document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
 
         // Clear reply message area
@@ -3520,44 +3545,34 @@
         document.getElementById('originalDate').textContent = 'Loading...';
         document.getElementById('originalMessageContent').innerHTML = '<div class="message-content-loading">Loading message content...</div>';
 
-        // Always fetch fresh message data to ensure we have the complete message
-        fetch(`/api/admin/messages/${id}`, {
-            credentials: 'include'
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch message details');
-            return response.json();
-        })
-        .then(message => {
-            console.log('Message data loaded:', message);
-
-            // Update all fields with the message data
-            document.getElementById('originalSender').textContent = `${message.name} <${message.email}>`;
-            document.getElementById('originalSubject').textContent = message.subject || 'No subject';
-            document.getElementById('originalDate').textContent = formatDate(message.created_at, true);
-
-            // Update message content
-            const messageContent = document.getElementById('originalMessageContent');
-            if (message.message) {
-                // Preserve line breaks and basic formatting
-                const formattedMessage = message.message
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br>')
-                    .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
-                messageContent.innerHTML = formattedMessage;
-            } else {
-                messageContent.innerHTML = '<em>No message content available</em>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading message details:', error);
-            // Fallback values
-            document.getElementById('originalSender').textContent = 'Unknown sender';
+        // Only fetch if we have a valid ID
+        if (id && id !== 'null' && id !== 'undefined' && id !== '') {
+            fetch(`/api/admin/messages/${id}`, {
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch message details');
+                return response.json();
+            })
+            .then(message => {
+                console.log('Message data loaded:', message);
+                populateReplyModal(message);
+            })
+            .catch(error => {
+                console.error('Error loading message details:', error);
+                // Fallback values
+                document.getElementById('originalSender').textContent = email || 'Unknown sender';
+                document.getElementById('originalSubject').textContent = subject || 'No subject';
+                document.getElementById('originalDate').textContent = 'Unknown date';
+                document.getElementById('originalMessageContent').innerHTML = '<em>Failed to load message content</em>';
+            });
+        } else {
+            // No valid ID, use provided data
+            document.getElementById('originalSender').textContent = email || 'Unknown sender';
             document.getElementById('originalSubject').textContent = subject || 'No subject';
             document.getElementById('originalDate').textContent = 'Unknown date';
-            document.getElementById('originalMessageContent').innerHTML = '<em>Failed to load message content</em>';
-        });
+            document.getElementById('originalMessageContent').innerHTML = '<em>Message content not available</em>';
+        }
 
         // Show modal
         modal.style.display = 'block';
@@ -3566,6 +3581,62 @@
         setTimeout(() => {
             document.getElementById('replyMessage').focus();
         }, 100);
+    }
+
+    // New function to populate reply modal from row data
+    function populateReplyModalDirectly(id, email, subject) {
+        const modal = document.getElementById('messageReplyModal');
+        if (!modal) return;
+
+        // Set form values
+        document.getElementById('messageId').value = id;
+        document.getElementById('recipientEmail').value = email;
+
+        const replySubject = subject && subject.startsWith('Re:') ? subject : `Re: ${subject || 'No subject'}`;
+        document.getElementById('replySubject').value = replySubject;
+
+        document.getElementById('recipientEmailDisplay').querySelector('.field-value').textContent = email;
+        document.getElementById('replySubjectDisplay').querySelector('.field-value').textContent = replySubject;
+
+        // Clear reply message
+        document.getElementById('replyMessage').value = '';
+        updateCharCount();
+
+        // Set original message info
+        document.getElementById('originalSender').textContent = email || 'Unknown sender';
+        document.getElementById('originalSubject').textContent = subject || 'No subject';
+        document.getElementById('originalDate').textContent = 'Unknown date';
+        document.getElementById('originalMessageContent').innerHTML = '<em>Message content loaded from list</em>';
+
+        modal.style.display = 'block';
+
+        setTimeout(() => {
+            document.getElementById('replyMessage').focus();
+        }, 100);
+    }
+
+    // Helper function to populate reply modal with message data
+    function populateReplyModal(message) {
+        // If message is an object with data
+        if (message && typeof message === 'object') {
+            const msgData = message.message || message;
+
+            document.getElementById('originalSender').textContent = `${msgData.name || 'Unknown'} <${msgData.email || ''}>`;
+            document.getElementById('originalSubject').textContent = msgData.subject || 'No subject';
+            document.getElementById('originalDate').textContent = formatDate(msgData.created_at, true);
+
+            const messageContent = document.getElementById('originalMessageContent');
+            if (msgData.message) {
+                const formattedMessage = msgData.message
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+                messageContent.innerHTML = formattedMessage;
+            } else {
+                messageContent.innerHTML = '<em>No message content available</em>';
+            }
+        }
     }
 
     function updateCharCount() {

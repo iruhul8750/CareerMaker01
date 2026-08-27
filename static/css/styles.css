@@ -9417,7 +9417,6 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: url('/static/images/contact-pattern.jpg') repeat;
       opacity: 0.05;
     }
 
@@ -12718,3 +12717,55 @@
       }
     }
     /* ANIMATION END */
+
+    /* ======================
+       IMAGE FALLBACK STYLES
+       ====================== */
+
+    .bookmark-img-wrapper {
+        position: relative;
+        width: 120px;
+        min-height: 80px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+    }
+
+    .bookmark-img-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        min-height: 80px;
+        background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+        border-radius: 8px;
+        color: #999;
+        font-size: 32px;
+    }
+
+    .horizontal-image-placeholder,
+    .blog-image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 200px;
+        background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+        border-radius: 8px;
+        color: #999;
+        font-size: 48px;
+    }
+
+    /* Dark mode support */
+    .dark-mode .bookmark-img-fallback,
+    .dark-mode .horizontal-image-placeholder,
+    .dark-mode .blog-image-placeholder {
+        background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+        color: #666;
+    }
+
+    .dark-mode .bookmark-img-wrapper {
+        background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+    }

@@ -275,27 +275,103 @@
     window.validateEmail = validateEmail;
 
     // =============================================
+    // ENHANCED FETCH WITH RETRY AND TIMEOUT - ADD AT TOP
+    // =============================================
+
+    async function fetchWithRetryAndTimeout(url, options = {}, maxRetries = 3, timeout = 10000) {
+        let lastError;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        ...(options.headers || {})
+                    }
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                return response;
+            } catch (error) {
+                lastError = error;
+                console.warn(`Attempt ${attempt + 1}/${maxRetries} failed for ${url}:`, error.message);
+
+                if (attempt < maxRetries - 1) {
+                    // Exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+                }
+            }
+        }
+
+        throw lastError || new Error('All retry attempts failed');
+    }
+
+    // =============================================
+    // CACHED SESSION CHECK WITH BETTER MOBILE SUPPORT
+    // =============================================
+
+    let sessionCache = null;
+    let sessionCacheTime = 0;
+    const SESSION_CACHE_DURATION = 30000; // 30 seconds
+
+    async function checkSessionStatus(forceRefresh = false) {
+        // Return cached session if still valid
+        if (!forceRefresh && sessionCache && (Date.now() - sessionCacheTime) < SESSION_CACHE_DURATION) {
+            return sessionCache;
+        }
+
+        try {
+            const response = await fetchWithRetryAndTimeout('/api/check-session', {
+                credentials: 'include',
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }, 2, 5000);
+
+            const data = await response.json();
+            sessionCache = data;
+            sessionCacheTime = Date.now();
+            return data;
+        } catch (error) {
+            console.warn('Session check failed:', error.message);
+            // Return cached data if available, otherwise default
+            if (sessionCache) {
+                return sessionCache;
+            }
+            return { logged_in: false };
+        }
+    }
+
+    // =============================================
     // Logo Preview System
     // =============================================
     function setupLogoPreview() {
-        // Listen for input on company fields in all modals
         document.addEventListener('input', function(e) {
             if (e.target.name === 'company' || e.target.id.includes('Company')) {
                 const companyName = e.target.value.trim();
                 if (companyName.length > 2) {
-                    // Add delay to avoid too many API calls
                     clearTimeout(e.target.logoPreviewTimeout);
                     e.target.logoPreviewTimeout = setTimeout(() => {
                         previewCompanyLogo(companyName, e.target);
                     }, 500);
                 } else {
-                    // Clear preview if company name is too short
                     clearLogoPreview(e.target);
                 }
             }
         });
 
-        // Also handle blur event for immediate response
         document.addEventListener('blur', function(e) {
             if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
                 previewCompanyLogo(e.target.value.trim(), e.target);
@@ -314,13 +390,11 @@
     }
 
     function previewCompanyLogo(companyName, inputField) {
-        // Clear any existing preview first
         clearLogoPreview(inputField);
 
         const formGroup = inputField.closest('.form-group');
         if (!formGroup) return;
 
-        // Create preview container
         const previewContainer = document.createElement('div');
         previewContainer.className = 'logo-preview';
         previewContainer.innerHTML = `
@@ -330,17 +404,20 @@
                     <span>Searching logo for "${companyName}"...</span>
                 </div>
                 <div class="logo-result" style="display: none;">
-                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;"
+                         onerror="this.style.display='none';this.parentElement.querySelector('.logo-fallback-icon').style.display='flex'">
                     <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+                    <div class="logo-fallback-icon" style="display:none; font-size:20px; color:#999; margin-right:8px;">
+                        <i class="fas fa-building"></i>
+                    </div>
                 </div>
                 <div class="logo-error" style="display: none;">
-                    <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
-                    <span style="font-size: 12px; color: #666;">No logo found</span>
+                    <i class="fas fa-building" style="color: #6c757d;"></i>
+                    <span style="font-size: 12px; color: #6c757d;">Logo not available</span>
                 </div>
             </div>
         `;
 
-        // Add some basic styles
         previewContainer.style.cssText = `
             margin-top: 8px;
             padding: 8px;
@@ -349,10 +426,8 @@
             border: 1px solid #e9ecef;
         `;
 
-        // Insert after the input field's parent container
         inputField.parentNode.appendChild(previewContainer);
 
-        // Fetch logo preview
         fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
             .then(response => {
                 if (!response.ok) {
@@ -384,7 +459,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error fetching logo preview:', error);
+                console.debug('Logo preview not available:', error.message);
                 const loading = previewContainer.querySelector('.logo-loading');
                 const errorDiv = previewContainer.querySelector('.logo-error');
                 if (loading) loading.style.display = 'none';
@@ -400,43 +475,100 @@
     // Logo Error Handling
     // =============================================
     function handleLogoErrors() {
-        document.querySelectorAll('.company-logo').forEach(logo => {
-            logo.onerror = function() {
-                console.log('Logo failed to load:', this.src);
-                this.style.display = 'none';
-                // Show default logo
-                const defaultLogo = this.nextElementSibling;
+        document.querySelectorAll('.company-logo, .course-logo, .job-logo, .internship-logo').forEach(logo => {
+            // Remove existing handlers to prevent duplicates
+            const newLogo = logo.cloneNode(true);
+            logo.parentNode.replaceChild(newLogo, logo);
+
+            // If src is empty or null, hide and show fallback
+            const src = newLogo.src || '';
+            if (!src || src === '' || src === window.location.href ||
+                src.includes('undefined') || src.includes('null') ||
+                src.includes('/static/images/default-')) {
+                // No valid image - hide image and show fallback
+                newLogo.style.display = 'none';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'flex';
                 }
-            };
+                return;
+            }
 
-            logo.onload = function() {
-                console.log('Logo loaded successfully:', this.src);
-                this.style.display = 'block';
-                // Hide default logo
-                const defaultLogo = this.nextElementSibling;
+            // Test if image actually loads
+            const testImg = new Image();
+            testImg.onload = function() {
+                newLogo.style.display = 'block';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'none';
                 }
             };
-
-            // Initial check for empty or default logos
-            if (!logo.src ||
-                logo.src === '' ||
-                logo.src === window.location.href ||
-                logo.src.includes('/static/images/default-')) {
-                logo.style.display = 'none';
-                const defaultLogo = logo.nextElementSibling;
+            testImg.onerror = function() {
+                newLogo.style.display = 'none';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'flex';
                 }
-            } else {
-                // Logo exists, hide default
-                const defaultLogo = logo.nextElementSibling;
-                if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
-                    defaultLogo.style.display = 'none';
+                // Remove src to prevent further attempts
+                newLogo.src = '';
+            };
+            testImg.src = src;
+        });
+    }
+
+    // =============================================
+    // FIX BROKEN IMAGES - PREVENT INFINITE 404s
+    // =============================================
+
+    function fixBrokenImages() {
+        // Fix all images that might have broken src
+        document.querySelectorAll('img').forEach(img => {
+            // Skip images already handled by logo system
+            if (img.classList.contains('company-logo') ||
+                img.classList.contains('logo-image') ||
+                img.classList.contains('course-logo') ||
+                img.classList.contains('job-logo') ||
+                img.classList.contains('internship-logo')) {
+                return;
+            }
+
+            const src = img.src || '';
+            // Check if src is invalid or default placeholder
+            if (!src || src === '' || src === window.location.href ||
+                src.includes('undefined') || src.includes('null') ||
+                src.includes('/static/images/default-')) {
+                // Hide broken image
+                img.style.display = 'none';
+
+                // Check if parent has a fallback
+                const parent = img.closest('.bookmark-img-wrapper, .logo-container, .card-image, .course-image, .preview-card, .card');
+                if (parent) {
+                    let fallback = parent.querySelector('.default-logo, .placeholder-image, .image-placeholder, .bookmark-img-fallback');
+                    if (fallback) {
+                        fallback.style.display = 'flex';
+                    } else {
+                        // Create a fallback if none exists
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.className = 'default-logo';
+                        fallbackDiv.style.cssText = `
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 100%;
+                            height: 100%;
+                            min-height: 80px;
+                            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+                            color: #999;
+                            font-size: 24px;
+                            border-radius: 8px;
+                        `;
+                        fallbackDiv.innerHTML = `<i class="fas fa-image"></i>`;
+                        parent.style.position = 'relative';
+                        parent.appendChild(fallbackDiv);
+                    }
                 }
+                // Remove src to prevent further attempts
+                img.src = '';
             }
         });
     }
@@ -446,11 +578,11 @@
     // =============================================
     function initializeHomePage() {
         handleLogoErrors();
-        initializeModals(); // Initialize modals first
+        initializeModals();
         initializeBookmarkButtons();
         initializeContentCards();
-        initializeTestimonialModal(); // Add this line
-        loadTestimonials(); // Add this line
+        initializeTestimonialModal();
+        loadTestimonials();
 
         // Mobile navigation
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -464,7 +596,6 @@
                 document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
             });
 
-            // Close mobile menu when clicking on links
             document.querySelectorAll('.nav-links a').forEach(link => {
                 link.addEventListener('click', function() {
                     if (navContainer.classList.contains('active')) {
@@ -477,7 +608,10 @@
             });
         }
 
+        // Fix broken images after page load
+        setTimeout(fixBrokenImages, 1000);
     }
+
 
     // =============================================
     // NAVIGATION PROFILE PICTURE LOADER
@@ -489,17 +623,9 @@
 
         if (!profilePicElement || !initialsElement) return;
 
-        // Check if user is logged in
-        fetch('/api/check-session', {
-            credentials: 'include',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
-            }
-        })
-        .then(response => response.json())
-        .then(sessionData => {
+        // Use the cached session check
+        checkSessionStatus().then(sessionData => {
             if (!sessionData.logged_in) {
-                // User not logged in, hide profile section
                 const userProfileNav = document.querySelector('.user-profile-nav');
                 if (userProfileNav) {
                     userProfileNav.style.display = 'none';
@@ -507,82 +633,71 @@
                 return;
             }
 
-            // User is logged in, load profile picture
             const username = sessionData.username || 'User';
             const userInitial = username[0].toUpperCase();
-
-            // Set initials first
             initialsElement.textContent = userInitial;
 
-            // ✅ ALWAYS use fresh timestamp for cache busting
             const cacheBust = Date.now();
-
-            // ✅ Check if we have a recent picture in session storage (within last 5 seconds)
             const storedUrl = sessionStorage.getItem('navProfilePicUrl');
             const storedTimestamp = sessionStorage.getItem('navProfilePicTimestamp');
             const fiveSecondsAgo = Date.now() - 5000;
 
             if (storedUrl && storedTimestamp && parseInt(storedTimestamp) > fiveSecondsAgo) {
-                // Use cached URL if it's recent
-                profilePicElement.src = storedUrl;
-                profilePicElement.style.display = 'block';
-                initialsElement.style.display = 'none';
+                // Test if cached image loads
+                const testImg = new Image();
+                testImg.onload = function() {
+                    profilePicElement.src = storedUrl;
+                    profilePicElement.style.display = 'block';
+                    initialsElement.style.display = 'none';
+                };
+                testImg.onerror = function() {
+                    profilePicElement.style.display = 'none';
+                    initialsElement.style.display = 'flex';
+                    sessionStorage.removeItem('navProfilePicUrl');
+                };
+                testImg.src = storedUrl;
                 return;
             }
 
-            // Fetch fresh profile picture
-            fetch(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
+            // Use enhanced fetch
+            fetchWithRetryAndTimeout(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
                 credentials: 'include',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache'
                 }
-            })
+            }, 1, 5000) // Reduced retries
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.image_url) {
-                    // Create new image to test loading
                     const testImage = new Image();
                     testImage.onload = function() {
-                        // Image loaded successfully
                         profilePicElement.src = data.image_url;
                         profilePicElement.style.display = 'block';
                         initialsElement.style.display = 'none';
-
-                        // Store in session for quick access
                         sessionStorage.setItem('navProfilePicUrl', data.image_url);
                         sessionStorage.setItem('navProfilePicTimestamp', Date.now().toString());
-
-                        // Update localStorage cache bust
                         localStorage.setItem('profilePicCacheBust', Date.now().toString());
                     };
                     testImage.onerror = function() {
-                        // Image failed to load, show initials
                         profilePicElement.style.display = 'none';
                         initialsElement.style.display = 'flex';
-
-                        // Clear invalid cache
                         sessionStorage.removeItem('navProfilePicUrl');
                     };
                     testImage.src = data.image_url;
                 } else {
-                    // No profile picture, show initials
                     profilePicElement.style.display = 'none';
                     initialsElement.style.display = 'flex';
-
-                    // Clear invalid cache
                     sessionStorage.removeItem('navProfilePicUrl');
                 }
             })
             .catch(error => {
-                console.error('Error loading profile picture:', error);
+                console.debug('Profile picture load failed:', error.message);
                 profilePicElement.style.display = 'none';
                 initialsElement.style.display = 'flex';
             });
-        })
-        .catch(error => {
-            console.error('Error checking session:', error);
-            // Hide profile on error
+        }).catch(error => {
+            console.debug('Session check failed:', error.message);
             const userProfileNav = document.querySelector('.user-profile-nav');
             if (userProfileNav) {
                 userProfileNav.style.display = 'none';
@@ -592,12 +707,12 @@
 
     // Also add this function to refresh profile picture when updated
     function refreshNavigationProfilePicture() {
-        // Clear cached data
         sessionStorage.removeItem('navProfilePicUrl');
         sessionStorage.removeItem('navProfilePicTimestamp');
         localStorage.removeItem('profilePicCacheBust');
-
-        // Reload with fresh cache busting
+        // Force session refresh
+        sessionCache = null;
+        sessionCacheTime = 0;
         loadNavigationProfilePicture();
     }
 
@@ -752,27 +867,6 @@
         });
     }
 
-    async function fetchWithRetry(url, options, maxRetries = 3) {
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const response = await fetch(url, options);
-                if (response.status === 503) {
-                    const data = await response.json();
-                    if (data.retry && i < maxRetries - 1) {
-                        console.log(`Retry ${i + 1}/${maxRetries} after 503 error`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                        continue;
-                    }
-                }
-                return response;
-            } catch (error) {
-                console.error(`Attempt ${i + 1} failed:`, error);
-                if (i === maxRetries - 1) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-            }
-        }
-    }
-
     async function handleBookmarkAction(bookmarkBtn) {
         if (bookmarkBtn.disabled) {
             console.log('Bookmark button already processing');
@@ -794,13 +888,13 @@
         bookmarkBtn.disabled = true;
 
         try {
-            const response = await fetchWithRetry(`/api/bookmark/${itemType}/${itemId}`, {
+            const response = await fetchWithRetryAndTimeout(`/api/bookmark/${itemType}/${itemId}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 }
-            });
+            }, 3, 10000); // 3 retries, 10 second timeout
 
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
@@ -1174,11 +1268,11 @@
                         payload.username = formData.get('username');
                     }
 
-                    const response = await fetch('/resend-otp', {
+                    const response = await fetchWithRetryAndTimeout('/resend-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
-                    });
+                    }, 3, 10000);
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
@@ -1254,7 +1348,7 @@
 
                 try {
                     const formData = new FormData(otpForm);
-                    const response = await fetch('/api/verify-otp', {
+                    const response = await fetchWithRetryAndTimeout('/api/verify-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1264,7 +1358,7 @@
                             password: formData.get('password'),
                             purpose: formData.get('purpose')
                         })
-                    });
+                    }, 3, 10000);
 
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Verification failed');
@@ -1455,7 +1549,7 @@
                     terms_agreement: termsAgreement
                 };
 
-                const response = await fetch('/register', {
+                const response = await fetchWithRetryAndTimeout('/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1463,7 +1557,7 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify(requestData)
-                });
+                }, 3, 15000);
 
                 const data = await response.json();
 
@@ -1621,11 +1715,11 @@
             password: this.querySelector('#loginPassword').value
         };
 
-        fetch('/login', {
+        fetchWithRetryAndTimeout('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
-        })
+        }, 3, 10000)
         .then(response => {
             if (!response.ok) return response.json().then(err => { throw err; });
             return response.json();
@@ -1851,11 +1945,11 @@
             this.setLoading('passwordResetRequestForm', true);
 
             try {
-                const response = await fetch('/reset-password-request', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
-                });
+                }, 3, 10000);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -1909,11 +2003,11 @@
             this.setLoading('passwordResetOtpForm', true);
 
             try {
-                const response = await fetch('/reset-password-verify', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, otp })
-                });
+                }, 3, 10000);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -1973,7 +2067,7 @@
             this.setLoading('resetPasswordNewForm', true);
 
             try {
-                const response = await fetch('/reset-password-confirm', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-confirm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1981,7 +2075,7 @@
                         new_password: newPassword,
                         confirm_password: confirmPassword
                     })
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
 
@@ -2547,9 +2641,9 @@
         button.disabled = true;
 
         // Get application link
-        fetch(`/get-application-link/${contentType}/${contentId}`, {
+        fetchWithRetryAndTimeout(`/get-application-link/${contentType}/${contentId}`, {
             credentials: 'same-origin'
-        })
+        }, 3, 10000)
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errorData => {
@@ -2669,13 +2763,13 @@
                 // Get CSRF token
                 const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
 
-                const response = await fetch('/api/contact', {
+                const response = await fetchWithRetryAndTimeout('/api/contact', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrfToken
                     },
                     body: formData
-                });
+                }, 3, 15000);
 
                 const data = await response.json();
 
@@ -2785,12 +2879,7 @@
 
         async getCurrentUser() {
             try {
-                const response = await fetch('/api/check-session', {
-                    credentials: 'include',
-                    headers: { 'Accept': 'application/json' }
-                });
-                const data = await response.json();
-
+                const data = await checkSessionStatus();
                 if (data.logged_in) {
                     this.currentUsername = data.username || data.name || 'User';
                     this.currentUserEmail = data.email;
@@ -3071,10 +3160,10 @@
             `;
 
             try {
-                const response = await fetch('/api/testimonial/list', {
+                const response = await fetchWithRetryAndTimeout('/api/testimonial/list', {
                     credentials: 'include',
                     headers: { 'Accept': 'application/json' }
-                });
+                }, 3, 10000);
 
                 if (!response.ok) throw new Error('Failed to load');
 
@@ -3590,12 +3679,12 @@
                 const url = isEdit ? `/api/testimonial/update/${this.testimonialToEdit}` : '/api/testimonial/submit';
                 const method = isEdit ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                const response = await fetchWithRetryAndTimeout(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ content, rating })
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
 
@@ -3667,11 +3756,11 @@
             deleteBtn.disabled = true;
 
             try {
-                const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
+                const response = await fetchWithRetryAndTimeout(`/api/testimonial/delete/${this.testimonialToDelete}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Delete failed');
@@ -3822,7 +3911,7 @@
             cards.forEach(card => {
                 const id = card.dataset.id;
                 if (id && !this.blogDataCache.has(id)) {
-                    fetch(`/api/blog/${id}`)
+                    fetchWithRetryAndTimeout(`/api/blog/${id}`, {}, 2, 5000)
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
@@ -3909,7 +3998,7 @@
                 if (this.blogDataCache.has(blogId)) {
                     blog = this.blogDataCache.get(blogId);
                 } else {
-                    const response = await fetch(`/api/blog/${blogId}`);
+                    const response = await fetchWithRetryAndTimeout(`/api/blog/${blogId}`, {}, 3, 10000);
                     const data = await response.json();
                     if (!data.success) throw new Error(data.error || 'Failed to load');
                     blog = data.blog;
@@ -4035,8 +4124,7 @@
 
         handleLike: async function(btn, blogId) {
             try {
-                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
-                const session = await sessionCheck.json();
+                const session = await checkSessionStatus();
 
                 if (!session.logged_in) {
                     this.showMessage('Please login to like articles', 'warning');
@@ -4544,20 +4632,14 @@
             }
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                const response = await fetch('/api/subscribe', {
+                const response = await fetchWithRetryAndTimeout('/api/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ email: email }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
+                    body: JSON.stringify({ email: email })
+                }, 3, 15000);
 
                 // ✅ Handle rate limit response from backend (429)
                 if (response.status === 429) {
@@ -5493,6 +5575,9 @@
         if (typeof initializeBadgeColors === 'function') {
             initializeBadgeColors();
         }
+
+        // Fix broken images after page load
+        setTimeout(fixBrokenImages, 500);
 
         // Initialize share modal theme listener
         if (typeof initShareModalThemeListener === 'function') {
@@ -6650,9 +6735,15 @@
             });
         };
 
-        // On mobile, animate immediately
+        // On mobile, animate with a delay but ensure the DOM is ready
         if (isMobile) {
-            setTimeout(animateStatsImmediately, 500);
+            if (document.readyState === 'complete') {
+                setTimeout(animateStatsImmediately, 500);
+            } else {
+                window.addEventListener('load', function() {
+                    setTimeout(animateStatsImmediately, 500);
+                });
+            }
             return;
         }
 
@@ -6667,11 +6758,11 @@
 
         observer.observe(aboutPage);
 
-        // Fallback: if not triggered after 3 seconds, force animate
+        // Fallback: if not triggered after 5 seconds, force animate
         setTimeout(() => {
             if (!animated) {
                 animateStatsImmediately();
                 animated = true;
             }
-        }, 3000);
+        }, 5000);
     }

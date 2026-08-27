@@ -86,10 +86,19 @@
                     <div class="bookmarks-list">
                         {% for course in courses %}
                         <div class="bookmark-item" data-id="{{ course.id }}" data-type="course">
-                            <img src="{{ course.image if course.image and course.image != 'None' else course.company_logo if course.company_logo and course.company_logo != 'None' else course.thumbnail if course.thumbnail and course.thumbnail != 'None' else url_for('static', filename='images/default-course.jpg') }}"
-                                 alt="{{ course.title }}"
-                                 class="bookmark-img"
-                                 onerror="this.src='{{ url_for('static', filename='images/default-course.jpg') }}'">
+                            <div class="bookmark-img-wrapper">
+                                {% if course.company_logo and course.company_logo != 'None' and not course.company_logo.startswith('/static/images/default-') %}
+                                    <img src="{{ course.company_logo }}" alt="{{ course.title }}" class="bookmark-img">
+                                {% elif course.image and course.image != 'None' and not course.image.startswith('/static/images/default-') %}
+                                    <img src="{{ course.image }}" alt="{{ course.title }}" class="bookmark-img">
+                                {% elif course.thumbnail and course.thumbnail != 'None' and not course.thumbnail.startswith('/static/images/default-') %}
+                                    <img src="{{ course.thumbnail }}" alt="{{ course.title }}" class="bookmark-img">
+                                {% else %}
+                                    <div class="bookmark-img-fallback">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                             <div class="bookmark-info">
                                 <h4>{{ course.title }}</h4>
                                 <p>{{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}</p>
@@ -108,9 +117,9 @@
                                 </div>
                             </div>
                             <div class="bookmark-actions">
-                                <a href="/courses" class="btn btn-outline view-content-btn" data-type="course" data-id="{{ course.id }}">
+                                <button class="btn btn-outline view-content-btn" data-type="course" data-id="{{ course.id }}">
                                     <i class="fas fa-external-link-alt"></i> View
-                                </a>
+                                </button>
                                 <button class="btn btn-outline remove-bookmark" data-id="{{ course.id }}" data-type="course">
                                     <i class="fas fa-trash-alt"></i> Remove
                                 </button>
@@ -141,23 +150,30 @@
                     <div class="bookmarks-list">
                         {% for job in jobs %}
                         <div class="bookmark-item" data-id="{{ job.id }}" data-type="job">
-                            <img src="{{ job.company_logo if job.company_logo else (job.image if job.image else url_for('static', filename='images/default-job.jpg')) }}"
-                                 alt="{{ job.title }}"
-                                 class="bookmark-img"
-                                 onerror="this.src='{{ url_for('static', filename='images/default-job.jpg') }}'">
+                            <div class="bookmark-img-wrapper">
+                                {% if job.company_logo and job.company_logo != 'None' and not job.company_logo.startswith('/static/images/default-') %}
+                                    <img src="{{ job.company_logo }}" alt="{{ job.title }}" class="bookmark-img">
+                                {% elif job.image and job.image != 'None' and not job.image.startswith('/static/images/default-') %}
+                                    <img src="{{ job.image }}" alt="{{ job.title }}" class="bookmark-img">
+                                {% else %}
+                                    <div class="bookmark-img-fallback">
+                                        <i class="fas fa-briefcase"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                             <div class="bookmark-info">
                                 <h4>{{ job.title }}</h4>
                                 <p>{{ job.company }} • {{ job.location }}</p>
-                                <p>{{ job.description[:100] }}...</p>
+                                <p>{{ job.description[:100] }}{% if job.description|length > 100 %}...{% endif %}</p>
                                 <div class="bookmark-meta">
                                     <span><i class="fas fa-dollar-sign"></i> {{ job.salary if job.salary else 'Not Specified' }}</span>
                                     <span><i class="fas fa-tag"></i> {{ job.type if job.type else 'Full-time' }}</span>
                                 </div>
                             </div>
                             <div class="bookmark-actions">
-                                <a href="/jobs" class="btn btn-outline view-content-btn" data-type="job" data-id="{{ job.id }}">
+                                <button class="btn btn-outline view-content-btn" data-type="job" data-id="{{ job.id }}">
                                     <i class="fas fa-external-link-alt"></i> View
-                                </a>
+                                </button>
                                 <button class="btn btn-outline remove-bookmark" data-id="{{ job.id }}" data-type="job">
                                     <i class="fas fa-trash-alt"></i> Remove
                                 </button>
@@ -188,23 +204,30 @@
                     <div class="bookmarks-list">
                         {% for internship in internships %}
                         <div class="bookmark-item" data-id="{{ internship.id }}" data-type="internship">
-                            <img src="{{ internship.company_logo if internship.company_logo else (internship.image if internship.image else url_for('static', filename='images/default-internship.jpg')) }}"
-                                 alt="{{ internship.title }}"
-                                 class="bookmark-img"
-                                 onerror="this.src='{{ url_for('static', filename='images/default-internship.jpg') }}'">
+                            <div class="bookmark-img-wrapper">
+                                {% if internship.company_logo and internship.company_logo != 'None' and not internship.company_logo.startswith('/static/images/default-') %}
+                                    <img src="{{ internship.company_logo }}" alt="{{ internship.title }}" class="bookmark-img">
+                                {% elif internship.image and internship.image != 'None' and not internship.image.startswith('/static/images/default-') %}
+                                    <img src="{{ internship.image }}" alt="{{ internship.title }}" class="bookmark-img">
+                                {% else %}
+                                    <div class="bookmark-img-fallback">
+                                        <i class="fas fa-user-graduate"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                             <div class="bookmark-info">
                                 <h4>{{ internship.title }}</h4>
                                 <p>{{ internship.company }} • {{ internship.location }}</p>
-                                <p>{{ internship.description[:100] }}...</p>
+                                <p>{{ internship.description[:100] }}{% if internship.description|length > 100 %}...{% endif %}</p>
                                 <div class="bookmark-meta">
                                     <span><i class="fas fa-dollar-sign"></i> {{ internship.stipend if internship.stipend else 'Unpaid' }}</span>
                                     <span><i class="fas fa-tag"></i> {{ internship.duration if internship.duration else 'Flexible' }}</span>
                                 </div>
                             </div>
                             <div class="bookmark-actions">
-                                <a href="/internships" class="btn btn-outline view-content-btn" data-type="internship" data-id="{{ internship.id }}">
+                                <button class="btn btn-outline view-content-btn" data-type="internship" data-id="{{ internship.id }}">
                                     <i class="fas fa-external-link-alt"></i> View
-                                </a>
+                                </button>
                                 <button class="btn btn-outline remove-bookmark" data-id="{{ internship.id }}" data-type="internship">
                                     <i class="fas fa-trash-alt"></i> Remove
                                 </button>
@@ -235,13 +258,18 @@
                     <div class="bookmarks-list">
                         {% for blog in blogs %}
                         <div class="bookmark-item" data-id="{{ blog.id }}" data-type="blog">
-                            <img src="{{ blog.image if blog.image else url_for('static', filename='images/default-blog.jpg') }}"
-                                 alt="{{ blog.title }}"
-                                 class="bookmark-img"
-                                 onerror="this.src='{{ url_for('static', filename='images/default-blog.jpg') }}'">
+                            <div class="bookmark-img-wrapper">
+                                {% if blog.image and blog.image != 'None' and not blog.image.startswith('/static/images/default-') %}
+                                    <img src="{{ blog.image }}" alt="{{ blog.title }}" class="bookmark-img">
+                                {% else %}
+                                    <div class="bookmark-img-fallback">
+                                        <i class="fas fa-newspaper"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                             <div class="bookmark-info">
                                 <h4>{{ blog.title }}</h4>
-                                <p>{{ (blog.description or blog.content or 'No description available')[:100] }}...</p>
+                                <p>{{ (blog.description or blog.content or 'No description available')[:100] }}{% if (blog.description or blog.content or 'No description available')|length > 100 %}...{% endif %}</p>
                                 <div class="bookmark-meta">
                                     <span><i class="fas fa-user"></i> {{ blog.author or 'CareerMaker Team' }}</span>
                                     <span><i class="far fa-clock"></i> {{ blog.read_time or '5 min read' }}</span>
@@ -342,9 +370,7 @@
     </div>
 </section>
 
-<!-- ============================================= -->
-<!-- REMOVE BOOKMARK CONFIRMATION MODAL  -->
-<!-- ============================================= -->
+<!-- Remove Bookmark Confirmation Modal -->
 <div id="removeBookmarkModal" class="confirmation-modal" style="display: none;">
     <div class="modal-overlay"></div>
     <div class="modal-content">
@@ -367,9 +393,7 @@
     </div>
 </div>
 
-<!-- ============================================= -->
-<!-- QUICK LOGOUT MODAL -->
-<!-- ============================================= -->
+<!-- Quick Logout Modal -->
 <div id="logoutModal" class="confirmation-modal" style="display: none;">
     <div class="modal-overlay"></div>
     <div class="modal-content">

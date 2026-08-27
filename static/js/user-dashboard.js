@@ -423,14 +423,21 @@
 
         async function loadTestimonialsContent() {
             try {
-                const response = await fetch('/api/testimonials/user', {
-                    credentials: 'include'
+                // Use the existing endpoint
+                const response = await fetch('/api/testimonial/list', {
+                    credentials: 'include',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success) {
-                        renderTestimonials(data.testimonials);
+                    if (data.testimonials) {
+                        // Filter only current user's testimonials
+                        const userTestimonials = data.testimonials.filter(t => t.can_edit === true);
+                        renderTestimonials(userTestimonials);
+                        checkTestimonialsEmptyState();
                     }
                 }
             } catch (error) {
@@ -1236,21 +1243,28 @@
                 document.getElementById('horizontalCurriculumSection').style.display = 'none';
             }
 
-            // Image
+            // Image - FIXED: Use placeholder instead of default image
             const imageElement = document.getElementById('horizontalModalCourseImage');
             const placeholderElement = document.querySelector('.horizontal-image-placeholder');
-            if (course.image && course.image !== 'None') {
-                imageElement.src = course.image;
+
+            // Get the best available image (only if valid)
+            let imageUrl = null;
+            if (course.image && course.image !== 'None' && !course.image.includes('undefined') && !course.image.includes('null') && !course.image.includes('/static/images/default-')) {
+                imageUrl = course.image;
+            } else if (course.company_logo && course.company_logo !== 'None' && !course.company_logo.includes('undefined') && !course.company_logo.includes('null') && !course.company_logo.includes('/static/images/default-')) {
+                imageUrl = course.company_logo;
+            } else if (course.thumbnail && course.thumbnail !== 'None' && !course.thumbnail.includes('undefined') && !course.thumbnail.includes('null') && !course.thumbnail.includes('/static/images/default-')) {
+                imageUrl = course.thumbnail;
+            }
+
+            if (imageUrl) {
+                imageElement.src = imageUrl;
                 imageElement.style.display = 'block';
                 if (placeholderElement) placeholderElement.style.display = 'none';
-            } else if (course.company_logo && course.company_logo !== 'None') {
-                imageElement.src = course.company_logo;
-                imageElement.style.display = 'block';
-                if (placeholderElement) placeholderElement.style.display = 'none';
-            } else if (course.thumbnail && course.thumbnail !== 'None') {
-                imageElement.src = course.thumbnail;
-                imageElement.style.display = 'block';
-                if (placeholderElement) placeholderElement.style.display = 'none';
+                imageElement.onerror = function() {
+                    this.style.display = 'none';
+                    if (placeholderElement) placeholderElement.style.display = 'flex';
+                };
             } else {
                 imageElement.style.display = 'none';
                 if (placeholderElement) placeholderElement.style.display = 'flex';
@@ -1288,7 +1302,6 @@
                     bookmarkText.textContent = 'Bookmark';
                 }
 
-                // Remove old event listener and add new one
                 const newBookmarkBtn = bookmarkBtn.cloneNode(true);
                 bookmarkBtn.parentNode.replaceChild(newBookmarkBtn, bookmarkBtn);
                 newBookmarkBtn.addEventListener('click', () => handleCourseBookmark(course.id, newBookmarkBtn));
@@ -1302,24 +1315,12 @@
                 newApplyBtn.addEventListener('click', async () => {
                     try {
                         showLoader('Getting enrollment link...');
-
                         const response = await fetch(`/get-application-link/course/${course.id}`, {
                             method: 'GET',
                             credentials: 'include'
                         });
-
                         const data = await response.json();
-
-                        // Check for application_link from database
-                        let link = null;
-                        if (data.application_link) {
-                            link = data.application_link;
-                        } else if (data.link) {
-                            link = data.link;
-                        } else if (course.link) {
-                            link = course.link;
-                        }
-
+                        let link = data.application_link || data.link || course.link || null;
                         if (link) {
                             window.open(link, '_blank');
                             showToast('Opening enrollment page...', 'success');
@@ -1335,7 +1336,6 @@
                 });
             }
 
-            // Show modal
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -1438,18 +1438,47 @@
             document.getElementById('lightweightModalViews').textContent = blog.views || 0;
             document.getElementById('lightweightModalLikes').textContent = blog.like_count || 0;
 
-            // Image
+            // Image - FIXED: Use placeholder if no image
             const modalImage = document.getElementById('lightweightModalImage');
+            const imagePlaceholder = modalImage?.parentElement?.querySelector('.blog-image-placeholder');
+
             if (modalImage) {
-                modalImage.src = blog.image || '/static/images/default-blog.jpg';
-                modalImage.alt = blog.title;
+                const imageUrl = blog.image && blog.image !== 'None' && !blog.image.includes('undefined') && !blog.image.includes('null') && !blog.image.includes('/static/images/default-') ? blog.image : null;
+                if (imageUrl) {
+                    modalImage.src = imageUrl;
+                    modalImage.alt = blog.title;
+                    modalImage.style.display = 'block';
+                    if (imagePlaceholder) imagePlaceholder.style.display = 'none';
+                    modalImage.onerror = function() {
+                        this.style.display = 'none';
+                        if (imagePlaceholder) imagePlaceholder.style.display = 'flex';
+                    };
+                } else {
+                    modalImage.style.display = 'none';
+                    if (imagePlaceholder) imagePlaceholder.style.display = 'flex';
+                }
             }
 
-            // Author Avatar
+            // Author Avatar - Use fallback icon
             const authorAvatar = document.getElementById('lightweightModalAvatar');
             if (authorAvatar) {
-                authorAvatar.src = blog.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(blog.author || 'CareerMaker Team')}&background=8B5FBF&color=fff&bold=true`;
-                authorAvatar.alt = blog.author || 'CareerMaker Team';
+                const avatarUrl = blog.author_avatar || null;
+                if (avatarUrl && !avatarUrl.includes('undefined') && !avatarUrl.includes('null')) {
+                    authorAvatar.src = avatarUrl;
+                    authorAvatar.style.display = 'block';
+                    authorAvatar.onerror = function() {
+                        this.style.display = 'none';
+                        const fallback = this.parentElement.querySelector('.avatar-fallback');
+                        if (fallback) fallback.style.display = 'flex';
+                    };
+                } else {
+                    authorAvatar.style.display = 'none';
+                    const fallback = authorAvatar.parentElement.querySelector('.avatar-fallback');
+                    if (fallback) {
+                        fallback.style.display = 'flex';
+                        fallback.innerHTML = `<i class="fas fa-user-circle" style="font-size:32px;color:#999;"></i>`;
+                    }
+                }
             }
 
             // Content
@@ -1491,7 +1520,6 @@
                 newBookmarkBtn.addEventListener('click', () => handleLightweightBlogBookmark(blog.id, newBookmarkBtn));
             }
 
-            // Show modal
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -1621,6 +1649,15 @@
             setupTestimonialReadModalClose();
             setupEditTestimonialModalClose();
             setupDeleteConfirmationModalClose();
+
+            // Load testimonials when tab is clicked
+            const testimonialsTab = document.querySelector('[data-tab="testimonials"]');
+            if (testimonialsTab) {
+                testimonialsTab.addEventListener('click', function() {
+                    // Refresh testimonials when tab is clicked
+                    setTimeout(refreshTestimonials, 300);
+                });
+            }
 
             setTimeout(() => {
                 checkTestimonialsEmptyState();
@@ -2152,7 +2189,6 @@
                     return;
                 }
 
-                // Prepare data as JSON for both add and edit
                 const testimonialData = {
                     content: content.trim(),
                     rating: rating
@@ -2165,7 +2201,6 @@
                 const isEditMode = newForm.dataset.mode === 'edit';
                 const testimonialId = newForm.dataset.testimonialId;
 
-                // Use JSON for both routes
                 const url = isEditMode ? `/api/testimonial/update/${testimonialId}` : '/api/testimonial/submit';
                 const method = isEditMode ? 'PUT' : 'POST';
 
@@ -2190,8 +2225,8 @@
                     if (data.success) {
                         closeEditTestimonialModal();
 
-                        // Refresh testimonials to show the new/updated one
-                        await refreshCurrentTab();
+                        // ✅ INSTANT UPDATE: Fetch and refresh testimonials immediately
+                        await refreshTestimonials();
 
                         // Update button position
                         if (typeof updateButtonPosition === 'function') {
@@ -2255,25 +2290,25 @@
                 }
 
                 if (data.success) {
-                    // Close modal first
+                    // Close modal
                     closeDeleteConfirmationModal();
 
-                    // Remove testimonial from DOM immediately
+                    // Remove testimonial from DOM with animation
                     const testimonialItem = document.querySelector(`.testimonial-item[data-id="${testimonialId}"]`);
                     if (testimonialItem) {
-                        // Add animation class
                         testimonialItem.classList.add('bookmark-removing');
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             testimonialItem.remove();
-                            checkTestimonialsEmptyState();
+                            // ✅ Refresh to update empty state
+                            await refreshTestimonials();
                             if (typeof updateButtonPosition === 'function') {
                                 updateButtonPosition('testimonials');
                             }
                             showToast(data.message || 'Testimonial deleted successfully', 'success');
                         }, 300);
                     } else {
-                        // If element not found, just refresh the tab
-                        await refreshCurrentTab();
+                        // If element not found, refresh the tab
+                        await refreshTestimonials();
                         showToast(data.message || 'Testimonial deleted successfully', 'success');
                     }
                 } else {
@@ -2292,8 +2327,12 @@
             const testimonialsContainer = document.querySelector('#testimonials .testimonials-list');
             if (!testimonialsContainer) return;
 
-            if (testimonials.length === 0) {
-                checkTestimonialsEmptyState();
+            if (!testimonials || testimonials.length === 0) {
+                // Check if we need to show empty state
+                const emptyState = testimonialsContainer.closest('.dashboard-card')?.querySelector('.empty-state');
+                if (!emptyState) {
+                    checkTestimonialsEmptyState();
+                }
                 return;
             }
 
@@ -2302,6 +2341,9 @@
                     <div class="testimonial-content-wrapper">
                         <div class="testimonial-content">${escapeHtml(testimonial.content)}</div>
                         ${testimonial.role ? `<div class="testimonial-role">${escapeHtml(testimonial.role)}</div>` : ''}
+                        <div class="testimonial-rating">
+                            ${generateStarRating(testimonial.rating || 5)}
+                        </div>
                     </div>
                     <div class="testimonial-actions">
                         <button class="btn-icon view-testimonial" data-id="${testimonial.id}" title="View">
@@ -2317,6 +2359,7 @@
                 </div>
             `).join('');
 
+            // Re-attach event listeners
             setupTestimonialActions();
         }
 
@@ -2360,41 +2403,124 @@
                 // Add event listener to the empty state button
                 const addBtn = dashboardCard.querySelector('.add-testimonial-empty-btn');
                 if (addBtn) {
-                    addBtn.addEventListener('click', openTestimonialShareModal);
+                    // Remove any existing listeners
+                    const newAddBtn = addBtn.cloneNode(true);
+                    addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+
+                    newAddBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openTestimonialShareModal();
+                    });
                 }
             } else if (hasTestimonials && emptyState) {
                 emptyState.remove();
             }
         }
 
-        function shareTestimonial() {
-            const modal = document.getElementById('testimonialDetailModal');
-            if (!modal) return;
+        // ======================
+        // REFRESH TESTIMONIALS - Instant update
+        // ======================
 
-            const content = document.getElementById('detailFullText').textContent;
-            const author = document.getElementById('detailAuthorName').textContent;
-            const shareText = `"${content}" - ${author}`;
+        async function refreshTestimonials() {
+            try {
+                console.log('🔄 Refreshing testimonials...');
 
-            if (navigator.share) {
-                navigator.share({
-                    title: 'CareerMaker Testimonial',
-                    text: shareText,
-                    url: window.location.href
-                }).catch(err => {
-                    copyToClipboard(shareText);
+                // Use the correct endpoint that exists in your backend
+                const response = await fetch('/api/testimonial/list', {
+                    credentials: 'include',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
                 });
-            } else {
-                copyToClipboard(shareText);
-            }
-        }
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast('Testimonial copied to clipboard!', 'success');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                showToast('Failed to copy testimonial', 'error');
-            });
+                if (!response.ok) {
+                    console.error('Failed to refresh testimonials:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('📊 Testimonials data received:', data);
+
+                // Get the testimonials container
+                const testimonialsContainer = document.querySelector('#testimonials .testimonials-list');
+                if (!testimonialsContainer) {
+                    console.error('Testimonials container not found');
+                    return;
+                }
+
+                const dashboardCard = testimonialsContainer.closest('.dashboard-card');
+                if (!dashboardCard) {
+                    console.error('Dashboard card not found');
+                    return;
+                }
+
+                // Filter only current user's testimonials (can_edit === true)
+                let userTestimonials = [];
+                if (data.testimonials && data.testimonials.length > 0) {
+                    userTestimonials = data.testimonials.filter(t => t.can_edit === true);
+                }
+
+                console.log(`✅ Found ${userTestimonials.length} user testimonials`);
+
+                // Clear the container
+                testimonialsContainer.innerHTML = '';
+
+                // Check if we have testimonials to display
+                if (userTestimonials.length > 0) {
+                    // Render testimonials
+                    renderTestimonials(userTestimonials);
+
+                    // Remove empty state if it exists
+                    const emptyState = dashboardCard.querySelector('.empty-state');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+
+                    // Show the testimonials list
+                    testimonialsContainer.style.display = 'block';
+                } else {
+                    // No testimonials - show empty state
+                    testimonialsContainer.style.display = 'none';
+
+                    // Check if empty state already exists
+                    let emptyState = dashboardCard.querySelector('.empty-state');
+                    if (!emptyState) {
+                        const emptyHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-comment-dots"></i>
+                                <h4>No testimonials yet</h4>
+                                <p>Share your experience and help others in their career journey</p>
+                                <button class="btn btn-primary add-testimonial-empty-btn">
+                                    <i class="fas fa-plus"></i> Add Your Testimonial
+                                </button>
+                            </div>
+                        `;
+                        dashboardCard.insertAdjacentHTML('beforeend', emptyHTML);
+
+                        // Add event listener to the empty state button
+                        const addBtn = dashboardCard.querySelector('.add-testimonial-empty-btn');
+                        if (addBtn) {
+                            addBtn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openTestimonialShareModal();
+                            });
+                        }
+                    }
+                }
+
+                // Update button position
+                if (typeof updateButtonPosition === 'function') {
+                    updateButtonPosition('testimonials');
+                }
+
+                console.log('✅ Testimonials refreshed successfully');
+
+            } catch (error) {
+                console.error('Error refreshing testimonials:', error);
+            }
         }
 
         // ======================
@@ -2776,18 +2902,36 @@
                 return;
             }
 
-            // Get the appropriate template
             let html = '<div class="bookmarks-list">';
 
             items.forEach(item => {
+                // Helper to create image HTML with fallback icon
+                const createImageWithFallback = (imgUrl, alt, iconClass) => {
+                    if (imgUrl && imgUrl !== 'None' && !imgUrl.includes('undefined') && !imgUrl.includes('null') && !imgUrl.includes('/static/images/default-')) {
+                        return `<img src="${imgUrl}" alt="${escapeHtml(alt)}" class="bookmark-img" style="width:100%;height:auto;border-radius:8px;display:block;" onerror="this.style.display='none';this.parentElement.querySelector('.bookmark-img-fallback').style.display='flex'">`;
+                    }
+                    return `<div class="bookmark-img-fallback" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:80px;background:linear-gradient(135deg,#f0f0f0,#e0e0e0);border-radius:8px;color:#999;font-size:32px;">
+                                <i class="${iconClass}"></i>
+                            </div>`;
+                };
+
+                // Helper to get valid image URL
+                const getValidImage = (item) => {
+                    let img = item.company_logo || item.image || item.thumbnail || null;
+                    if (img && (img === 'None' || img.includes('undefined') || img.includes('null') || img.includes('/static/images/default-'))) {
+                        return null;
+                    }
+                    return img;
+                };
+
                 switch(tabId) {
                     case 'courses':
+                        const courseImg = getValidImage(item);
                         html += `
                             <div class="bookmark-item" data-id="${item.id}" data-type="course">
-                                <img src="${item.image || item.company_logo || item.thumbnail || '/static/images/default-course.jpg'}"
-                                     alt="${escapeHtml(item.title)}"
-                                     class="bookmark-img"
-                                     onerror="this.src='/static/images/default-course.jpg'">
+                                <div class="bookmark-img-wrapper" style="position:relative;width:120px;min-height:80px;flex-shrink:0;">
+                                    ${createImageWithFallback(courseImg, item.title, 'fas fa-graduation-cap')}
+                                </div>
                                 <div class="bookmark-info">
                                     <h4>${escapeHtml(item.title)}</h4>
                                     <p>${escapeHtml((item.description || '').substring(0, 100))}...</p>
@@ -2810,12 +2954,12 @@
                         break;
 
                     case 'jobs':
+                        const jobImg = getValidImage(item);
                         html += `
                             <div class="bookmark-item" data-id="${item.id}" data-type="job">
-                                <img src="${item.company_logo || item.image || '/static/images/default-job.jpg'}"
-                                     alt="${escapeHtml(item.title)}"
-                                     class="bookmark-img"
-                                     onerror="this.src='/static/images/default-job.jpg'">
+                                <div class="bookmark-img-wrapper" style="position:relative;width:120px;min-height:80px;flex-shrink:0;">
+                                    ${createImageWithFallback(jobImg, item.title, 'fas fa-briefcase')}
+                                </div>
                                 <div class="bookmark-info">
                                     <h4>${escapeHtml(item.title)}</h4>
                                     <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
@@ -2838,12 +2982,12 @@
                         break;
 
                     case 'internships':
+                        const internImg = getValidImage(item);
                         html += `
                             <div class="bookmark-item" data-id="${item.id}" data-type="internship">
-                                <img src="${item.company_logo || item.image || '/static/images/default-internship.jpg'}"
-                                     alt="${escapeHtml(item.title)}"
-                                     class="bookmark-img"
-                                     onerror="this.src='/static/images/default-internship.jpg'">
+                                <div class="bookmark-img-wrapper" style="position:relative;width:120px;min-height:80px;flex-shrink:0;">
+                                    ${createImageWithFallback(internImg, item.title, 'fas fa-user-graduate')}
+                                </div>
                                 <div class="bookmark-info">
                                     <h4>${escapeHtml(item.title)}</h4>
                                     <p>${escapeHtml(item.company)} • ${escapeHtml(item.location)}</p>
@@ -2866,12 +3010,12 @@
                         break;
 
                     case 'blogs':
+                        const blogImg = item.image && !item.image.includes('/static/images/default-') ? item.image : null;
                         html += `
                             <div class="bookmark-item" data-id="${item.id}" data-type="blog">
-                                <img src="${item.image || '/static/images/default-blog.jpg'}"
-                                     alt="${escapeHtml(item.title)}"
-                                     class="bookmark-img"
-                                     onerror="this.src='/static/images/default-blog.jpg'">
+                                <div class="bookmark-img-wrapper" style="position:relative;width:120px;min-height:80px;flex-shrink:0;">
+                                    ${createImageWithFallback(blogImg, item.title, 'fas fa-newspaper')}
+                                </div>
                                 <div class="bookmark-info">
                                     <h4>${escapeHtml(item.title)}</h4>
                                     <p>${escapeHtml((item.description || item.content || 'No description').substring(0, 100))}...</p>
@@ -2916,6 +3060,5 @@
         window.closeLightweightBlogModal = closeLightweightBlogModal;
         window.closeTestimonialReadModal = closeTestimonialReadModal;
         window.closeEditTestimonialModal = closeEditTestimonialModal;
-        window.shareTestimonial = shareTestimonial;
         window.openTestimonialShareModal = openTestimonialShareModal;
     });

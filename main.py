@@ -1650,41 +1650,19 @@ def get_or_fetch_logo(company_name, content_type, content_id):
 
 def enhance_content_with_logo(content_data, content_type, content_id):
     """
-    Enhanced content data with company logo - optimized version with course fix
+    Enhanced content data with company logo - Don't use default images
     """
     try:
         if not content_data:
             return content_data
 
-        # For courses, always ensure there's a logo
-        if content_type == 'course':
-            # Extract and clean company name
-            company_name = extract_company_name_from_content(content_data)
-
-            if company_name:
-                logger.info(f"🔍 Course logo fetch for: {company_name} ({content_type})")
-                # Try to get logo with optimized method
-                logo_url = get_or_fetch_logo_optimized(company_name, content_type, content_id)
-
-                if logo_url:
-                    content_data['company_logo'] = logo_url
-                    logger.info(f"✅ Course logo found for {company_name}: {logo_url}")
-                else:
-                    # Use course default logo
-                    content_data = apply_default_logo(content_data, content_type)
-                    logger.info(f"⚠️ Using default course logo for {company_name}")
-            else:
-                # No company name, use default course logo
-                content_data = apply_default_logo(content_data, content_type)
-                logger.info(f"⚠️ Using default course logo (no company name)")
-
-            return content_data
-
-        # Original logic for jobs and internships
+        # Extract and clean company name
         company_name = extract_company_name_from_content(content_data)
+
         if not company_name:
-            # No company name, use default logo
-            return apply_default_logo(content_data, content_type)
+            # No company name, don't set any logo
+            content_data['company_logo'] = None
+            return content_data
 
         # If content already has a valid logo, use it
         if content_data.get('company_logo') and is_valid_logo_url(content_data['company_logo']):
@@ -1700,15 +1678,16 @@ def enhance_content_with_logo(content_data, content_type, content_id):
             content_data['company_logo'] = logo_url
             logger.info(f"✅ Logo found for {company_name}: {logo_url}")
         else:
-            # Use appropriate default logo
-            content_data = apply_default_logo(content_data, content_type)
-            logger.info(f"⚠️ Using default logo for {company_name}")
+            # Don't set default logo - let frontend handle it
+            content_data['company_logo'] = None
+            logger.info(f"ℹ️ No logo found for {company_name}, frontend will handle fallback")
 
         return content_data
 
     except Exception as e:
         logger.error(f"Error enhancing content with logo: {str(e)}")
-        return apply_default_logo(content_data, content_type)
+        content_data['company_logo'] = None
+        return content_data
 
 
 def get_or_fetch_logo_optimized(company_name, content_type, content_id):
@@ -1804,14 +1783,9 @@ def find_similar_company_logo(company_name):
 
 
 def apply_default_logo(content_data, content_type):
-    """
-    Apply appropriate default logo based on content type
-    """
-    default_logos = {
-        'course': '/static/images/default-course.png',
-        'job': '/static/images/default-job.png',
-        'internship': '/static/images/default-internship.png'
-    }
+    """Don't set default logo - let frontend handle it with CSS fallback"""
+    content_data['company_logo'] = None
+    return content_data
 
     content_data['company_logo'] = default_logos.get(content_type, '/static/images/default-company.png')
     return content_data
@@ -2147,18 +2121,18 @@ def index():
                     if 'views' not in course:
                         course['views'] = 0
 
-                    # Enhance with company logo
+                    # Don't set default logo - let frontend handle it
                     if course.get('company'):
                         try:
                             logo_url = get_or_fetch_logo_optimized(course['company'], 'course', course.get('id'))
                             if logo_url:
                                 course['company_logo'] = logo_url
                             else:
-                                course['company_logo'] = '/static/images/default-course.png'
+                                course['company_logo'] = None
                         except:
-                            course['company_logo'] = '/static/images/default-course.png'
+                            course['company_logo'] = None
                     else:
-                        course['company_logo'] = '/static/images/default-course.png'
+                        course['company_logo'] = None
 
                     enhanced_courses.append(course)
 
@@ -2180,18 +2154,18 @@ def index():
                 jobs = jobs_query.execute().data or []
 
                 for job in jobs:
-                    # Enhance with company logo
+                    # Don't set default logo - let frontend handle it
                     if job.get('company'):
                         try:
                             logo_url = get_or_fetch_logo_optimized(job['company'], 'job', job.get('id'))
                             if logo_url:
                                 job['company_logo'] = logo_url
                             else:
-                                job['company_logo'] = '/static/images/default-job.png'
+                                job['company_logo'] = None
                         except:
-                            job['company_logo'] = '/static/images/default-job.png'
+                            job['company_logo'] = None
                     else:
-                        job['company_logo'] = '/static/images/default-job.png'
+                        job['company_logo'] = None
 
                     # Ensure all required fields exist
                     job.setdefault('description', 'No description available')
@@ -2219,19 +2193,18 @@ def index():
                 internships = internships_query.execute().data or []
 
                 for internship in internships:
-                    # Enhance with company logo
+                    # Don't set default logo - let frontend handle it
                     if internship.get('company'):
                         try:
-                            logo_url = get_or_fetch_logo_optimized(internship['company'], 'internship',
-                                                                   internship.get('id'))
+                            logo_url = get_or_fetch_logo_optimized(internship['company'], 'internship', internship.get('id'))
                             if logo_url:
                                 internship['company_logo'] = logo_url
                             else:
-                                internship['company_logo'] = '/static/images/default-internship.png'
+                                internship['company_logo'] = None
                         except:
-                            internship['company_logo'] = '/static/images/default-internship.png'
+                            internship['company_logo'] = None
                     else:
-                        internship['company_logo'] = '/static/images/default-internship.png'
+                        internship['company_logo'] = None
 
                     # Ensure all required fields exist
                     internship.setdefault('description', 'No description available')
@@ -3237,10 +3210,8 @@ def user_dashboard():
 
         if user and user.get('profile_pic'):
             try:
-                # Force fresh URL with timestamp
                 project_ref = supabase_url.split('//')[1].split('.')[0]
                 avatar_url = f"https://{project_ref}.supabase.co/storage/v1/object/public/profile-pictures/{user['profile_pic']}?t={cache_timestamp}"
-
                 logger.info(f"Profile picture URL with cache busting: {avatar_url}")
             except Exception as e:
                 logger.error(f"Error getting profile picture URL: {str(e)}")
@@ -3261,7 +3232,7 @@ def user_dashboard():
         internship_bookmarks = [b for b in bookmarks if b.get('content_type') == 'internship']
         blog_bookmarks = [b for b in bookmarks if b.get('content_type') == 'blog']
 
-        # FIX: Fetch FRESH course data from courses table
+        # Fetch FRESH course data from courses table - NO DEFAULT LOGOS
         enhanced_courses = []
         if course_bookmarks:
             course_ids = [bookmark['id'] for bookmark in course_bookmarks]
@@ -3273,20 +3244,32 @@ def user_dashboard():
                                    .eq('is_active', True) \
                                    .execute().data or []
 
-                enhanced_courses = [enhance_content_with_logo(course, 'course', course.get('id')) for course in
-                                    courses_data]
+                for course in courses_data:
+                    # Don't set default logo - let frontend handle it
+                    if course.get('company'):
+                        try:
+                            enhanced = enhance_content_with_logo(course, 'course', course.get('id'))
+                            if enhanced.get('company_logo'):
+                                course['company_logo'] = enhanced['company_logo']
+                            else:
+                                course['company_logo'] = None
+                        except Exception as e:
+                            logger.warning(f"Could not enhance course logo: {str(e)}")
+                            course['company_logo'] = None
+                    else:
+                        course['company_logo'] = None
 
-                for course in enhanced_courses:
                     course['is_bookmarked'] = True
+                    enhanced_courses.append(course)
 
             except Exception as e:
                 logger.error(f"Error enhancing course data: {str(e)}")
                 for bookmark in course_bookmarks:
                     enhanced_course = bookmark.copy()
-                    enhanced_course['company_logo'] = '/static/images/default-course.jpg'
+                    enhanced_course['company_logo'] = None
                     enhanced_courses.append(enhanced_course)
 
-        # FIX: Fetch FRESH job data from jobs table
+        # Fetch FRESH job data from jobs table - NO DEFAULT LOGOS
         enhanced_jobs = []
         if job_bookmarks:
             job_ids = [bookmark['id'] for bookmark in job_bookmarks]
@@ -3298,19 +3281,31 @@ def user_dashboard():
                                 .eq('is_active', True) \
                                 .execute().data or []
 
-                enhanced_jobs = [enhance_content_with_logo(job, 'job', job.get('id')) for job in jobs_data]
+                for job in jobs_data:
+                    if job.get('company'):
+                        try:
+                            enhanced = enhance_content_with_logo(job, 'job', job.get('id'))
+                            if enhanced.get('company_logo'):
+                                job['company_logo'] = enhanced['company_logo']
+                            else:
+                                job['company_logo'] = None
+                        except Exception as e:
+                            logger.warning(f"Could not enhance job logo: {str(e)}")
+                            job['company_logo'] = None
+                    else:
+                        job['company_logo'] = None
 
-                for job in enhanced_jobs:
                     job['is_bookmarked'] = True
+                    enhanced_jobs.append(job)
 
             except Exception as e:
                 logger.error(f"Error enhancing job data: {str(e)}")
                 for bookmark in job_bookmarks:
                     enhanced_job = bookmark.copy()
-                    enhanced_job['company_logo'] = '/static/images/default-job.jpg'
+                    enhanced_job['company_logo'] = None
                     enhanced_jobs.append(enhanced_job)
 
-        # FIX: Fetch FRESH internship data from internships table
+        # Fetch FRESH internship data from internships table - NO DEFAULT LOGOS
         enhanced_internships = []
         if internship_bookmarks:
             internship_ids = [bookmark['id'] for bookmark in internship_bookmarks]
@@ -3322,20 +3317,31 @@ def user_dashboard():
                                        .eq('is_active', True) \
                                        .execute().data or []
 
-                enhanced_internships = [enhance_content_with_logo(internship, 'internship', internship.get('id')) for
-                                        internship in internships_data]
+                for internship in internships_data:
+                    if internship.get('company'):
+                        try:
+                            enhanced = enhance_content_with_logo(internship, 'internship', internship.get('id'))
+                            if enhanced.get('company_logo'):
+                                internship['company_logo'] = enhanced['company_logo']
+                            else:
+                                internship['company_logo'] = None
+                        except Exception as e:
+                            logger.warning(f"Could not enhance internship logo: {str(e)}")
+                            internship['company_logo'] = None
+                    else:
+                        internship['company_logo'] = None
 
-                for internship in enhanced_internships:
                     internship['is_bookmarked'] = True
+                    enhanced_internships.append(internship)
 
             except Exception as e:
                 logger.error(f"Error enhancing internship data: {str(e)}")
                 for bookmark in internship_bookmarks:
                     enhanced_internship = bookmark.copy()
-                    enhanced_internship['company_logo'] = '/static/images/default-internship.jpg'
+                    enhanced_internship['company_logo'] = None
                     enhanced_internships.append(enhanced_internship)
 
-        # ENHANCE BLOG BOOKMARKS
+        # ENHANCE BLOG BOOKMARKS - NO DEFAULT IMAGES
         enhanced_blogs = []
         if blog_bookmarks:
             blog_ids = [bookmark['id'] for bookmark in blog_bookmarks]
@@ -3382,7 +3388,8 @@ def user_dashboard():
                     enhanced_blog['title'] = blog_data.get('title', bookmark.get('title', 'Untitled Article'))
                     enhanced_blog['description'] = blog_data.get('description', bookmark.get('description', ''))
                     enhanced_blog['content'] = blog_data.get('content', '')
-                    enhanced_blog['image'] = blog_data.get('image', '/static/images/default-blog.jpg')
+                    # Don't set default image - let frontend handle it
+                    enhanced_blog['image'] = blog_data.get('image', None)
                     enhanced_blog['author'] = blog_data.get('author', 'CareerMaker Team')
                     enhanced_blog['read_time'] = blog_data.get('read_time', '5 min read')
                     enhanced_blog['categories'] = blog_data.get('categories', ['Career'])
@@ -3398,17 +3405,16 @@ def user_dashboard():
                 logger.error(f"Error enhancing blog data: {str(e)}")
                 for bookmark in blog_bookmarks:
                     enhanced_blog = bookmark.copy()
-                    enhanced_blog['image'] = '/static/images/default-blog.jpg'
+                    enhanced_blog['image'] = None
                     enhanced_blog['views'] = 0
                     enhanced_blog['like_count'] = 0
                     enhanced_blog['read_time'] = '5 min read'
                     enhanced_blog['categories'] = ['Career']
                     enhanced_blogs.append(enhanced_blog)
 
-        # NEW: Get user testimonials - REMOVED APPROVAL SYSTEM
+        # Get user testimonials
         user_testimonials = []
         try:
-            # Assuming testimonials are stored in a 'testimonials' table
             testimonials_response = supabase_admin.table('testimonials') \
                 .select('*') \
                 .eq('user_id', user_id) \
@@ -3424,7 +3430,9 @@ def user_dashboard():
             user_testimonials = []
 
         logger.info(
-            f"Dashboard breakdown - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, Internships: {len(enhanced_internships)}, Blogs: {len(enhanced_blogs)}, Testimonials: {len(user_testimonials)}")
+            f"Dashboard breakdown - Courses: {len(enhanced_courses)}, Jobs: {len(enhanced_jobs)}, "
+            f"Internships: {len(enhanced_internships)}, Blogs: {len(enhanced_blogs)}, "
+            f"Testimonials: {len(user_testimonials)}")
 
         return render_template('user-dashboard.html',
                                username=user.get('username'),
@@ -3452,7 +3460,7 @@ def logout():
 
 
 def get_user_bookmarks(user_id):
-    """Get all bookmarks for a user with complete content details - FIXED VERSION"""
+    """Get all bookmarks for a user with complete content details - NO DEFAULT LOGOS"""
     try:
         # Get all bookmarks for the user using admin client to bypass RLS
         bookmarks_response = supabase_admin.table('bookmarks').select('*').eq('user_id', user_id).execute()
@@ -3477,7 +3485,7 @@ def get_user_bookmarks(user_id):
 
         results = []
 
-        # Fetch course bookmarks with enhanced data
+        # Fetch course bookmarks with enhanced data - NO DEFAULT LOGOS
         if content_map['course']:
             try:
                 courses_response = supabase_admin.table('courses') \
@@ -3488,7 +3496,6 @@ def get_user_bookmarks(user_id):
                 if courses_response.data:
                     for course in courses_response.data:
                         course['content_type'] = 'course'
-                        # Ensure all required fields are present with proper fallbacks
                         course.setdefault('image', None)
                         course.setdefault('company_logo', None)
                         course.setdefault('description', course.get('description') or 'No description available')
@@ -3498,33 +3505,26 @@ def get_user_bookmarks(user_id):
                         course.setdefault('category', course.get('category') or 'General')
                         course.setdefault('instructor', course.get('instructor') or 'Unknown Instructor')
 
-                        # COURSE-SPECIFIC LOGO FIX: Use the same logic as main page
-                        # If course has company data, try to get logo, otherwise use default course image
+                        # Try to get logo but don't set default
                         if course.get('company'):
                             try:
                                 enhanced_course = enhance_content_with_logo(course, 'course', course['id'])
                                 if enhanced_course.get('company_logo'):
                                     course['company_logo'] = enhanced_course['company_logo']
                                 else:
-                                    # If no company logo found, use default course image
-                                    course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+                                    course['company_logo'] = None
                             except Exception as logo_error:
                                 logger.warning(f"Could not enhance course logo: {str(logo_error)}")
-                                course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+                                course['company_logo'] = None
                         else:
-                            # No company, use default course image
-                            course['company_logo'] = url_for('static', filename='images/default-course.jpg')
+                            course['company_logo'] = None
 
-                        # Ensure the image field also has a proper value for backward compatibility
-                        if not course.get('image'):
-                            course['image'] = course['company_logo']
-
+                        course['image'] = None
                         results.append(course)
-                        logger.info(f"Added course: {course.get('title')} with logo: {course.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching course bookmarks: {str(e)}")
 
-        # Fetch job bookmarks with enhanced data
+        # Fetch job bookmarks with enhanced data - NO DEFAULT LOGOS
         if content_map['job']:
             try:
                 jobs_response = supabase_admin.table('jobs') \
@@ -3535,7 +3535,6 @@ def get_user_bookmarks(user_id):
                 if jobs_response.data:
                     for job in jobs_response.data:
                         job['content_type'] = 'job'
-                        # Ensure all required fields are present with proper fallbacks
                         job.setdefault('image', None)
                         job.setdefault('company_logo', None)
                         job.setdefault('description', job.get('description') or 'No description available')
@@ -3545,21 +3544,22 @@ def get_user_bookmarks(user_id):
                         job.setdefault('type', job.get('type') or 'Full-time')
                         job.setdefault('application_link', job.get('application_link') or '#')
 
-                        # Enhance with logo if company exists but no logo
                         if job.get('company') and not job.get('company_logo'):
                             try:
                                 enhanced_job = enhance_content_with_logo(job, 'job', job['id'])
                                 if enhanced_job.get('company_logo'):
                                     job['company_logo'] = enhanced_job['company_logo']
+                                else:
+                                    job['company_logo'] = None
                             except Exception as logo_error:
                                 logger.warning(f"Could not enhance job logo: {str(logo_error)}")
+                                job['company_logo'] = None
 
                         results.append(job)
-                        logger.info(f"Added job: {job.get('title')} with logo: {job.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching job bookmarks: {str(e)}")
 
-        # Fetch internship bookmarks with enhanced data
+        # Fetch internship bookmarks with enhanced data - NO DEFAULT LOGOS
         if content_map['internship']:
             try:
                 internships_response = supabase_admin.table('internships') \
@@ -3570,34 +3570,31 @@ def get_user_bookmarks(user_id):
                 if internships_response.data:
                     for internship in internships_response.data:
                         internship['content_type'] = 'internship'
-                        # Ensure all required fields are present with proper fallbacks
                         internship.setdefault('image', None)
                         internship.setdefault('company_logo', None)
-                        internship.setdefault('description',
-                                              internship.get('description') or 'No description available')
+                        internship.setdefault('description', internship.get('description') or 'No description available')
                         internship.setdefault('company', internship.get('company') or 'Unknown Company')
                         internship.setdefault('location', internship.get('location') or 'Location not specified')
                         internship.setdefault('stipend', internship.get('stipend') or 'Unpaid')
                         internship.setdefault('duration', internship.get('duration') or 'Flexible')
                         internship.setdefault('application_link', internship.get('application_link') or '#')
 
-                        # Enhance with logo if company exists but no logo
                         if internship.get('company') and not internship.get('company_logo'):
                             try:
-                                enhanced_internship = enhance_content_with_logo(internship, 'internship',
-                                                                                internship['id'])
+                                enhanced_internship = enhance_content_with_logo(internship, 'internship', internship['id'])
                                 if enhanced_internship.get('company_logo'):
                                     internship['company_logo'] = enhanced_internship['company_logo']
+                                else:
+                                    internship['company_logo'] = None
                             except Exception as logo_error:
                                 logger.warning(f"Could not enhance internship logo: {str(logo_error)}")
+                                internship['company_logo'] = None
 
                         results.append(internship)
-                        logger.info(
-                            f"Added internship: {internship.get('title')} with logo: {internship.get('company_logo')}")
             except Exception as e:
                 logger.error(f"Error fetching internship bookmarks: {str(e)}")
 
-        # Fetch blog bookmarks with enhanced data
+        # Fetch blog bookmarks with enhanced data - NO DEFAULT IMAGES
         if content_map['blog']:
             try:
                 blogs_response = supabase_admin.table('blog_posts') \
@@ -3608,14 +3605,17 @@ def get_user_bookmarks(user_id):
                 if blogs_response.data:
                     for blog in blogs_response.data:
                         blog['content_type'] = 'blog'
-                        # Ensure all required fields are present with proper fallbacks
-                        blog.setdefault('image', blog.get('image') or '/static/images/default-blog.jpg')
+                        blog.setdefault('image', None)
                         blog.setdefault('description', blog.get('description') or 'No description available')
                         blog.setdefault('content', blog.get('content') or '')
                         blog.setdefault('author', blog.get('author') or 'CareerMaker Team')
                         blog.setdefault('read_time', blog.get('read_time') or '5 min read')
                         blog.setdefault('categories', blog.get('categories') or ['Career'])
                         blog.setdefault('published_at', blog.get('published_at') or blog.get('created_at'))
+
+                        # Don't set default image - let frontend handle it
+                        if blog.get('image') and '/static/images/default-' in str(blog.get('image', '')):
+                            blog['image'] = None
 
                         # Get view counts for blogs
                         try:
@@ -3652,7 +3652,6 @@ def get_user_bookmarks(user_id):
                             blog['is_liked'] = False
 
                         results.append(blog)
-                        logger.info(f"Added blog: {blog.get('title')} with {blog.get('views')} views")
             except Exception as e:
                 logger.error(f"Error fetching blog bookmarks: {str(e)}")
 
@@ -3848,14 +3847,6 @@ def courses():
         logger.info(
             f"🔍 After filtering: {len(filtered_courses)} courses match search '{search}' and category '{category}'")
 
-        # Debug: Print filtered course titles
-        if filtered_courses:
-            logger.info("Filtered course titles:")
-            for course in filtered_courses:
-                logger.info(f"  - {course.get('title')} (Category: {course.get('category')})")
-        else:
-            logger.warning("⚠️ No courses found matching the filters")
-
         # ===== STEP 3: ENHANCE COURSES WITH LOGOS =====
         enhanced_courses = []
 
@@ -3877,25 +3868,26 @@ def courses():
                 course.setdefault('views', 0)
                 course.setdefault('expiration_date', None)
 
-                # Enhance with company logo if available
+                # Don't set default logo - let frontend handle it
                 if course.get('company'):
                     try:
                         enhanced = enhance_content_with_logo(course, 'course', course.get('id'))
                         if enhanced.get('company_logo'):
                             course['company_logo'] = enhanced['company_logo']
+                        else:
+                            course['company_logo'] = None
                     except Exception as e:
                         logger.warning(f"Could not enhance course logo for {course.get('id')}: {str(e)}")
-                        if not course.get('company_logo'):
-                            course['company_logo'] = '/static/images/default-course.png'
+                        course['company_logo'] = None
                 else:
-                    course['company_logo'] = '/static/images/default-course.png'
+                    course['company_logo'] = None
 
                 enhanced_courses.append(course)
 
             except Exception as e:
                 logger.error(f"Error enhancing course {course.get('id')}: {str(e)}")
-                # Add course with defaults rather than failing
-                course['company_logo'] = '/static/images/default-course.png'
+                # Add course with no logo
+                course['company_logo'] = None
                 enhanced_courses.append(course)
 
         logger.info(f"✅ Enhanced {len(enhanced_courses)} courses with logos")
@@ -3903,11 +3895,9 @@ def courses():
         # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
             try:
-                # Get all bookmarks for the user
                 logger.info(f"🔖 Fetching bookmarks for user {user_id}")
                 user_bookmarks = get_user_bookmarks(user_id)
 
-                # Create a map of (content_type, id) -> True for faster lookup
                 bookmark_map = {}
                 for item in user_bookmarks:
                     content_type = item.get('content_type')
@@ -3917,7 +3907,6 @@ def courses():
 
                 logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
 
-                # Add bookmark status to each course
                 bookmarked_count = 0
                 for course in enhanced_courses:
                     course_id = course.get('id')
@@ -3930,29 +3919,20 @@ def courses():
 
             except Exception as e:
                 logger.error(f"Error adding bookmark status: {str(e)}")
-                # Set default bookmark status to False for all courses
                 for course in enhanced_courses:
                     course['is_bookmarked'] = False
         else:
-            # User not logged in, no bookmarks
-            logger.info("👤 User not logged in - no bookmark status added")
             for course in enhanced_courses:
                 course['is_bookmarked'] = False
 
-        # ===== STEP 5: LOG FINAL SUMMARY =====
         logger.info(f"🏁 FINAL: Returning {len(enhanced_courses)} courses to template")
-        logger.info(f"   - Search term: '{search}'")
-        logger.info(f"   - Category: '{category}'")
-        logger.info(f"   - User logged in: {bool(user_id)}")
 
     except Exception as e:
         logger.error(f"❌ CRITICAL ERROR loading courses: {str(e)}", exc_info=True)
         enhanced_courses = []
-        # Fallback categories in case of error
         course_categories = ['Programming', 'Design', 'Business', 'Marketing', 'Data Science']
         flash('Error loading courses. Please try again.', 'error')
 
-    # Always return the template, even with empty courses list
     return render_template('courses.html',
                            courses=enhanced_courses,
                            search=search,
@@ -4198,7 +4178,6 @@ def jobs():
     try:
         user_id = session.get('user_id')
 
-        # Get current time in UTC for expiration comparison
         current_time = get_current_utc_time()
         current_time_iso = current_time.isoformat()
         logger.info(f"🕐 Current time for jobs page: {current_time_iso}")
@@ -4214,12 +4193,6 @@ def jobs():
         all_jobs = query.order('created_at', desc=True).execute().data or []
         logger.info(f"📊 Total active jobs in database: {len(all_jobs)}")
 
-        # Debug: Print all job titles
-        if all_jobs:
-            logger.info("All active job titles:")
-            for job in all_jobs:
-                logger.info(f"  - {job.get('title')} (Company: {job.get('company')})")
-
         # ===== STEP 2: FILTER JOBS IN PYTHON =====
         filtered_jobs = []
 
@@ -4228,40 +4201,27 @@ def jobs():
             job_location = job.get('location', '').lower()
             job_type_value = job.get('type', '')
 
-            # Apply search filter (case-insensitive partial match on title only)
             if search:
                 if search not in title:
-                    continue  # Skip if search term not in title
+                    continue
 
-            # Apply location filter
             if location:
                 if location.lower() not in job_location:
-                    continue  # Skip if location doesn't match
+                    continue
 
-            # Apply type filter
             if job_type:
                 if job_type != job_type_value:
-                    continue  # Skip if type doesn't match
+                    continue
 
-            # If we get here, the job passed all filters
             filtered_jobs.append(job)
 
         logger.info(f"🔍 After filtering: {len(filtered_jobs)} jobs match criteria")
-
-        # Debug: Print filtered job titles
-        if filtered_jobs:
-            logger.info("Filtered job titles:")
-            for job in filtered_jobs:
-                logger.info(f"  - {job.get('title')} (Location: {job.get('location')}, Type: {job.get('type')})")
-        else:
-            logger.warning("⚠️ No jobs found matching the filters")
 
         # ===== STEP 3: ENHANCE JOBS WITH LOGOS =====
         enhanced_jobs = []
 
         for job in filtered_jobs:
             try:
-                # Ensure all required fields have defaults
                 job.setdefault('image', None)
                 job.setdefault('company_logo', None)
                 job.setdefault('description', 'No description available')
@@ -4276,25 +4236,25 @@ def jobs():
                 job.setdefault('experience_level', '')
                 job.setdefault('posted_date', None)
 
-                # Enhance with company logo if available
+                # Don't set default logo - let frontend handle it
                 if job.get('company'):
                     try:
                         enhanced = enhance_content_with_logo(job, 'job', job.get('id'))
                         if enhanced.get('company_logo'):
                             job['company_logo'] = enhanced['company_logo']
+                        else:
+                            job['company_logo'] = None
                     except Exception as e:
                         logger.warning(f"Could not enhance job logo for {job.get('id')}: {str(e)}")
-                        if not job.get('company_logo'):
-                            job['company_logo'] = '/static/images/default-job.png'
+                        job['company_logo'] = None
                 else:
-                    job['company_logo'] = '/static/images/default-job.png'
+                    job['company_logo'] = None
 
                 enhanced_jobs.append(job)
 
             except Exception as e:
                 logger.error(f"Error enhancing job {job.get('id')}: {str(e)}")
-                # Add job with defaults rather than failing
-                job['company_logo'] = '/static/images/default-job.png'
+                job['company_logo'] = None
                 enhanced_jobs.append(job)
 
         logger.info(f"✅ Enhanced {len(enhanced_jobs)} jobs with logos")
@@ -4302,11 +4262,9 @@ def jobs():
         # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
             try:
-                # Get all bookmarks for the user
                 logger.info(f"🔖 Fetching bookmarks for user {user_id}")
                 user_bookmarks = get_user_bookmarks(user_id)
 
-                # Create a map of (content_type, id) -> True for faster lookup
                 bookmark_map = {}
                 for item in user_bookmarks:
                     content_type = item.get('content_type')
@@ -4316,7 +4274,6 @@ def jobs():
 
                 logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
 
-                # Add bookmark status to each job
                 bookmarked_count = 0
                 for job in enhanced_jobs:
                     job_id = job.get('id')
@@ -4329,21 +4286,13 @@ def jobs():
 
             except Exception as e:
                 logger.error(f"Error adding bookmark status: {str(e)}")
-                # Set default bookmark status to False for all jobs
                 for job in enhanced_jobs:
                     job['is_bookmarked'] = False
         else:
-            # User not logged in, no bookmarks
-            logger.info("👤 User not logged in - no bookmark status added")
             for job in enhanced_jobs:
                 job['is_bookmarked'] = False
 
-        # ===== STEP 5: LOG FINAL SUMMARY =====
         logger.info(f"🏁 FINAL: Returning {len(enhanced_jobs)} jobs to template")
-        logger.info(f"   - Search term: '{search}'")
-        logger.info(f"   - Location: '{location}'")
-        logger.info(f"   - Type: '{job_type}'")
-        logger.info(f"   - User logged in: {bool(user_id)}")
 
     except Exception as e:
         logger.error(f"❌ CRITICAL ERROR loading jobs: {str(e)}", exc_info=True)
@@ -4401,7 +4350,6 @@ def internships():
     try:
         user_id = session.get('user_id')
 
-        # Get current time in UTC for expiration comparison
         current_time = get_current_utc_time()
         current_time_iso = current_time.isoformat()
         logger.info(f"🕐 Current time for internships page: {current_time_iso}")
@@ -4417,12 +4365,6 @@ def internships():
         all_internships = query.order('created_at', desc=True).execute().data or []
         logger.info(f"📊 Total active internships in database: {len(all_internships)}")
 
-        # Debug: Print all internship titles
-        if all_internships:
-            logger.info("All active internship titles:")
-            for internship in all_internships:
-                logger.info(f"  - {internship.get('title')} (Company: {internship.get('company')})")
-
         # ===== STEP 2: FILTER INTERNSHIPS IN PYTHON =====
         filtered_internships = []
 
@@ -4431,41 +4373,27 @@ def internships():
             intern_location = internship.get('location', '').lower()
             intern_type = internship.get('type', '')
 
-            # Apply search filter (case-insensitive partial match on title only)
             if search:
                 if search not in title:
-                    continue  # Skip if search term not in title
+                    continue
 
-            # Apply location filter
             if location:
                 if location.lower() not in intern_location:
-                    continue  # Skip if location doesn't match
+                    continue
 
-            # Apply type filter
             if internship_type:
                 if internship_type != intern_type:
-                    continue  # Skip if type doesn't match
+                    continue
 
-            # If we get here, the internship passed all filters
             filtered_internships.append(internship)
 
         logger.info(f"🔍 After filtering: {len(filtered_internships)} internships match criteria")
-
-        # Debug: Print filtered internship titles
-        if filtered_internships:
-            logger.info("Filtered internship titles:")
-            for internship in filtered_internships:
-                logger.info(
-                    f"  - {internship.get('title')} (Location: {internship.get('location')}, Type: {internship.get('type')})")
-        else:
-            logger.warning("⚠️ No internships found matching the filters")
 
         # ===== STEP 3: ENHANCE INTERNSHIPS WITH LOGOS =====
         enhanced_internships = []
 
         for internship in filtered_internships:
             try:
-                # Ensure all required fields have defaults
                 internship.setdefault('image', None)
                 internship.setdefault('company_logo', None)
                 internship.setdefault('description', 'No description available')
@@ -4480,25 +4408,25 @@ def internships():
                 internship.setdefault('qualifications', '')
                 internship.setdefault('start_date', None)
 
-                # Enhance with company logo if available
+                # Don't set default logo - let frontend handle it
                 if internship.get('company'):
                     try:
                         enhanced = enhance_content_with_logo(internship, 'internship', internship.get('id'))
                         if enhanced.get('company_logo'):
                             internship['company_logo'] = enhanced['company_logo']
+                        else:
+                            internship['company_logo'] = None
                     except Exception as e:
                         logger.warning(f"Could not enhance internship logo for {internship.get('id')}: {str(e)}")
-                        if not internship.get('company_logo'):
-                            internship['company_logo'] = '/static/images/default-internship.png'
+                        internship['company_logo'] = None
                 else:
-                    internship['company_logo'] = '/static/images/default-internship.png'
+                    internship['company_logo'] = None
 
                 enhanced_internships.append(internship)
 
             except Exception as e:
                 logger.error(f"Error enhancing internship {internship.get('id')}: {str(e)}")
-                # Add internship with defaults rather than failing
-                internship['company_logo'] = '/static/images/default-internship.png'
+                internship['company_logo'] = None
                 enhanced_internships.append(internship)
 
         logger.info(f"✅ Enhanced {len(enhanced_internships)} internships with logos")
@@ -4506,11 +4434,9 @@ def internships():
         # ===== STEP 4: ADD BOOKMARK STATUS IF USER IS LOGGED IN =====
         if user_id:
             try:
-                # Get all bookmarks for the user
                 logger.info(f"🔖 Fetching bookmarks for user {user_id}")
                 user_bookmarks = get_user_bookmarks(user_id)
 
-                # Create a map of (content_type, id) -> True for faster lookup
                 bookmark_map = {}
                 for item in user_bookmarks:
                     content_type = item.get('content_type')
@@ -4520,7 +4446,6 @@ def internships():
 
                 logger.info(f"📋 User has {len(user_bookmarks)} total bookmarks")
 
-                # Add bookmark status to each internship
                 bookmarked_count = 0
                 for internship in enhanced_internships:
                     internship_id = internship.get('id')
@@ -4529,26 +4454,17 @@ def internships():
                     if is_bookmarked:
                         bookmarked_count += 1
 
-                logger.info(
-                    f"⭐ {bookmarked_count} out of {len(enhanced_internships)} internships are bookmarked by user")
+                logger.info(f"⭐ {bookmarked_count} out of {len(enhanced_internships)} internships are bookmarked by user")
 
             except Exception as e:
                 logger.error(f"Error adding bookmark status: {str(e)}")
-                # Set default bookmark status to False for all internships
                 for internship in enhanced_internships:
                     internship['is_bookmarked'] = False
         else:
-            # User not logged in, no bookmarks
-            logger.info("👤 User not logged in - no bookmark status added")
             for internship in enhanced_internships:
                 internship['is_bookmarked'] = False
 
-        # ===== STEP 5: LOG FINAL SUMMARY =====
         logger.info(f"🏁 FINAL: Returning {len(enhanced_internships)} internships to template")
-        logger.info(f"   - Search term: '{search}'")
-        logger.info(f"   - Location: '{location}'")
-        logger.info(f"   - Type: '{internship_type}'")
-        logger.info(f"   - User logged in: {bool(user_id)}")
 
     except Exception as e:
         logger.error(f"❌ CRITICAL ERROR loading internships: {str(e)}", exc_info=True)
@@ -5234,8 +5150,12 @@ def get_application_link(content_type, content_id):
 def contact():
     """Contact form - USING EXISTING RATE LIMITER & FAKE EMAIL BLOCKING"""
     try:
-        # Get form data
-        data = request.form.to_dict()
+        # Get form data - handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+
         required_fields = ['name', 'email', 'subject', 'message']
 
         if not all(data.get(field) for field in required_fields):
@@ -5277,16 +5197,15 @@ def contact():
                 'rate_limited': True
             }), 429
 
-        # ✅ SAVE MESSAGE TO DATABASE
+        # ✅ SAVE MESSAGE TO DATABASE - REMOVED ip_address and user_agent
         message_data = {
             'name': name[:100],
             'email': email[:100],
             'subject': subject[:200],
             'message': message[:5000],
             'created_at': get_current_utc_time().isoformat(),
-            'updated_at': get_current_utc_time().isoformat(),
-            'ip_address': ip[:50] if ip else None,
-            'user_agent': request.headers.get('User-Agent', '')[:200]
+            'updated_at': get_current_utc_time().isoformat()
+
         }
 
         response = supabase_admin.table('contact_messages').insert(message_data).execute()
@@ -5711,52 +5630,70 @@ def about():
         # Get current time for template
         now = datetime.now()
 
-        # Get stats from database
-        try:
-            courses_count = supabase_admin.table('courses') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-        except Exception as e:
-            logger.warning(f"Error getting courses count: {str(e)}")
-            courses_count = type('obj', (object,), {'count': 0})()
-
-        try:
-            jobs_count = supabase_admin.table('jobs') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-        except Exception as e:
-            logger.warning(f"Error getting jobs count: {str(e)}")
-            jobs_count = type('obj', (object,), {'count': 0})()
-
-        try:
-            internships_count = supabase_admin.table('internships') \
-                .select('id', count='exact') \
-                .eq('is_active', True) \
-                .eq('is_deleted', False) \
-                .execute()
-        except Exception as e:
-            logger.warning(f"Error getting internships count: {str(e)}")
-            internships_count = type('obj', (object,), {'count': 0})()
-
-        try:
-            users_count = supabase_admin.table('users') \
-                .select('id', count='exact') \
-                .eq('is_deleted', False) \
-                .execute()
-        except Exception as e:
-            logger.warning(f"Error getting users count: {str(e)}")
-            users_count = type('obj', (object,), {'count': 0})()
-
+        # Initialize stats with default values
         stats = {
-            'courses': courses_count.count or 0,
-            'jobs': jobs_count.count or 0,
-            'internships': internships_count.count or 0,
-            'users': users_count.count or 0
+            'courses': 0,
+            'jobs': 0,
+            'internships': 0,
+            'users': 0
         }
+
+        # Get stats from database with better error handling
+        try:
+            # Count courses
+            try:
+                courses_response = supabase_admin.table('courses') \
+                    .select('id', count='exact') \
+                    .eq('is_active', True) \
+                    .eq('is_deleted', False) \
+                    .execute()
+                stats['courses'] = getattr(courses_response, 'count', 0) or 0
+                logger.info(f"📊 About page - Courses count: {stats['courses']}")
+            except Exception as e:
+                logger.warning(f"Error getting courses count: {str(e)}")
+                stats['courses'] = 0
+
+            # Count jobs
+            try:
+                jobs_response = supabase_admin.table('jobs') \
+                    .select('id', count='exact') \
+                    .eq('is_active', True) \
+                    .eq('is_deleted', False) \
+                    .execute()
+                stats['jobs'] = getattr(jobs_response, 'count', 0) or 0
+                logger.info(f"📊 About page - Jobs count: {stats['jobs']}")
+            except Exception as e:
+                logger.warning(f"Error getting jobs count: {str(e)}")
+                stats['jobs'] = 0
+
+            # Count internships
+            try:
+                internships_response = supabase_admin.table('internships') \
+                    .select('id', count='exact') \
+                    .eq('is_active', True) \
+                    .eq('is_deleted', False) \
+                    .execute()
+                stats['internships'] = getattr(internships_response, 'count', 0) or 0
+                logger.info(f"📊 About page - Internships count: {stats['internships']}")
+            except Exception as e:
+                logger.warning(f"Error getting internships count: {str(e)}")
+                stats['internships'] = 0
+
+            # Count users
+            try:
+                users_response = supabase_admin.table('users') \
+                    .select('id', count='exact') \
+                    .eq('is_deleted', False) \
+                    .execute()
+                stats['users'] = getattr(users_response, 'count', 0) or 0
+                logger.info(f"📊 About page - Users count: {stats['users']}")
+            except Exception as e:
+                logger.warning(f"Error getting users count: {str(e)}")
+                stats['users'] = 0
+
+        except Exception as e:
+            logger.error(f"Error fetching stats: {str(e)}")
+            # Keep default 0 values
 
         logger.info(
             f"📊 About page stats - Courses: {stats['courses']}, Jobs: {stats['jobs']}, Internships: {stats['internships']}, Users: {stats['users']}")
@@ -10044,11 +9981,52 @@ def bulk_update_testimonial_status():
 
 
 # ===== MESSAGE SPECIFIC ROUTES =====
+@app.route('/api/admin/messages/<string:id>', methods=['GET'])
+@admin_required
+def get_admin_message(id):
+    """Get a single message by ID"""
+    try:
+        # Check if ID is valid
+        if not id or id == 'null' or id == 'undefined' or id == '':
+            return jsonify({
+                'success': False,
+                'error': 'Invalid message ID'
+            }), 400
+
+        # Get message from database
+        response = supabase_admin.table('contact_messages') \
+            .select('*') \
+            .eq('id', id) \
+            .eq('is_deleted', False) \
+            .execute()
+
+        if not response.data or len(response.data) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Message not found'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'message': response.data[0]
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting message {id}: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch message details'
+        }), 500
+
 
 @app.route('/api/admin/messages/<string:id>/status', methods=['PUT'])
 @admin_required
 def update_message_status(id):
     try:
+        # Check if ID is valid
+        if not id or id == 'null' or id == 'undefined' or id == '':
+            return jsonify({'success': False, 'error': 'Invalid message ID'}), 400
+
         data = request.get_json()
         status = data.get('status')
 
@@ -10108,62 +10086,192 @@ def admin_message_reply():
         # Validate required fields
         required_fields = ['message_id', 'email', 'subject', 'message']
         if not all(field in data for field in required_fields):
-            return jsonify({'success': False, 'message': 'All fields are required'}), 400
+            return jsonify({
+                'success': False,
+                'message': 'All fields are required'
+            }), 400
 
-        # Send email
+        # ✅ FIX: Check if message_id is valid
+        message_id = data.get('message_id')
+        if not message_id or message_id == 'null' or message_id == 'undefined' or message_id == '':
+            return jsonify({
+                'success': False,
+                'message': 'Invalid message ID'
+            }), 400
+
+        # ✅ FIX: Check if the message exists
+        try:
+            message_check = supabase_admin.table('contact_messages') \
+                .select('id, email, name, subject') \
+                .eq('id', message_id) \
+                .eq('is_deleted', False) \
+                .execute()
+
+            if not message_check.data or len(message_check.data) == 0:
+                return jsonify({
+                    'success': False,
+                    'message': 'Message not found or has been deleted'
+                }), 404
+        except Exception as check_error:
+            logger.error(f"Error checking message existence: {str(check_error)}")
+            return jsonify({
+                'success': False,
+                'message': 'Failed to verify message'
+            }), 500
+
+        # Get admin name for signature
+        admin_name = session.get('admin_full_name') or session.get('admin_username') or 'CareerMaker Admin'
+
+        # Prepare email content with proper HTML
+        plain_text = f"""
+{data['message']}
+
+---
+Best regards,
+{admin_name}
+CareerMaker Team
+"""
+
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reply from CareerMaker</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%); padding: 20px; text-align: center; color: white; border-radius: 8px 8px 0 0; }}
+        .content {{ padding: 20px; background: #f8f9fa; border-radius: 0 0 8px 8px; }}
+        .message-box {{ background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #4361ee; margin: 15px 0; }}
+        .signature {{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }}
+        .footer {{ margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎓 CareerMaker</h1>
+    </div>
+    <div class="content">
+        <h2>Hello,</h2>
+        <div class="message-box">
+            <p>{data['message'].replace(chr(10), '<br>')}</p>
+        </div>
+        <div class="signature">
+            <p>Best regards,<br>
+            <strong>{admin_name}</strong><br>
+            CareerMaker Team</p>
+        </div>
+        <p style="font-size: 12px; color: #666;">
+            This is a reply to your message regarding: <strong>{data['subject']}</strong>
+        </p>
+    </div>
+    <div class="footer">
+        <p>&copy; {datetime.now().year} CareerMaker. All rights reserved.</p>
+    </div>
+</body>
+</html>
+"""
+
+        # Send email with proper parameters
         email_sent = send_email(
-            data['email'],
-            data['subject'],
-            data['message']
+            to_email=data['email'],
+            subject=f"Re: {data['subject']}",
+            html_content=html_content,
+            plain_text=plain_text
         )
 
         if email_sent:
             # Update message status to replied
-            supabase_admin.table('contact_messages').update({
-                'status': 'replied',
-                'updated_at': get_current_utc_time().isoformat()
-            }).eq('id', data['message_id']).execute()
+            update_result = supabase_admin.table('contact_messages') \
+                .update({
+                    'status': 'replied',
+                    'updated_at': get_current_utc_time().isoformat()
+                }) \
+                .eq('id', message_id) \
+                .execute()
 
-            return jsonify({'success': True, 'message': 'Reply sent successfully'})
+            # Log the action
+            try:
+                log_audit_entry(
+                    admin_id=session.get('admin_id'),
+                    action='REPLY',
+                    resource_type='message',
+                    resource_id=message_id,
+                    details={'email': data['email'], 'subject': data['subject']},
+                    request_obj=request
+                )
+            except Exception as audit_error:
+                logger.warning(f"Could not log audit entry: {str(audit_error)}")
+
+            # ✅ FIX: Create admin notification WITHOUT related_id
+            try:
+                notification_data = {
+                    'type': 'message',
+                    'title': 'Reply Sent to Contact Message',
+                    'message': f'Reply sent to {data["email"]} regarding: {data["subject"]}',
+                    'created_at': get_current_utc_time().isoformat()
+                }
+                supabase_admin.table('admin_notifications').insert(notification_data).execute()
+            except Exception as e:
+                logger.warning(f"Could not create notification: {str(e)}")
+
+            logger.info(f"✅ Admin replied to message {message_id} from {data['email']}")
+
+            return jsonify({
+                'success': True,
+                'message': 'Reply sent successfully'
+            })
         else:
-            return jsonify({'success': False, 'message': 'Failed to send email'}), 500
+            logger.error(f"❌ Failed to send reply email to {data['email']}")
+            return jsonify({
+                'success': False,
+                'message': 'Failed to send email. Please check your email configuration and try again.'
+            }), 500
 
     except Exception as e:
-        logger.error(f"Error sending message reply: {str(e)}")
-        return jsonify({'success': False, 'message': 'Failed to send reply'}), 500
+        logger.error(f"Error sending message reply: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'Failed to send reply: {str(e)}'
+        }), 500
 
-    @app.route('/api/admin/messages/<string:id>', methods=['DELETE'])
-    @admin_required
-    def delete_admin_message(id):
-        try:
-            # Check if message exists
-            existing = supabase_admin.table('contact_messages').select('*').eq('id', id).execute()
+@app.route('/api/admin/messages/<string:id>', methods=['DELETE'])
+@admin_required
+def delete_admin_message(id):
+    try:
+        # Check if ID is valid
+        if not id or id == 'null' or id == 'undefined' or id == '':
+            return jsonify({'success': False, 'message': 'Invalid message ID'}), 400
 
-            if not existing.data:
-                return jsonify({'success': False, 'message': 'Message not found'}), 404
+        # Check if message exists
+        existing = supabase_admin.table('contact_messages').select('*').eq('id', id).execute()
 
-            # Soft delete - mark as deleted and move to trash
-            update_data = {
-                'is_deleted': True,
-                'deleted_at': get_current_utc_time().isoformat(),
-                'updated_at': get_current_utc_time().isoformat()
-            }
+        if not existing.data:
+            return jsonify({'success': False, 'message': 'Message not found'}), 404
 
-            response = supabase_admin.table('contact_messages').update(update_data).eq('id', id).execute()
+        # Soft delete - mark as deleted and move to trash
+        update_data = {
+            'is_deleted': True,
+            'deleted_at': get_current_utc_time().isoformat(),
+            'updated_at': get_current_utc_time().isoformat()
+        }
 
-            if response.data:
-                logger.info(f"✅ Message {id} moved to trash")
-                return jsonify({
-                    'success': True,
-                    'message': 'Message moved to trash',
-                    'moved_to_trash': True
-                })
-            else:
-                return jsonify({'success': False, 'message': 'Failed to delete message'}), 500
+        response = supabase_admin.table('contact_messages').update(update_data).eq('id', id).execute()
 
-        except Exception as e:
-            logger.error(f"Error deleting message: {str(e)}")
+        if response.data:
+            logger.info(f"✅ Message {id} moved to trash")
+            return jsonify({
+                'success': True,
+                'message': 'Message moved to trash',
+                'moved_to_trash': True
+            })
+        else:
             return jsonify({'success': False, 'message': 'Failed to delete message'}), 500
+
+    except Exception as e:
+        logger.error(f"Error deleting message: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to delete message'}), 500
 
 
 @app.route('/api/admin/messages/bulk-delete', methods=['POST'])
