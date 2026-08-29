@@ -1,29 +1,40 @@
+   // =============================================
+    // 1. GLOBAL DECLARATIONS - ONCE AT THE TOP
     // =============================================
-    // Unified Notification System
+
+    // Bookmark state - declared ONCE
+    let bookmarkState = new Map();
+
+    // Other global variables
+    let currentUserId = null;
+    let isLoggedIn = false;
+
     // =============================================
+    // 2. TOAST NOTIFICATION SYSTEM
+    // =============================================
+
     function showToast(message, type = 'success', duration = 3000) {
-      const existingToasts = document.querySelectorAll('.toast');
-      existingToasts.forEach(toast => toast.remove());
+        const existingToasts = document.querySelectorAll('.toast');
+        existingToasts.forEach(toast => toast.remove());
 
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
 
-      void toast.offsetWidth;
-      toast.classList.add('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
 
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, duration);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
     }
 
     // =============================================
-    // UNIVERSAL LOADER MANAGEMENT
+    // 3. UNIVERSAL LOADER SYSTEM
     // =============================================
 
-    // Only create LoaderManager if it doesn't exist
     if (typeof LoaderManager === 'undefined') {
         window.LoaderManager = {
             config: {
@@ -39,7 +50,6 @@
 
             show: function(message = 'Loading...', options = {}) {
                 this.activeLoaders++;
-
                 let overlay = document.getElementById('universalLoadingOverlay');
 
                 if (!overlay) {
@@ -54,12 +64,10 @@
                 }
 
                 this.applyOptions(overlay, options);
-
                 overlay.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
 
                 console.log(`🔄 Loader shown: ${message} (Active: ${this.activeLoaders})`);
-
                 return overlay;
             },
 
@@ -84,8 +92,6 @@
                         }, 300);
                     }
                     this.activeLoaders = 0;
-                } else {
-                    console.log(`⏳ Loader kept active: ${this.activeLoaders} pending operations`);
                 }
             },
 
@@ -103,7 +109,6 @@
 
                 this.applyStyles(overlay);
                 document.body.appendChild(overlay);
-
                 return overlay;
             },
 
@@ -165,11 +170,9 @@
                 if (options.backgroundColor) {
                     overlay.style.backgroundColor = options.backgroundColor;
                 }
-
                 if (options.zIndex) {
                     overlay.style.zIndex = options.zIndex;
                 }
-
                 if (options.message) {
                     const messageElement = overlay.querySelector('.loading-message');
                     if (messageElement) {
@@ -207,54 +210,40 @@
         }
     }
 
-    // Convenience functions - Only define if they don't exist
-    if (typeof showLoader === 'undefined') {
-        window.showLoader = function(message = 'Loading...', options = {}) {
-            return LoaderManager.show(message, options);
-        };
-    }
+    // Convenience functions
+    window.showLoader = function(message = 'Loading...', options = {}) {
+        return LoaderManager.show(message, options);
+    };
 
-    if (typeof hideLoader === 'undefined') {
-        window.hideLoader = function(force = false) {
-            return LoaderManager.hide(force);
-        };
-    }
+    window.hideLoader = function(force = false) {
+        return LoaderManager.hide(force);
+    };
 
-    if (typeof resetLoader === 'undefined') {
-        window.resetLoader = function() {
-            return LoaderManager.reset();
-        };
-    }
+    window.resetLoader = function() {
+        return LoaderManager.reset();
+    };
 
-    if (typeof withLoader === 'undefined') {
-        window.withLoader = async function(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
-            showLoader(loadingMessage);
-
-            try {
-                const result = await promise;
-
-                if (successMessage) {
-                    showToast(successMessage, 'success');
-                }
-
-                return result;
-            } catch (error) {
-                console.error('Operation failed:', error);
-
-                if (errorMessage) {
-                    showToast(errorMessage, 'error');
-                } else {
-                    showToast(error.message || 'Operation failed', 'error');
-                }
-
-                throw error;
-            } finally {
-                hideLoader();
+    window.withLoader = async function(promise, loadingMessage = 'Loading...', successMessage = null, errorMessage = null) {
+        showLoader(loadingMessage);
+        try {
+            const result = await promise;
+            if (successMessage) {
+                showToast(successMessage, 'success');
             }
-        };
-    }
+            return result;
+        } catch (error) {
+            console.error('Operation failed:', error);
+            if (errorMessage) {
+                showToast(errorMessage, 'error');
+            } else {
+                showToast(error.message || 'Operation failed', 'error');
+            }
+            throw error;
+        } finally {
+            hideLoader();
+        }
+    };
 
-    // Update existing loading functions to use universal loader
     function showLoading() {
         return showLoader('Loading...');
     }
@@ -264,27 +253,178 @@
     }
 
     // =============================================
+    // 4. EMAIL VALIDATION HELPER
+    // =============================================
+
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // =============================================
+    // 5. EXPOSE FUNCTIONS GLOBALLY
+    // =============================================
+
+    // Make functions available globally
+    window.initializeBookmarkButtons = initializeBookmarkButtons;
+    window.handleModalBookmark = handleModalBookmark;
+    window.updateBookmarkIcon = updateBookmarkIcon;
+    window.showToast = showToast;
+    window.showLoader = showLoader;
+    window.hideLoader = hideLoader;
+    window.validateEmail = validateEmail;
+
+    // =============================================
+    // ENHANCED FETCH WITH RETRY AND TIMEOUT - ADD AT TOP
+    // =============================================
+
+    async function fetchWithRetryAndTimeout(url, options = {}, maxRetries = 3, timeout = 10000) {
+        let lastError;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        ...(options.headers || {})
+                    }
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    // Try to get error message from response
+                    let errorMessage = `HTTP ${response.status}`;
+                    let errorData = null;
+                    try {
+                        errorData = await response.json();
+                        if (errorData && errorData.message) {
+                            errorMessage = errorData.message;
+                        } else if (errorData && errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        // If we can't parse JSON, try text
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 200) {
+                                const trimmed = text.trim();
+                                if (trimmed) {
+                                    errorMessage = trimmed;
+                                }
+                            }
+                        } catch (textError) {
+                            // Ignore
+                        }
+                    }
+
+                    const error = new Error(errorMessage);
+                    error.status = response.status;
+                    error.response = response;
+                    error.data = errorData;
+
+                    // ❌ DO NOT RETRY on client errors (4xx)
+                    // ✅ Only retry on server errors (5xx) or network errors
+                    if (response.status >= 400 && response.status < 500) {
+                        // Client error - don't retry, throw immediately
+                        throw error;
+                    }
+
+                    // For 5xx errors, we'll retry
+                    if (attempt < maxRetries - 1) {
+                        console.warn(`Server error ${response.status}, retrying... (attempt ${attempt + 1}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+                        continue;
+                    }
+                    throw error;
+                }
+
+                return response;
+            } catch (error) {
+                lastError = error;
+
+                // If it's a client error (4xx), don't retry - throw immediately
+                if (error.status && error.status >= 400 && error.status < 500) {
+                    console.warn(`Client error ${error.status}, not retrying:`, error.message);
+                    throw error;
+                }
+
+                // For network errors or server errors
+                console.warn(`Attempt ${attempt + 1}/${maxRetries} failed for ${url}:`, error.message);
+
+                if (attempt < maxRetries - 1) {
+                    // Exponential backoff
+                    const delay = 1000 * Math.pow(2, attempt);
+                    console.warn(`Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        throw lastError || new Error('All retry attempts failed');
+    }
+
+    // =============================================
+    // CACHED SESSION CHECK WITH BETTER MOBILE SUPPORT
+    // =============================================
+
+    let sessionCache = null;
+    let sessionCacheTime = 0;
+    const SESSION_CACHE_DURATION = 30000; // 30 seconds
+
+    async function checkSessionStatus(forceRefresh = false) {
+        // Return cached session if still valid
+        if (!forceRefresh && sessionCache && (Date.now() - sessionCacheTime) < SESSION_CACHE_DURATION) {
+            return sessionCache;
+        }
+
+        try {
+            const response = await fetchWithRetryAndTimeout('/api/check-session', {
+                credentials: 'include',
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }, 2, 5000);
+
+            const data = await response.json();
+            sessionCache = data;
+            sessionCacheTime = Date.now();
+            return data;
+        } catch (error) {
+            console.warn('Session check failed:', error.message);
+            // Return cached data if available, otherwise default
+            if (sessionCache) {
+                return sessionCache;
+            }
+            return { logged_in: false };
+        }
+    }
+
+    // =============================================
     // Logo Preview System
     // =============================================
     function setupLogoPreview() {
-        // Listen for input on company fields in all modals
         document.addEventListener('input', function(e) {
             if (e.target.name === 'company' || e.target.id.includes('Company')) {
                 const companyName = e.target.value.trim();
                 if (companyName.length > 2) {
-                    // Add delay to avoid too many API calls
                     clearTimeout(e.target.logoPreviewTimeout);
                     e.target.logoPreviewTimeout = setTimeout(() => {
                         previewCompanyLogo(companyName, e.target);
                     }, 500);
                 } else {
-                    // Clear preview if company name is too short
                     clearLogoPreview(e.target);
                 }
             }
         });
 
-        // Also handle blur event for immediate response
         document.addEventListener('blur', function(e) {
             if ((e.target.name === 'company' || e.target.id.includes('Company')) && e.target.value.trim().length > 2) {
                 previewCompanyLogo(e.target.value.trim(), e.target);
@@ -303,13 +443,11 @@
     }
 
     function previewCompanyLogo(companyName, inputField) {
-        // Clear any existing preview first
         clearLogoPreview(inputField);
 
         const formGroup = inputField.closest('.form-group');
         if (!formGroup) return;
 
-        // Create preview container
         const previewContainer = document.createElement('div');
         previewContainer.className = 'logo-preview';
         previewContainer.innerHTML = `
@@ -319,17 +457,20 @@
                     <span>Searching logo for "${companyName}"...</span>
                 </div>
                 <div class="logo-result" style="display: none;">
-                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;">
+                    <img src="" alt="${companyName} logo" class="logo-image" style="max-width: 32px; max-height: 32px; margin-right: 8px;"
+                         onerror="this.style.display='none';this.parentElement.querySelector('.logo-fallback-icon').style.display='flex'">
                     <span class="logo-text" style="font-size: 12px; color: #666;">Logo preview available</span>
+                    <div class="logo-fallback-icon" style="display:none; font-size:20px; color:#999; margin-right:8px;">
+                        <i class="fas fa-building"></i>
+                    </div>
                 </div>
                 <div class="logo-error" style="display: none;">
-                    <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
-                    <span style="font-size: 12px; color: #666;">No logo found</span>
+                    <i class="fas fa-building" style="color: #6c757d;"></i>
+                    <span style="font-size: 12px; color: #6c757d;">Logo not available</span>
                 </div>
             </div>
         `;
 
-        // Add some basic styles
         previewContainer.style.cssText = `
             margin-top: 8px;
             padding: 8px;
@@ -338,10 +479,8 @@
             border: 1px solid #e9ecef;
         `;
 
-        // Insert after the input field's parent container
         inputField.parentNode.appendChild(previewContainer);
 
-        // Fetch logo preview
         fetch(`/api/company-logo/preview?company=${encodeURIComponent(companyName)}`)
             .then(response => {
                 if (!response.ok) {
@@ -373,7 +512,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error fetching logo preview:', error);
+                console.debug('Logo preview not available:', error.message);
                 const loading = previewContainer.querySelector('.logo-loading');
                 const errorDiv = previewContainer.querySelector('.logo-error');
                 if (loading) loading.style.display = 'none';
@@ -389,43 +528,100 @@
     // Logo Error Handling
     // =============================================
     function handleLogoErrors() {
-        document.querySelectorAll('.company-logo').forEach(logo => {
-            logo.onerror = function() {
-                console.log('Logo failed to load:', this.src);
-                this.style.display = 'none';
-                // Show default logo
-                const defaultLogo = this.nextElementSibling;
+        document.querySelectorAll('.company-logo, .course-logo, .job-logo, .internship-logo').forEach(logo => {
+            // Remove existing handlers to prevent duplicates
+            const newLogo = logo.cloneNode(true);
+            logo.parentNode.replaceChild(newLogo, logo);
+
+            // If src is empty or null, hide and show fallback
+            const src = newLogo.src || '';
+            if (!src || src === '' || src === window.location.href ||
+                src.includes('undefined') || src.includes('null') ||
+                src.includes('/static/images/default-')) {
+                // No valid image - hide image and show fallback
+                newLogo.style.display = 'none';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'flex';
                 }
-            };
+                return;
+            }
 
-            logo.onload = function() {
-                console.log('Logo loaded successfully:', this.src);
-                this.style.display = 'block';
-                // Hide default logo
-                const defaultLogo = this.nextElementSibling;
+            // Test if image actually loads
+            const testImg = new Image();
+            testImg.onload = function() {
+                newLogo.style.display = 'block';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'none';
                 }
             };
-
-            // Initial check for empty or default logos
-            if (!logo.src ||
-                logo.src === '' ||
-                logo.src === window.location.href ||
-                logo.src.includes('/static/images/default-')) {
-                logo.style.display = 'none';
-                const defaultLogo = logo.nextElementSibling;
+            testImg.onerror = function() {
+                newLogo.style.display = 'none';
+                const defaultLogo = newLogo.nextElementSibling;
                 if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
                     defaultLogo.style.display = 'flex';
                 }
-            } else {
-                // Logo exists, hide default
-                const defaultLogo = logo.nextElementSibling;
-                if (defaultLogo && defaultLogo.classList.contains('default-logo')) {
-                    defaultLogo.style.display = 'none';
+                // Remove src to prevent further attempts
+                newLogo.src = '';
+            };
+            testImg.src = src;
+        });
+    }
+
+    // =============================================
+    // FIX BROKEN IMAGES - PREVENT INFINITE 404s
+    // =============================================
+
+    function fixBrokenImages() {
+        // Fix all images that might have broken src
+        document.querySelectorAll('img').forEach(img => {
+            // Skip images already handled by logo system
+            if (img.classList.contains('company-logo') ||
+                img.classList.contains('logo-image') ||
+                img.classList.contains('course-logo') ||
+                img.classList.contains('job-logo') ||
+                img.classList.contains('internship-logo')) {
+                return;
+            }
+
+            const src = img.src || '';
+            // Check if src is invalid or default placeholder
+            if (!src || src === '' || src === window.location.href ||
+                src.includes('undefined') || src.includes('null') ||
+                src.includes('/static/images/default-')) {
+                // Hide broken image
+                img.style.display = 'none';
+
+                // Check if parent has a fallback
+                const parent = img.closest('.bookmark-img-wrapper, .logo-container, .card-image, .course-image, .preview-card, .card');
+                if (parent) {
+                    let fallback = parent.querySelector('.default-logo, .placeholder-image, .image-placeholder, .bookmark-img-fallback');
+                    if (fallback) {
+                        fallback.style.display = 'flex';
+                    } else {
+                        // Create a fallback if none exists
+                        const fallbackDiv = document.createElement('div');
+                        fallbackDiv.className = 'default-logo';
+                        fallbackDiv.style.cssText = `
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 100%;
+                            height: 100%;
+                            min-height: 80px;
+                            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+                            color: #999;
+                            font-size: 24px;
+                            border-radius: 8px;
+                        `;
+                        fallbackDiv.innerHTML = `<i class="fas fa-image"></i>`;
+                        parent.style.position = 'relative';
+                        parent.appendChild(fallbackDiv);
+                    }
                 }
+                // Remove src to prevent further attempts
+                img.src = '';
             }
         });
     }
@@ -435,11 +631,11 @@
     // =============================================
     function initializeHomePage() {
         handleLogoErrors();
-        initializeModals(); // Initialize modals first
+        initializeModals();
         initializeBookmarkButtons();
         initializeContentCards();
-        initializeTestimonialModal(); // Add this line
-        loadTestimonials(); // Add this line
+        initializeTestimonialModal();
+        loadTestimonials();
 
         // Mobile navigation
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -453,7 +649,6 @@
                 document.body.style.overflow = navContainer.classList.contains('active') ? 'hidden' : 'auto';
             });
 
-            // Close mobile menu when clicking on links
             document.querySelectorAll('.nav-links a').forEach(link => {
                 link.addEventListener('click', function() {
                     if (navContainer.classList.contains('active')) {
@@ -466,7 +661,10 @@
             });
         }
 
+        // Fix broken images after page load
+        setTimeout(fixBrokenImages, 1000);
     }
+
 
     // =============================================
     // NAVIGATION PROFILE PICTURE LOADER
@@ -478,14 +676,9 @@
 
         if (!profilePicElement || !initialsElement) return;
 
-        // Check if user is logged in
-        fetch('/api/check-session', {
-            credentials: 'include'
-        })
-        .then(response => response.json())
-        .then(sessionData => {
+        // Use the cached session check
+        checkSessionStatus().then(sessionData => {
             if (!sessionData.logged_in) {
-                // User not logged in, hide profile section
                 const userProfileNav = document.querySelector('.user-profile-nav');
                 if (userProfileNav) {
                     userProfileNav.style.display = 'none';
@@ -493,71 +686,100 @@
                 return;
             }
 
-            // User is logged in, load profile picture
             const username = sessionData.username || 'User';
             const userInitial = username[0].toUpperCase();
-
-            // Set initials first
             initialsElement.textContent = userInitial;
 
-            // Check for recent update timestamp
-            const cacheBust = localStorage.getItem('profilePicCacheBust') || Date.now();
+            const cacheBust = Date.now();
+            const storedUrl = sessionStorage.getItem('navProfilePicUrl');
+            const storedTimestamp = sessionStorage.getItem('navProfilePicTimestamp');
+            const fiveSecondsAgo = Date.now() - 5000;
 
-            // Fetch profile picture with aggressive cache busting
-            fetch(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
+            if (storedUrl && storedTimestamp && parseInt(storedTimestamp) > fiveSecondsAgo) {
+                // Test if cached image loads
+                const testImg = new Image();
+                testImg.onload = function() {
+                    profilePicElement.src = storedUrl;
+                    profilePicElement.style.display = 'block';
+                    initialsElement.style.display = 'none';
+                };
+                testImg.onerror = function() {
+                    profilePicElement.style.display = 'none';
+                    initialsElement.style.display = 'flex';
+                    sessionStorage.removeItem('navProfilePicUrl');
+                };
+                testImg.src = storedUrl;
+                return;
+            }
+
+            // Use enhanced fetch
+            fetchWithRetryAndTimeout(`/get-profile-pic?t=${cacheBust}&_=${Date.now()}`, {
                 credentials: 'include',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache'
                 }
-            })
+            }, 1, 5000) // Reduced retries
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.image_url) {
-                    // Create new image to test loading
                     const testImage = new Image();
                     testImage.onload = function() {
-                        // Image loaded successfully
                         profilePicElement.src = data.image_url;
                         profilePicElement.style.display = 'block';
                         initialsElement.style.display = 'none';
-
-                        // Store in session for quick access
                         sessionStorage.setItem('navProfilePicUrl', data.image_url);
-                        sessionStorage.setItem('navProfilePicTimestamp', Date.now());
+                        sessionStorage.setItem('navProfilePicTimestamp', Date.now().toString());
+                        localStorage.setItem('profilePicCacheBust', Date.now().toString());
                     };
                     testImage.onerror = function() {
-                        // Image failed to load, show initials
                         profilePicElement.style.display = 'none';
                         initialsElement.style.display = 'flex';
+                        sessionStorage.removeItem('navProfilePicUrl');
                     };
                     testImage.src = data.image_url;
                 } else {
-                    // No profile picture, show initials
                     profilePicElement.style.display = 'none';
                     initialsElement.style.display = 'flex';
+                    sessionStorage.removeItem('navProfilePicUrl');
                 }
             })
             .catch(error => {
-                console.error('Error loading profile picture:', error);
+                console.debug('Profile picture load failed:', error.message);
                 profilePicElement.style.display = 'none';
                 initialsElement.style.display = 'flex';
             });
-        })
-        .catch(error => {
-            console.error('Error checking session:', error);
+        }).catch(error => {
+            console.debug('Session check failed:', error.message);
+            const userProfileNav = document.querySelector('.user-profile-nav');
+            if (userProfileNav) {
+                userProfileNav.style.display = 'none';
+            }
         });
     }
 
     // Also add this function to refresh profile picture when updated
     function refreshNavigationProfilePicture() {
-        // Clear cached data
         sessionStorage.removeItem('navProfilePicUrl');
         sessionStorage.removeItem('navProfilePicTimestamp');
-
-        // Reload with fresh cache busting
+        localStorage.removeItem('profilePicCacheBust');
+        // Force session refresh
+        sessionCache = null;
+        sessionCacheTime = 0;
         loadNavigationProfilePicture();
     }
+
+    // ✅ Auto-refresh when coming back to page
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            // Page became visible again - refresh profile pic
+            const profilePicElement = document.getElementById('navProfilePic');
+            if (profilePicElement && profilePicElement.style.display === 'block') {
+                // Only refresh if it was showing (user is logged in)
+                loadNavigationProfilePicture();
+            }
+        }
+    });
 
     // =============================================
     // Modal Management
@@ -667,9 +889,6 @@
     // Enhanced Bookmark Functionality - INSTANT UI UPDATES
     // =============================================
 
-    // Store bookmark state for quick access
-    let bookmarkState = new Map();
-
     function initializeBookmarkButtons() {
         // Initialize from server-side data first
         initializeBookmarkStatesFromServer();
@@ -686,49 +905,22 @@
     }
 
     function initializeBookmarkStatesFromServer() {
-        // Initialize from server-side rendered data
+        // ✅ REMOVED the recursive call that was causing infinite loop
         const bookmarkButtons = document.querySelectorAll('.bookmark-btn');
         bookmarkButtons.forEach(button => {
             const itemId = button.dataset.id;
             const itemType = button.dataset.type;
             const isBookmarked = button.classList.contains('bookmarked');
 
-            // Store in memory for quick access
             if (itemId && itemType) {
                 bookmarkState.set(`${itemType}-${itemId}`, isBookmarked);
             }
 
-            // Ensure correct icon is displayed
             updateBookmarkIcon(button, isBookmarked);
         });
     }
 
-    async function fetchWithRetry(url, options, maxRetries = 3) {
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const response = await fetch(url, options);
-
-                // If response is 503 (service unavailable) with retry flag, retry
-                if (response.status === 503) {
-                    const data = await response.json();
-                    if (data.retry && i < maxRetries - 1) {
-                        console.log(`Retry ${i + 1}/${maxRetries} after 503 error`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                        continue;
-                    }
-                }
-
-                return response;
-            } catch (error) {
-                console.error(`Attempt ${i + 1} failed:`, error);
-                if (i === maxRetries - 1) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-            }
-        }
-    }
-
     async function handleBookmarkAction(bookmarkBtn) {
-        // Prevent multiple clicks
         if (bookmarkBtn.disabled) {
             console.log('Bookmark button already processing');
             return;
@@ -738,30 +930,25 @@
         const itemType = bookmarkBtn.dataset.type;
         const currentState = bookmarkBtn.classList.contains('bookmarked');
         const newState = !currentState;
-
-        // Store original state for rollback
         const previousState = currentState;
 
         // INSTANT UI UPDATE - Optimistic update
         bookmarkBtn.classList.toggle('bookmarked', newState);
         updateBookmarkIcon(bookmarkBtn, newState);
 
-        // Show loading state
         const originalHTML = bookmarkBtn.innerHTML;
         bookmarkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         bookmarkBtn.disabled = true;
 
         try {
-            // Use fetch with retry
-            const response = await fetchWithRetry(`/api/bookmark/${itemType}/${itemId}`, {
+            const response = await fetchWithRetryAndTimeout(`/api/bookmark/${itemType}/${itemId}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 }
-            });
+            }, 3, 10000); // 3 retries, 10 second timeout
 
-            // Check if response is JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 throw new Error('Server returned invalid response');
@@ -769,7 +956,6 @@
 
             const data = await response.json();
 
-            // Handle unauthorized
             if (response.status === 401) {
                 bookmarkBtn.classList.toggle('bookmarked', previousState);
                 updateBookmarkIcon(bookmarkBtn, previousState);
@@ -791,8 +977,6 @@
 
         } catch (error) {
             console.error('Bookmark error:', error);
-
-            // REVERT UI UPDATE on error
             bookmarkBtn.classList.toggle('bookmarked', previousState);
             updateBookmarkIcon(bookmarkBtn, previousState);
 
@@ -800,11 +984,8 @@
             if (errorMessage.includes('Network') || errorMessage.includes('disconnected')) {
                 errorMessage = 'Connection issue. Please try again.';
             }
-
             showToast(errorMessage, 'error');
-
         } finally {
-            // Restore button state
             bookmarkBtn.disabled = false;
             bookmarkBtn.innerHTML = originalHTML;
             const finalState = bookmarkBtn.classList.contains('bookmarked');
@@ -812,7 +993,6 @@
         }
     }
 
-    // Bookmark sync function for modal and card
     async function handleModalBookmark(courseId) {
         const modalBookmark = document.getElementById('horizontalModalBookmarkBtn');
         if (!modalBookmark) return;
@@ -820,14 +1000,12 @@
         const isCurrentlyBookmarked = modalBookmark.classList.contains('bookmarked');
         const willBeBookmarked = !isCurrentlyBookmarked;
 
-        // Update modal button
         modalBookmark.classList.toggle('bookmarked', willBeBookmarked);
         const icon = modalBookmark.querySelector('i');
         const text = modalBookmark.querySelector('.bookmark-text');
         if (icon) icon.className = willBeBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
         if (text) text.textContent = willBeBookmarked ? 'Bookmarked' : 'Bookmark';
 
-        // Update card button (sync)
         const cardBtn = document.querySelector(`.bookmark-btn[data-id="${courseId}"][data-type="course"]`);
         if (cardBtn) {
             cardBtn.classList.toggle('bookmarked', willBeBookmarked);
@@ -838,12 +1016,10 @@
         }
 
         try {
-            // Check session
             const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
             const session = await sessionCheck.json();
 
             if (!session.logged_in) {
-                // Revert both
                 modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
                 if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
                 if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
@@ -859,7 +1035,6 @@
                 return;
             }
 
-            // API call
             const response = await fetch(`/api/bookmark/course/${courseId}`, {
                 method: 'POST',
                 credentials: 'include',
@@ -873,8 +1048,6 @@
 
         } catch (error) {
             console.error('Modal bookmark error:', error);
-
-            // Revert both on error
             modalBookmark.classList.toggle('bookmarked', isCurrentlyBookmarked);
             if (icon) icon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
             if (text) text.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
@@ -885,7 +1058,6 @@
                 if (cardIcon) cardIcon.className = isCurrentlyBookmarked ? 'fas fa-bookmark' : 'far fa-bookmark';
                 if (cardText) cardText.textContent = isCurrentlyBookmarked ? 'Bookmarked' : 'Bookmark';
             }
-
             showToast(error.message || 'Bookmark failed', 'error');
         }
     }
@@ -906,7 +1078,6 @@
             }
         }
 
-        // Also update the button's class for CSS styling
         if (isBookmarked) {
             element.classList.add('bookmarked');
         } else {
@@ -1150,11 +1321,11 @@
                         payload.username = formData.get('username');
                     }
 
-                    const response = await fetch('/resend-otp', {
+                    const response = await fetchWithRetryAndTimeout('/resend-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
-                    });
+                    }, 3, 10000);
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
@@ -1230,7 +1401,7 @@
 
                 try {
                     const formData = new FormData(otpForm);
-                    const response = await fetch('/api/verify-otp', {
+                    const response = await fetchWithRetryAndTimeout('/api/verify-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1240,7 +1411,7 @@
                             password: formData.get('password'),
                             purpose: formData.get('purpose')
                         })
-                    });
+                    }, 3, 10000);
 
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Verification failed');
@@ -1385,8 +1556,8 @@
             const username = usernameInput.value.trim();
             const email = emailInput.value.trim();
             const password = this.querySelector('#registerPassword').value;
-            const confirmPassword = this.querySelector('#registerConfirmPassword').value;
-            const termsAgreement = this.querySelector('#termsAgreement').checked;
+            const confirmPassword = this.querySelector('#registerConfirmPassword')?.value || '';
+            const termsAgreement = this.querySelector('#termsAgreement')?.checked || false;
 
             // Frontend validation
             if (!username || username.length < 3) {
@@ -1399,7 +1570,6 @@
                 return;
             }
 
-            // Enhanced password validation
             if (!isPasswordStrong(password)) {
                 showFormError(formResponse, 'Password must meet all requirements');
                 this.querySelector('#registerPassword').focus();
@@ -1417,21 +1587,22 @@
                 return;
             }
 
+            // ✅ FIX: Ensure confirm_password is always sent with correct field name
+            const requestData = {
+                username: username,
+                email: email,
+                password: password,
+                confirm_password: confirmPassword,  // ← Must match backend's expected field name
+                terms_agreement: termsAgreement
+            };
+
             // Show loading state
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             showLoader('Creating your account...');
 
             try {
-                const requestData = {
-                    username: username,
-                    email: email,
-                    password: password,
-                    confirm_password: confirmPassword,
-                    terms_agreement: termsAgreement
-                };
-
-                const response = await fetch('/register', {
+                const response = await fetchWithRetryAndTimeout('/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1439,7 +1610,7 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify(requestData)
-                });
+                }, 3, 15000);
 
                 const data = await response.json();
 
@@ -1448,12 +1619,8 @@
                     hideLoader();
                     const rateLimitMsg = data.message || 'Too many attempts. Please wait 30 minutes before trying again.';
                     showFormError(formResponse, '⚠️ ' + rateLimitMsg);
-
-                    // Disable submit button for 30 minutes
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<i class="fas fa-clock"></i> Try again later';
-
-                    // Show toast notification
                     showToast(rateLimitMsg, 'warning', 8000);
                     return;
                 }
@@ -1472,9 +1639,7 @@
                             return;
                         }
                         if (data.message && data.message.includes('used this password before')) {
-                            showFormError(formResponse, '⚠️ You have used this password before. Please choose a different password.');
-                            this.querySelector('#registerPassword').classList.add('input-error');
-                            this.querySelector('#registerConfirmPassword').classList.add('input-error');
+                            showFormError(formResponse, '⚠️ ' + data.message);
                             hideLoader();
                             return;
                         }
@@ -1597,11 +1762,11 @@
             password: this.querySelector('#loginPassword').value
         };
 
-        fetch('/login', {
+        fetchWithRetryAndTimeout('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
-        })
+        }, 3, 10000)
         .then(response => {
             if (!response.ok) return response.json().then(err => { throw err; });
             return response.json();
@@ -1827,11 +1992,11 @@
             this.setLoading('passwordResetRequestForm', true);
 
             try {
-                const response = await fetch('/reset-password-request', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
-                });
+                }, 3, 10000);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -1885,11 +2050,11 @@
             this.setLoading('passwordResetOtpForm', true);
 
             try {
-                const response = await fetch('/reset-password-verify', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, otp })
-                });
+                }, 3, 10000);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -1949,7 +2114,7 @@
             this.setLoading('resetPasswordNewForm', true);
 
             try {
-                const response = await fetch('/reset-password-confirm', {
+                const response = await fetchWithRetryAndTimeout('/reset-password-confirm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1957,7 +2122,7 @@
                         new_password: newPassword,
                         confirm_password: confirmPassword
                     })
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
 
@@ -2523,9 +2688,9 @@
         button.disabled = true;
 
         // Get application link
-        fetch(`/get-application-link/${contentType}/${contentId}`, {
+        fetchWithRetryAndTimeout(`/get-application-link/${contentType}/${contentId}`, {
             credentials: 'same-origin'
-        })
+        }, 3, 10000)
         .then(response => {
             if (!response.ok) {
                 return response.json().then(errorData => {
@@ -2594,27 +2759,64 @@
     // =============================================
     // Contact Form Handling
     // =============================================
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
+
+    function initializeContactForm() {
+        const contactForm = document.getElementById('contactForm');
+        if (!contactForm) return;
+
+        // ✅ Character counter for message
+        const messageTextarea = document.getElementById('contactMessage');
+        const charCountDisplay = document.getElementById('messageCharCount');
+
+        if (messageTextarea && charCountDisplay) {
+            messageTextarea.addEventListener('input', function() {
+                const length = this.value.length;
+                const maxLength = this.maxLength || 5000;
+                charCountDisplay.textContent = `${length} / ${maxLength} characters`;
+
+                // Color coding
+                if (length > maxLength * 0.9) {
+                    charCountDisplay.style.color = '#dc3545';
+                } else if (length > maxLength * 0.7) {
+                    charCountDisplay.style.color = '#ffc107';
+                } else {
+                    charCountDisplay.style.color = '#6c757d';
+                }
+            });
+
+            // Trigger on load if there's pre-filled content
+            if (messageTextarea.value) {
+                messageTextarea.dispatchEvent(new Event('input'));
+            }
+        }
+
         contactForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const submitBtn = contactForm.querySelector('button[type="submit"]');
-            const btnText = submitBtn.querySelector('.btn-text');
+
+            const submitBtn = contactForm.querySelector('#contactSubmitBtn') || contactForm.querySelector('button[type="submit"]');
+            const btnText = submitBtn?.querySelector('.btn-text');
             const formResponse = document.getElementById('formResponse');
 
-            btnText.style.display = 'none';
-            submitBtn.disabled = true;
-            formResponse.style.display = 'none';
+            if (btnText) btnText.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = true;
+            if (formResponse) formResponse.style.display = 'none';
 
             // Show loader
             const loader = showLoader('Sending message...');
 
             try {
                 const formData = new FormData(contactForm);
-                const response = await fetch('/api/contact', {
+
+                // Get CSRF token
+                const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+                const response = await fetchWithRetryAndTimeout('/api/contact', {
                     method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
                     body: formData
-                });
+                }, 3, 15000);
 
                 const data = await response.json();
 
@@ -2622,24 +2824,45 @@
                     throw new Error(data.message || 'Failed to send message');
                 }
 
-                hideLoader(); // Hide loader first
-                formResponse.className = 'form-response success';
-                formResponse.textContent = data.message;
-                formResponse.style.display = 'block';
+                hideLoader();
+
+                if (formResponse) {
+                    formResponse.className = 'form-response success';
+                    formResponse.textContent = data.message;
+                    formResponse.style.display = 'block';
+                }
+
                 contactForm.reset();
 
-                // Show success toast
+                // Reset character counter
+                if (charCountDisplay) {
+                    charCountDisplay.textContent = '0 / 5000 characters';
+                    charCountDisplay.style.color = '#6c757d';
+                }
+
                 showToast('Message sent successfully!', 'success');
 
+                // Auto-hide success message after 5 seconds
+                if (formResponse) {
+                    setTimeout(() => {
+                        formResponse.style.display = 'none';
+                    }, 5000);
+                }
+
             } catch (error) {
-                hideLoader(); // Hide loader first
-                formResponse.className = 'form-response error';
-                formResponse.textContent = error.message || 'An error occurred. Please try again.';
-                formResponse.style.display = 'block';
+                hideLoader();
+
+                if (formResponse) {
+                    formResponse.className = 'form-response error';
+                    formResponse.textContent = error.message || 'An error occurred. Please try again.';
+                    formResponse.style.display = 'block';
+                }
+
                 showToast('Failed to send message', 'error');
+
             } finally {
-                btnText.style.display = 'inline-block';
-                submitBtn.disabled = false;
+                if (btnText) btnText.style.display = 'inline-block';
+                if (submitBtn) submitBtn.disabled = false;
             }
         });
     }
@@ -2703,12 +2926,7 @@
 
         async getCurrentUser() {
             try {
-                const response = await fetch('/api/check-session', {
-                    credentials: 'include',
-                    headers: { 'Accept': 'application/json' }
-                });
-                const data = await response.json();
-
+                const data = await checkSessionStatus();
                 if (data.logged_in) {
                     this.currentUsername = data.username || data.name || 'User';
                     this.currentUserEmail = data.email;
@@ -2989,10 +3207,10 @@
             `;
 
             try {
-                const response = await fetch('/api/testimonial/list', {
+                const response = await fetchWithRetryAndTimeout('/api/testimonial/list', {
                     credentials: 'include',
                     headers: { 'Accept': 'application/json' }
-                });
+                }, 3, 10000);
 
                 if (!response.ok) throw new Error('Failed to load');
 
@@ -3508,12 +3726,12 @@
                 const url = isEdit ? `/api/testimonial/update/${this.testimonialToEdit}` : '/api/testimonial/submit';
                 const method = isEdit ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                const response = await fetchWithRetryAndTimeout(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ content, rating })
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
 
@@ -3585,11 +3803,11 @@
             deleteBtn.disabled = true;
 
             try {
-                const response = await fetch(`/api/testimonial/delete/${this.testimonialToDelete}`, {
+                const response = await fetchWithRetryAndTimeout(`/api/testimonial/delete/${this.testimonialToDelete}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
-                });
+                }, 3, 10000);
 
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Delete failed');
@@ -3740,7 +3958,7 @@
             cards.forEach(card => {
                 const id = card.dataset.id;
                 if (id && !this.blogDataCache.has(id)) {
-                    fetch(`/api/blog/${id}`)
+                    fetchWithRetryAndTimeout(`/api/blog/${id}`, {}, 2, 5000)
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
@@ -3827,7 +4045,7 @@
                 if (this.blogDataCache.has(blogId)) {
                     blog = this.blogDataCache.get(blogId);
                 } else {
-                    const response = await fetch(`/api/blog/${blogId}`);
+                    const response = await fetchWithRetryAndTimeout(`/api/blog/${blogId}`, {}, 3, 10000);
                     const data = await response.json();
                     if (!data.success) throw new Error(data.error || 'Failed to load');
                     blog = data.blog;
@@ -3953,8 +4171,7 @@
 
         handleLike: async function(btn, blogId) {
             try {
-                const sessionCheck = await fetch('/api/check-session', { credentials: 'include' });
-                const session = await sessionCheck.json();
+                const session = await checkSessionStatus();
 
                 if (!session.logged_in) {
                     this.showMessage('Please login to like articles', 'warning');
@@ -4346,12 +4563,82 @@
     };
 
     // =============================================
-    // NEWSLETTER SUBSCRIPTION SYSTEM - FIXED FOR MOBILE
+    // NEWSLETTER SUBSCRIPTION SYSTEM - WITH BACKEND RATE LIMITING
     // =============================================
 
     function initializeNewsletter() {
         const newsletterForm = document.getElementById('newsletterForm');
         if (!newsletterForm) return;
+
+        // ✅ FRONTEND RATE LIMITING (UX only - backend is the source of truth)
+        function checkFrontendRateLimit() {
+            try {
+                const key = 'newsletter_attempts';
+                const data = localStorage.getItem(key);
+
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    const now = Date.now();
+                    const windowMs = 5 * 60 * 1000; // 5 minutes
+
+                    if (now - parsed.timestamp > windowMs) {
+                        localStorage.removeItem(key);
+                        return { allowed: true, attempts: 0, remaining: 0 };
+                    }
+
+                    if (parsed.attempts >= 3) {
+                        const remaining = Math.ceil((windowMs - (now - parsed.timestamp)) / 1000 / 60);
+                        return { allowed: false, remaining: remaining, attempts: parsed.attempts };
+                    }
+
+                    return { allowed: true, attempts: parsed.attempts, remaining: 0 };
+                }
+            } catch (e) {
+                console.warn('Frontend rate limit check failed:', e);
+            }
+            return { allowed: true, attempts: 0, remaining: 0 };
+        }
+
+        function recordFrontendAttempt() {
+            try {
+                const key = 'newsletter_attempts';
+                const data = localStorage.getItem(key);
+
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    parsed.attempts += 1;
+                    parsed.timestamp = Date.now();
+                    localStorage.setItem(key, JSON.stringify(parsed));
+                } else {
+                    localStorage.setItem(key, JSON.stringify({
+                        attempts: 1,
+                        timestamp: Date.now()
+                    }));
+                }
+            } catch (e) {
+                console.warn('Could not record frontend rate limit:', e);
+            }
+        }
+
+        function resetFrontendRateLimit() {
+            try {
+                localStorage.removeItem('newsletter_attempts');
+            } catch (e) {}
+        }
+
+        function showRateLimitMessage(remainingMinutes) {
+            const submitBtn = newsletterForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalHTML = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i class="fas fa-clock"></i> Try again in ${remainingMinutes}m`;
+
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHTML;
+                }, remainingMinutes * 60 * 1000);
+            }
+        }
 
         newsletterForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -4362,25 +4649,29 @@
 
             if (!emailInput || !submitBtn) return;
 
-            const email = emailInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
 
-            // Validate email
             if (!validateEmail(email)) {
                 showToast('Please enter a valid email address', 'error');
                 emailInput.focus();
                 return;
             }
 
-            // Get button text and loading icon
+            // ✅ Frontend rate limit check (UX only)
+            const frontendLimit = checkFrontendRateLimit();
+            if (!frontendLimit.allowed) {
+                showToast(`Too many attempts. Please wait ${frontendLimit.remaining} minutes.`, 'warning');
+                showRateLimitMessage(frontendLimit.remaining);
+                return;
+            }
+
             const btnText = submitBtn.querySelector('.btn-text');
             const loadingIcon = submitBtn.querySelector('.loading-icon');
 
-            // Show loading state
             if (btnText) btnText.style.display = 'none';
             if (loadingIcon) loadingIcon.style.display = 'inline-block';
             submitBtn.disabled = true;
 
-            // Hide any previous response
             if (responseDiv) {
                 responseDiv.style.display = 'none';
                 responseDiv.textContent = '';
@@ -4388,79 +4679,68 @@
             }
 
             try {
-                // Add timeout for mobile networks
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-                const response = await fetch('/api/subscribe', {
+                const response = await fetchWithRetryAndTimeout('/api/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ email: email }),
-                    signal: controller.signal
-                });
+                    body: JSON.stringify({ email: email })
+                }, 3, 15000);
 
-                clearTimeout(timeoutId);
+                // ✅ Handle rate limit response from backend (429)
+                if (response.status === 429) {
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                    } catch {
+                        errorData = { message: 'Too many attempts. Please wait a few minutes.' };
+                    }
 
-                // Check if response is okay
+                    recordFrontendAttempt();
+                    showRateLimitMessage(5);
+                    showToast(errorData.message || 'Too many attempts. Please wait.', 'warning');
+
+                    if (btnText) btnText.style.display = 'inline-block';
+                    if (loadingIcon) loadingIcon.style.display = 'none';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
                 if (!response.ok) {
-                    // Try to get error message from response
-                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    let errorMessage = `HTTP ${response.status}`;
                     try {
                         const errorData = await response.json();
                         errorMessage = errorData.message || errorMessage;
-                    } catch (e) {
-                        // If can't parse JSON, try to get text
-                        try {
-                            const text = await response.text();
-                            if (text && text.length < 100) { // Only use if it's short text
-                                errorMessage = text;
-                            }
-                        } catch (textError) {
-                            // Ignore text parsing errors
-                        }
-                    }
+                    } catch (e) {}
                     throw new Error(errorMessage);
                 }
 
-                // Try to parse JSON response
-                let data;
-                try {
-                    data = await response.json();
-                } catch (jsonError) {
-                    console.error('JSON parsing error:', jsonError);
-                    throw new Error('Server returned invalid response. Please try again.');
-                }
+                const data = await response.json();
 
                 if (data.status === 'success') {
-                    // Success - show message
                     if (responseDiv) {
                         responseDiv.className = 'form-response success';
                         responseDiv.textContent = data.message;
                         responseDiv.style.display = 'block';
                     }
 
-                    // Show toast notification
                     showToast(data.message, 'success');
-
-                    // Clear form
                     emailInput.value = '';
 
-                    // Reset form state
                     const formGroup = emailInput.closest('.form-group');
                     if (formGroup) {
                         formGroup.classList.remove('has-value');
                     }
 
-                    // Auto-hide success message after 5 seconds
+                    resetFrontendRateLimit();
+
                     if (responseDiv) {
                         setTimeout(() => {
                             responseDiv.style.display = 'none';
                         }, 5000);
                     }
                 } else {
-                    // Error from backend
                     throw new Error(data.message || 'Subscription failed');
                 }
 
@@ -4469,18 +4749,14 @@
 
                 let userErrorMessage = 'Failed to subscribe. Please try again.';
 
-                // Handle specific error types
                 if (error.name === 'AbortError') {
-                    userErrorMessage = 'Request timeout. Please check your connection and try again.';
+                    userErrorMessage = 'Request timeout. Please check your connection.';
                 } else if (error.message.includes('Failed to fetch')) {
                     userErrorMessage = 'Network error. Please check your internet connection.';
-                } else if (error.message.includes('HTTP')) {
-                    userErrorMessage = error.message;
                 } else {
                     userErrorMessage = error.message || userErrorMessage;
                 }
 
-                // Show error message
                 if (responseDiv) {
                     responseDiv.className = 'form-response error';
                     responseDiv.textContent = userErrorMessage;
@@ -4488,13 +4764,10 @@
                 }
 
                 showToast(userErrorMessage, 'error');
-
-                // Focus on email field for correction
                 emailInput.focus();
                 emailInput.select();
 
             } finally {
-                // Always reset button state
                 if (btnText) btnText.style.display = 'inline-block';
                 if (loadingIcon) loadingIcon.style.display = 'none';
                 submitBtn.disabled = false;
@@ -4737,15 +5010,6 @@
             // Remove confetti after animation
             animation.onfinish = () => confetti.remove();
         }
-    }
-
-    // =============================================
-    // EMAIL VALIDATION HELPER
-    // =============================================
-
-    function validateEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
     }
 
     // =============================================
@@ -5215,6 +5479,9 @@
             testimonialSystem.init();
         }
 
+        // ✅ Initialize contact form
+        initializeContactForm();
+
         // Initialize newsletter subscription
         initializeNewsletter();
 
@@ -5355,6 +5622,9 @@
         if (typeof initializeBadgeColors === 'function') {
             initializeBadgeColors();
         }
+
+        // Fix broken images after page load
+        setTimeout(fixBrokenImages, 500);
 
         // Initialize share modal theme listener
         if (typeof initShareModalThemeListener === 'function') {
@@ -6469,6 +6739,8 @@
         const statNumbers = aboutPage.querySelectorAll('.about-stat-number');
         let animated = false;
 
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
         const animateCounter = (element) => {
             const targetText = element.getAttribute('data-count') || element.textContent;
             const target = parseInt(targetText.replace(/[^0-9]/g, ''));
@@ -6502,18 +6774,42 @@
             requestAnimationFrame(updateCounter);
         };
 
+        const animateStatsImmediately = () => {
+            statNumbers.forEach((stat, index) => {
+                setTimeout(() => {
+                    animateCounter(stat);
+                }, index * 200);
+            });
+        };
+
+        // On mobile, animate with a delay but ensure the DOM is ready
+        if (isMobile) {
+            if (document.readyState === 'complete') {
+                setTimeout(animateStatsImmediately, 500);
+            } else {
+                window.addEventListener('load', function() {
+                    setTimeout(animateStatsImmediately, 500);
+                });
+            }
+            return;
+        }
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && !animated) {
                     animated = true;
-                    statNumbers.forEach((stat, index) => {
-                        setTimeout(() => {
-                            animateCounter(stat);
-                        }, index * 200);
-                    });
+                    animateStatsImmediately();
                 }
             });
-        }, { threshold: 0.3 });
+        }, { threshold: 0.1 });
 
         observer.observe(aboutPage);
+
+        // Fallback: if not triggered after 5 seconds, force animate
+        setTimeout(() => {
+            if (!animated) {
+                animateStatsImmediately();
+                animated = true;
+            }
+        }, 5000);
     }

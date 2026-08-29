@@ -23,17 +23,13 @@
         <!-- Scrollable Menu Container -->
         <div class="sidebar-menu-container">
             <ul class="sidebar-menu">
-                <li class="menu-item"><a href="#dashboard"><i
-                        class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                <li class="menu-item"><a href="#dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
                 <li class="menu-item"><a href="#courses"><i class="fas fa-book"></i><span>Courses</span></a></li>
                 <li class="menu-item"><a href="#jobs"><i class="fas fa-briefcase"></i><span>Jobs</span></a></li>
-                <li class="menu-item"><a href="#internships"><i
-                        class="fas fa-user-graduate"></i><span>Internships</span></a></li>
+                <li class="menu-item"><a href="#internships"><i class="fas fa-user-graduate"></i><span>Internships</span></a></li>
                 <li class="menu-item"><a href="#blog"><i class="fas fa-blog"></i><span>Blog</span></a></li>
-                <li class="menu-item"><a href="#testimonials"><i
-                        class="fas fa-comments"></i><span>Testimonials</span></a></li>
-                <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a>
-                </li>
+                <li class="menu-item"><a href="#testimonials"><i class="fas fa-comments"></i><span>Testimonials</span></a></li>
+                <li class="menu-item"><a href="#newsletter"><i class="fas fa-newspaper"></i><span>Newsletter</span></a></li>
                 <li class="menu-item"><a href="#messages"><i class="fas fa-envelope"></i><span>Messages</span><span class="menu-badge" id="messagesMenuBadge"></span></a></li>
 
                 <!-- User Management with Submenu -->
@@ -59,14 +55,13 @@
                     </ul>
                 </li>
 
-                <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span
-                        class="menu-badge" id="trashMenuBadge"></span></a></li>
-                <li class="menu-item"><a href="#expired-content"><i
-                        class="fas fa-clock"></i><span>Expired Content</span></a></li>
-                <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a>
-                </li>
-            </ul>
-        </div>
+                <li class="menu-item"><a href="#trash"><i class="fas fa-trash-alt"></i><span>Trash</span><span class="menu-badge" id="trashMenuBadge"></span></a></li>
+                <li class="menu-item"><a href="#expired-content"><i class="fas fa-clock"></i><span>Expired Content</span></a></li>
+                <li class="menu-item"><a href="#analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></a></li>
+                <li class="menu-item"><a href="#system-health"><i class="fas fa-heartbeat"></i><span>System Health</span><span class="menu-badge" id="healthMenuBadge"></span></a></li>
+                <li class="menu-item"><a href="#audit-logs"><i class="fas fa-clipboard-list"></i><span>Audit Logs</span></a></li>
+
+            </ul></div>
 
         <!-- Fixed Bottom Section -->
         <div class="sidebar-footer">
@@ -495,7 +490,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search internships..." id="internshipSearch" class="search-input">
+                        <input type="text" placeholder="Search internships..." id="internshipSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -634,7 +630,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search testimonials..." id="testimonialSearch" class="search-input">
+                        <input type="text" placeholder="Search testimonials..." id="testimonialSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -700,7 +697,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search subscribers..." id="newsletterSearch" class="search-input">
+                        <input type="text" placeholder="Search subscribers..." id="newsletterSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -958,7 +956,8 @@
                     </div>
                     <!-- Search -->
                     <div class="search-box">
-                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch" class="search-input">
+                        <input type="text" placeholder="Search expired content..." id="expiredContentSearch"
+                               class="search-input">
                         <button class="search-btn" type="button">
                             <i class="fas fa-search"></i>
                         </button>
@@ -1197,6 +1196,308 @@
                         <canvas id="browserChart"></canvas>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- System Health Section -->
+        <div class="admin-section" id="system-health">
+            <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%;">
+                    <h2 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-heartbeat" style="color: var(--primary);"></i> System Health & Settings
+                    </h2>
+                    <button class="btn btn-outline" onclick="refreshSystemHealth()"
+                            style="height: 30px; font-size: 12px; padding: 0 14px; margin-left: auto;">
+                        <i class="fas fa-sync-alt"></i> Refresh All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings Row - Compact -->
+            <div class="settings-row compact">
+                <div class="settings-grid compact">
+                    <div class="settings-toggle-item compact">
+                        <span class="toggle-label compact"><i class="fas fa-book"></i> Courses</span>
+                        <button class="toggle-btn compact" data-key="show_courses" id="toggle_show_courses">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item compact">
+                        <span class="toggle-label compact"><i class="fas fa-briefcase"></i> Jobs</span>
+                        <button class="toggle-btn compact" data-key="show_jobs" id="toggle_show_jobs">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item compact">
+                        <span class="toggle-label compact"><i class="fas fa-user-graduate"></i> Internships</span>
+                        <button class="toggle-btn compact" data-key="show_internships" id="toggle_show_internships">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item compact">
+                        <span class="toggle-label compact"><i class="fas fa-blog"></i> Blog</span>
+                        <button class="toggle-btn compact" data-key="show_blog" id="toggle_show_blog">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                    <div class="settings-toggle-item compact">
+                        <span class="toggle-label compact"><i class="fas fa-quote-left"></i> Testimonials</span>
+                        <button class="toggle-btn compact" data-key="show_testimonials" id="toggle_show_testimonials">
+                            <span class="toggle-btn-slider"></span>
+                            <span class="toggle-btn-status on">ON</span>
+                            <span class="toggle-btn-status off">OFF</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Health Cards - Compact -->
+            <div class="system-health-row compact">
+                <div class="health-cards-grid compact">
+                    <!-- Backend Status -->
+                    <div class="health-card compact">
+                        <div class="health-card-header compact">
+                            <i class="fas fa-server"></i>
+                            <span>Backend</span>
+                            <span class="health-status-badge success" id="backendStatus">● Online</span>
+                        </div>
+                        <div class="health-card-body compact">
+                            <div class="health-metric compact">
+                                <span class="metric-label">Response</span>
+                                <span class="metric-value" id="backendResponseTime">45ms</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Uptime</span>
+                                <span class="metric-value" id="backendUptime">99.9%</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Requests/min</span>
+                                <span class="metric-value" id="backendRequests">1,234</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Database Status -->
+                    <div class="health-card compact">
+                        <div class="health-card-header compact">
+                            <i class="fas fa-database"></i>
+                            <span>Database</span>
+                            <span class="health-status-badge success" id="dbStatus">● Online</span>
+                        </div>
+                        <div class="health-card-body compact">
+                            <div class="health-metric compact">
+                                <span class="metric-label">Query Time</span>
+                                <span class="metric-value" id="dbQueryTime">12ms</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Connections</span>
+                                <span class="metric-value" id="dbConnections">8/50</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Queries/sec</span>
+                                <span class="metric-value" id="dbQueries">456</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Frontend Status -->
+                    <div class="health-card compact">
+                        <div class="health-card-header compact">
+                            <i class="fas fa-desktop"></i>
+                            <span>Frontend</span>
+                            <span class="health-status-badge success" id="frontendStatus">● Online</span>
+                        </div>
+                        <div class="health-card-body compact">
+                            <div class="health-metric compact">
+                                <span class="metric-label">Load Time</span>
+                                <span class="metric-value" id="frontendLoadTime">1.2s</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Assets</span>
+                                <span class="metric-value" id="frontendAssets">234</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">API Calls/min</span>
+                                <span class="metric-value" id="frontendApiCalls">789</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Status -->
+                    <div class="health-card compact">
+                        <div class="health-card-header compact">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Security</span>
+                            <span class="health-status-badge success" id="securityStatus">● Secure</span>
+                        </div>
+                        <div class="health-card-body compact">
+                            <div class="health-metric compact">
+                                <span class="metric-label">Failed Logins</span>
+                                <span class="metric-value" id="securityFailedLogins">0</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Suspicious IPs</span>
+                                <span class="metric-value" id="securitySuspiciousIPs">0</span>
+                            </div>
+                            <div class="health-metric compact">
+                                <span class="metric-label">Security Events</span>
+                                <span class="metric-value" id="securityEvents">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Logs Section -->
+            <div class="error-logs-row">
+                <div class="error-logs-header compact">
+                    <h3 style="font-size: 14px;"><i class="fas fa-exclamation-circle"></i> Error Logs</h3>
+                    <div style="display: flex; gap: 6px;">
+                        <select id="errorLogTypeFilter" class="filter-select"
+                                style="height: 28px; min-width: 100px; font-size: 12px;" onchange="loadErrorLogs()">
+                            <option value="all">All Errors</option>
+                            <option value="backend">Backend</option>
+                            <option value="database">Database</option>
+                            <option value="frontend">Frontend</option>
+                            <option value="security">Security</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline" onclick="refreshErrorLogs()"
+                                style="height: 28px; font-size: 12px; padding: 0 12px;">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="content-table">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 100px;">Type</th>
+                            <th>Message</th>
+                            <th style="width: 120px;">Source</th>
+                            <th style="width: 150px;">Time</th>
+                            <th style="width: 90px;">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody id="errorLogsTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px;">
+                                <i class="fas fa-check-circle"
+                                   style="font-size: 32px; display: block; margin-bottom: 10px; color: var(--success);"></i>
+                                <p style="font-size: 13px;">No errors detected. System is healthy!</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Table Footer -->
+                <div class="table-footer">
+                    <div class="pagination" id="errorLogsPagination"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Logs Section -->
+        <div class="admin-section" id="audit-logs">
+            <div class="section-header">
+                <div class="filter-controls">
+                    <!-- Filter: Action Type -->
+                    <div class="filter-wrapper">
+                        <select id="logTypeFilter" class="filter-select">
+                            <option value="">All Actions</option>
+                            <option value="CREATE">Create</option>
+                            <option value="UPDATE">Update</option>
+                            <option value="DELETE">Delete</option>
+                            <option value="LOGIN">Login</option>
+                            <option value="LOGOUT">Logout</option>
+                            <option value="STATUS_CHANGE">Status Change</option>
+                        </select>
+                    </div>
+                    <!-- Filter: Resource -->
+                    <div class="filter-wrapper">
+                        <select id="resourceTypeFilter" class="filter-select">
+                            <option value="">All Resources</option>
+                            <option value="courses">Courses</option>
+                            <option value="jobs">Jobs</option>
+                            <option value="internships">Internships</option>
+                            <option value="blog">Blog</option>
+                            <option value="users">Users</option>
+                            <option value="admins">Admins</option>
+                            <option value="messages">Messages</option>
+                            <option value="testimonials">Testimonials</option>
+                            <option value="newsletter">Newsletter</option>
+                            <option value="settings">Settings</option>
+                        </select>
+                    </div>
+                    <!-- Filter: Date -->
+                    <div class="filter-wrapper">
+                        <input type="date" id="logDateFilter" class="filter-select filter-date">
+                    </div>
+                    <!-- Refresh Button -->
+                    <button class="btn btn-outline" onclick="loadAuditLogs()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+
+                    <!-- Stats Badges -->
+                    <div class="logs-stats-mini">
+                <span class="stat-mini audit">
+                    <span class="stat-mini-icon"><i class="fas fa-clipboard-list"></i></span>
+                    <span class="stat-mini-number" id="auditTotalCount">0</span>
+                </span>
+                        <span class="stat-mini error">
+                    <span class="stat-mini-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                    <span class="stat-mini-number" id="errorTotalCount">0</span>
+                </span>
+                        <span class="stat-mini unresolved">
+                    <span class="stat-mini-icon"><i class="fas fa-clock"></i></span>
+                    <span class="stat-mini-number" id="errorUnresolvedCount">0</span>
+                </span>
+                        <span class="stat-mini resolved">
+                    <span class="stat-mini-icon"><i class="fas fa-check-circle"></i></span>
+                    <span class="stat-mini-number" id="errorResolvedCount">0</span>
+                </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Table -->
+            <div class="content-table-wrapper">
+                <div class="content-table">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th style="width: 50px;">S.No</th>
+                            <th>Admin</th>
+                            <th style="width: 120px;">Action</th>
+                            <th style="width: 120px;">Resource</th>
+                            <th>Details</th>
+                            <th style="width: 170px;">Time</th>
+                        </tr>
+                        </thead>
+                        <tbody id="auditLogTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin"
+                                   style="font-size: 48px; display: block; margin-bottom: 15px;"></i>
+                                <p>Loading logs...</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="table-footer">
+                <div class="pagination" id="auditLogPagination"></div>
             </div>
         </div>
 
