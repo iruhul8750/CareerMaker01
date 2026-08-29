@@ -2386,12 +2386,15 @@ def register():
 
         data = request.get_json() if request.is_json else request.form.to_dict()
 
-        if data.get('resend') == 'true':
-            return handle_otp_resend(data)
-
-        required_fields = ['username', 'email', 'password', 'confirm_password']
-        if not all(data.get(field) for field in required_fields):
-            return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
+        # Check each field individually for better error messages
+        if not data.get('username'):
+            return jsonify({'status': 'error', 'message': 'Username is required'}), 400
+        if not data.get('email'):
+            return jsonify({'status': 'error', 'message': 'Email is required'}), 400
+        if not data.get('password'):
+            return jsonify({'status': 'error', 'message': 'Password is required'}), 400
+        if not data.get('confirm_password'):
+            return jsonify({'status': 'error', 'message': 'Please confirm your password'}), 400
 
         email = data['email']
         username = data['username']
@@ -2427,14 +2430,10 @@ def register():
         else:
             ip = 'unknown'
 
-        # ✅ Generate rate limit key
         rate_key = rate_limiter.get_key(email, 'register', ip)
-        print(f"🔑 [REGISTER] Rate limit key: {rate_key}")
 
-        # ✅ Check rate limit
         allowed, error_msg = rate_limiter.is_allowed(rate_key)
         if not allowed:
-            print(f"🚫 [REGISTER] Rate limit blocked for {rate_key}: {error_msg}")
             return jsonify({
                 'status': 'error',
                 'message': error_msg,
@@ -2456,8 +2455,6 @@ def register():
         if not otp_response.data:
             raise Exception('Failed to store OTP in database')
 
-        # ✅ Record the attempt AFTER OTP is stored
-        print(f"📝 [REGISTER] Recording attempt for {rate_key}")
         rate_limiter.record_attempt(rate_key)
 
         # Send OTP email

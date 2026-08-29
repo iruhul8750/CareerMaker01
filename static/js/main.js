@@ -299,17 +299,70 @@
                 clearTimeout(timeoutId);
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    // Try to get error message from response
+                    let errorMessage = `HTTP ${response.status}`;
+                    let errorData = null;
+                    try {
+                        errorData = await response.json();
+                        if (errorData && errorData.message) {
+                            errorMessage = errorData.message;
+                        } else if (errorData && errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        // If we can't parse JSON, try text
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 200) {
+                                const trimmed = text.trim();
+                                if (trimmed) {
+                                    errorMessage = trimmed;
+                                }
+                            }
+                        } catch (textError) {
+                            // Ignore
+                        }
+                    }
+
+                    const error = new Error(errorMessage);
+                    error.status = response.status;
+                    error.response = response;
+                    error.data = errorData;
+
+                    // ❌ DO NOT RETRY on client errors (4xx)
+                    // ✅ Only retry on server errors (5xx) or network errors
+                    if (response.status >= 400 && response.status < 500) {
+                        // Client error - don't retry, throw immediately
+                        throw error;
+                    }
+
+                    // For 5xx errors, we'll retry
+                    if (attempt < maxRetries - 1) {
+                        console.warn(`Server error ${response.status}, retrying... (attempt ${attempt + 1}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+                        continue;
+                    }
+                    throw error;
                 }
 
                 return response;
             } catch (error) {
                 lastError = error;
+
+                // If it's a client error (4xx), don't retry - throw immediately
+                if (error.status && error.status >= 400 && error.status < 500) {
+                    console.warn(`Client error ${error.status}, not retrying:`, error.message);
+                    throw error;
+                }
+
+                // For network errors or server errors
                 console.warn(`Attempt ${attempt + 1}/${maxRetries} failed for ${url}:`, error.message);
 
                 if (attempt < maxRetries - 1) {
                     // Exponential backoff
-                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+                    const delay = 1000 * Math.pow(2, attempt);
+                    console.warn(`Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
@@ -1503,8 +1556,8 @@
             const username = usernameInput.value.trim();
             const email = emailInput.value.trim();
             const password = this.querySelector('#registerPassword').value;
-            const confirmPassword = this.querySelector('#registerConfirmPassword').value;
-            const termsAgreement = this.querySelector('#termsAgreement').checked;
+            const confirmPassword = this.querySelector('#registerConfirmPassword')?.value || '';
+            const termsAgreement = this.querySelector('#termsAgreement')?.checked || false;
 
             // Frontend validation
             if (!username || username.length < 3) {
@@ -1517,7 +1570,6 @@
                 return;
             }
 
-            // Enhanced password validation
             if (!isPasswordStrong(password)) {
                 showFormError(formResponse, 'Password must meet all requirements');
                 this.querySelector('#registerPassword').focus();
@@ -1535,20 +1587,21 @@
                 return;
             }
 
+            // ✅ FIX: Ensure confirm_password is always sent with correct field name
+            const requestData = {
+                username: username,
+                email: email,
+                password: password,
+                confirm_password: confirmPassword,  // ← Must match backend's expected field name
+                terms_agreement: termsAgreement
+            };
+
             // Show loading state
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             showLoader('Creating your account...');
 
             try {
-                const requestData = {
-                    username: username,
-                    email: email,
-                    password: password,
-                    confirm_password: confirmPassword,
-                    terms_agreement: termsAgreement
-                };
-
                 const response = await fetchWithRetryAndTimeout('/register', {
                     method: 'POST',
                     headers: {
@@ -1566,12 +1619,8 @@
                     hideLoader();
                     const rateLimitMsg = data.message || 'Too many attempts. Please wait 30 minutes before trying again.';
                     showFormError(formResponse, '⚠️ ' + rateLimitMsg);
-
-                    // Disable submit button for 30 minutes
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<i class="fas fa-clock"></i> Try again later';
-
-                    // Show toast notification
                     showToast(rateLimitMsg, 'warning', 8000);
                     return;
                 }
@@ -1590,9 +1639,7 @@
                             return;
                         }
                         if (data.message && data.message.includes('used this password before')) {
-                            showFormError(formResponse, '⚠️ You have used this password before. Please choose a different password.');
-                            this.querySelector('#registerPassword').classList.add('input-error');
-                            this.querySelector('#registerConfirmPassword').classList.add('input-error');
+                            showFormError(formResponse, '⚠️ ' + data.message);
                             hideLoader();
                             return;
                         }
