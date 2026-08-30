@@ -1655,6 +1655,10 @@
 
                     setTimeout(() => {
                         hideLoader();
+
+                        // ✅ Store email status for the modal
+                        window._emailSent = data.email_sent !== false; // true if email was sent
+
                         showOTPVerificationModal(
                             data.email,
                             requestData.username,
@@ -1662,11 +1666,14 @@
                         );
                         document.getElementById('registerModal').style.display = 'none';
 
+                        // ✅ Show appropriate message
                         if (data.otp) {
-                            console.log('Development OTP:', data.otp);
-                            showToast('OTP generated. Check console for development.', 'info');
+                            console.log('📧 Development OTP:', data.otp);
+                            showToast('📧 Check console for OTP (development mode)', 'info');
+                        } else if (data.email_sent === false) {
+                            showToast('⚠️ Email sending delayed. Use "Resend OTP" below.', 'warning', 6000);
                         } else {
-                            showToast('Verification email sent! Please check your inbox.', 'success');
+                            showToast('📧 Verification email sent! Check your inbox/spam.', 'success');
                         }
                     }, 1000);
                 }

@@ -473,10 +473,15 @@ def send_email(to_email, subject, html_content, plain_text=None):
     """
     Send email: Brevo Primary, SMTP Fallback
     """
+    print(f"📧 Attempting to send email to: {to_email}")
+    print(f"📧 Subject: {subject}")
+    print(f"📧 Using Brevo API Key: {'Yes' if BREVO_API_KEY else 'No'}")
+    print(f"📧 Using SMTP: {'Yes' if SMTP_EMAIL else 'No'}")
 
     # ===== 1. TRY BREVO (PRIMARY) =====
     if BREVO_API_KEY:
         try:
+            # ✅ FIX: Properly structure the email data
             email_data = {
                 "sender": {
                     "email": BREVO_SENDER_EMAIL,
@@ -487,8 +492,12 @@ def send_email(to_email, subject, html_content, plain_text=None):
                 "htmlContent": html_content
             }
 
+            # Add plain text if provided
             if plain_text:
                 email_data["textContent"] = plain_text
+
+            print(f"📧 Sending via Brevo to: {to_email}")
+            print(f"📧 Sender: {BREVO_SENDER_EMAIL}")
 
             response = requests.post(
                 "https://api.brevo.com/v3/smtp/email",
@@ -500,23 +509,38 @@ def send_email(to_email, subject, html_content, plain_text=None):
                 timeout=30
             )
 
-            if response.status_code == 201:
+            print(f"📧 Brevo Response Status: {response.status_code}")
+
+            # ✅ FIX: Brevo returns 200 or 201 for success
+            if response.status_code in [200, 201]:
                 logger.info(f"✅ Email sent via Brevo to {to_email}")
+                print(f"✅ Email sent via Brevo to {to_email}")
                 return True
             else:
-                logger.warning(f"⚠️ Brevo failed ({response.status_code}), trying SMTP fallback")
+                error_detail = response.text
+                print(f"⚠️ Brevo failed ({response.status_code}): {error_detail}")
+                logger.warning(f"⚠️ Brevo failed ({response.status_code}): {error_detail}")
+                # Try SMTP fallback
 
+        except requests.exceptions.Timeout:
+            logger.warning(f"⚠️ Brevo timeout, trying SMTP fallback")
+            print(f"⚠️ Brevo timeout, trying SMTP fallback")
         except Exception as e:
             logger.warning(f"⚠️ Brevo exception: {str(e)}, trying SMTP fallback")
+            print(f"⚠️ Brevo exception: {str(e)}")
     else:
+        print("ℹ️ BREVO_API_KEY not set, using SMTP directly")
         logger.info("ℹ️ BREVO_API_KEY not set, using SMTP directly")
 
     # ===== 2. FALLBACK TO SMTP =====
     if not SMTP_EMAIL or not SMTP_PASSWORD:
         logger.error("❌ SMTP credentials not set")
+        print("❌ SMTP credentials not set")
         return False
 
     try:
+        print(f"📧 Attempting SMTP fallback to: {to_email}")
+
         msg = MIMEMultipart('alternative')
         msg['From'] = f"{BREVO_SENDER_NAME} <{SMTP_EMAIL}>"
         msg['To'] = to_email
@@ -528,7 +552,10 @@ def send_email(to_email, subject, html_content, plain_text=None):
             text_part = MIMEText(plain_text, 'plain', 'utf-8')
             msg.attach(text_part)
         else:
+            # Generate plain text from HTML if not provided
             plain_text = re.sub(r'<[^>]+>', '', html_content)
+            # Clean up extra whitespace
+            plain_text = re.sub(r'\s+', ' ', plain_text).strip()
             text_part = MIMEText(plain_text, 'plain', 'utf-8')
             msg.attach(text_part)
 
@@ -541,19 +568,23 @@ def send_email(to_email, subject, html_content, plain_text=None):
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
                 server.login(SMTP_EMAIL, SMTP_PASSWORD)
                 server.send_message(msg)
+            print(f"✅ Email sent via SMTP (SSL) to {to_email}")
             logger.info(f"✅ Email sent via SMTP (SSL) to {to_email}")
             return True
-        except:
+        except Exception as ssl_error:
+            print(f"⚠️ SSL failed: {str(ssl_error)}, trying TLS...")
             # Fallback to TLS
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
                 server.login(SMTP_EMAIL, SMTP_PASSWORD)
                 server.send_message(msg)
+            print(f"✅ Email sent via SMTP (TLS) to {to_email}")
             logger.info(f"✅ Email sent via SMTP (TLS) to {to_email}")
             return True
 
     except Exception as e:
         logger.error(f"❌ Both Brevo and SMTP failed: {str(e)}")
+        print(f"❌ Both Brevo and SMTP failed: {str(e)}")
         return False
 
 
@@ -2466,7 +2497,8 @@ def register():
             'requires_verification': True,
             'email': email,
             'username': username,
-            'otp': otp if not email_sent else None
+            'otp': otp if not email_sent else None,
+            'email_sent': email_sent
         })
 
     except Exception as e:
