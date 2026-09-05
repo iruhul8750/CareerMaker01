@@ -1,6 +1,8 @@
+import json
 import os
 
 from dotenv import load_dotenv
+from pydantic import validate_email
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import httpx
 import time
@@ -127,44 +129,62 @@ def success_response(message, data=None, status_code=200, extra=None):
         response.update(extra)
     return jsonify(response), status_code
 
+
 # =============================================
-# RATE LIMITER - SUPABASE TABLE
+# ENHANCED RATE LIMITER - REPLACE OLD CLASS
 # =============================================
 
 class SupabaseRateLimiter:
+    """Production-grade rate limiter with comprehensive protection"""
+
     def __init__(self):
-        self.max_attempts = 5
+        # Standard limits (reduced from 5 to 3)
+        self.max_attempts = 3
         self.window_minutes = 5
         self.block_minutes = 30
 
-    def get_key(self, email, purpose, ip=None):
-        """Generate a unique key for rate limiting"""
-        email = email.lower().strip()
+        # Contact form: 1 per 24 hours
+        self.contact_max_attempts = 1
+        self.contact_window_hours = 24
+
+        # Global rate limit: 60 requests per minute
+        self.global_max_requests = 60
+        self.global_window_seconds = 60
+
+        # Admin endpoints: stricter limits
+        self.admin_max_attempts = 5
+        self.admin_window_minutes = 15
+        self.admin_block_minutes = 60
+
+        # OTP verification: 5 attempts per 10 minutes
+        self.otp_max_attempts = 5
+        self.otp_window_minutes = 10
+
+    def get_key(self, email: str, purpose: str, ip: str = None) -> str:
+        """Generate unique rate limit key"""
+        email = email.lower().strip() if email else 'anonymous'
         if ip:
-            # Handle IPv6
             if ':' in ip and not ip.startswith('['):
                 ip = ip.split(':')[0]
             return f"{purpose}_{email}_{ip}"
         return f"{purpose}_{email}"
 
-    def is_allowed(self, key):
-        """Check if request is allowed - FIXED VERSION"""
-        try:
-            print(f"🔍 [is_allowed] Checking: {key}")
+    def get_ip_key(self, ip: str) -> str:
+        """Generate global rate limit key for IP"""
+        return f"global_ip_{ip}"
 
-            # Get current time
+    def is_allowed(self, key: str):
+        """Check if request is allowed"""
+        try:
             current_time = get_current_utc_time()
             current_time_iso = current_time.isoformat()
 
-            # Get record from database
             response = supabase_admin.table('rate_limits') \
                 .select('*') \
                 .eq('key_name', key) \
                 .execute()
 
-            # No record found - allowed
-            if not response.data or len(response.data) == 0:
-                print(f"✅ [is_allowed] No record found - allowed")
+            if not response.data:
                 return True, None
 
             record = response.data[0]
@@ -173,23 +193,18 @@ class SupabaseRateLimiter:
             blocked_until = record.get('blocked_until')
             first_attempt = record.get('first_attempt')
 
-            print(f"📊 [is_allowed] attempts={attempt_count}, blocked={is_blocked}")
-
-            # ✅ FIX: Check if blocked
             if is_blocked and blocked_until:
                 blocked_until_dt = parse_db_timestamp(blocked_until)
                 if blocked_until_dt and blocked_until_dt > current_time:
                     remaining = int((blocked_until_dt - current_time).total_seconds() / 60) + 1
-                    return False, f'Too many attempts. Please wait {remaining} minutes.'
+                    return False, self._get_user_friendly_message(key, remaining)
                 else:
-                    # Block expired - delete record and allow
                     supabase_admin.table('rate_limits') \
                         .delete() \
                         .eq('key_name', key) \
                         .execute()
                     return True, None
 
-            # ✅ FIX: Check if within window
             if not first_attempt:
                 return True, None
 
@@ -197,25 +212,46 @@ class SupabaseRateLimiter:
             if not first_attempt_dt:
                 return True, None
 
-            window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+            # Determine limits based on purpose
+            is_contact = key.startswith('contact_')
+            is_otp = key.startswith('otp_')
+            is_admin = key.startswith('admin_')
+
+            if is_contact:
+                window_minutes = self.contact_window_hours * 60
+                max_attempts = self.contact_max_attempts
+                block_minutes = self.contact_window_hours * 60
+            elif is_otp:
+                window_minutes = self.otp_window_minutes
+                max_attempts = self.otp_max_attempts
+                block_minutes = self.block_minutes
+            elif is_admin:
+                window_minutes = self.admin_window_minutes
+                max_attempts = self.admin_max_attempts
+                block_minutes = self.admin_block_minutes
+            else:
+                window_minutes = self.window_minutes
+                max_attempts = self.max_attempts
+                block_minutes = self.block_minutes
+
+            window_end = first_attempt_dt + timedelta(minutes=window_minutes)
 
             if current_time < window_end:
-                # Within window - check attempts
-                if attempt_count >= self.max_attempts:
-                    # Block the user
-                    block_until = current_time + timedelta(minutes=self.block_minutes)
+                if attempt_count >= max_attempts:
+                    block_until = current_time + timedelta(minutes=block_minutes)
                     supabase_admin.table('rate_limits') \
                         .update({
-                            'is_blocked': True,
-                            'blocked_until': block_until.isoformat(),
-                            'updated_at': current_time_iso
-                        }) \
+                        'is_blocked': True,
+                        'blocked_until': block_until.isoformat(),
+                        'updated_at': current_time_iso
+                    }) \
                         .eq('key_name', key) \
                         .execute()
-                    return False, f'Too many attempts. Please wait {self.block_minutes} minutes.'
+
+                    remaining = block_minutes
+                    return False, self._get_user_friendly_message(key, remaining)
                 return True, None
             else:
-                # Window expired - reset
                 supabase_admin.table('rate_limits') \
                     .delete() \
                     .eq('key_name', key) \
@@ -223,100 +259,185 @@ class SupabaseRateLimiter:
                 return True, None
 
         except Exception as e:
-            logger.error(f"Rate limit check error: {str(e)}", exc_info=True)
-            # ✅ Fail open on error - don't block users
+            logger.error(f"Rate limit check error: {str(e)}")
             return True, None
 
-    def record_attempt(self, key):
-        """Record an attempt - FIXED VERSION"""
+    def _get_user_friendly_message(self, key: str, wait_minutes: int) -> str:
+        """Get user-friendly error message based on purpose"""
+
+        # Determine the purpose from key
+        is_contact = key.startswith('contact_')
+        is_otp = key.startswith('otp_')
+        is_admin = key.startswith('admin_')
+        is_security = key.startswith('security_block_')
+
+        # Format wait time nicely
+        if wait_minutes >= 60:
+            hours = wait_minutes // 60
+            if hours >= 24:
+                days = hours // 24
+                wait_text = f"{days} day{'s' if days > 1 else ''}"
+            else:
+                wait_text = f"{hours} hour{'s' if hours > 1 else ''}"
+        elif wait_minutes > 1:
+            wait_text = f"{wait_minutes} minutes"
+        else:
+            wait_text = "a moment"
+
+        # Return appropriate message
+        if is_contact:
+            return f"You've reached the message limit. Please try again after {wait_text}."
+        elif is_otp:
+            return f"Too many verification attempts. Please try again after {wait_text}."
+        elif is_admin:
+            return f"Too many admin login attempts. Please try again after {wait_text}."
+        elif is_security:
+            return "Your request could not be processed. Please contact support if this continues."
+        else:
+            return f"Too many attempts. Please try again after {wait_text}."
+
+    def check_global_rate_limit(self, ip: str):
+        """Check global rate limit per IP"""
+        try:
+            if ip in ['127.0.0.1', 'localhost', '::1']:
+                return True, None
+
+            current_time = get_current_utc_time()
+            current_time_iso = current_time.isoformat()
+
+            response = supabase_admin.table('global_rate_limits') \
+                .select('*') \
+                .eq('ip_address', ip) \
+                .execute()
+
+            if not response.data:
+                supabase_admin.table('global_rate_limits').insert({
+                    'ip_address': ip,
+                    'request_count': 1,
+                    'window_start': current_time_iso,
+                    'created_at': current_time_iso,
+                    'updated_at': current_time_iso
+                }).execute()
+                return True, None
+
+            record = response.data[0]
+            window_start = parse_db_timestamp(record.get('window_start'))
+
+            if not window_start:
+                return True, None
+
+            window_end = window_start + timedelta(seconds=self.global_window_seconds)
+
+            if current_time < window_end:
+                if record.get('request_count', 0) >= self.global_max_requests:
+                    return False, 'Too many requests. Please slow down.'
+                else:
+                    supabase_admin.table('global_rate_limits') \
+                        .update({
+                        'request_count': record.get('request_count', 0) + 1,
+                        'updated_at': current_time_iso
+                    }) \
+                        .eq('ip_address', ip) \
+                        .execute()
+                    return True, None
+            else:
+                supabase_admin.table('global_rate_limits') \
+                    .update({
+                    'request_count': 1,
+                    'window_start': current_time_iso,
+                    'updated_at': current_time_iso
+                }) \
+                    .eq('ip_address', ip) \
+                    .execute()
+                return True, None
+
+        except Exception as e:
+            logger.error(f"Global rate limit error: {str(e)}")
+            return True, None
+
+    def record_attempt(self, key: str):
+        """Record an attempt"""
         try:
             current_time = get_current_utc_time()
             current_time_iso = current_time.isoformat()
-            print(f"📝 [record_attempt] Recording: {key}")
 
-            # Check if record exists
             response = supabase_admin.table('rate_limits') \
                 .select('*') \
                 .eq('key_name', key) \
                 .execute()
 
-            if not response.data or len(response.data) == 0:
-                # Create new record
-                print(f"🆕 [record_attempt] Creating new record")
-                insert_data = {
+            if not response.data:
+                supabase_admin.table('rate_limits').insert({
                     'key_name': key,
                     'attempt_count': 1,
                     'first_attempt': current_time_iso,
                     'last_attempt': current_time_iso,
                     'created_at': current_time_iso,
                     'updated_at': current_time_iso
-                }
-                result = supabase_admin.table('rate_limits').insert(insert_data).execute()
-                print(f"✅ [record_attempt] Created with attempt_count=1")
+                }).execute()
                 return
 
             record = response.data[0]
             current_attempts = record.get('attempt_count', 0)
             first_attempt = record.get('first_attempt')
 
-            print(f"📊 [record_attempt] Current attempts: {current_attempts}")
-
-            # ✅ FIX: Check if window expired before incrementing
             if first_attempt:
                 first_attempt_dt = parse_db_timestamp(first_attempt)
                 if first_attempt_dt:
-                    window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+                    is_contact = key.startswith('contact_')
+                    is_otp = key.startswith('otp_')
+                    is_admin = key.startswith('admin_')
+
+                    if is_contact:
+                        window_minutes = self.contact_window_hours * 60
+                    elif is_otp:
+                        window_minutes = self.otp_window_minutes
+                    elif is_admin:
+                        window_minutes = self.admin_window_minutes
+                    else:
+                        window_minutes = self.window_minutes
+
+                    window_end = first_attempt_dt + timedelta(minutes=window_minutes)
+
                     if current_time > window_end:
-                        # Window expired - reset to 1
-                        print(f"🔄 [record_attempt] Window expired, resetting to 1")
-                        update_data = {
+                        supabase_admin.table('rate_limits') \
+                            .update({
                             'attempt_count': 1,
                             'first_attempt': current_time_iso,
                             'last_attempt': current_time_iso,
                             'updated_at': current_time_iso
-                        }
-                        supabase_admin.table('rate_limits') \
-                            .update(update_data) \
+                        }) \
                             .eq('key_name', key) \
                             .execute()
-                        print(f"✅ [record_attempt] Reset to 1")
                         return
 
-            # ✅ Increment the count
             new_count = current_attempts + 1
-            print(f"📈 [record_attempt] Incrementing to {new_count}")
-
-            update_data = {
+            supabase_admin.table('rate_limits') \
+                .update({
                 'attempt_count': new_count,
                 'last_attempt': current_time_iso,
                 'updated_at': current_time_iso
-            }
-
-            result = supabase_admin.table('rate_limits') \
-                .update(update_data) \
+            }) \
                 .eq('key_name', key) \
                 .execute()
 
-            print(f"✅ [record_attempt] Updated to {new_count}")
-
         except Exception as e:
-            logger.error(f"Record attempt error: {str(e)}", exc_info=True)
+            logger.error(f"Record attempt error: {str(e)}")
 
-    def reset(self, key):
+    def reset(self, key: str) -> bool:
         """Reset rate limit for a key"""
         try:
             supabase_admin.table('rate_limits') \
                 .delete() \
                 .eq('key_name', key) \
                 .execute()
-            print(f"✅ Reset rate limit for: {key}")
             return True
         except Exception as e:
-            logger.error(f"Reset error: {str(e)}", exc_info=True)
+            logger.error(f"Reset error: {str(e)}")
             return False
 
-    def get_remaining_attempts(self, key):
-        """Get remaining attempts before block - NEW HELPER METHOD"""
+    def get_remaining_attempts(self, key: str) -> int:
+        """Get remaining attempts before block"""
         try:
             current_time = get_current_utc_time()
 
@@ -325,7 +446,7 @@ class SupabaseRateLimiter:
                 .eq('key_name', key) \
                 .execute()
 
-            if not response.data or len(response.data) == 0:
+            if not response.data:
                 return self.max_attempts
 
             record = response.data[0]
@@ -335,7 +456,10 @@ class SupabaseRateLimiter:
             if first_attempt:
                 first_attempt_dt = parse_db_timestamp(first_attempt)
                 if first_attempt_dt:
-                    window_end = first_attempt_dt + timedelta(minutes=self.window_minutes)
+                    is_contact = key.startswith('contact_')
+                    window_minutes = self.contact_window_hours * 60 if is_contact else self.window_minutes
+                    window_end = first_attempt_dt + timedelta(minutes=window_minutes)
+
                     if current_time > window_end:
                         return self.max_attempts
 
@@ -346,8 +470,8 @@ class SupabaseRateLimiter:
             logger.error(f"Get remaining attempts error: {str(e)}")
             return self.max_attempts
 
-    def get_blocked_until(self, key):
-        """Get when the user will be unblocked - NEW HELPER METHOD"""
+    def get_blocked_until(self, key: str):
+        """Get when the user will be unblocked"""
         try:
             response = supabase_admin.table('rate_limits') \
                 .select('blocked_until') \
@@ -364,11 +488,11 @@ class SupabaseRateLimiter:
             logger.error(f"Get blocked until error: {str(e)}")
             return None
 
-    def cleanup_expired_records(self):
-        """Clean up expired rate limit records - NEW HELPER METHOD"""
+    def cleanup_expired_records(self) -> int:
+        """Clean up expired rate limit records"""
         try:
             current_time = get_current_utc_time()
-            cutoff_time = current_time - timedelta(minutes=self.window_minutes + self.block_minutes + 5)
+            cutoff_time = current_time - timedelta(minutes=self.block_minutes + self.window_minutes + 5)
 
             result = supabase_admin.table('rate_limits') \
                 .delete() \
@@ -381,11 +505,233 @@ class SupabaseRateLimiter:
             return deleted_count
 
         except Exception as e:
-            logger.error(f"Cleanup expired records error: {str(e)}")
+            logger.error(f"Cleanup error: {str(e)}")
             return 0
 
-# Initialize rate limiter
+
 rate_limiter = SupabaseRateLimiter()
+
+
+# =============================================
+# SECURITY MIDDLEWARE - NEW
+# =============================================
+
+@app.before_request
+def security_middleware():
+    """Global security checks with rate limiting"""
+    try:
+        # Skip static files
+        if request.path.startswith('/static/') or request.path == '/favicon.ico':
+            return
+
+        # Skip admin routes (they have their own security)
+        if request.path.startswith('/admin') or request.path.startswith('/api/admin'):
+            return
+
+        # Global rate limit for all public routes
+        ip = get_client_ip()
+
+        # Skip rate limiting for trusted IPs
+        if ip in ['127.0.0.1', 'localhost', '::1']:
+            return
+
+        global_allowed, global_error = rate_limiter.check_global_rate_limit(ip)
+        if not global_allowed:
+            return jsonify({
+                'error': 'Too many requests. Please wait a moment and try again.',  # ✅ Generic
+                'rate_limited': True
+            }), 429
+
+        # Security pattern detection
+        is_suspicious, pattern = detect_suspicious_request()
+        if is_suspicious:
+            logger.warning(f"🚨 Security violation from {ip}: {pattern}")
+
+            # Block the IP for suspicious activity (24 hours)
+            block_key = f"security_block_{ip}"
+            supabase_admin.table('rate_limits').insert({
+                'key_name': block_key,
+                'attempt_count': 10,
+                'is_blocked': True,
+                'blocked_until': (get_current_utc_time() + timedelta(hours=24)).isoformat(),
+                'created_at': get_current_utc_time().isoformat(),
+                'updated_at': get_current_utc_time().isoformat()
+            }).execute()
+
+            # ✅ Generic error message (don't reveal detection)
+            return jsonify({
+                'error': 'Your request could not be processed. Please contact support if this continues.',
+                'blocked': True
+            }), 403
+
+    except Exception as e:
+        logger.error(f"Security middleware error: {str(e)}")
+        # Don't block the request on middleware error
+
+# =============================================
+# IP UTILITIES - NEW
+# =============================================
+
+def get_client_ip() -> str:
+    """Get client IP address from request"""
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ip:
+        ip = ip.split(',')[0].strip()
+    else:
+        ip = 'unknown'
+    return ip
+
+def is_trusted_ip(ip: str) -> bool:
+    """Check if IP is trusted (internal/local)"""
+    trusted_ips = ['127.0.0.1', 'localhost', '::1']
+    return ip in trusted_ips
+
+
+# =============================================
+# SUSPICIOUS PATTERN DETECTION - NEW
+# =============================================
+
+SUSPICIOUS_PATTERNS = [
+    # Path traversal
+    '../', '..\\', '..%2f', '..%5c',
+    '/etc/passwd', '/proc/self/environ',
+
+    # SQL Injection
+    'SELECT * FROM', 'UNION SELECT', 'DROP TABLE',
+    'INSERT INTO', 'UPDATE SET', 'DELETE FROM',
+    '1=1', 'OR 1=1', 'OR 1=1--',
+
+    # XSS
+    '<script>', 'javascript:', 'onerror=', 'onload=',
+    'onclick=', 'onmouseover=', 'alert(',
+
+    # Command Injection
+    'eval(', 'system(', 'exec(', 'cmd.exe',
+    'powershell', 'curl -', 'wget -',
+
+    # Other
+    'document.cookie', 'localStorage',
+    '__import__', 'base64_decode',
+]
+
+
+def detect_suspicious_request():
+    """Check request for suspicious patterns"""
+    try:
+        # Check URL
+        url = request.url.lower()
+        for pattern in SUSPICIOUS_PATTERNS:
+            if pattern.lower() in url:
+                return True, f"Suspicious URL pattern: {pattern}"
+
+        # Check JSON data
+        if request.is_json:
+            data = request.get_json(silent=True)
+            if data:
+                data_str = json.dumps(data)
+                for pattern in SUSPICIOUS_PATTERNS:
+                    if pattern.lower() in data_str.lower():
+                        return True, f"Suspicious JSON data: {pattern}"
+
+        # Check form data
+        if request.form:
+            for key, value in request.form.items():
+                if isinstance(value, str):
+                    for pattern in SUSPICIOUS_PATTERNS:
+                        if pattern.lower() in value.lower():
+                            return True, f"Suspicious form data: {key} -> {pattern}"
+
+        return False, ""
+
+    except Exception as e:
+        logger.error(f"Pattern detection error: {str(e)}")
+        return False, ""
+
+
+# =============================================
+# SECURITY HEADERS - NEW
+# =============================================
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+    # CORS headers for API
+    if request.path.startswith('/api/'):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,X-Requested-With'
+        response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+
+    return response
+
+
+# =============================================
+# RATE LIMIT DECORATOR - NEW
+# =============================================
+
+def rate_limit(purpose: str, max_attempts: int = None, window_minutes: int = None):
+    """
+    Rate limiting decorator for endpoints
+
+    Usage:
+    @rate_limit('login', max_attempts=3, window_minutes=5)
+    def login():
+        ...
+    """
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Skip rate limiting for static files
+            if request.path.startswith('/static/') or request.path == '/favicon.ico':
+                return f(*args, **kwargs)
+
+            # Get client IP
+            ip = get_client_ip()
+
+            # Get identifier (email or IP)
+            identifier = None
+            if request.is_json:
+                data = request.get_json(silent=True) or {}
+                identifier = data.get('email') or data.get('username')
+            else:
+                identifier = request.form.get('email') or request.form.get('username')
+
+            if not identifier:
+                identifier = ip
+
+            # Generate rate limit key
+            rate_key = rate_limiter.get_key(str(identifier), purpose, ip)
+
+            # Check rate limit
+            allowed, error_msg = rate_limiter.is_allowed(rate_key)
+            if not allowed:
+                response = jsonify({
+                    'status': 'error',
+                    'message': error_msg,
+                    'rate_limited': True
+                })
+                response.status_code = 429
+                return response
+
+            # Execute the route
+            result = f(*args, **kwargs)
+
+            # Record the attempt (only for non-GET requests)
+            if request.method != 'GET':
+                rate_limiter.record_attempt(rate_key)
+
+            return result
+
+        return decorated_function
+
+    return decorator
 
 # =============================================
 # ===== INITIALIZE DATABASE TABLES =====
@@ -2409,37 +2755,57 @@ def index():
                                now=now)
 
 
+# =============================================
+# REGISTRATION ROUTE - FIXED
+# =============================================
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Registration - 3 attempts per 5 minutes"""
     try:
+        # Handle GET request (render page)
         if request.method == 'GET':
             return render_template('index.html')
 
-        data = request.get_json() if request.is_json else request.form.to_dict()
+        # Handle POST request (API)
+        if not request.is_json:
+            return jsonify({'status': 'error', 'message': 'JSON required'}), 415
 
-        # Check each field individually for better error messages
-        if not data.get('username'):
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
+
+        # Extract and validate fields
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        confirm_password = data.get('confirm_password', '')
+
+        # Validate required fields
+        if not username:
             return jsonify({'status': 'error', 'message': 'Username is required'}), 400
-        if not data.get('email'):
+        if not email:
             return jsonify({'status': 'error', 'message': 'Email is required'}), 400
-        if not data.get('password'):
+        if not password:
             return jsonify({'status': 'error', 'message': 'Password is required'}), 400
-        if not data.get('confirm_password'):
+        if not confirm_password:
             return jsonify({'status': 'error', 'message': 'Please confirm your password'}), 400
 
-        email = data['email']
-        username = data['username']
-        password = data['password']
-        confirm_password = data['confirm_password']
-
+        # Check password match
         if password != confirm_password:
             return jsonify({'status': 'error', 'message': 'Passwords do not match'}), 400
 
-        is_valid, message = validate_password(password)
+        # Validate password strength
+        is_valid, error_msg = validate_password(password)
         if not is_valid:
-            return jsonify({'status': 'error', 'message': message}), 400
+            return jsonify({'status': 'error', 'message': error_msg}), 400
 
-        # Check if user exists
+        # Validate email
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            return jsonify({'status': 'error', 'message': error_msg}), 400
+
+        # Check if email already exists
         existing = supabase_admin.table('users').select('email').eq('email', email).execute()
         if existing.data:
             return jsonify({
@@ -2447,6 +2813,7 @@ def register():
                 'message': 'Email already registered. Please use a different email or login.'
             }), 400
 
+        # Check if username already exists
         existing_username = supabase_admin.table('users').select('username').eq('username', username).execute()
         if existing_username.data:
             return jsonify({
@@ -2454,16 +2821,11 @@ def register():
                 'message': 'Username already taken. Please choose another username.'
             }), 400
 
-        # Get IP address
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
-        else:
-            ip = 'unknown'
-
+        # Rate limiting
+        ip = get_client_ip()
         rate_key = rate_limiter.get_key(email, 'register', ip)
-
         allowed, error_msg = rate_limiter.is_allowed(rate_key)
+
         if not allowed:
             return jsonify({
                 'status': 'error',
@@ -2475,7 +2837,7 @@ def register():
         otp, expires_at = generate_otp()
         hashed_otp = hash_otp(otp)
 
-        # Store OTP
+        # Store OTP in database
         otp_response = supabase_admin.table('otp_verification').insert({
             'email': email,
             'otp': hashed_otp,
@@ -2486,11 +2848,13 @@ def register():
         if not otp_response.data:
             raise Exception('Failed to store OTP in database')
 
+        # Record the attempt
         rate_limiter.record_attempt(rate_key)
 
         # Send OTP email
         email_sent = send_otp_email(email, username, otp)
 
+        # Return success response
         return jsonify({
             'status': 'success',
             'message': 'OTP sent to your email. Please verify to complete registration.',
@@ -2581,19 +2945,29 @@ def resend_otp():
 
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp_route():
+    """OTP verification - 5 attempts per 10 minutes"""
     try:
         data = request.get_json()
-        email = data.get('email')
-        otp = data.get('otp')
+        email = data.get('email', '').lower().strip()
+        otp = data.get('otp', '').strip()
         username = data.get('username')
         password = data.get('password')
         purpose = data.get('purpose', 'registration')
 
-        if not all([email, otp]):
-            return jsonify({'status': 'error', 'message': 'Email and OTP are required'}), 400
+        if not email or not otp:
+            return jsonify({'status': 'error', 'message': 'Email and OTP required'}), 400
 
-        if purpose == 'registration' and not all([username, password]):
-            return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
+        ip = get_client_ip()
+
+        # Rate limiting: 5 attempts per 10 minutes
+        rate_key = rate_limiter.get_key(email, 'otp_verify', ip)
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
 
         # Get OTP record
         otp_record = supabase_admin.table('otp_verification') \
@@ -2606,23 +2980,30 @@ def verify_otp_route():
             .execute()
 
         if not otp_record.data:
-            return jsonify({'status': 'error', 'message': 'No OTP found for this email'}), 404
+            rate_limiter.record_attempt(rate_key)
+            return jsonify({'status': 'error', 'message': 'No OTP found'}), 404
 
         # Check expiration
         expires_at = parse_db_timestamp(otp_record.data['expires_at'])
-        current_time = get_current_utc_time()
-
-        if expires_at <= current_time:
+        if expires_at <= get_current_utc_time():
+            rate_limiter.record_attempt(rate_key)
             return jsonify({'status': 'error', 'message': 'OTP has expired'}), 400
 
-        # Verify hashed OTP
-        stored_otp = otp_record.data['otp']
-        is_valid = verify_otp(stored_otp, otp)
-
-        if not is_valid:
+        # Verify OTP
+        if not verify_otp(otp_record.data['otp'], otp):
+            rate_limiter.record_attempt(rate_key)
             return jsonify({'status': 'error', 'message': 'Invalid OTP'}), 400
 
+        # Success - reset rate limit
+        rate_limiter.reset(rate_key)
+
+        # Delete used OTP
+        supabase_admin.table('otp_verification').delete().eq('id', otp_record.data['id']).execute()
+
         if purpose == 'registration':
+            if not all([username, password]):
+                return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
+
             # Hash password
             password_hash = hash_password(password)
 
@@ -2632,12 +3013,11 @@ def verify_otp_route():
                 'email': email,
                 'password_hash': password_hash,
                 'is_verified': True,
-                'verified_at': current_time.isoformat(),
-                'created_at': current_time.isoformat()
+                'verified_at': get_current_utc_time().isoformat(),
+                'created_at': get_current_utc_time().isoformat()
             }
 
             user_response = supabase_admin.table('users').insert(user_data).execute()
-
             if not user_response.data:
                 raise Exception('Failed to create user account')
 
@@ -2645,23 +3025,21 @@ def verify_otp_route():
             user_id = user_response.data[0]['id']
             store_password_history(user_id, password_hash)
 
-        # Delete used OTP
-        supabase_admin.table('otp_verification').delete().eq('id', otp_record.data['id']).execute()
-
         return jsonify({
             'status': 'success',
-            'message': 'Verification successful!' + (' You can now login.' if purpose == 'registration' else ''),
+            'message': 'Verification successful!',
             'redirect': '/',
             'showLoginModal': purpose == 'registration'
         })
 
     except Exception as e:
-        logger.error(f"OTP verification error: {str(e)}", exc_info=True)
-        return jsonify({'status': 'error', 'message': 'OTP verification failed'}), 500
+        logger.error(f"OTP verification error: {str(e)}")
+        return jsonify({'status': 'error', 'message': 'Verification failed'}), 500
 
-
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST'])
+@rate_limit('login', max_attempts=3, window_minutes=5)
 def login():
+    """Login - 3 attempts per 5 minutes"""
     if request.method == 'GET':
         if 'user_id' in session:
             return redirect(url_for('user_dashboard'))
@@ -2674,14 +3052,24 @@ def login():
     if not data:
         return jsonify({'error': 'Invalid JSON data'}), 400
 
-    email = data.get('email')
-    password = data.get('password')
+    email = data.get('email', '').lower().strip()
+    password = data.get('password', '')
 
     if not email or not password:
         return jsonify({'error': 'Email and password are required'}), 400
 
+    ip = get_client_ip()
+
+    # Rate limiting: 3 attempts per 5 minutes
+    rate_key = rate_limiter.get_key(email, 'login', ip)
+    allowed, error_msg = rate_limiter.is_allowed(rate_key)
+    if not allowed:
+        return jsonify({
+            'error': error_msg,  # ✅ "Too many attempts. Please try again after 30 minutes."
+            'rate_limited': True
+        }), 429
+
     try:
-        # Get user from database
         user_response = supabase_admin.table('users') \
             .select('*') \
             .eq('email', email) \
@@ -2690,49 +3078,46 @@ def login():
 
         user = user_response.data if user_response.data else None
 
-        if not user:
+        if not user or not verify_password(user['password_hash'], password):
+            rate_limiter.record_attempt(rate_key)
+            # ✅ Generic error message (don't reveal if email exists)
             return jsonify({'error': 'Invalid email or password'}), 401
 
-        # Verify password
-        if verify_password(user['password_hash'], password):
-            # Check if user is active
-            if not user.get('is_active', True):
-                return jsonify({
-                    'error': 'Your account has been deactivated. Please contact administrator.',
-                    'account_inactive': True
-                }), 401
+        # Reset rate limit on successful login
+        rate_limiter.reset(rate_key)
 
-            # Check if user is verified
-            if not user.get('is_verified'):
-                return jsonify({
-                    'error': 'Please verify your email first',
-                    'requires_verification': True,
-                    'email': email
-                }), 401
-
-            # Check if user is deleted
-            if user.get('is_deleted', False):
-                return jsonify({
-                    'error': 'Your account has been deleted. Please contact administrator.',
-                    'account_deleted': True
-                }), 401
-
-            # Set session variables
-            session['user_id'] = user['id']
-            session['user_email'] = user['email']
-            session['username'] = user['username']
-            session.permanent = True
-
+        if not user.get('is_active', True):
             return jsonify({
-                'status': 'success',
-                'message': 'Login successful!',
-                'redirect': url_for('index')
-            })
+                'error': 'Your account has been deactivated. Please contact administrator.',
+                'account_inactive': True
+            }), 401
 
-        return jsonify({'error': 'Invalid email or password'}), 401
+        if not user.get('is_verified'):
+            return jsonify({
+                'error': 'Please verify your email first',
+                'requires_verification': True,
+                'email': email
+            }), 401
+
+        if user.get('is_deleted', False):
+            return jsonify({
+                'error': 'Your account has been deleted. Please contact administrator.',
+                'account_deleted': True
+            }), 401
+
+        session['user_id'] = user['id']
+        session['user_email'] = user['email']
+        session['username'] = user['username']
+        session.permanent = True
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Login successful!',
+            'redirect': url_for('index')
+        })
 
     except Exception as e:
-        logger.error(f"Login error: {str(e)}", exc_info=True)
+        logger.error(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed. Please try again.'}), 500
 
 
@@ -2742,49 +3127,58 @@ def login():
 
 @app.route('/reset-password-request', methods=['POST'])
 def reset_password_request():
-    """Step 1: Send OTP to email"""
+    """Password reset request - 3 attempts per 5 minutes"""
     try:
         data = request.get_json()
-        email = data.get('email')
+        email = data.get('email', '').lower().strip()
 
         if not email:
-            return jsonify({'status': 'error', 'message': 'Email is required'}), 400
+            return jsonify({'status': 'error', 'message': 'Email required'}), 400
 
-        # Check if user exists
-        user = supabase_admin.table('users').select('username', 'id').eq('email', email).maybe_single().execute()
+        ip = get_client_ip()
 
+        # Rate limiting: 3 attempts per 5 minutes
+        rate_key = rate_limiter.get_key(email, 'password_reset', ip)
+        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        if not allowed:
+            return jsonify({
+                'status': 'error',
+                'message': error_msg,
+                'rate_limited': True
+            }), 429
+
+        user = supabase_admin.table('users').select('username').eq('email', email).maybe_single().execute()
+
+        # Always return success to prevent email enumeration
         if not user.data:
+            rate_limiter.record_attempt(rate_key)
             return jsonify({
                 'status': 'success',
                 'message': 'If an account exists, an OTP has been sent'
             })
 
-        # Delete existing OTPs
+        # Delete old OTPs
         supabase_admin.table('password_reset_otp').delete().eq('email', email).execute()
 
         # Generate OTP
         otp, expires_at = generate_otp()
-
-        # Store OTP
         supabase_admin.table('password_reset_otp').insert({
             'email': email,
             'otp': otp,
             'expires_at': expires_at
         }).execute()
 
-        # ✅ Send password reset OTP using unified function
-        username = user.data.get('username', 'User')
-        email_sent = send_password_reset_email(email, username, otp)
+        rate_limiter.record_attempt(rate_key)
+        send_otp_email(email, user.data.get('username', 'User'), otp)
 
         return jsonify({
             'status': 'success',
             'message': 'OTP sent successfully',
-            'email': email,
-            'otp': otp if not email_sent else None
+            'email': email
         })
 
     except Exception as e:
-        logger.error(f"Reset password request error: {str(e)}", exc_info=True)
+        logger.error(f"Password reset error: {str(e)}")
         return jsonify({'status': 'error', 'message': 'Failed to send OTP'}), 500
 
 
@@ -5177,16 +5571,14 @@ def get_application_link(content_type, content_id):
 # Contact and newsletter subscribe routes
 @app.route('/api/contact', methods=['POST'])
 def contact():
-    """Contact form - USING EXISTING RATE LIMITER & FAKE EMAIL BLOCKING"""
+    """Contact form - 1 per email + 3 per IP per 24 hours"""
     try:
-        # Get form data - handle both JSON and form data
         if request.is_json:
             data = request.get_json()
         else:
             data = request.form.to_dict()
 
         required_fields = ['name', 'email', 'subject', 'message']
-
         if not all(data.get(field) for field in required_fields):
             return jsonify({'status': 'error', 'message': 'All fields are required'}), 400
 
@@ -5195,83 +5587,69 @@ def contact():
         subject = data.get('subject', '').strip()
         message = data.get('message', '').strip()
 
-        # ✅ VALIDATE EMAIL FORMAT
-        if not email or "@" not in email:
-            return jsonify({'status': 'error', 'message': 'Please provide a valid email address'}), 400
+        if not email or '@' not in email:
+            return jsonify({'status': 'error', 'message': 'Valid email is required'}), 400
 
-        # ✅ BLOCK FAKE/DISPOSABLE EMAIL DOMAINS
         if is_fake_email(email):
-            logger.warning(f"🚫 Fake email blocked in contact form: {email}")
             return jsonify({
                 'status': 'error',
-                'message': 'Please use a permanent email address (no temporary/disposable emails)'
+                'message': 'Please use a permanent email address'
             }), 400
 
-        # ✅ Get IP address
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
-        else:
-            ip = 'unknown'
+        ip = get_client_ip()
 
-        # ✅ USE EXISTING RATE LIMITER - Check rate limit
-        rate_key = rate_limiter.get_key(email, 'contact', ip)
-        allowed, error_msg = rate_limiter.is_allowed(rate_key)
+        # ✅ NEW: Check IP-based contact limit (3 per IP per 24 hours)
+        ip_key = f"contact_ip_{ip}"
+        ip_allowed, ip_error = rate_limiter.is_allowed(ip_key)
+        if not ip_allowed:
+            return jsonify({
+                'status': 'error',
+                'message': "You've reached the message limit. Please try again after 24 hours.",
+                'rate_limited': True
+            }), 429
 
+        # ✅ Check email-based contact limit (1 per email per 24 hours)
+        contact_key = rate_limiter.get_key(email, 'contact', ip)
+        allowed, error_msg = rate_limiter.is_allowed(contact_key)
         if not allowed:
-            logger.warning(f"🚫 Contact rate limit exceeded for {email} ({ip})")
             return jsonify({
                 'status': 'error',
                 'message': error_msg,
                 'rate_limited': True
             }), 429
 
-        # ✅ SAVE MESSAGE TO DATABASE - REMOVED ip_address and user_agent
+        # Global rate limit: 60 req/min
+        global_allowed, global_error = rate_limiter.check_global_rate_limit(ip)
+        if not global_allowed:
+            return jsonify({
+                'status': 'error',
+                'message': global_error,
+                'rate_limited': True
+            }), 429
+
+        # Save message
         message_data = {
             'name': name[:100],
             'email': email[:100],
             'subject': subject[:200],
             'message': message[:5000],
-            'created_at': get_current_utc_time().isoformat(),
-            'updated_at': get_current_utc_time().isoformat()
-
-        }
-
-        response = supabase_admin.table('contact_messages').insert(message_data).execute()
-
-        if not response.data:
-            raise Exception('Failed to save message')
-
-        # ✅ Record rate limit attempt using existing rate limiter
-        rate_limiter.record_attempt(rate_key)
-
-        # ✅ CREATE ADMIN NOTIFICATION
-        notification_data = {
-            'type': 'message',
-            'title': 'New Contact Message',
-            'message': f'New message from {name} ({email}) about {subject}',
-            'related_id': response.data[0]['id'],
+            'ip_address': ip,
             'created_at': get_current_utc_time().isoformat()
         }
 
-        try:
-            supabase_admin.table('admin_notifications').insert(notification_data).execute()
-        except Exception as e:
-            logger.warning(f"Could not create notification: {str(e)}")
+        response = supabase_admin.table('contact_messages').insert(message_data).execute()
+        if not response.data:
+            raise Exception('Failed to save message')
 
-        logger.info(f"✅ Contact message received from {name} ({email})")
-
+        logger.info(f"✅ Contact message from {name} ({email})")
         return jsonify({
             'status': 'success',
             'message': 'Your message has been sent successfully!'
         })
 
     except Exception as e:
-        logger.error(f"Contact form error: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': 'Failed to send message. Please try again.'
-        }), 500
+        logger.error(f"Contact error: {str(e)}")
+        return jsonify({'status': 'error', 'message': 'Failed to send message'}), 500
 
 
 # ===============  SUBSCRIBE ===============
@@ -5482,90 +5860,62 @@ If you have any questions, please contact us at support@careermaker.tech
 
 @app.route('/api/subscribe', methods=['POST'])
 def subscribe_newsletter():
-    """Subscribe to newsletter - USING EXISTING RATE LIMITER & FAKE EMAIL BLOCKING"""
-    email = None
+    """Newsletter subscription - 3 attempts per 5 minutes"""
     try:
-        # Extract email
         if request.is_json:
-            data = request.get_json(silent=True) or {}
-            email = data.get("email")
+            data = request.get_json() or {}
+            email = data.get('email', '').lower().strip()
         else:
-            email = request.form.get("email")
+            email = request.form.get('email', '').lower().strip()
 
-        # Validate email
-        if not email or "@" not in email:
-            return jsonify({"status": "error", "message": "Please provide a valid email address"}), 400
+        if not email or '@' not in email:
+            return jsonify({"status": "error", "message": "Valid email required"}), 400
 
-        email = email.lower().strip()
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            return jsonify({"status": "error", "message": error_msg}), 400
 
-        # ✅ BLOCK FAKE/DISPOSABLE EMAIL DOMAINS
-        if is_fake_email(email):
-            logger.warning(f"🚫 Fake email blocked: {email}")
-            return jsonify({
-                "status": "error",
-                "message": "Please use a permanent email address (no temporary/disposable emails)"
-            }), 400
+        ip = get_client_ip()
 
-        # ✅ Get IP address
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
-        else:
-            ip = 'unknown'
-
-        # ✅ USE EXISTING RATE LIMITER - Check rate limit
+        # Rate limiting: 3 attempts per 5 minutes
         rate_key = rate_limiter.get_key(email, 'newsletter', ip)
         allowed, error_msg = rate_limiter.is_allowed(rate_key)
-
         if not allowed:
-            logger.warning(f"🚫 Rate limit exceeded for {email} ({ip})")
             return jsonify({
                 "status": "error",
                 "message": error_msg,
                 "rate_limited": True
             }), 429
 
-        # Check if subscriber exists
         existing = supabase_admin.table("newsletter_subscribers") \
             .select("email", "is_active") \
             .eq("email", email) \
-            .maybe_single().execute()
+            .maybe_single() \
+            .execute()
 
         if existing and existing.data:
             if existing.data.get("is_active", True):
-                return jsonify({"status": "success", "message": "You are already subscribed!"})
+                return jsonify({"status": "success", "message": "Already subscribed!"})
             else:
-                # Reactivate subscription
                 supabase_admin.table("newsletter_subscribers") \
                     .update({"is_active": True, "unsubscribed_at": None}) \
-                    .eq("email", email).execute()
-
-                send_newsletter_welcome(email)
-
-                # ✅ Reset rate limit on successful subscription
+                    .eq("email", email) \
+                    .execute()
                 rate_limiter.reset(rate_key)
+                return jsonify({"status": "success", "message": "Subscription reactivated!"})
 
-                return jsonify({"status": "success", "message": "Welcome back! Subscription reactivated."})
-
-        # Insert new subscriber
-        subscriber_data = {
+        supabase_admin.table("newsletter_subscribers").insert({
             "email": email,
             "subscribed_at": get_current_utc_time().isoformat(),
             "is_active": True
-        }
-        supabase_admin.table("newsletter_subscribers").insert(subscriber_data).execute()
+        }).execute()
 
-        # ✅ Record rate limit attempt using existing rate limiter
         rate_limiter.record_attempt(rate_key)
-
-        send_newsletter_welcome(email)
-        return jsonify({"status": "success", "message": "Thank you for subscribing to our newsletter!"})
+        return jsonify({"status": "success", "message": "Subscribed successfully!"})
 
     except Exception as e:
-        if "duplicate key value violates unique constraint" in str(e):
-            return jsonify({"status": "success", "message": "You are already subscribed!"})
-        logger.error(f"❌ Newsletter subscription error for {email}: {str(e)}", exc_info=True)
-        return jsonify({"status": "error", "message": "Failed to subscribe. Please try again."}), 500
+        logger.error(f"Newsletter error: {str(e)}")
+        return jsonify({"status": "error", "message": "Failed to subscribe"}), 500
 
 
 @app.route('/api/unsubscribe', methods=['GET', 'POST'])

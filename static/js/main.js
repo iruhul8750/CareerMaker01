@@ -275,11 +275,63 @@
     window.validateEmail = validateEmail;
 
     // =============================================
-    // ENHANCED FETCH WITH RETRY AND TIMEOUT - ADD AT TOP
+    // FETCH WITH RETRY - FIXED FOR ZERO RETRIES
     // =============================================
 
-    async function fetchWithRetryAndTimeout(url, options = {}, maxRetries = 3, timeout = 10000) {
+    async function fetchWithRetryAndTimeout(url, options = {}, maxRetries = 3, timeout = 30000) {
         let lastError;
+
+        // ⬇️ FIX: If maxRetries is 0, just do a single fetch
+        if (maxRetries === 0) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        ...(options.headers || {})
+                    }
+                });
+
+                clearTimeout(timeoutId);
+
+                // Check if response is OK
+                if (!response.ok) {
+                    let errorMessage = `HTTP ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorData.error || errorMessage;
+                    } catch (e) {
+                        // If can't parse JSON, try text
+                        try {
+                            const text = await response.text();
+                            if (text && text.length < 200) {
+                                errorMessage = text.trim() || errorMessage;
+                            }
+                        } catch (textError) {
+                            // Ignore
+                        }
+                    }
+                    const error = new Error(errorMessage);
+                    error.status = response.status;
+                    error.response = response;
+                    throw error;
+                }
+
+                return response;
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+
+        // Original retry logic for maxRetries > 0
+        let isClientError = false;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
@@ -298,70 +350,52 @@
 
                 clearTimeout(timeoutId);
 
-                if (!response.ok) {
-                    // Try to get error message from response
+                // Check for client errors (4xx) - don't retry
+                if (response.status >= 400 && response.status < 500) {
+                    isClientError = true;
                     let errorMessage = `HTTP ${response.status}`;
-                    let errorData = null;
                     try {
-                        errorData = await response.json();
-                        if (errorData && errorData.message) {
-                            errorMessage = errorData.message;
-                        } else if (errorData && errorData.error) {
-                            errorMessage = errorData.error;
-                        }
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorData.error || errorMessage;
                     } catch (e) {
-                        // If we can't parse JSON, try text
-                        try {
-                            const text = await response.text();
-                            if (text && text.length < 200) {
-                                const trimmed = text.trim();
-                                if (trimmed) {
-                                    errorMessage = trimmed;
-                                }
-                            }
-                        } catch (textError) {
-                            // Ignore
-                        }
+                        // Ignore JSON parse errors
                     }
-
                     const error = new Error(errorMessage);
                     error.status = response.status;
                     error.response = response;
-                    error.data = errorData;
+                    throw error;
+                }
 
-                    // ❌ DO NOT RETRY on client errors (4xx)
-                    // ✅ Only retry on server errors (5xx) or network errors
-                    if (response.status >= 400 && response.status < 500) {
-                        // Client error - don't retry, throw immediately
-                        throw error;
-                    }
-
-                    // For 5xx errors, we'll retry
+                // Server errors (5xx) - retry
+                if (response.status >= 500) {
                     if (attempt < maxRetries - 1) {
                         console.warn(`Server error ${response.status}, retrying... (attempt ${attempt + 1}/${maxRetries})`);
                         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
                         continue;
                     }
-                    throw error;
+                    throw new Error(`Server error: ${response.status}`);
                 }
 
                 return response;
+
             } catch (error) {
                 lastError = error;
 
-                // If it's a client error (4xx), don't retry - throw immediately
-                if (error.status && error.status >= 400 && error.status < 500) {
+                // Don't retry on client errors
+                if (isClientError || (error.status && error.status >= 400 && error.status < 500)) {
                     console.warn(`Client error ${error.status}, not retrying:`, error.message);
                     throw error;
                 }
 
-                // For network errors or server errors
-                console.warn(`Attempt ${attempt + 1}/${maxRetries} failed for ${url}:`, error.message);
+                // Don't retry if maxRetries is 0 (already handled above)
+                if (maxRetries === 0) {
+                    throw error;
+                }
 
+                // Network errors - retry
                 if (attempt < maxRetries - 1) {
-                    // Exponential backoff
                     const delay = 1000 * Math.pow(2, attempt);
-                    console.warn(`Retrying in ${delay}ms...`);
+                    console.warn(`Attempt ${attempt + 1}/${maxRetries} failed. Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
@@ -1538,6 +1572,7 @@
 
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             const formResponse = document.getElementById('registerResponse');
@@ -1549,8 +1584,6 @@
             formResponse.className = 'form-response';
             emailInput.classList.remove('input-error');
             usernameInput.classList.remove('input-error');
-
-            // Remove any existing field-specific error messages
             document.querySelectorAll('.field-error-message').forEach(el => el.remove());
 
             const username = usernameInput.value.trim();
@@ -1587,12 +1620,11 @@
                 return;
             }
 
-            // ✅ FIX: Ensure confirm_password is always sent with correct field name
             const requestData = {
                 username: username,
                 email: email,
                 password: password,
-                confirm_password: confirmPassword,  // ← Must match backend's expected field name
+                confirm_password: confirmPassword,
                 terms_agreement: termsAgreement
             };
 
@@ -1602,6 +1634,7 @@
             showLoader('Creating your account...');
 
             try {
+                // ⬇️ FIX: Use fetch with retry DISABLED (retries: 0)
                 const response = await fetchWithRetryAndTimeout('/register', {
                     method: 'POST',
                     headers: {
@@ -1610,11 +1643,11 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify(requestData)
-                }, 3, 15000);
+                }, 0, 15000);  // ⬅️ retries: 0, timeout: 15s
 
                 const data = await response.json();
 
-                // Handle rate limiting (429 status)
+                // Handle rate limiting (429)
                 if (response.status === 429) {
                     hideLoader();
                     const rateLimitMsg = data.message || 'Too many attempts. Please wait 30 minutes before trying again.';
@@ -1625,8 +1658,8 @@
                     return;
                 }
 
+                // Handle other errors
                 if (!response.ok) {
-                    // Handle specific error types
                     if (response.status === 400) {
                         if (data.message && data.message.includes('Email already registered')) {
                             showFieldError(emailInput, data.message);
@@ -1638,27 +1671,19 @@
                             hideLoader();
                             return;
                         }
-                        if (data.message && data.message.includes('used this password before')) {
-                            showFormError(formResponse, '⚠️ ' + data.message);
-                            hideLoader();
-                            return;
-                        }
                         throw new Error(data.message || 'Registration failed');
                     }
                     throw new Error(data.message || 'Registration failed');
                 }
 
-                // Success - handle OTP verification
+                // Success - OTP verification
                 if (data.requires_verification) {
                     hideLoader();
                     showLoader('Account created! Please verify your email...');
 
                     setTimeout(() => {
                         hideLoader();
-
-                        // ✅ Store email status for the modal
-                        window._emailSent = data.email_sent !== false; // true if email was sent
-
+                        window._emailSent = data.email_sent !== false;
                         showOTPVerificationModal(
                             data.email,
                             requestData.username,
@@ -1666,7 +1691,6 @@
                         );
                         document.getElementById('registerModal').style.display = 'none';
 
-                        // ✅ Show appropriate message
                         if (data.otp) {
                             console.log('📧 Development OTP:', data.otp);
                             showToast('📧 Check console for OTP (development mode)', 'info');
@@ -2771,77 +2795,62 @@
         const contactForm = document.getElementById('contactForm');
         if (!contactForm) return;
 
-        // ✅ Character counter for message
-        const messageTextarea = document.getElementById('contactMessage');
-        const charCountDisplay = document.getElementById('messageCharCount');
-
-        if (messageTextarea && charCountDisplay) {
-            messageTextarea.addEventListener('input', function() {
-                const length = this.value.length;
-                const maxLength = this.maxLength || 5000;
-                charCountDisplay.textContent = `${length} / ${maxLength} characters`;
-
-                // Color coding
-                if (length > maxLength * 0.9) {
-                    charCountDisplay.style.color = '#dc3545';
-                } else if (length > maxLength * 0.7) {
-                    charCountDisplay.style.color = '#ffc107';
-                } else {
-                    charCountDisplay.style.color = '#6c757d';
-                }
-            });
-
-            // Trigger on load if there's pre-filled content
-            if (messageTextarea.value) {
-                messageTextarea.dispatchEvent(new Event('input'));
-            }
-        }
+        let isSubmitting = false;
 
         contactForm.addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const submitBtn = contactForm.querySelector('#contactSubmitBtn') || contactForm.querySelector('button[type="submit"]');
+            // ✅ FIX: Prevent multiple submissions
+            if (isSubmitting) {
+                console.log('⏳ Form already submitting...');
+                return;
+            }
+
+            const submitBtn = this.querySelector('#contactSubmitBtn') || this.querySelector('button[type="submit"]');
             const btnText = submitBtn?.querySelector('.btn-text');
             const formResponse = document.getElementById('formResponse');
 
+            // Disable button immediately
+            isSubmitting = true;
             if (btnText) btnText.style.display = 'none';
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            }
             if (formResponse) formResponse.style.display = 'none';
-
-            // Show loader
-            const loader = showLoader('Sending message...');
 
             try {
                 const formData = new FormData(contactForm);
-
-                // Get CSRF token
                 const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
 
-                const response = await fetchWithRetryAndTimeout('/api/contact', {
+                const response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrfToken
                     },
                     body: formData
-                }, 3, 15000);
+                });
 
                 const data = await response.json();
 
                 if (!response.ok) {
+                    // ✅ FIX: Check if rate limited
+                    if (response.status === 429) {
+                        throw new Error(data.message || 'Too many attempts. Please wait 24 hours.');
+                    }
                     throw new Error(data.message || 'Failed to send message');
                 }
 
-                hideLoader();
-
                 if (formResponse) {
                     formResponse.className = 'form-response success';
-                    formResponse.textContent = data.message;
+                    formResponse.textContent = data.message || 'Message sent successfully!';
                     formResponse.style.display = 'block';
                 }
 
                 contactForm.reset();
 
                 // Reset character counter
+                const charCountDisplay = document.getElementById('messageCharCount');
                 if (charCountDisplay) {
                     charCountDisplay.textContent = '0 / 5000 characters';
                     charCountDisplay.style.color = '#6c757d';
@@ -2849,15 +2858,14 @@
 
                 showToast('Message sent successfully!', 'success');
 
-                // Auto-hide success message after 5 seconds
-                if (formResponse) {
-                    setTimeout(() => {
+                setTimeout(() => {
+                    if (formResponse) {
                         formResponse.style.display = 'none';
-                    }, 5000);
-                }
+                    }
+                }, 5000);
 
             } catch (error) {
-                hideLoader();
+                console.error('Contact form error:', error);
 
                 if (formResponse) {
                     formResponse.className = 'form-response error';
@@ -2865,11 +2873,19 @@
                     formResponse.style.display = 'block';
                 }
 
-                showToast('Failed to send message', 'error');
+                showToast(error.message || 'Failed to send message', 'error');
 
             } finally {
-                if (btnText) btnText.style.display = 'inline-block';
-                if (submitBtn) submitBtn.disabled = false;
+                // ✅ FIX: Re-enable after 5 seconds to prevent rapid re-submission
+                setTimeout(() => {
+                    isSubmitting = false;
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<span class="btn-text">Send Message</span>';
+                        const newBtnText = submitBtn.querySelector('.btn-text');
+                        if (newBtnText) newBtnText.style.display = 'inline-block';
+                    }
+                }, 5000);
             }
         });
     }
